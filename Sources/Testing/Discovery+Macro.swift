@@ -34,7 +34,7 @@ public typealias __TestContentRecordAccessor = @convention(c) (
 public typealias __TestContentRecord = (
   kind: UInt32,
   reserved1: UInt32,
-  accessor: __TestContentRecordAccessor?,
+  accessor: __TestContentRecordAccessor,
   context: UInt,
   reserved2: UInt
 )

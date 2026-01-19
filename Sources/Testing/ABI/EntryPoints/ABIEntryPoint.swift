@@ -50,7 +50,7 @@ extension ABI.v0 {
       let args = try configurationJSON.map { configurationJSON in
         try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
       }
-      let eventHandler = try eventHandlerForStreamingEvents(version: args?.eventStreamVersion, encodeAsJSONLines: false, forwardingTo: recordHandler)
+      let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args?.eventStreamVersionNumber, encodeAsJSONLines: false, forwardingTo: recordHandler)
 
       switch await Testing.entryPoint(passing: args, eventHandler: eventHandler) {
       case EXIT_SUCCESS, EXIT_NO_TESTS_FOUND:
@@ -71,7 +71,11 @@ extension ABI.v0 {
 /// - Note: This function's name is prefixed with `swt_` instead of
 ///   `swift_testing_` for binary compatibility reasons. Future ABI entry point
 ///   functions should use the `swift_testing_` prefix instead.
+#if compiler(>=6.3)
+@c(swt_abiv0_getEntryPoint)
+#else
 @_cdecl("swt_abiv0_getEntryPoint")
+#endif
 @usableFromInline func abiv0_getEntryPoint() -> UnsafeRawPointer {
   unsafeBitCast(ABI.v0.entryPoint, to: UnsafeRawPointer.self)
 }

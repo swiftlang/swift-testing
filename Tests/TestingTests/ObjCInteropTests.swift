@@ -1,12 +1,12 @@
-/*
- This source file is part of the Swift.org open source project
-
- Copyright (c) 2023 Apple Inc. and the Swift project authors
- Licensed under Apache License v2.0 with Runtime Library Exception
-
- See https://swift.org/LICENSE.txt for license information
- See https://swift.org/CONTRIBUTORS.txt for Swift project authors
- */
+//
+// This source file is part of the Swift.org open source project
+//
+// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Licensed under Apache License v2.0 with Runtime Library Exception
+//
+// See https://swift.org/LICENSE.txt for license information
+// See https://swift.org/CONTRIBUTORS.txt for Swift project authors
+//
 
 #if canImport(XCTest)
 import XCTest
@@ -99,7 +99,7 @@ struct ObjCAndXCTestInteropTests {
         if case let .issueRecorded(issue) = event.kind,
            case .apiMisused = issue.kind,
            let comment = issue.comments.first,
-           comment == "The @Test attribute cannot be applied to methods on a subclass of XCTestCase." {
+           comment == "The 'Test' attribute cannot be applied to a method on a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'." {
           issueRecorded()
         }
       }

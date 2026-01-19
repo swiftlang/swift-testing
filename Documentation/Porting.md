@@ -172,8 +172,10 @@ to load that information:
 +    }
 +    let sb = SectionBounds(
 +      imageAddress: UnsafeRawPointer(bitPattern: UInt(refNum)),
-+      start: handle.pointee!,
-+      size: GetHandleSize(handle)
++      buffer: UnsafeRawBufferPointer(
++        start: handle.pointee,
++        count: GetHandleSize(handle)
++      )
 +    )
 +    result.append(sb)
 +  } while noErr == GetNextResourceFile(refNum, &refNum))
@@ -191,7 +193,7 @@ to load that information:
 ```
 
 You will also need to update the `makeTestContentRecordDecl()` function in the
-`TestingMacros` target to emit the correct `@_section` attribute for your
+`TestingMacros` target to emit the correct `@section` attribute for your
 platform. If your platform uses the ELF image format and supports the
 `dl_iterate_phdr()` function, add it to the existing `#elseif os(Linux) || ...`
 case. Otherwise, add a new case for your platform:
@@ -201,7 +203,7 @@ case. Otherwise, add a new case for your platform:
 +++ b/Sources/TestingMacros/Support/TestContentGeneration.swift
    // ...
 +  #elseif os(Classic)
-+  @_section(".rsrc,swft,__swift5_tests")
++  @section(".rsrc,swft,__swift5_tests")
    #else
    @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
    #endif
@@ -211,6 +213,11 @@ Keep in mind that this code is emitted by the `@Test` and `@Suite` macros
 directly into test authors' test targets, so you will not be able to use
 compiler conditionals defined in the Swift Testing package (including those that
 start with `"SWT_"`).
+
+> [!NOTE]
+> We are not using `objectFormat()` yet to maintain compatibility with the Swift
+> 6.2 toolchain. We will migrate to `objectFormat()` when we drop Swift 6.2
+> toolchain support (presumably after Swift 6.3 ships).
 
 ## Runtime test discovery with static linkage
 

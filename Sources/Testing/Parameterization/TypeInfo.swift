@@ -18,7 +18,7 @@ public struct TypeInfo: Sendable {
     ///
     /// - Parameters:
     ///   - type: The concrete metatype.
-    case type(_ type: any ~Copyable.Type)
+    case type(_ type: any (~Copyable & ~Escapable).Type)
 
     /// The type info represents a metatype, but a reference to that metatype is
     /// not available at runtime.
@@ -38,7 +38,7 @@ public struct TypeInfo: Sendable {
   ///
   /// If this instance was created from a type name, or if it was previously
   /// encoded and decoded, the value of this property is `nil`.
-  public var type: (any ~Copyable.Type)? {
+  public var type: (any (~Copyable & ~Escapable).Type)? {
     if case let .type(type) = _kind {
       return type
     }
@@ -79,7 +79,7 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - type: The type which this instance should describe.
-  init(describing type: any ~Copyable.Type) {
+  init<T>(describing type: T.Type) where T: ~Copyable & ~Escapable {
     _kind = .type(type)
   }
 
@@ -88,8 +88,21 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - value: The value whose type this instance should describe.
-  init(describingTypeOf value: Any) {
-    self.init(describing: Swift.type(of: value))
+  init(describingTypeOf value: some Any) {
+#if !hasFeature(Embedded)
+    let value = value as Any
+#endif
+    let type = Swift.type(of: value)
+    self.init(describing: type)
+  }
+
+  /// Initialize an instance of this type describing the type of the specified
+  /// value.
+  ///
+  /// - Parameters:
+  ///   - value: The value whose type this instance should describe.
+  init<T>(describingTypeOf value: borrowing T) where T: ~Copyable & ~Escapable {
+    self.init(describing: T.self)
   }
 }
 
@@ -404,23 +417,6 @@ extension TypeInfo: Hashable {
     hasher.combine(fullyQualifiedName)
   }
 }
-
-#if compiler(<6.2)
-// MARK: - ObjectIdentifier support
-
-extension ObjectIdentifier {
-  /// Initialize an instance of this type from a type reference.
-  ///
-  /// - Parameters:
-  ///   - type: The type to initialize this instance from.
-  ///
-  /// - Bug: The standard library should support this conversion.
-  ///   ([134276458](rdar://134276458), [134415960](rdar://134415960))
-  fileprivate init(_ type: any ~Copyable.Type) {
-    self.init(unsafeBitCast(type, to: Any.Type.self))
-  }
-}
-#endif
 
 // MARK: - Codable
 

@@ -54,12 +54,29 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 #if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
     if configuration.verbosity > .min {
-      let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
-        try? FileHandle.stderr.write(string)
-      }
-      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-        eventRecorder.record(event, in: context)
-        oldEventHandler(event, context)
+      // Check for experimental console output flag
+      if Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true {
+        // Use experimental AdvancedConsoleOutputRecorder
+        var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>.Options()
+        advancedOptions.base = .for(.stderr)
+
+        let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>(options: advancedOptions) { string in
+          try? FileHandle.stderr.write(string)
+        }
+
+        configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+          eventRecorder.record(event, in: context)
+          oldEventHandler(event, context)
+        }
+      } else {
+        // Use the standard console output recorder (default behavior)
+        let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
+          try? FileHandle.stderr.write(string)
+        }
+        configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+          eventRecorder.record(event, in: context)
+          oldEventHandler(event, context)
+        }
       }
     }
 #endif
@@ -114,7 +131,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     }
   } catch {
 #if !SWT_NO_FILE_IO
-    try? FileHandle.stderr.write("\(error)\n")
+    try? FileHandle.stderr.write("\(String(describingForTest: error))\n")
 #endif
 
     exitCode.withLock { exitCode in
@@ -193,6 +210,9 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value of the `--parallel` or `--no-parallel` argument.
   public var parallel: Bool?
 
+  /// The maximum number of test tasks to run in parallel.
+  public var experimentalMaximumParallelizationWidth: Int?
+
   /// The value of the `--symbolicate-backtraces` argument.
   public var symbolicateBacktraces: String?
 
@@ -259,13 +279,36 @@ public struct __CommandLineArguments_v0: Sendable {
   /// argument, representing the version of the event stream schema to use when
   /// writing events to ``eventStreamOutput``.
   ///
-  /// The corresponding stable schema is used to encode events to the event
-  /// stream. ``ABI/Record`` is used if the value of this property is `0` or
-  /// higher.
+  /// This property is internal because its type is internal. External users of
+  /// this structure can use the ``eventStreamSchemaVersion`` property to get or
+  /// set the value of this property.
+  var eventStreamVersionNumber: VersionNumber?
+
+  /// The value of the `--event-stream-version` or `--experimental-event-stream-version`
+  /// argument, representing the version of the event stream schema to use when
+  /// writing events to ``eventStreamOutput``.
+  ///
+  /// The value of this property is a 1- or 3-component version string such as
+  /// `"0"` or `"1.2.3"`. The corresponding stable schema is used to encode
+  /// events to the event stream. ``ABI/Record`` is used if the value of this
+  /// property is `"0.0.0"` or higher. The testing library compares components
+  /// individually, so `"1.2"` is less than `"1.20"`.
   ///
   /// If the value of this property is `nil`, the testing library assumes that
   /// the current supported (non-experimental) version should be used.
-  public var eventStreamVersion: Int?
+  public var eventStreamSchemaVersion: String? {
+    get {
+      eventStreamVersionNumber.map { String(describing: $0) }
+    }
+    set {
+      eventStreamVersionNumber = newValue.flatMap { newValue in
+        guard let newValue = VersionNumber(newValue) else {
+          preconditionFailure("Invalid event stream version number '\(newValue)'. Specify a version number of the form 'major.minor.patch'.")
+        }
+        return newValue
+      }
+    }
+  }
 
   /// The value(s) of the `--filter` argument.
   public var filter: [String]?
@@ -288,13 +331,6 @@ public struct __CommandLineArguments_v0: Sendable {
 
   /// The value of the `--attachments-path` argument.
   public var attachmentsPath: String?
-
-  /// Whether or not the experimental warning issue severity feature should be
-  /// enabled.
-  ///
-  /// This property is intended for use in testing the testing library itself.
-  /// It is not parsed as a command-line argument.
-  var isWarningIssueRecordedEventEnabled: Bool?
 }
 
 extension __CommandLineArguments_v0: Codable {
@@ -303,6 +339,7 @@ extension __CommandLineArguments_v0: Codable {
   enum CodingKeys: String, CodingKey {
     case listTests
     case parallel
+    case experimentalMaximumParallelizationWidth
     case symbolicateBacktraces
     case verbose
     case veryVerbose
@@ -310,12 +347,51 @@ extension __CommandLineArguments_v0: Codable {
     case _verbosity = "verbosity"
     case xunitOutput
     case eventStreamOutputPath
-    case eventStreamVersion
+    case eventStreamVersionNumber = "eventStreamVersion"
     case filter
     case skip
     case repetitions
     case repeatUntil
     case attachmentsPath
+  }
+}
+
+extension RandomAccessCollection<String> {
+  /// Get the value of the command line argument with the given name.
+  ///
+  /// - Parameters:
+  ///   - label: The label or name of the argument, e.g. `"--attachments-path"`.
+  ///   - index: The index where `label` should be found, or `nil` to search the
+  ///     entire collection.
+  ///
+  /// - Returns: The value of the argument named by `label` at `index`. If no
+  ///   value is available, or if `index` is not `nil` and the argument at
+  ///   `index` is not named `label`, returns `nil`.
+  ///
+  /// This function handles arguments of the form `--label value` and
+  /// `--label=value`. Other argument syntaxes are not supported.
+  fileprivate func argumentValue(forLabel label: String, at index: Index? = nil) -> String? {
+    guard let index else {
+      return indices.lazy
+        .compactMap { argumentValue(forLabel: label, at: $0) }
+        .first
+    }
+
+    let element = self[index]
+    if element == label {
+      let nextIndex = self.index(after: index)
+      if nextIndex < endIndex {
+        return self[nextIndex]
+      }
+    } else {
+      // Find an element equal to something like "--foo=bar" and split it.
+      let prefix = "\(label)="
+      if element.hasPrefix(prefix), let equalsIndex = element.firstIndex(of: "=") {
+        return String(element[equalsIndex...].dropFirst())
+      }
+    }
+
+    return nil
   }
 }
 
@@ -333,10 +409,6 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // Do not consider the executable path AKA argv[0].
   let args = args.dropFirst()
 
-  func isLastArgument(at index: [String].Index) -> Bool {
-    args.index(after: index) >= args.endIndex
-  }
-
 #if !SWT_NO_FILE_IO
 #if canImport(Foundation)
   // Configuration for the test run passed in as a JSON file (experimental)
@@ -346,9 +418,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // NOTE: While the output event stream is opened later, it is necessary to
   // open the configuration file early (here) in order to correctly construct
   // the resulting __CommandLineArguments_v0 instance.
-  if let configurationIndex = args.firstIndex(of: "--configuration-path") ?? args.firstIndex(of: "--experimental-configuration-path"),
-     !isLastArgument(at: configurationIndex) {
-    let path = args[args.index(after: configurationIndex)]
+  if let path = args.argumentValue(forLabel: "--configuration-path") ?? args.argumentValue(forLabel: "--experimental-configuration-path") {
     let file = try FileHandle(forReadingAtPath: path)
     let configurationJSON = try file.readToEnd()
     result = try configurationJSON.withUnsafeBufferPointer { configurationJSON in
@@ -361,27 +431,25 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   }
 
   // Event stream output
-  if let eventOutputIndex = args.firstIndex(of: "--event-stream-output-path") ?? args.firstIndex(of: "--experimental-event-stream-output"),
-     !isLastArgument(at: eventOutputIndex) {
-    result.eventStreamOutputPath = args[args.index(after: eventOutputIndex)]
+  if let path = args.argumentValue(forLabel: "--event-stream-output-path") ?? args.argumentValue(forLabel: "--experimental-event-stream-output") {
+    result.eventStreamOutputPath = path
   }
+
   // Event stream version
   do {
-    var eventOutputVersionIndex: Array<String>.Index?
+    var versionString: String?
     var allowExperimental = false
-    eventOutputVersionIndex = args.firstIndex(of: "--event-stream-version")
-    if eventOutputVersionIndex == nil {
-      eventOutputVersionIndex = args.firstIndex(of: "--experimental-event-stream-version")
-      if eventOutputVersionIndex != nil {
+    versionString = args.argumentValue(forLabel: "--event-stream-version")
+    if versionString == nil {
+      versionString = args.argumentValue(forLabel: "--experimental-event-stream-version")
+      if versionString != nil {
         allowExperimental = true
       }
     }
-    if let eventOutputVersionIndex, !isLastArgument(at: eventOutputVersionIndex) {
-      let versionString = args[args.index(after: eventOutputVersionIndex)]
-
+    if let versionString {
       // If the caller specified a version that could not be parsed, treat it as
       // an invalid argument.
-      guard let eventStreamVersion = Int(versionString) else {
+      guard let eventStreamVersion = VersionNumber(versionString) else {
         let argument = allowExperimental ? "--experimental-event-stream-version" : "--event-stream-version"
         throw _EntryPointError.invalidArgument(argument, value: versionString)
       }
@@ -393,20 +461,19 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
         throw _EntryPointError.experimentalABIVersion(eventStreamVersion)
       }
 
-      result.eventStreamVersion = eventStreamVersion
+      result.eventStreamVersionNumber = eventStreamVersion
     }
   }
 #endif
 
   // XML output
-  if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), !isLastArgument(at: xunitOutputIndex) {
-    result.xunitOutput = args[args.index(after: xunitOutputIndex)]
+  if let xunitOutputPath = args.argumentValue(forLabel: "--xunit-output") {
+    result.xunitOutput = xunitOutputPath
   }
 
   // Attachment output
-  if let attachmentsPathIndex = args.firstIndex(of: "--attachments-path") ?? args.firstIndex(of: "--experimental-attachments-path"),
-     !isLastArgument(at: attachmentsPathIndex) {
-    result.attachmentsPath = args[args.index(after: attachmentsPathIndex)]
+  if let attachmentsPath = args.argumentValue(forLabel: "--attachments-path") ?? args.argumentValue(forLabel: "--experimental-attachments-path") {
+    result.attachmentsPath = attachmentsPath
   }
 #endif
 
@@ -422,15 +489,18 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   if args.contains("--no-parallel") {
     result.parallel = false
   }
+  if let maximumParallelizationWidth = args.argumentValue(forLabel: "--experimental-maximum-parallelization-width").flatMap(Int.init) {
+    // TODO: decide if we want to repurpose --num-workers for this use case?
+    result.experimentalMaximumParallelizationWidth = maximumParallelizationWidth
+  }
 
   // Whether or not to symbolicate backtraces in the event stream.
-  if let symbolicateBacktracesIndex = args.firstIndex(of: "--symbolicate-backtraces"), !isLastArgument(at: symbolicateBacktracesIndex) {
-    result.symbolicateBacktraces = args[args.index(after: symbolicateBacktracesIndex)]
+  if let symbolicateBacktraces = args.argumentValue(forLabel: "--symbolicate-backtraces") {
+    result.symbolicateBacktraces = symbolicateBacktraces
   }
 
   // Verbosity
-  if let verbosityIndex = args.firstIndex(of: "--verbosity"), !isLastArgument(at: verbosityIndex),
-     let verbosity = Int(args[args.index(after: verbosityIndex)]) {
+  if let verbosity = args.argumentValue(forLabel: "--verbosity").flatMap(Int.init) {
     result.verbosity = verbosity
   }
   if args.contains("--verbose") || args.contains("-v") {
@@ -445,9 +515,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 
   // Filtering
   func filterValues(forArgumentsWithLabel label: String) -> [String] {
-    args.indices.lazy
-      .filter { args[$0] == label && $0 < args.endIndex }
-      .map { args[args.index(after: $0)] }
+    args.indices.compactMap { args.argumentValue(forLabel: label, at: $0) }
   }
   let filter = filterValues(forArgumentsWithLabel: "--filter")
   if !filter.isEmpty {
@@ -459,11 +527,11 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   }
 
   // Set up the iteration policy for the test run.
-  if let repetitionsIndex = args.firstIndex(of: "--repetitions"), !isLastArgument(at: repetitionsIndex) {
-    result.repetitions = Int(args[args.index(after: repetitionsIndex)])
+  if let repetitions = args.argumentValue(forLabel: "--repetitions").flatMap(Int.init) {
+    result.repetitions = repetitions
   }
-  if let repeatUntilIndex = args.firstIndex(of: "--repeat-until"), !isLastArgument(at: repeatUntilIndex) {
-    result.repeatUntil = args[args.index(after: repeatUntilIndex)]
+  if let repeatUntil = args.argumentValue(forLabel: "--repeat-until") {
+    result.repeatUntil = repeatUntil
   }
 
   return result
@@ -485,7 +553,14 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   var configuration = Configuration()
 
   // Parallelization (on by default)
-  configuration.isParallelizationEnabled = args.parallel ?? true
+  if let parallel = args.parallel {
+    configuration.isParallelizationEnabled = parallel
+  } else if let maximumParallelizationWidth = args.experimentalMaximumParallelizationWidth {
+    if maximumParallelizationWidth < 1 {
+      throw _EntryPointError.invalidArgument("--experimental-maximum-parallelization-width", value: String(describing: maximumParallelizationWidth))
+    }
+    configuration.maximumParallelizationWidth = maximumParallelizationWidth
+  }
 
   // Whether or not to symbolicate backtraces in the event stream.
   if let symbolicateBacktraces = args.symbolicateBacktraces {
@@ -526,10 +601,10 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   }
 
 #if canImport(Foundation)
-  // Event stream output (experimental)
+  // Event stream output
   if let eventStreamOutputPath = args.eventStreamOutputPath {
     let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
-    let eventHandler = try eventHandlerForStreamingEvents(version: args.eventStreamVersion, encodeAsJSONLines: true) { json in
+    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
       _ = try? file.withLock {
         try file.write(json)
         try file.write("\n")
@@ -595,19 +670,15 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 #endif
 
   // Warning issues (experimental).
-  if args.isWarningIssueRecordedEventEnabled == true {
-    configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = true
-  } else {
-    switch args.eventStreamVersion {
-    case .some(...0):
-      // If the event stream version was explicitly specified to a value < 1,
-      // disable the warning issue event to maintain legacy behavior.
-      configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = false
-    default:
-      // Otherwise the requested event stream version is ≥ 1, so don't change
-      // the warning issue event setting.
-      break
-    }
+  switch args.eventStreamVersionNumber {
+  case .some(..<ABI.v6_3.versionNumber):
+    // If the event stream version was explicitly specified to a value < 6.3,
+    // disable the warning issue event to maintain legacy behavior.
+    configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = false
+  default:
+    // Otherwise the requested event stream version is ≥ 6.3, so don't change
+    // the warning issue event setting.
+    break
   }
 
   return configuration
@@ -629,30 +700,15 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 ///
 /// - Throws: If `version` is not a supported ABI version.
 func eventHandlerForStreamingEvents(
-  version versionNumber: Int?,
+  withVersionNumber versionNumber: VersionNumber?,
   encodeAsJSONLines: Bool,
   forwardingTo targetEventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
 ) throws -> Event.Handler {
-  func eventHandler(for version: (some ABI.Version).Type) -> Event.Handler {
-    return version.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: targetEventHandler)
+  let versionNumber = versionNumber ?? ABI.CurrentVersion.versionNumber
+  guard let abi = ABI.version(forVersionNumber: versionNumber) else {
+    throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(versionNumber)")
   }
-
-  return switch versionNumber {
-  case nil:
-    eventHandler(for: ABI.CurrentVersion.self)
-#if !SWT_NO_SNAPSHOT_TYPES
-  case ABI.Xcode16.versionNumber:
-    // Legacy support for Xcode 16. Support for this undocumented version will
-    // be removed in a future update. Do not use it.
-    eventHandler(for: ABI.Xcode16.self)
-#endif
-  case ABI.v0.versionNumber:
-    eventHandler(for: ABI.v0.self)
-  case ABI.v1.versionNumber:
-    eventHandler(for: ABI.v1.self)
-  case let .some(unsupportedVersionNumber):
-    throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(unsupportedVersionNumber)")
-  }
+  return abi.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: targetEventHandler)
 }
 #endif
 
@@ -814,7 +870,7 @@ private enum _EntryPointError: Error {
   ///
   /// - Parameters:
   ///   - versionNumber: The experimental ABI version number.
-  case experimentalABIVersion(_ versionNumber: Int)
+  case experimentalABIVersion(_ versionNumber: VersionNumber)
 }
 
 extension _EntryPointError: CustomStringConvertible {
@@ -826,6 +882,20 @@ extension _EntryPointError: CustomStringConvertible {
       #"Invalid value "\#(value)" for argument \#(name)"#
     case let .experimentalABIVersion(versionNumber):
       "Event stream version \(versionNumber) is experimental. Use --experimental-event-stream-version to enable it."
+    }
+  }
+}
+
+// MARK: - Deprecated
+
+extension __CommandLineArguments_v0 {
+  @available(*, deprecated, message: "Use eventStreamSchemaVersion instead.")
+  public var eventStreamVersion: Int? {
+    get {
+      eventStreamVersionNumber.map(\.majorComponent).map(Int.init)
+    }
+    set {
+      eventStreamVersionNumber = newValue.map { VersionNumber(majorComponent: .init(clamping: $0), minorComponent: 0) }
     }
   }
 }

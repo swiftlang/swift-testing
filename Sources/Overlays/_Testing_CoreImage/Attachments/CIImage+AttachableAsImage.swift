@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -10,11 +10,17 @@
 
 #if SWT_TARGET_OS_APPLE && canImport(CoreImage)
 public import CoreImage
-@_spi(Experimental) public import _Testing_CoreGraphics
+public import _Testing_CoreGraphics
 
-@_spi(Experimental)
-extension CIImage: AttachableAsCGImage {
-  public var attachableCGImage: CGImage {
+/// @Metadata {
+///   @Available(Swift, introduced: 6.3)
+/// }
+@available(_uttypesAPI, *)
+extension CIImage: AttachableAsImage, AttachableAsCGImage {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
+  package var attachableCGImage: CGImage {
     get throws {
       guard let result = CIContext().createCGImage(self, from: extent) else {
         throw ImageAttachmentError.couldNotCreateCGImage
@@ -23,7 +29,11 @@ extension CIImage: AttachableAsCGImage {
     }
   }
 
-  public func _makeCopyForAttachment() -> Self {
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytesImpl(as: imageFormat, body)
+  }
+
+  public func _copyAttachableValue() -> Self {
     // CIImage is documented as thread-safe, but does not conform to Sendable.
     // It conforms to NSCopying but does not actually copy itself, so there's no
     // point in calling copy().

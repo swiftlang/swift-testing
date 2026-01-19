@@ -13,10 +13,6 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
-#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
-#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand #expect(processExitsWith:)")
-#endif
-
 /// A protocol containing the common implementation for the expansions of the
 /// `#expect()` and `#require()` macros.
 ///
@@ -496,13 +492,12 @@ extension ExitTestConditionMacro {
 
       // Create another local type for legacy test discovery.
       var recordDecl: DeclSyntax?
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
+#if compiler(<6.3)
       let legacyEnumName = context.makeUniqueName("__🟡$")
-      let unsafeKeyword: TokenSyntax? = isUnsafeKeywordSupported ? .keyword(.unsafe, trailingTrivia: .space) : nil
       recordDecl = """
       enum \(legacyEnumName): Testing.__TestContentRecordContainer {
         nonisolated static var __testContentRecord: Testing.__TestContentRecord {
-          \(unsafeKeyword)\(enumName).testContentRecord
+          unsafe \(enumName).testContentRecord
         }
       }
       """
@@ -633,12 +628,20 @@ extension ExitTestConditionMacro {
     // Disallow exit tests in generic types and functions as they cannot be
     // correctly expanded due to the use of a nested type with static members.
     for lexicalContext in context.lexicalContext {
-      if let lexicalContext = lexicalContext.asProtocol((any WithGenericParametersSyntax).self) {
-        if let genericClause = lexicalContext.genericParameterClause {
+      if let lexicalContext = lexicalContext.asProtocol((any DeclGroupSyntax).self) {
+        if let genericClause = lexicalContext.asProtocol((any WithGenericParametersSyntax).self)?.genericParameterClause {
           diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: lexicalContext))
         } else if let whereClause = lexicalContext.genericWhereClause {
           diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: lexicalContext))
-        } else if let functionDecl = lexicalContext.as(FunctionDeclSyntax.self) {
+        } else if [.arrayType, .dictionaryType, .optionalType, .implicitlyUnwrappedOptionalType, .inlineArrayType].contains(lexicalContext.type.kind) {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: lexicalContext.type, on: lexicalContext))
+        }
+      } else if let functionDecl = lexicalContext.as(FunctionDeclSyntax.self) {
+        if let genericClause = functionDecl.genericParameterClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: functionDecl))
+        } else if let whereClause = functionDecl.genericWhereClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: functionDecl))
+        } else {
           for parameter in functionDecl.signature.parameterClause.parameters {
             if parameter.type.isSome {
               diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: parameter, on: functionDecl))

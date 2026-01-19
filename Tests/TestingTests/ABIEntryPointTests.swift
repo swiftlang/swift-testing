@@ -21,7 +21,7 @@ struct ABIEntryPointTests {
   @Test func v0() async throws {
     var arguments = __CommandLineArguments_v0()
     arguments.filter = ["NonExistentTestThatMatchesNothingHopefully"]
-    arguments.eventStreamVersion = 0
+    arguments.eventStreamSchemaVersion = "0"
     arguments.verbosity = .min
 
     let result = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
@@ -36,7 +36,7 @@ struct ABIEntryPointTests {
   func v0_manyFilters() async throws {
     var arguments = __CommandLineArguments_v0()
     arguments.filter = (1...100).map { "NonExistentTestThatMatchesNothingHopefully_\($0)" }
-    arguments.eventStreamVersion = 0
+    arguments.eventStreamSchemaVersion = "0"
     arguments.verbosity = .min
 
     let result = try await _invokeEntryPointV0(passing: arguments)
@@ -48,7 +48,7 @@ struct ABIEntryPointTests {
   func v0_listingTestsOnly() async throws {
     var arguments = __CommandLineArguments_v0()
     arguments.listTests = true
-    arguments.eventStreamVersion = 0
+    arguments.eventStreamSchemaVersion = "0"
     arguments.verbosity = .min
 
     try await confirmation("Test matched", expectedCount: 1...) { testMatched in
@@ -67,12 +67,12 @@ struct ABIEntryPointTests {
     passing arguments: __CommandLineArguments_v0,
     recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }
   ) async throws -> Bool {
-#if !os(Linux) && !os(FreeBSD) && !os(Android) && !SWT_NO_DYNAMIC_LINKING
+#if !(os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)) && !SWT_NO_DYNAMIC_LINKING
     // Get the ABI entry point by dynamically looking it up at runtime.
     //
-    // NOTE: The standard Linux linker does not allow exporting symbols from
-    // executables, so dlsym() does not let us find this function on that
-    // platform when built as an executable rather than a dynamic library.
+    // NOTE: The standard linkers on these platforms do not export symbols from
+    // executables, so dlsym() does not let us find this function on these
+    // platforms when built as an executable rather than a dynamic library.
     let abiv0_getEntryPoint = try withTestingLibraryImageAddress { testingLibrary in
       try #require(
         symbol(in: testingLibrary, named: "swt_abiv0_getEntryPoint").map {
@@ -105,7 +105,7 @@ struct ABIEntryPointTests {
   }
 
   @Test func decodeWrongRecordVersion() throws {
-    let record = ABI.Record<ABI.v1>(encoding: Test {})
+    let record = ABI.Record<ABI.v6_3>(encoding: Test {})
     let error = try JSON.withEncoding(of: record) { recordJSON in
       try #require(throws: DecodingError.self) {
         _ = try JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
@@ -114,9 +114,63 @@ struct ABIEntryPointTests {
     guard case let .dataCorrupted(context) = error else {
       throw error
     }
-    #expect(context.debugDescription == "Unexpected record version 1 (expected 0).")
+    #expect(context.debugDescription == "Unexpected record version 6.3 (expected 0).")
+  }
+
+  @Test func decodeVersionNumber() throws {
+    let version0 = try JSON.withEncoding(of: 0) { versionJSON in
+      try JSON.decode(VersionNumber.self, from: versionJSON)
+    }
+    #expect(version0 == VersionNumber(0, 0))
+
+    let version1_2_3 = try JSON.withEncoding(of: "1.2.3") { versionJSON in
+      try JSON.decode(VersionNumber.self, from: versionJSON)
+    }
+    #expect(version1_2_3.majorComponent == 1)
+    #expect(version1_2_3.minorComponent == 2)
+    #expect(version1_2_3.patchComponent == 3)
+
+    #expect(throws: DecodingError.self) {
+      _ = try JSON.withEncoding(of: "not.valid") { versionJSON in
+        try JSON.decode(VersionNumber.self, from: versionJSON)
+      }
+    }
   }
 #endif
+
+  @Test(arguments: [
+    (VersionNumber(-1, 0), "-1"),
+    (VersionNumber(0, 0), "0"),
+    (VersionNumber(1, 0), "1.0"),
+    (VersionNumber(2, 0), "2.0"),
+    (VersionNumber("0.0.1"), "0.0.1"),
+    (VersionNumber("0.1.0"), "0.1"),
+  ]) func abiVersionStringConversion(version: VersionNumber?, expectedString: String) throws {
+    let version = try #require(version)
+    #expect(String(describing: version) == expectedString)
+  }
+
+  @Test func badABIVersionString() {
+    let version = VersionNumber("not.valid")
+    #expect(version == nil)
+  }
+
+  @Test func abiVersionComparisons() throws {
+    var versions = [VersionNumber]()
+    for major in 0 ..< 10 {
+      let version = try #require(VersionNumber("\(major)"))
+      versions.append(version)
+      for minor in 0 ..< 10 {
+        let version = try #require(VersionNumber("\(major).\(minor)"))
+        versions.append(version)
+        for patch in 0 ..< 10 {
+          let version = try #require(VersionNumber("\(major).\(minor).\(patch)"))
+          versions.append(version)
+        }
+      }
+    }
+    #expect(versions == versions.shuffled().sorted())
+  }
 }
 
 #if !SWT_NO_DYNAMIC_LINKING
@@ -133,11 +187,12 @@ private func withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws ->
   defer {
     dlclose(testingLibraryAddress)
   }
-#elseif os(Linux) || os(FreeBSD) || os(Android)
-  // When using glibc, dladdr() is only available if __USE_GNU is specified.
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+  // We can't dynamically look up a function linked into the test executable on
+  // ELF-based platforms.
 #elseif os(Windows)
   let flags = DWORD(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS)
-  try addressInTestingLibrary.withMemoryRebound(to: wchar_t.self, capacity: MemoryLayout<UnsafeRawPointer>.stride / MemoryLayout<wchar_t>.stride) { addressInTestingLibrary in
+  try addressInTestingLibrary.withMemoryRebound(to: CWideChar.self, capacity: MemoryLayout<UnsafeRawPointer>.stride / MemoryLayout<CWideChar>.stride) { addressInTestingLibrary in
     try #require(GetModuleHandleExW(flags, addressInTestingLibrary, &testingLibraryAddress))
   }
   defer {

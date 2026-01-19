@@ -47,9 +47,9 @@ extension Runner {
       return
     }
 
-    configuration.eventHandler = { [eventHandler = configuration.eventHandler] event, context in
+    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
       RuntimeState.$current.withValue(existingRuntimeState) {
-        eventHandler(event, context)
+        oldEventHandler(event, context)
       }
     }
   }
@@ -206,7 +206,10 @@ extension Test {
   static func withCurrent<R>(_ test: Self, perform body: () async throws -> R) async rethrows -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.test = test
-    return try await Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
+    runtimeState.testCase = nil
+    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
+      try await test.withCancellationHandling(body)
+    }
   }
 }
 
@@ -239,7 +242,9 @@ extension Test.Case {
   static func withCurrent<R>(_ testCase: Self, perform body: () async throws -> R) async rethrows -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.testCase = testCase
-    return try await Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
+    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
+      try await testCase.withCancellationHandling(body)
+    }
   }
 }
 

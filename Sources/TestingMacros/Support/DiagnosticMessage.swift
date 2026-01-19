@@ -327,19 +327,14 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///     generic.
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///   - decl: The declaration in question (contained in `node`.)
-  ///   - escapableNonConformance: The suppressed conformance to `Escapable` for
-  ///     `decl`, if present.
   ///
   /// - Returns: A diagnostic message.
-  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol, withSuppressedConformanceToEscapable escapableNonConformance: SuppressedTypeSyntax? = nil) -> Self {
+  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
     // Avoid using a syntax node from a lexical context (it won't have source
     // location information.)
     let syntax: Syntax = if let genericClause, attribute.root == genericClause.root {
       // Prefer the generic clause if available as the root cause.
       genericClause
-    } else if let escapableNonConformance, attribute.root == escapableNonConformance.root {
-      // Then the ~Escapable conformance if present.
-      Syntax(escapableNonConformance)
     } else if attribute.root == node.root {
       // Next best choice is the unsupported containing node.
       Syntax(node)
@@ -373,8 +368,8 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
         message += " within \(_kindString(for: node, includeA: true))"
       }
     }
-    if escapableNonConformance != nil {
-      message += " because its conformance to 'Escapable' has been suppressed"
+    if let decl = node.as(DeclSyntax.self), declarationInheritsFromXCTestClass(decl) == true {
+      message += " because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'"
     }
 
     return Self(syntax: syntax, message: message, severity: .error)
@@ -529,7 +524,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   }
 
   /// Create a diagnostic message stating that `@Test` or `@Suite` is
-  /// incompatible with `XCTestCase` and its subclasses.
+  /// incompatible with `XCTest.XCTest` and its subclasses.
   ///
   /// - Parameters:
   ///   - decl: The expression or declaration referring to the unsupported
@@ -537,10 +532,10 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///
   /// - Returns: A diagnostic message.
-  static func xcTestCaseNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
+  static func xcTestSubclassNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(decl),
-      message: "Attribute \(_macroName(attribute)) cannot be applied to a subclass of 'XCTestCase'",
+      message: "Attribute \(_macroName(attribute)) cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
       severity: .error
     )
   }
@@ -640,6 +635,41 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       syntax: Syntax(traitExpr),
       message: "Trait '\(traitExpr.trimmed)' has no effect when used with a non-parameterized test function",
       severity: .warning
+    )
+  }
+
+  /// Create a diagnostic message stating that a string literal expression
+  /// passed as the display name to a `@Test` or `@Suite` attribute is empty
+  /// but should not be.
+  ///
+  /// - Parameters:
+  ///   - decl: The declaration that has an empty display name.
+  ///   - displayNameExpr: The display name string literal expression.
+  ///   - argumentContainingDisplayName: The argument node containing the node
+  ///     `displayNameExpr`.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///
+  /// - Returns: A diagnostic message.
+  static func declaration(
+    _ decl: some NamedDeclSyntax,
+    hasEmptyDisplayName displayNameExpr: StringLiteralExprSyntax,
+    fromArgument argumentContainingDisplayName: LabeledExprListSyntax.Element,
+    using attribute: AttributeSyntax
+  ) -> Self {
+    Self(
+      syntax: Syntax(displayNameExpr),
+      message: "Attribute \(_macroName(attribute)) specifies an empty display name for this \(_kindString(for: decl))",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove display name argument"),
+          changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax("" as ExprSyntax))]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Add display name"),
+          changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax(StringLiteralExprSyntax(placeholder: "display name")))]
+        ),
+      ]
     )
   }
 

@@ -8,11 +8,29 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
 @Suite("Exit test tests") struct ExitTestTests {
+  @Test("Signal names are reported (where supported)") func signalName() {
+    var hasSignalNames = false
+#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Android)
+#if !SWT_NO_SYS_SIGNAME
+    hasSignalNames = true
+#endif
+#elseif os(Linux) && !SWT_NO_DYNAMIC_LINKING
+    hasSignalNames = (symbol(named: "sigabbrev_np") != nil)
+#endif
+
+    let exitStatus = ExitStatus.signal(SIGABRT)
+    if Bool(hasSignalNames) {
+      #expect(String(describing: exitStatus) == ".signal(SIGABRT → \(SIGABRT))")
+    } else {
+      #expect(String(describing: exitStatus) == ".signal(\(SIGABRT))")
+    }
+  }
+
   @Test("Exit tests (passing)") func passing() async {
     await #expect(processExitsWith: .failure) {
       exit(EXIT_FAILURE)
@@ -195,6 +213,33 @@ private import _TestingInternals
           }
         }.run(configuration: configuration)
       }
+    }
+  }
+
+  private static let attachmentPayload = [UInt8](0...255)
+
+  @Test("Exit test forwards attachments") func forwardsAttachments() async {
+    await confirmation("Value attached") { valueAttached in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        guard case let .valueAttached(attachment) = event.kind else {
+          return
+        }
+        #expect(throws: Never.self) {
+          try attachment.withUnsafeBytes { bytes in
+            #expect(Array(bytes) == Self.attachmentPayload)
+          }
+        }
+        #expect(attachment.preferredName == "my attachment.bytes")
+        valueAttached()
+      }
+      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+
+      await Test {
+        await #expect(processExitsWith: .success) {
+          Attachment.record(Self.attachmentPayload, named: "my attachment.bytes")
+        }
+      }.run(configuration: configuration)
     }
   }
 
@@ -383,6 +428,26 @@ private import _TestingInternals
     }
   }
 
+  @Test("Issue severity")
+  func issueSeverity() async {
+    await confirmation("Recorded issue had warning severity") { wasWarning in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case let .issueRecorded(issue) = event.kind, issue.severity == .warning {
+          wasWarning()
+        }
+      }
+
+      // Mock an exit test where the process exits successfully.
+      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+      await Test {
+        await #expect(processExitsWith: .success) {
+          Issue.record("Issue recorded", severity: .warning)
+        }
+      }.run(configuration: configuration)
+    }
+  }
+
   @Test("Capture list")
   func captureList() async {
     let i = 123
@@ -558,6 +623,14 @@ private import _TestingInternals
     await #expect(processExitsWith: .success) { [x = x as NonCodableValue] in
       _ = x
     }
+  }
+#endif
+
+#if os(OpenBSD)
+  @Test("Changing the CWD doesn't break exit tests")
+  func changeCWD() async throws {
+    try #require(0 == chdir("/"))
+    await #expect(processExitsWith: .success) {}
   }
 #endif
 }

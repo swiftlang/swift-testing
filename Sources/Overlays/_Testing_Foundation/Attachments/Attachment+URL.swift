@@ -17,21 +17,6 @@ private import WinSDK
 #endif
 
 #if !SWT_NO_FILE_IO
-extension URL {
-  /// The file system path of the URL, equivalent to `path`.
-  var fileSystemPath: String {
-#if os(Windows)
-    // BUG: `path` includes a leading slash which makes it invalid on Windows.
-    // SEE: https://github.com/swiftlang/swift-foundation/pull/964
-    let path = path
-    if path.starts(with: /\/[A-Za-z]:\//) {
-      return String(path.dropFirst())
-    }
-#endif
-    return path
-  }
-}
-
 extension Attachment where AttachableValue == _AttachableURLWrapper {
 #if SWT_TARGET_OS_APPLE
   /// An operation queue to use for asynchronously reading data from disk.
@@ -50,6 +35,26 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
   ///     attachment.
   ///
   /// - Throws: Any error that occurs attempting to read from `url`.
+  ///
+  /// Use this initializer to create an instance of ``Attachment`` that
+  /// represents a local file or directory:
+  ///
+  /// ```swift
+  /// let url = try await FoodTruck.saveMenu(as: .pdf)
+  /// let attachment = try await Attachment(contentsOf: url)
+  /// Attachment.record(attachment)
+  /// ```
+  ///
+  /// When you call this initializer and pass it the URL of a file, it reads or
+  /// maps the contents of that file into memory. When you call this initializer
+  /// and pass it the URL of a directory, it creates a temporary ZIP file of the
+  /// directory before reading or mapping it into memory. These operations may
+  /// take some time, so this initializer suspends the calling task until they
+  /// are complete.
+  ///
+  /// - Important: This initializer supports creating attachments from file URLs
+  ///   only. If you pass it a URL other than a file URL, such as an HTTPS URL,
+  ///   the testing library throws an error.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
@@ -116,14 +121,14 @@ private let _archiverPath: String? = {
     return nil
   }
 
-  return withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(bufferCount)) { buffer -> String? in
+  return withUnsafeTemporaryAllocation(of: CWideChar.self, capacity: Int(bufferCount)) { buffer -> String? in
     let bufferCount = GetSystemDirectoryW(buffer.baseAddress!, UINT(buffer.count))
     guard bufferCount > 0 && bufferCount < buffer.count else {
       return nil
     }
 
     return _archiverName.withCString(encodedAs: UTF16.self) { archiverName -> String? in
-      var result: UnsafeMutablePointer<wchar_t>?
+      var result: UnsafeMutablePointer<CWideChar>?
 
       let flags = ULONG(PATHCCH_ALLOW_LONG_PATHS.rawValue)
       guard S_OK == PathAllocCombine(buffer.baseAddress!, archiverName, flags, &result) else {
@@ -203,8 +208,8 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
   throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "This platform does not support attaching directories to tests."])
 #endif
 
-  let sourcePath = directoryURL.fileSystemPath
-  let destinationPath = temporaryURL.fileSystemPath
+  let sourcePath = directoryURL.path
+  let destinationPath = temporaryURL.path
   let arguments = {
 #if os(Linux) || os(OpenBSD)
     // The zip command constructs relative paths from the current working

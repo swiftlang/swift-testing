@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -10,7 +10,7 @@
 
 #if SWT_TARGET_OS_APPLE && canImport(AppKit)
 public import AppKit
-@_spi(Experimental) public import _Testing_CoreGraphics
+public import _Testing_CoreGraphics
 
 extension NSImageRep {
   /// AppKit's bundle.
@@ -33,11 +33,17 @@ extension NSImageRep {
 
 // MARK: -
 
-@_spi(Experimental)
-extension NSImage: AttachableAsCGImage {
-  public var attachableCGImage: CGImage {
+/// @Metadata {
+///   @Available(Swift, introduced: 6.3)
+/// }
+@available(_uttypesAPI, *)
+extension NSImage: AttachableAsImage, AttachableAsCGImage {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
+  package var attachableCGImage: CGImage {
     get throws {
-      let ctm = AffineTransform(scale: _attachmentScaleFactor) as NSAffineTransform
+      let ctm = AffineTransform(scale: attachmentScaleFactor) as NSAffineTransform
       guard let result = cgImage(forProposedRect: nil, context: nil, hints: [.ctm: ctm]) else {
         throw ImageAttachmentError.couldNotCreateCGImage
       }
@@ -45,7 +51,7 @@ extension NSImage: AttachableAsCGImage {
     }
   }
 
-  public var _attachmentScaleFactor: CGFloat {
+  package var attachmentScaleFactor: CGFloat {
     let maxRepWidth = representations.lazy
       .map { CGFloat($0.pixelsWide) / $0.size.width }
       .filter { $0 > 0.0 }
@@ -53,7 +59,11 @@ extension NSImage: AttachableAsCGImage {
     return maxRepWidth ?? 1.0
   }
 
-  public func _makeCopyForAttachment() -> Self {
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytesImpl(as: imageFormat, body)
+  }
+
+  public func _copyAttachableValue() -> Self {
     // If this image is of an NSImage subclass, we cannot reliably make a deep
     // copy of it because we don't know what its `init(data:)` implementation
     // might do. Try to make a copy (using NSCopying), but if that doesn't work

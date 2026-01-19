@@ -8,14 +8,15 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// A protocol describing a type that can be attached to a test report or
-/// written to disk when a test is run.
+private import _TestingInternals
+
+/// A protocol describing a type whose instances can be recorded and saved as
+/// part of a test run.
 ///
 /// To attach an attachable value to a test, pass it to ``Attachment/record(_:named:sourceLocation:)``.
 /// To further configure an attachable value before you attach it, use it to
 /// initialize an instance of ``Attachment`` and set its properties before
-/// passing it to ``Attachment/record(_:sourceLocation:)``. An attachable
-/// value can only be attached to a test once.
+/// passing it to ``Attachment/record(_:sourceLocation:)``.
 ///
 /// The testing library provides default conformances to this protocol for a
 /// variety of standard library types. Most user-defined types do not need to
@@ -36,8 +37,8 @@ public protocol Attachable: ~Copyable {
   /// an attachment.
   ///
   /// The testing library uses this property to determine if an attachment
-  /// should be held in memory or should be immediately persisted to storage.
-  /// Larger attachments are more likely to be persisted, but the algorithm the
+  /// should be held in memory or should be immediately saved. Larger
+  /// attachments are more likely to be saved immediately, but the algorithm the
   /// testing library uses is an implementation detail and is subject to change.
   ///
   /// The value of this property is approximately equal to the number of bytes
@@ -66,13 +67,12 @@ public protocol Attachable: ~Copyable {
   /// - Throws: Whatever is thrown by `body`, or any error that prevented the
   ///   creation of the buffer.
   ///
-  /// The testing library uses this function when writing an attachment to a
-  /// test report or to a file on disk. The format of the buffer is
-  /// implementation-defined, but should be "idiomatic" for this type: for
-  /// example, if this type represents an image, it would be appropriate for
-  /// the buffer to contain an image in PNG format, JPEG format, etc., but it
-  /// would not be idiomatic for the buffer to contain a textual description of
-  /// the image.
+  /// The testing library uses this function when saving an attachment. The
+  /// format of the buffer is implementation-defined, but should be "idiomatic"
+  /// for this type: for example, if this type represents an image, it would be
+  /// appropriate for the buffer to contain an image in PNG format, JPEG format,
+  /// etc., but it would not be idiomatic for the buffer to contain a textual
+  /// description of the image.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
@@ -91,9 +91,8 @@ public protocol Attachable: ~Copyable {
   /// - Returns: The preferred name for `attachment`.
   ///
   /// The testing library uses this function to determine the best name to use
-  /// when adding `attachment` to a test report or persisting it to storage. The
-  /// default implementation of this function returns `suggestedName` without
-  /// any changes.
+  /// when saving `attachment`. The default implementation of this function
+  /// returns `suggestedName` without any changes.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
@@ -104,17 +103,37 @@ public protocol Attachable: ~Copyable {
 
 // MARK: - Default implementations
 
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
 extension Attachable where Self: ~Copyable {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public var estimatedAttachmentByteCount: Int? {
     nil
   }
 
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     suggestedName
   }
 }
 
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
 extension Attachable where Self: Collection, Element == UInt8 {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public var estimatedAttachmentByteCount: Int? {
     count
   }
@@ -126,11 +145,30 @@ extension Attachable where Self: Collection, Element == UInt8 {
   // (potentially expensive!) copy of the collection.
 }
 
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
 extension Attachable where Self: StringProtocol {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public var estimatedAttachmentByteCount: Int? {
     // NOTE: utf8.count may be O(n) for foreign strings.
     // SEE: https://github.com/swiftlang/swift/blob/main/stdlib/public/core/StringUTF8View.swift
     utf8.count
+  }
+
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
+  public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
+    if suggestedName.contains(".") {
+      return suggestedName
+    }
+    return "\(suggestedName).txt"
   }
 }
 
@@ -138,25 +176,57 @@ extension Attachable where Self: StringProtocol {
 
 // Implement the protocol requirements for byte arrays and buffers so that
 // developers can attach raw data when needed.
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
 extension Array<UInt8>: Attachable {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
 }
 
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
 extension ContiguousArray<UInt8>: Attachable {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
 }
 
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
 extension ArraySlice<UInt8>: Attachable {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
 }
 
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
 extension String: Attachable {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var selfCopy = self
     return try selfCopy.withUTF8 { utf8 in
@@ -165,7 +235,15 @@ extension String: Attachable {
   }
 }
 
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
 extension Substring: Attachable {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var selfCopy = self
     return try selfCopy.withUTF8 { utf8 in

@@ -35,6 +35,7 @@ private import _TestingInternals
 ///   @Available(Xcode, introduced: 26.0)
 /// }
 #if SWT_NO_EXIT_TESTS
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 public struct ExitTest: Sendable, ~Copyable {
@@ -128,7 +129,7 @@ public struct ExitTest: Sendable, ~Copyable {
   ///
   /// The order of values in this array must be the same between the parent and
   /// child processes.
-  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+  @_spi(ForToolsIntegrationOnly)
   public var capturedValues = [CapturedValue]()
 
   /// Make a copy of this instance.
@@ -263,7 +264,7 @@ extension ExitTest {
     // code 3 [...]".
     //
     // The Wine project's implementation of raise() calls `_exit(3)` by default.
-    // See https://github.com/wine-mirror/wine/blob/master/dlls/msvcrt/except.c
+    // See https://github.com/wine-mirror/wine/blob/master/dlls/msvcrt/except.c (ignore-unacceptable-language)
     //
     // Finally, an official copy of the UCRT sources (not up to date) is hosted
     // at https://www.nuget.org/packages/Microsoft.Windows.SDK.CRTSource . That
@@ -291,9 +292,10 @@ extension ExitTest {
       current.pointee = self.unsafeCopy()
     }
 
-    do {
+    let error = await Issue.withErrorRecording(at: nil) {
       try await body(&self)
-    } catch {
+    }
+    if let error {
       _errorInMain(error)
     }
 
@@ -348,10 +350,7 @@ extension ExitTest {
   ///
   /// - Warning: This function is used to implement the
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
-#if compiler(>=6.2)
-  @safe
-#endif
-  public static func __store<each T>(
+  @safe public static func __store<each T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: @escaping @Sendable (repeat each T) async throws -> Void,
     into outValue: UnsafeMutableRawPointer,
@@ -393,10 +392,8 @@ extension ExitTest {
   ///
   /// - Warning: This function is used to implement the
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
-#if compiler(>=6.2)
-  @safe
-#endif
-  public static func __store<T>(
+  @_disfavoredOverload
+  @safe public static func __store<T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: T,
     into outValue: UnsafeMutableRawPointer,
@@ -524,11 +521,11 @@ func callExitTest(
   }
 
   // Plumb the exit test's result through the general expectation machinery.
+  let expression = __Expression(String(describingForTest: expectedExitCondition))
   return __checkValue(
     expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
     expression: expression,
     expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(result.exitStatus),
-    mismatchedExitConditionDescription: String(describingForTest: expectedExitCondition),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -541,10 +538,9 @@ extension ABI {
   /// The ABI version to use for encoding and decoding events sent over the back
   /// channel.
   ///
-  /// The back channel always uses the latest ABI version (even if experimental)
-  /// since both the producer and consumer use this exact version of the testing
-  /// library.
-  fileprivate typealias BackChannelVersion = v1
+  /// The back channel always uses the experimental ABI version since both the
+  /// producer and consumer use this exact version of the testing library.
+  fileprivate typealias BackChannelVersion = ExperimentalVersion
 }
 
 @_spi(ForToolsIntegrationOnly)
@@ -767,8 +763,12 @@ extension ExitTest {
       }
     }
     configuration.eventHandler = { event, eventContext in
-      if case .issueRecorded = event.kind {
+      switch event.kind {
+      case .issueRecorded, .valueAttached, .testCancelled:
         eventHandler(event, eventContext)
+      default:
+        // Don't forward other kinds of event.
+        break
       }
     }
 
@@ -812,7 +812,7 @@ extension ExitTest {
         ?? parentArguments.dropFirst().last
       // If the running executable appears to be the XCTest runner executable in
       // Xcode, figure out the path to the running XCTest bundle. If we can find
-      // it, then we can re-run the host XCTestCase instance.
+      // it, then we can spawn a child process of it.
       var isHostedByXCTest = false
       if let executablePath = try? childProcessExecutablePath.get() {
         executablePath.withCString { childProcessExecutablePath in
@@ -825,12 +825,9 @@ extension ExitTest {
       }
 
       if isHostedByXCTest, let xctestTargetPath {
-        // HACK: if the current test is being run from within Xcode, we don't
-        // always know we're being hosted by an XCTestCase instance. In cases
-        // where we don't, but the XCTest environment variable specifying the
-        // test bundle is set, assume we _are_ being hosted and specify a
-        // blank test identifier ("/") to force the xctest command-line tool
-        // to run.
+        // HACK: specify a blank test identifier ("/") to force the xctest
+        // command-line tool to run. Xcode will then (eventually) invoke the
+        // testing library which will then start the exit test.
         result += ["-XCTest", "/", xctestTargetPath]
       }
 
@@ -951,7 +948,7 @@ extension ExitTest {
         capturedValuesWriteEnd.close()
 
         // Await termination of the child process.
-        taskGroup.addTask {
+        taskGroup.addTask(name: decorateTaskName("exit test", withAction: "awaiting termination")) {
           let exitStatus = try await wait(for: processID)
           return { $0.exitStatus = exitStatus }
         }
@@ -959,14 +956,14 @@ extension ExitTest {
         // Read back the stdout and stderr streams.
         if let stdoutReadEnd {
           stdoutWriteEnd?.close()
-          taskGroup.addTask {
+          taskGroup.addTask(name: decorateTaskName("exit test", withAction: "reading stdout")) {
             let standardOutputContent = try Self._trimToBarrierValues(stdoutReadEnd.readToEnd())
             return { $0.standardOutputContent = standardOutputContent }
           }
         }
         if let stderrReadEnd {
           stderrWriteEnd?.close()
-          taskGroup.addTask {
+          taskGroup.addTask(name: decorateTaskName("exit test", withAction: "reading stderr")) {
             let standardErrorContent = try Self._trimToBarrierValues(stderrReadEnd.readToEnd())
             return { $0.standardErrorContent = standardErrorContent }
           }
@@ -975,7 +972,7 @@ extension ExitTest {
         // Read back all data written to the back channel by the child process
         // and process it as a (minimal) event stream.
         backChannelWriteEnd.close()
-        taskGroup.addTask {
+        taskGroup.addTask(name: decorateTaskName("exit test", withAction: "processing events")) {
           Self._processRecords(fromBackChannel: backChannelReadEnd)
           return nil
         }
@@ -1034,29 +1031,44 @@ extension ExitTest {
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
+    guard case let .event(event) = record.kind else {
+      return
+    }
 
-    if case let .event(event) = record.kind, let issue = event.issue {
+    lazy var comments: [Comment] = event._comments?.map(Comment.init(rawValue:)) ?? []
+    lazy var sourceContext = SourceContext(
+      backtrace: nil, // A backtrace from the child process will have the wrong address space.
+      sourceLocation: event._sourceLocation
+    )
+    lazy var skipInfo = SkipInfo(comment: comments.first, sourceContext: sourceContext)
+    if let issue = event.issue {
       // Translate the issue back into a "real" issue and record it
       // in the parent process. This translation is, of course, lossy
       // due to the process boundary, but we make a best effort.
-      let comments: [Comment] = event.messages.map(\.text).map(Comment.init(rawValue:))
       let issueKind: Issue.Kind = if let error = issue._error {
         .errorCaught(error)
       } else {
         // TODO: improve fidelity of issue kind reporting (especially those without associated values)
         .unconditional
       }
-      let sourceContext = SourceContext(
-        backtrace: nil, // `issue._backtrace` will have the wrong address space.
-        sourceLocation: issue.sourceLocation
-      )
-      var issueCopy = Issue(kind: issueKind, comments: comments, sourceContext: sourceContext)
+      let severity: Issue.Severity = switch issue.severity {
+      case .warning:
+        .warning
+      case .error, nil:
+        // Prior to 6.3, all Issues are errors
+        .error
+      }
+      var issueCopy = Issue(kind: issueKind, severity: severity, comments: comments, sourceContext: sourceContext)
       if issue.isKnown {
         // The known issue comment, if there was one, is already included in
         // the `comments` array above.
         issueCopy.knownIssueContext = Issue.KnownIssueContext()
       }
       issueCopy.record()
+    } else if let attachment = event.attachment {
+      Attachment.record(attachment, sourceLocation: event._sourceLocation!)
+    } else if case .testCancelled = event.kind {
+      _ = try? Test.cancel(with: skipInfo)
     }
   }
 
