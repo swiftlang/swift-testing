@@ -106,7 +106,9 @@ func findEffectKeywords(in node: some SyntaxProtocol) -> Set<Keyword> {
 /// - Returns: A set of effectful keywords such as `await` that are present in
 ///   `context` and would apply to an expression macro during its expansion.
 func findEffectKeywords(in context: some MacroExpansionContext) -> Set<Keyword> {
-  let result = context.lexicalContext.reversed().lazy
+  // The lexical context is ordered from innermost to outermost, and we are most
+  // interested in keywords near the macro expansion, so don't use reversed().
+  let result = context.lexicalContext.lazy
     .prefix { _continueKind(for: $0) == .visitChildren }
     .compactMap { $0.as(ExprSyntax.self) }
     .compactMap(_effectKeyword(for:))
@@ -173,13 +175,7 @@ func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some Exp
 
   let needAwait = effectfulKeywords.contains(.await) && !expr.is(AwaitExprSyntax.self)
   let needTry = effectfulKeywords.contains(.try) && !expr.is(TryExprSyntax.self)
-
-  // The 'unsafe' keyword was introduced in 6.2 as part of SE-0458. Older
-  // toolchains are not aware of it, so avoid emitting expressions involving
-  // that keyword when the macro has been built using an older toolchain.
-#if compiler(>=6.2)
   let needUnsafe = effectfulKeywords.contains(.unsafe) && !expr.is(UnsafeExprSyntax.self)
-#endif
 
   // First, add thunk function calls.
   if insertThunkCalls {
@@ -189,11 +185,9 @@ func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some Exp
     if needTry {
       expr = _makeCallToEffectfulThunk(.identifier("__requiringTry"), passing: expr)
     }
-#if compiler(>=6.2)
     if needUnsafe {
       expr = _makeCallToEffectfulThunk(.identifier("__requiringUnsafe"), passing: expr)
     }
-#endif
   }
 
   // Then add keyword expressions. (We do this separately so we end up writing
@@ -202,7 +196,7 @@ func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some Exp
   if needAwait {
     expr = ExprSyntax(
       AwaitExprSyntax(
-        awaitKeyword: .keyword(.await, trailingTrivia: .space, presence: .present),
+        awaitKeyword: .keyword(.await, trailingTrivia: .space),
         expression: expr
       )
     )
@@ -210,21 +204,19 @@ func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some Exp
   if needTry {
     expr = ExprSyntax(
       TryExprSyntax(
-        tryKeyword: .keyword(.try, trailingTrivia: .space, presence: .present),
+        tryKeyword: .keyword(.try, trailingTrivia: .space),
         expression: expr
       )
     )
   }
-#if compiler(>=6.2)
   if needUnsafe {
     expr = ExprSyntax(
       UnsafeExprSyntax(
-        unsafeKeyword: .keyword(.unsafe, trailingTrivia: .space, presence: .present),
+        unsafeKeyword: .keyword(.unsafe, trailingTrivia: .space),
         expression: expr
       )
     )
   }
-#endif
 
   expr.leadingTrivia = originalExpr.leadingTrivia
   expr.trailingTrivia = originalExpr.trailingTrivia

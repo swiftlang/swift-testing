@@ -108,6 +108,25 @@ extension Runner {
     inModuleOf fileID: String = #fileID,
     configuration: Configuration = .init()
   ) async {
+    let plan = await Runner.Plan(selecting: testName, inModuleOf: fileID, configuration: configuration)
+    self.init(plan: plan, configuration: configuration)
+  }
+}
+
+extension Runner.Plan {
+  /// Initialize an instance of this type that selects the free test function
+  /// named `testName` in the module specified in `fileID`.
+  ///
+  /// - Parameters:
+  ///   - testName: The name of the test function this instance should run.
+  ///   - fileID: The `#fileID` string whose module should be used to locate
+  ///     the test function to run.
+  ///   - configuration: The configuration to use for running.
+  init(
+    selecting testName: String,
+    inModuleOf fileID: String = #fileID,
+    configuration: Configuration = .init()
+  ) async {
     let moduleName = String(fileID[..<fileID.lastIndex(of: "/")!])
 
     var configuration = configuration
@@ -116,9 +135,7 @@ extension Runner {
 
     await self.init(configuration: configuration)
   }
-}
 
-extension Runner.Plan {
   /// Initialize an instance of this type with the specified suite type.
   ///
   /// - Parameters:
@@ -170,13 +187,32 @@ extension Test {
   init<C>(
     _ traits: any TestTrait...,
     arguments collection: C,
-    parameters: [Parameter] = [],
+    parameters: [Parameter] = [
+      Parameter(index: 0, firstName: "x", type: C.Element.self),
+    ],
     sourceLocation: SourceLocation = #_sourceLocation,
     column: Int = #column,
     name: String = #function,
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) where C: Collection & Sendable, C.Element: Sendable {
     let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
+    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
+  }
+
+  init<C>(
+    _ traits: any TestTrait...,
+    arguments collection: @escaping @Sendable () async throws -> C,
+    parameters: [Parameter] = [
+      Parameter(index: 0, firstName: "x", type: C.Element.self),
+    ],
+    sourceLocation: SourceLocation = #_sourceLocation,
+    column: Int = #column,
+    name: String = #function,
+    testFunction: @escaping @Sendable (C.Element) async throws -> Void
+  ) where C: Collection & Sendable, C.Element: Sendable {
+    let caseGenerator = { @Sendable in
+      Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction)
+    }
     self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
@@ -199,7 +235,10 @@ extension Test {
   init<C1, C2>(
     _ traits: any TestTrait...,
     arguments collection1: C1, _ collection2: C2,
-    parameters: [Parameter] = [],
+    parameters: [Parameter] = [
+      Parameter(index: 0, firstName: "x", type: C1.Element.self),
+      Parameter(index: 1, firstName: "y", type: C2.Element.self),
+    ],
     sourceLocation: SourceLocation = #_sourceLocation,
     name: String = #function,
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
@@ -222,7 +261,10 @@ extension Test {
   init<C1, C2>(
     _ traits: any TestTrait...,
     arguments zippedCollections: Zip2Sequence<C1, C2>,
-    parameters: [Parameter] = [],
+    parameters: [Parameter] = [
+      Parameter(index: 0, firstName: "x", type: C1.Element.self),
+      Parameter(index: 1, firstName: "y", type: C2.Element.self),
+    ],
     sourceLocation: SourceLocation = #_sourceLocation,
     name: String = #function,
     testFunction: @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void

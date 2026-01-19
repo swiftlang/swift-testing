@@ -163,7 +163,7 @@ extension ConditionMacro {
         checkArguments.append(
           Argument(
             label: "sourceCode",
-            expression: createDictionaryExpr(forSourceCodeOf: nodeForSourceCodeArgument)
+            expression: createDictionaryExpr(forSourceCodeOf: nodeForSourceCodeArgument, in: context)
           )
         )
 
@@ -175,13 +175,48 @@ extension ConditionMacro {
         effectKeywordsToApplyOverall = effectKeywordsToApply.subtracting(effectKeywordsFromLexicalContext)
 
         var useEscapeHatch = false
-        if let asExpr = originalArgumentExpr.as(AsExprSyntax.self), asExpr.questionOrExclamationMark == nil {
+        if let asExpr = (removeParentheses(from: originalArgumentExpr) ?? originalArgumentExpr).as(AsExprSyntax.self),
+           asExpr.questionOrExclamationMark == nil {
           // "Escape hatch" for x as Bool to avoid the full recursive expansion.
           useEscapeHatch = true
         } else if effectKeywordsToApply.contains(.consume) {
           // `consume` expressions imply non-copyable values which cannot yet be
           // safely used with the closure we generate below.
           useEscapeHatch = true
+        }
+
+        if !useEscapeHatch {
+          if effectKeywordsToApply.contains(.await) {
+            expandedFunctionName = .identifier("__checkConditionAsync")
+          }
+
+          let expectationContextName = context.makeUniqueClosureParameterName("__ec", in: originalArgumentExpr)
+          let resultOfRewrite = rewrite(
+            originalArgumentExpr,
+            usingExpectationContextNamed: expectationContextName,
+            for: macro,
+            rootedAt: originalArgumentExpr,
+            effectKeywordsToApply: effectKeywordsToApply,
+            returnType: returnType,
+            in: context
+          )
+          if let (closureExpr, rewrittenNodes) = resultOfRewrite {
+            checkArguments.append(Argument(expression: closureExpr))
+
+            checkArguments.append(
+              Argument(
+                label: "sourceCode",
+                expression: createDictionaryExpr(
+                  forSourceCodeOf: rewrittenNodes,
+                  rootedAt: originalArgumentExpr,
+                  in: context
+                )
+              )
+            )
+          } else {
+            // The rewrite was cancelled, so switch to the escape hatch.
+            useEscapeHatch = true
+          }
         }
 
         if useEscapeHatch {
@@ -191,34 +226,7 @@ extension ConditionMacro {
           checkArguments.append(
             Argument(
               label: "sourceCode",
-              expression: createDictionaryExpr(forSourceCodeOf: originalArgumentExpr)
-            )
-          )
-
-        } else {
-          if effectKeywordsToApply.contains(.await) {
-            expandedFunctionName = .identifier("__checkConditionAsync")
-          }
-
-          let expressionContextName = context.makeUniqueClosureParameterName("__ec", in: originalArgumentExpr)
-          let (closureExpr, rewrittenNodes) = rewrite(
-            originalArgumentExpr,
-            usingExpressionContextNamed: expressionContextName,
-            for: macro,
-            rootedAt: originalArgumentExpr,
-            effectKeywordsToApply: effectKeywordsToApply,
-            returnType: returnType,
-            in: context
-          )
-          checkArguments.append(Argument(expression: closureExpr))
-
-          checkArguments.append(
-            Argument(
-              label: "sourceCode",
-              expression: createDictionaryExpr(
-                forSourceCodeOf: rewrittenNodes,
-                rootedAt: originalArgumentExpr
-              )
+              expression: createDictionaryExpr(forSourceCodeOf: originalArgumentExpr, in: context)
             )
           )
         }
@@ -539,21 +547,23 @@ extension ExitTestConditionMacro {
     var bodyArgumentExpr = arguments[trailingClosureIndex].expression
     bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
 
+    // Before building the macro expansion, look for any problems and return
+    // early if found.
+    guard _diagnoseIssues(with: macro, body: bodyArgumentExpr, in: context) else {
+      if Self.isThrowing {
+        return #"{ () async throws -> Testing.ExitTest.Result in \#(ExprSyntax.unreachable) }()"#
+      } else {
+        return #"{ () async -> Testing.ExitTest.Result in \#(ExprSyntax.unreachable) }()"#
+      }
+    }
+
     // Find any captured values and extract them from the trailing closure.
     var capturedValues = [CapturedValueInfo]()
-    if ExitTestExpectMacro.isValueCapturingEnabled {
-      // The source file imports @_spi(Experimental), so allow value capturing.
-      if var closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
-         let captureList = closureExpr.signature?.capture?.items {
-        closureExpr.signature?.capture = ClosureCaptureClauseSyntax(items: [], trailingTrivia: .space)
-        capturedValues = captureList.map { CapturedValueInfo($0, in: context) }
-        bodyArgumentExpr = ExprSyntax(closureExpr)
-      }
-
-    } else if let closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
-              let captureClause = closureExpr.signature?.capture,
-              !captureClause.items.isEmpty {
-      context.diagnose(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
+    if var closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
+       let captureList = closureExpr.signature?.capture?.items {
+      closureExpr.signature?.capture = ClosureCaptureClauseSyntax(items: [], trailingTrivia: .space)
+      capturedValues = captureList.map { CapturedValueInfo($0, in: context) }
+      bodyArgumentExpr = ExprSyntax(closureExpr)
     }
 
     // Generate a unique identifier for this exit test.
@@ -601,7 +611,7 @@ extension ExitTestConditionMacro {
       recordDecl = """
       enum \(legacyEnumName): Testing.__TestContentRecordContainer {
         nonisolated static var __testContentRecord: Testing.__TestContentRecord {
-          \(enumName).testContentRecord
+          unsafe \(enumName).testContentRecord
         }
       }
       """
@@ -652,7 +662,7 @@ extension ExitTestConditionMacro {
           label: "encodingCapturedValues",
           expression: TupleExprSyntax {
             for capturedValue in capturedValues {
-              LabeledExprSyntax(expression: capturedValue.expression.trimmed)
+              LabeledExprSyntax(expression: capturedValue.typeCheckedExpression)
             }
           }
         )
@@ -712,22 +722,46 @@ extension ExitTestConditionMacro {
       return ExprSyntax(tupleExpr)
     }
   }
-}
 
-extension ExitTestExpectMacro {
-  /// Whether or not experimental value capturing via explicit capture lists is
-  /// enabled.
+  /// Diagnose issues with an exit test macro call.
   ///
-  /// This member is declared on ``ExitTestExpectMacro`` but also applies to
-  /// ``ExitTestRequireMacro``.
-  @TaskLocal
-  static var isValueCapturingEnabled: Bool = {
-#if ExperimentalExitTestValueCapture
-    return true
-#else
-    return false
-#endif
-  }()
+  /// - Parameters:
+  ///   - macro: The exit test macro call.
+  ///   - bodyArgumentExpr: The exit test's body.
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: Whether or not macro expansion should continue (i.e. stopping
+  ///   if a fatal error was diagnosed.)
+  private static func _diagnoseIssues(
+    with macro: some FreestandingMacroExpansionSyntax,
+    body bodyArgumentExpr: ExprSyntax,
+    in context: some MacroExpansionContext
+  ) -> Bool {
+    var diagnostics = [DiagnosticMessage]()
+
+    // Disallow exit tests in generic types and functions as they cannot be
+    // correctly expanded due to the use of a nested type with static members.
+    for lexicalContext in context.lexicalContext {
+      if let lexicalContext = lexicalContext.asProtocol((any WithGenericParametersSyntax).self) {
+        if let genericClause = lexicalContext.genericParameterClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: lexicalContext))
+        } else if let whereClause = lexicalContext.genericWhereClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: lexicalContext))
+        } else if let functionDecl = lexicalContext.as(FunctionDeclSyntax.self) {
+          for parameter in functionDecl.signature.parameterClause.parameters {
+            if parameter.type.isSome {
+              diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: parameter, on: functionDecl))
+            }
+          }
+        }
+      }
+    }
+
+    for diagnostic in diagnostics {
+      context.diagnose(diagnostic)
+    }
+    return diagnostics.isEmpty
+  }
 }
 
 /// A type describing the expansion of the `#expect(processExitsWith:)` macro.

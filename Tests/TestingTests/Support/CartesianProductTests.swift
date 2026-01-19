@@ -31,14 +31,13 @@ struct CartesianProductTests {
     // Test the size of the product is correct.
     let (c1, c2, product) = computeCartesianProduct()
     #expect(product.underestimatedCount == c1.underestimatedCount * c2.underestimatedCount)
-    let productCount = Array(product).count
-    #expect(productCount == c1.count * c2.count)
-    #expect(productCount == 26 * 100)
+    #expect(Array(product).count == c1.count * c2.count)
+    #expect(Array(product).count == 26 * 100)
   }
 
   @Test("First element is correct")
   func firstElement() throws {
-    // Sanity-check the first element is correct. (This value is also tested in
+    // Check that the first element is correct. (This value is also tested in
     // testCompleteEquality().)
     let (c1, c2, product) = computeCartesianProduct()
     let first = try #require(product.first(where: { _ in true }))
@@ -59,9 +58,8 @@ struct CartesianProductTests {
 
     // NOTE: we need to break out the tuple elements because tuples aren't
     // directly equatable.
-    let productArray = Array(product)
-    #expect(productArray.map(\.0) == possibleValues.map(\.0))
-    #expect(productArray.map(\.1) == possibleValues.map(\.1))
+    #expect(Array(product).map(\.0) == possibleValues.map(\.0))
+    #expect(Array(product).map(\.1) == possibleValues.map(\.1))
   }
 
   @Test("Cartesian product with empty first input is empty")

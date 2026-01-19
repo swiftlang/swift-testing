@@ -19,7 +19,7 @@ import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import SwiftSyntaxMacroExpansion
 
-fileprivate let allMacros: [String: any Macro.Type] = [
+fileprivate let allMacros: [String: any (Macro & Sendable).Type] = [
   "expect": ExpectMacro.self,
   "require": RequireMacro.self,
   "requireUnwrap": UnwrapMacro.self, // different name needed only for unit testing

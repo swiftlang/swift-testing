@@ -16,9 +16,13 @@
 /// various subexpressions of the macro's condition argument. The nature of the
 /// collected information is subject to change over time.
 ///
+/// Instances of this type do _not_ conform to [`Sendable`](https://developer.apple.com/documentation/swift/sendable)
+/// because they may capture non-sendable state generated during the evaluation
+/// of an expression.
+///
 /// - Warning: This type is used to implement the `#expect()` and `#require()`
 ///   macros. Do not use it directly.
-public final class __ExpectationContext {
+public final class __ExpectationContext<Output> where Output: ~Copyable & ~Escapable {
   /// The source code representations of any captured expressions.
   ///
   /// Unlike the rest of the state in this type, the source code dictionary is
@@ -26,7 +30,7 @@ public final class __ExpectationContext {
   /// if an issue is recorded (or more rarely if passing expectations are
   /// reported to the current event handler.) So we can store the dictionary as
   /// a closure instead of always paying the cost to allocate and initialize it.
-  private var _sourceCode: @Sendable () -> [__ExpressionID: String]
+  private var _sourceCode: @Sendable () -> KeyValuePairs<__ExpressionID, String>
 
   /// The runtime values of any captured expressions.
   ///
@@ -44,7 +48,7 @@ public final class __ExpectationContext {
   var differences: [__ExpressionID: () -> CollectionDifference<Any>?]
 
   init(
-    sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String] = [:],
+    sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String> = [:],
     runtimeValues: [__ExpressionID: () -> Expression.Value?] = [:],
     differences: [__ExpressionID: () -> CollectionDifference<Any>?] = [:]
   ) {
@@ -150,11 +154,11 @@ public final class __ExpectationContext {
 }
 
 @available(*, unavailable)
-extension __ExpectationContext: Sendable {}
+extension __ExpectationContext: Sendable where Output: ~Copyable & ~Escapable {}
 
 // MARK: - Expression capturing
 
-extension __ExpectationContext {
+extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   /// Capture information about a value for use if the expectation currently
   /// being evaluated fails.
   ///
@@ -165,12 +169,14 @@ extension __ExpectationContext {
   ///
   /// - Returns: `value`, verbatim.
   ///
-  /// This function helps overloads of `callAsFunction(_:_:)` disambiguate
-  /// themselves and avoid accidental recursion.
-  @usableFromInline func captureValue<T>(_ value: consuming T, _ id: __ExpressionID) -> T {
-    let value = copy value
-    runtimeValues[id] = { Expression.Value(reflecting: value) }
-    return value
+  /// This function helps subscript overloads disambiguate themselves and avoid
+  /// accidental recursion.
+  func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
+    if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
+      runtimeValues[id] = { Expression.Value(reflecting: value) }
+    } else {
+      runtimeValues[id] = { Expression.Value(failingToReflectInstanceOf: T.self) }
+    }
   }
 
   /// Capture information about a value for use if the expectation currently
@@ -183,14 +189,19 @@ extension __ExpectationContext {
   ///
   /// - Returns: `value`, verbatim.
   ///
-  /// - Warning: This function is used to implement the `#expect()` and
+  /// - Warning: This subscript is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @_disfavoredOverload
-  @inlinable public func callAsFunction<T>(_ value: consuming T, _ id: __ExpressionID) -> T {
-    captureValue(value, id)
+  public subscript<T>(value: /* borrowing */ T, id: __ExpressionID) -> T where T: ~Escapable {
+    @_lifetime(borrow value) get {
+      captureValue(value, id)
+      return value
+    }
+
+    @available(*, unavailable, message: "Cannot mutate the condition argument of macro 'expect(_:_:)' or 'require(_:_:)'")
+    set {}
   }
 
-#if SWT_SUPPORTS_MOVE_ONLY_EXPRESSION_EXPANSION
+#if SWT_FIXED_109329233
   /// Capture information about a value for use if the expectation currently
   /// being evaluated fails.
   ///
@@ -201,12 +212,14 @@ extension __ExpectationContext {
   ///
   /// - Returns: `value`, verbatim.
   ///
-  /// - Warning: This function is used to implement the `#expect()` and
+  /// - Warning: This subscript is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  public func callAsFunction<T>(_ value: consuming T, _ id: __ExpressionID) -> T where T: ~Copyable {
-    // TODO: add support for borrowing non-copyable expressions (need @lifetime)
-    return value
+  public subscript<T>(value: borrowing T, id: __ExpressionID) -> T where T: ~Copyable & ~Escapable {
+    @_lifetime(borrow value) _read {
+      captureValue(value, id)
+      yield value
+    }
   }
 #endif
 
@@ -220,14 +233,14 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public func __inoutAfter<T>(_ value: T, _ id: __ExpressionID) {
-    runtimeValues[id] = { Expression.Value(reflecting: value, timing: .after) }
+  public func __inoutAfter<T>(_ value: inout T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
+    captureValue(value, id)
   }
 }
 
 // MARK: - Collection comparison and diffing
 
-extension __ExpectationContext {
+extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   /// Generate a description of a previously-computed collection difference.
   ///
   /// - Parameters:
@@ -253,13 +266,77 @@ extension __ExpectationContext {
     return resultComponents.joined(separator: ", ")
   }
 
+  /// Capture the difference between `lhs` and `rhs` at runtime.
+  ///
+  /// - Parameters:
+  ///   - lhs: The left-hand operand.
+  ///   - rhs: The right-hand operand.
+  ///   - opID: A value that uniquely identifies the binary operation expression
+  ///     of which `lhs` and `rhs` are operands.
+  ///
+  /// This function performs additional type checking of `lhs` and `rhs` at
+  /// runtime. If we instead overload the caller (`__cmp()`) it puts extra
+  /// compile-time pressure on the type checker that we don't want.
+  func captureDifferences<T, U>(_ lhs: T, _ rhs: U, _ opID: __ExpressionID) {
+#if !hasFeature(Embedded) // no existentials
+    if let lhs = lhs as? any StringProtocol {
+      func open<V>(_ lhs: V, _ rhs: U) where V: StringProtocol {
+        guard let rhs = rhs as? V else {
+          return
+        }
+        differences[opID] = {
+          // Compare strings by line, not by character.
+          let lhsLines = String(lhs).split(whereSeparator: \.isNewline)
+          let rhsLines = String(rhs).split(whereSeparator: \.isNewline)
+
+          if lhsLines.count == 1 && rhsLines.count == 1 {
+            // There are no newlines in either string, so there's no meaningful
+            // per-line difference. Bail.
+            return nil
+          }
+
+          let diff = lhsLines.difference(from: rhsLines)
+          if diff.isEmpty {
+            // The strings must have compared on a per-character basis, or this
+            // operator doesn't behave the way we expected. Bail.
+            return nil
+          }
+
+          return CollectionDifference<Any>(diff)
+        }
+      }
+      open(lhs, rhs)
+    } else if lhs is any RangeExpression {
+      // Do _not_ perform a diffing operation on `lhs` and `rhs`. Range
+      // expressions are not usefully diffable the way other kinds of
+      // collections are. SEE: https://github.com/swiftlang/swift-testing/issues/639
+    } else if let lhs = lhs as? any BidirectionalCollection {
+      func open<V>(_ lhs: V, _ rhs: U) where V: BidirectionalCollection {
+        guard let rhs = rhs as? V,
+              let elementType = V.Element.self as? any Equatable.Type else {
+          return
+        }
+        differences[opID] = {
+          func open<E>(_: E.Type) -> CollectionDifference<Any> where E: Equatable {
+            let lhs: some BidirectionalCollection<E> = lhs.lazy.map { $0 as! E }
+            let rhs: some BidirectionalCollection<E> = rhs.lazy.map { $0 as! E }
+            return CollectionDifference<Any>(lhs.difference(from: rhs))
+          }
+          return open(elementType)
+        }
+      }
+      open(lhs, rhs)
+    }
+#endif
+  }
+
   /// Compare two values using `==` or `!=`.
   ///
   /// - Parameters:
   ///   - lhs: The left-hand operand.
   ///   - lhsID: A value that uniquely identifies the expression represented by
   ///     `lhs` in the context of the expectation currently being evaluated.
-  ///   - rhs: The left-hand operand.
+  ///   - rhs: The right-hand operand.
   ///   - rhsID: A value that uniquely identifies the expression represented by
   ///     `rhs` in the context of the expectation currently being evaluated.
   ///   - op: A function that performs an operation on `lhs` and `rhs`.
@@ -268,112 +345,27 @@ extension __ExpectationContext {
   ///
   /// - Returns: The result of calling `op(lhs, rhs)`.
   ///
-  /// This overload of `__cmp()` serves as a catch-all for operands that are not
-  /// collections or otherwise are not interesting to the testing library.
-  ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __cmp<T, U>(
-    _ op: (T, U) throws -> Bool,
+  public func __cmp<T, U, E>(
+    _ op: (borrowing T, borrowing U) throws(E) -> Bool,
     _ opID: __ExpressionID,
     _ lhs: borrowing T,
     _ lhsID: __ExpressionID,
     _ rhs: borrowing U,
     _ rhsID: __ExpressionID
-  ) rethrows -> Bool {
-    let lhs = copy lhs
-    let rhs = copy rhs
-    return try captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
-  }
+  ) throws(E) -> Bool where T: ~Copyable & ~Escapable, U: ~Copyable & ~Escapable {
+    captureValue(lhs, lhsID)
+    captureValue(rhs, rhsID)
 
-  /// Compare two bidirectional collections using `==` or `!=`.
-  ///
-  /// This overload of `__cmp()` performs a diffing operation on `lhs` and `rhs`
-  /// if the result of `op(lhs, rhs)` is `false`.
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  public func __cmp<C>(
-    _ op: (C, C) -> Bool,
-    _ opID: __ExpressionID,
-    _ lhs: borrowing C,
-    _ lhsID: __ExpressionID,
-    _ rhs: borrowing C,
-    _ rhsID: __ExpressionID
-  ) -> Bool where C: BidirectionalCollection, C.Element: Equatable {
-    let lhs = copy lhs
-    let rhs = copy rhs
-    let result = captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
+    let result = try op(lhs, rhs)
+    captureValue(result, opID)
 
-    if !result {
-      differences[opID] = { CollectionDifference<Any>(lhs.difference(from: rhs)) }
-    }
-
-    return result
-  }
-
-  /// Compare two range expressions using `==` or `!=`.
-  ///
-  /// This overload of `__cmp()` does _not_ perform a diffing operation on `lhs`
-  /// and `rhs`. Range expressions are not usefully diffable the way other kinds
-  /// of collections are. ([#639](https://github.com/swiftlang/swift-testing/issues/639))
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __cmp<R>(
-    _ op: (R, R) -> Bool,
-    _ opID: __ExpressionID,
-    _ lhs: borrowing R,
-    _ lhsID: __ExpressionID,
-    _ rhs: borrowing R,
-    _ rhsID: __ExpressionID
-  ) -> Bool where R: RangeExpression & BidirectionalCollection, R.Element: Equatable {
-    let lhs = copy lhs
-    let rhs = copy rhs
-    return captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
-  }
-
-  /// Compare two strings using `==` or `!=`.
-  ///
-  /// This overload of `__cmp()` performs a diffing operation on `lhs` and `rhs`
-  /// if the result of `op(lhs, rhs)` is `false`, but does so by _line_, not by
-  /// _character_.
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  public func __cmp<S>(
-    _ op: (S, S) -> Bool,
-    _ opID: __ExpressionID,
-    _ lhs: borrowing S,
-    _ lhsID: __ExpressionID,
-    _ rhs: borrowing S,
-    _ rhsID: __ExpressionID
-  ) -> Bool where S: StringProtocol {
-    let lhs = copy lhs
-    let rhs = copy rhs
-    let result = captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
-
-    if !result {
-      differences[opID] = {
-        // Compare strings by line, not by character.
-        let lhsLines = String(lhs).split(whereSeparator: \.isNewline)
-        let rhsLines = String(rhs).split(whereSeparator: \.isNewline)
-
-        if lhsLines.count == 1 && rhsLines.count == 1 {
-          // There are no newlines in either string, so there's no meaningful
-          // per-line difference. Bail.
-          return nil
-        }
-
-        let diff = lhsLines.difference(from: rhsLines)
-        if diff.isEmpty {
-          // The strings must have compared on a per-character basis, or this
-          // operator doesn't behave the way we expected. Bail.
-          return nil
-        }
-
-        return CollectionDifference<Any>(diff)
-      }
+    if !result,
+       #available(_castingWithNonCopyableGenerics, *),
+       let lhs = makeExistential(lhs),
+       let rhs = makeExistential(rhs) {
+      captureDifferences(lhs, rhs, opID)
     }
 
     return result
@@ -382,7 +374,7 @@ extension __ExpectationContext {
 
 // MARK: - Casting
 
-extension __ExpectationContext {
+extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   /// Perform a conditional cast (`as?`) on a value.
   ///
   /// - Parameters:
@@ -401,13 +393,15 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __as<T, U>(_ value: consuming T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
+  public func __as<T, U>(_ value: borrowing T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
     let value = copy value
-    let result = captureValue(value, valueID) as? U
+
+    captureValue(value, valueID)
+    let result = value as? U
 
     if result == nil {
       let correctType = Swift.type(of: value as Any)
-      _ = captureValue(correctType, typeID)
+      captureValue(correctType, typeID)
     }
 
     return result
@@ -431,15 +425,7 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __is<T, U>(_ value: borrowing T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> Bool {
-    let value = copy value
-    let result = captureValue(value, valueID) is U
-
-    if !result {
-      let correctType = Swift.type(of: value as Any)
-      _ = captureValue(correctType, typeID)
-    }
-
-    return result
+  public func __is<T, U>(_ value: borrowing T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> Bool {
+    __as(value, valueID, type, typeID) != nil
   }
 }

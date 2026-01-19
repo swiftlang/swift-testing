@@ -32,13 +32,6 @@ public struct Expectation: Sendable {
     evaluatedExpression.differenceDescription
   }
 
-  /// A description of the exit condition that was expected to be matched.
-  ///
-  /// If this expectation passed, the value of this property is `nil` because no
-  /// exit test failed.
-  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-  public var mismatchedExitConditionDescription: String?
-
   /// Whether the expectation passed or failed.
   ///
   /// An expectation is considered to pass when its condition evaluates to
@@ -102,7 +95,7 @@ extension Expectation {
     /// - Parameter expectation: The real expectation.
     public init(snapshotting expectation: borrowing Expectation) {
       self.evaluatedExpression = expectation.evaluatedExpression
-      self.mismatchedErrorDescription = expectation.mismatchedErrorDescription ?? expectation.mismatchedExitConditionDescription
+      self.mismatchedErrorDescription = expectation.mismatchedErrorDescription
       self.differenceDescription = expectation.differenceDescription
       self.isPassing = expectation.isPassing
       self.isRequired = expectation.isRequired

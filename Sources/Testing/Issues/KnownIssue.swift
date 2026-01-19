@@ -77,12 +77,11 @@ struct KnownIssueScope: Sendable {
 ///   - sourceLocation: The source location to which the issue should be
 ///     attributed.
 private func _matchError(_ error: any Error, in scope: KnownIssueScope, comment: Comment?, sourceLocation: SourceLocation) throws {
+  // ExpectationFailedError is thrown by expectation checking functions to
+  // indicate a condition evaluated to `false`. Those functions record their
+  // own issue, so we don't need to create a new issue and attempt to match it.
   if error is ExpectationFailedError {
-    // An `ExpectationFailedError` instance was thrown through the call to
-    // `withKnownIssue {}` from a call to `#require()`. The original issue (of
-    // kind `expectationFailed`) will have already been handled by this point,
-    // so we don't want to try to handle it again.
-    throw error
+    return
   }
 
   let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error), sourceLocation: sourceLocation)

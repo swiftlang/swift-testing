@@ -85,11 +85,11 @@ struct UniqueIdentifierTests {
   @Test("Synthesized closure arguments are uniqued",
     arguments: [
       ##"#expect(abc)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in __ec(abc, 0x0) }, sourceCode: [0x0: "abc"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext<Swift.Bool>) -> Swift.Bool in __ec[abc, 0x0] }, sourceCode: [0x0: "abc"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(__ec)"##:
-        ##"Testing.__checkCondition({ (__ec0: Testing.__ExpectationContext) -> Swift.Bool in __ec0(__ec, 0x0) }, sourceCode: [0x0: "__ec"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkCondition({ (__ec0: Testing.__ExpectationContext<Swift.Bool>) -> Swift.Bool in __ec0[__ec, 0x0] }, sourceCode: [0x0: "__ec"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(__ec + __ec0)"##:
-        ##"Testing.__checkCondition({ (__ec1: Testing.__ExpectationContext) -> Swift.Bool in __ec1(__ec1(__ec, 0x2) + __ec1(__ec0, 0x20), 0x0) }, sourceCode: [0x0: "__ec + __ec0", 0x2: "__ec", 0x20: "__ec0"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkCondition({ (__ec1: Testing.__ExpectationContext<Swift.Bool>) -> Swift.Bool in __ec1[__ec1[__ec, 0x2] + __ec1[__ec0, 0x20], 0x0] }, sourceCode: [0x0: "__ec + __ec0", 0x2: "__ec", 0x20: "__ec0"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
     ]
   )
   func synthesizedClosureArgumentsUniqued(input: String, expectedOutput: String) throws {

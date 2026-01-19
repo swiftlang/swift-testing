@@ -41,6 +41,12 @@ static inline bool swt_nullableCString(const char *_Nullable string) {
   return string != 0;
 }
 
+#if defined(_WIN32)
+static inline LPCSTR swt_IDI_SHIELD(void) {
+  return IDI_SHIELD;
+}
+#endif
+
 SWT_ASSUME_NONNULL_END
 
 #endif

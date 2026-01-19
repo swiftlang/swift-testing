@@ -277,6 +277,14 @@ struct MultiLineSuite {
   #expect(__ec == 1)
 }
 
+extension Bool {
+  func throwingValue() throws -> Bool { self }
+}
+
+@Test(.hidden) func `Effectful keywords are found in the lexical context of an expression macro`() throws {
+  try #expect(true.throwingValue())
+}
+
 @Suite("Miscellaneous tests")
 struct MiscellaneousTests {
   @Test("Free function's name")
@@ -302,13 +310,27 @@ struct MiscellaneousTests {
     #expect(testType.displayName == "Named Sendable test type")
   }
 
-  @Test func `__raw__$raw_identifier_provides_a_display_name`() throws {
+  @Test func `Test with raw identifier gets a display name`() throws {
     let test = try #require(Test.current)
-    #expect(test.displayName == "raw_identifier_provides_a_display_name")
-    #expect(test.name == "`raw_identifier_provides_a_display_name`()")
+    #expect(test.displayName == "Test with raw identifier gets a display name")
+    #expect(test.name == "`Test with raw identifier gets a display name`()")
     let id = test.id
     #expect(id.moduleName == "TestingTests")
-    #expect(id.nameComponents == ["MiscellaneousTests", "`raw_identifier_provides_a_display_name`()"])
+    #expect(id.nameComponents == ["MiscellaneousTests", "`Test with raw identifier gets a display name`()"])
+  }
+
+  @Test func `Suite type with raw identifier gets a display name`() throws {
+    struct `Suite With De Facto Display Name` {}
+    let typeInfo = TypeInfo(describing: `Suite With De Facto Display Name`.self)
+    let suite = Test(traits: [], sourceLocation: #_sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+    #expect(suite.name == "`Suite With De Facto Display Name`")
+    let displayName = try #require(suite.displayName)
+    #expect(displayName == "Suite With De Facto Display Name")
+  }
+
+  @Test(arguments: [0])
+  func `Test with raw identifier and raw identifier parameter labels can compile`(`argument name` i: Int) {
+    #expect(i == 0)
   }
 
   @Test("Free functions are runnable")
@@ -551,7 +573,7 @@ struct MiscellaneousTests {
     let line = 12345
     let column = 67890
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let testFunction = Test.__function(named: "myTestFunction()", in: nil, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceLocation: sourceLocation) {}
+    let testFunction = Test.__function(named: "myTestFunction()", in: nil as Never.Type?, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceLocation: sourceLocation) {}
     #expect(String(describing: testFunction.id) == "Module.myTestFunction()/Y.swift:12345:67890")
   }
 

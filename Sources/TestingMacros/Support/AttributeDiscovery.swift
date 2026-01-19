@@ -11,50 +11,7 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
-
-/// A syntax rewriter that removes leading `Self.` tokens from member access
-/// expressions in a syntax tree.
-///
-/// If the developer specified Self.something as an argument to the `@Test` or
-/// `@Suite` attribute, we will currently incorrectly infer Self as equalling
-/// the container type that we emit rather than the type containing the test.
-/// This class strips off `Self.` wherever that occurs.
-///
-/// Note that this operation is technically incorrect if a subexpression of the
-/// attribute declares a type and refers to it with `Self`. We accept this
-/// constraint as it is unlikely to pose real-world issues and is generally
-/// solvable by using an explicit type name instead of `Self`.
-///
-/// This class should instead replace `Self` with the name of the containing
-/// type when rdar://105470382 is resolved.
-private final class _SelfRemover<C>: SyntaxRewriter where C: MacroExpansionContext {
-  /// The macro context in which the expression is being parsed.
-  let context: C
-
-  /// Initialize an instance of this class.
-  ///
-  /// - Parameters:
-  ///   - context: The macro context in which the expression is being parsed.
-  ///   - viewMode: The view mode to use when walking the syntax tree.
-  init(in context: C) {
-    self.context = context
-  }
-
-  override func visit(_ node: MemberAccessExprSyntax) -> ExprSyntax {
-    if let base = node.base?.as(DeclReferenceExprSyntax.self) {
-      if base.baseName.tokenKind == .keyword(.Self) {
-        // We cannot currently correctly convert Self.self into the expected
-        // type name, but once rdar://105470382 is resolved we can replace the
-        // base expression with the typename here (at which point Self.self
-        // ceases to be an interesting case anyway.)
-        return ExprSyntax(node.declName)
-      }
-    } else if let base = node.base?.as(MemberAccessExprSyntax.self) {
-      return ExprSyntax(node.with(\.base, visit(base)))
-    }
-    return ExprSyntax(node)
-  }
-}
+import SwiftParser
 
 /// A type describing information parsed from a `@Test` or `@Suite` attribute.
 struct AttributeInfo {
@@ -144,21 +101,19 @@ struct AttributeInfo {
        let rawIdentifier = namedDecl.name.rawIdentifier {
       if let displayName, let displayNameArgument {
         context.diagnose(.declaration(namedDecl, hasExtraneousDisplayName: displayName, fromArgument: displayNameArgument, using: attribute))
+      } else {
+        displayName = StringLiteralExprSyntax(content: rawIdentifier)
       }
-      displayName = StringLiteralExprSyntax(content: rawIdentifier)
     }
 
-    // Remove leading "Self." expressions from the arguments of the attribute.
-    // See _SelfRemover for more information. Rewriting a syntax tree discards
-    // location information from the copy, so only invoke the rewriter if the
-    // `Self` keyword is present somewhere.
-    nonDisplayNameArguments = nonDisplayNameArguments.map { argument in
-      var expr = argument.expression
-      if argument.expression.tokens(viewMode: .sourceAccurate).map(\.tokenKind).contains(.keyword(.Self)) {
-        let selfRemover = _SelfRemover(in: context)
-        expr = selfRemover.rewrite(Syntax(argument.expression), detach: true).cast(ExprSyntax.self)
-      }
-      return Argument(label: argument.label, expression: expr)
+    // If there was a display name but it's completely empty, emit a diagnostic
+    // since this can cause confusion isn't generally recommended. Note that
+    // this is only possible for string literal display names; the compiler
+    // enforces that raw identifiers must be non-empty.
+    if let namedDecl = declaration.asProtocol((any NamedDeclSyntax).self),
+       let displayName, let displayNameArgument,
+        displayName.representedLiteralValue?.isEmpty == true {
+      context.diagnose(.declaration(namedDecl, hasEmptyDisplayName: displayName, fromArgument: displayNameArgument, using: attribute))
     }
 
     // Look for any traits in the remaining arguments and slice them off. Traits

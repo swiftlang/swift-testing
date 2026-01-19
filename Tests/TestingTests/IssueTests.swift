@@ -496,14 +496,13 @@ final class IssueTests: XCTestCase {
   }
 
   func testCastAsAnyProtocol() async {
-    // Sanity check that we parse types cleanly.
+    // Check that we parse types cleanly.
     await Test {
       #expect((1 as Any) is any Numeric)
       _ = try #require((1 as Any) as? any Numeric)
     }.run(configuration: .init())
   }
 
-#if !SWT_TARGET_OS_APPLE || SWT_FIXED_149299786
   func testErrorCheckingWithExpect() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
     expectationFailed.isInverted = true
@@ -623,7 +622,6 @@ final class IssueTests: XCTestCase {
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
-#endif
 
   func testErrorCheckingWithExpect_mismatchedErrorDescription() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
@@ -1656,6 +1654,23 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed, apiMisused], timeout: 0.0)
+  }
+
+  private struct ErrorWithTestDescription: Error, CustomStringConvertible, CustomTestStringConvertible {
+    var description: String {
+      XCTFail("Invoked .description instead of .testDescription")
+      return "WRONG"
+    }
+
+    var testDescription: String {
+      return "RIGHT"
+    }
+  }
+
+  func testErrorCaughtIssueUsesTestDescription() {
+    let error = ErrorWithTestDescription()
+    let issue = Issue(kind: .errorCaught(error), severity: .error, comments: [], sourceContext: .init())
+    #expect(String(describing: issue).contains("RIGHT"))
   }
 }
 #endif

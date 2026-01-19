@@ -15,16 +15,20 @@
 /// modifying one or more of its properties, and returning the copy. You can
 /// observe recorded issues by returning them unmodified. Or you can suppress an
 /// issue by either filtering it using ``Trait/filterIssues(_:)`` or returning
-/// `nil` from the closure passed to ``Trait/transformIssues(_:)``.
+/// `nil` from the closure passed to ``Trait/compactMapIssues(_:)``.
 ///
 /// When an instance of this trait is applied to a suite, it is recursively
 /// inherited by all child suites and tests.
 ///
 /// To add this trait to a test, use one of the following functions:
 ///
-/// - ``Trait/transformIssues(_:)``
+/// - ``Trait/compactMapIssues(_:)``
 /// - ``Trait/filterIssues(_:)``
-@_spi(Experimental)
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
 public struct IssueHandlingTrait: TestTrait, SuiteTrait {
   /// A function which handles an issue and returns an optional replacement.
   ///
@@ -49,6 +53,11 @@ public struct IssueHandlingTrait: TestTrait, SuiteTrait {
   ///
   /// - Returns: An issue to replace `issue`, or else `nil` if the issue should
   ///   not be recorded.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public func handleIssue(_ issue: Issue) -> Issue? {
     _handler(issue)
   }
@@ -58,6 +67,10 @@ public struct IssueHandlingTrait: TestTrait, SuiteTrait {
   }
 }
 
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
 extension IssueHandlingTrait: TestScoping {
   public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
     // Provide scope for tests at both the suite and test case levels, but not
@@ -96,8 +109,14 @@ extension IssueHandlingTrait: TestScoping {
         return
       }
 
+      // Ignore system issues, as they are not expected to be caused by users.
+      if case .system = issue.kind {
+        oldConfiguration.eventHandler(event, context)
+        return
+      }
+
       // Use the original configuration's event handler when invoking the
-      // transformer to avoid infinite recursion if the transformer itself
+      // handler closure to avoid infinite recursion if the handler itself
       // records new issues. This means only issue handling traits whose scope
       // is outside this one will be allowed to handle such issues.
       let newIssue = Configuration.withCurrent(oldConfiguration) {
@@ -105,6 +124,22 @@ extension IssueHandlingTrait: TestScoping {
       }
 
       if let newIssue {
+        // Validate the value of the returned issue's 'kind' property.
+        switch (issue.kind, newIssue.kind) {
+        case (_, .system):
+          // Prohibited by ST-0011.
+          preconditionFailure("Issue returned by issue handling closure cannot have kind 'system': \(newIssue)")
+        case (.apiMisused, .apiMisused):
+          // This is permitted, but must be listed explicitly before the
+          // wildcard case below.
+          break
+        case (_, .apiMisused):
+          // Prohibited by ST-0011.
+          preconditionFailure("Issue returned by issue handling closure cannot have kind 'apiMisused' when the passed-in issue had a different kind: \(newIssue)")
+        default:
+          break
+        }
+
         var event = event
         event.kind = .issueRecorded(newIssue)
         oldConfiguration.eventHandler(event, context)
@@ -115,36 +150,44 @@ extension IssueHandlingTrait: TestScoping {
   }
 }
 
-@_spi(Experimental)
 extension Trait where Self == IssueHandlingTrait {
   /// Constructs an trait that transforms issues recorded by a test.
   ///
   /// - Parameters:
-  ///   - transformer: The closure called for each issue recorded by the test
+  ///   - transform: A closure called for each issue recorded by the test
   ///     this trait is applied to. It is passed a recorded issue, and returns
   ///     an optional issue to replace the passed-in one.
   ///
   /// - Returns: An instance of ``IssueHandlingTrait`` that transforms issues.
   ///
-  /// The `transformer` closure is called synchronously each time an issue is
+  /// The `transform` closure is called synchronously each time an issue is
   /// recorded by the test this trait is applied to. The closure is passed the
   /// recorded issue, and if it returns a non-`nil` value, that will be recorded
   /// instead of the original. Otherwise, if the closure returns `nil`, the
   /// issue is suppressed and will not be included in the results.
   ///
-  /// The `transformer` closure may be called more than once if the test records
+  /// The `transform` closure may be called more than once if the test records
   /// multiple issues. If more than one instance of this trait is applied to a
-  /// test (including via inheritance from a containing suite), the `transformer`
+  /// test (including via inheritance from a containing suite), the `transform`
   /// closure for each instance will be called in right-to-left, innermost-to-
   /// outermost order, unless `nil` is returned, which will skip invoking the
   /// remaining traits' closures.
   ///
-  /// Within `transformer`, you may access the current test or test case (if any)
+  /// Within `transform`, you may access the current test or test case (if any)
   /// using ``Test/current`` ``Test/Case/current``, respectively. You may also
   /// record new issues, although they will only be handled by issue handling
   /// traits which precede this trait or were inherited from a containing suite.
-  public static func transformIssues(_ transformer: @escaping @Sendable (Issue) -> Issue?) -> Self {
-    Self(handler: transformer)
+  ///
+  /// - Note: `transform` will never be passed an issue for which the value of
+  ///   ``Issue/kind`` is ``Issue/Kind/system``, and may not return such an
+  ///   issue.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
+  public static func compactMapIssues(_ transform: @escaping @Sendable (Issue) -> Issue?) -> Self {
+    Self(handler: transform)
   }
 
   /// Constructs a trait that filters issues recorded by a test.
@@ -174,6 +217,14 @@ extension Trait where Self == IssueHandlingTrait {
   /// using ``Test/current`` ``Test/Case/current``, respectively. You may also
   /// record new issues, although they will only be handled by issue handling
   /// traits which precede this trait or were inherited from a containing suite.
+  ///
+  /// - Note: `isIncluded` will never be passed an issue for which the value of
+  ///   ``Issue/kind`` is ``Issue/Kind/system``.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public static func filterIssues(_ isIncluded: @escaping @Sendable (Issue) -> Bool) -> Self {
     Self { issue in
       isIncluded(issue) ? issue : nil

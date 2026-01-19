@@ -111,7 +111,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   var effectiveRootNode: Syntax
 
   /// The name of the instance of `__ExpectationContext` to call.
-  var expressionContextNameExpr: DeclReferenceExprSyntax
+  var expectationContextNameExpr: DeclReferenceExprSyntax
 
   /// A list of any syntax nodes that have been rewritten.
   ///
@@ -122,11 +122,15 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   /// the rewritten syntax tree.
   var teardownItems = [CodeBlockItemSyntax]()
 
-  init(in context: C, for macro: M, rootedAt effectiveRootNode: Syntax, expressionContextName: TokenSyntax) {
+  /// Whether or not the entire operation was cancelled mid-flight (e.g. due to
+  /// encountering an expression that we cannot expand.)
+  var isCancelled = false
+
+  init(in context: C, for macro: M, rootedAt effectiveRootNode: Syntax, expectationContextName: TokenSyntax) {
     self.context = context
     self.macro = macro
     self.effectiveRootNode = effectiveRootNode
-    self.expressionContextNameExpr = DeclReferenceExprSyntax(baseName: expressionContextName.trimmed)
+    self.expectationContextNameExpr = DeclReferenceExprSyntax(baseName: expectationContextName.trimmed)
     super.init()
   }
 
@@ -137,7 +141,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   private var _rewriteDepth = 0
 
   /// Rewrite a given syntax node by inserting a call to the expression context
-  /// (or rather, its `callAsFunction(_:_:)` member).
+  /// (or rather, a subscript thereof).
   ///
   /// - Parameters:
   ///   - node: The node to rewrite.
@@ -158,7 +162,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   ) -> ExprSyntax {
     _rewriteDepth += 1
     if _rewriteDepth > _maximumRewriteDepth {
-      // At least 2 ancestors of this node have already been rewritten, so do
+      // At least _n_ ancestors of this node have already been rewritten, so do
       // not recursively rewrite further. This is necessary to limit the added
       // exponentional complexity we're throwing at the type checker.
       return ExprSyntax(originalNode())
@@ -171,26 +175,34 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     let additionalArguments = additionalArguments()
     rewrittenNodes.insert(Syntax(originalNode))
 
-    let calledExpr: ExprSyntax = if let functionName {
-      ExprSyntax(MemberAccessExprSyntax(base: expressionContextNameExpr, name: functionName))
-    } else {
-      ExprSyntax(expressionContextNameExpr)
-    }
-
-    var result = FunctionCallExprSyntax(
-      calledExpression: calledExpr,
-      leftParen: .leftParenToken(),
-      rightParen: .rightParenToken()
-    ) {
+    let argumentList = LabeledExprListSyntax {
       LabeledExprSyntax(expression: node.trimmed)
-      LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode))
+      LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode, in: context))
       for argument in additionalArguments {
         LabeledExprSyntax(argument)
       }
     }
 
-    result.leadingTrivia = originalNode.leadingTrivia
-    result.trailingTrivia = originalNode.trailingTrivia
+    var result = if let functionName {
+      ExprSyntax(
+        FunctionCallExprSyntax(
+          calledExpression: MemberAccessExprSyntax(
+            base: expectationContextNameExpr,
+            name: functionName
+          ),
+          leftParen: .leftParenToken(),
+          arguments: argumentList,
+          rightParen: .rightParenToken()
+        )
+      )
+    } else {
+      ExprSyntax(
+        SubscriptCallExprSyntax(
+          calledExpression: expectationContextNameExpr,
+          arguments: argumentList
+        )
+      )
+    }
 
     // If the resulting expression has an optional type due to containing an
     // optional chaining expression (e.g. `foo?`) *and* its immediate parent
@@ -201,14 +213,17 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
       let optionalChainFinder = _OptionalChainFinder(viewMode: .sourceAccurate)
       optionalChainFinder.walk(node)
       if optionalChainFinder.optionalChainFound {
-        return ExprSyntax(OptionalChainingExprSyntax(expression: result))
+        result = ExprSyntax(OptionalChainingExprSyntax(expression: result))
       }
 
     default:
       break
     }
 
-    return ExprSyntax(result)
+    result.leadingTrivia = originalNode.leadingTrivia
+    result.trailingTrivia = originalNode.trailingTrivia
+
+    return result
   }
 
   /// Rewrite a given syntax node by inserting a call to the expression context
@@ -480,9 +495,9 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
         calling: .identifier("__cmp"),
         passing: [
           Argument(expression: _visitChild(node.leftOperand)),
-          Argument(expression: node.leftOperand.expressionID(rootedAt: effectiveRootNode)),
+          Argument(expression: node.leftOperand.expressionID(rootedAt: effectiveRootNode, in: context)),
           Argument(expression: _visitChild(node.rightOperand)),
-          Argument(expression: node.rightOperand.expressionID(rootedAt: effectiveRootNode))
+          Argument(expression: node.rightOperand.expressionID(rootedAt: effectiveRootNode, in: context))
         ]
       )
     }
@@ -501,14 +516,28 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     // `inout`, so it should be sufficient to capture it in a `defer` statement
     // that runs after the expression is evaluated.
 
-    let rewrittenExpr = _rewrite(node.expression, calling: .identifier("__inoutAfter"))
-    if rewrittenExpr != ExprSyntax(node.expression) {
+    let rewrittenExpr = _rewrite(node, calling: .identifier("__inoutAfter"))
+    if rewrittenExpr != ExprSyntax(node) {
       let teardownItem = CodeBlockItemSyntax(item: .expr(rewrittenExpr))
       teardownItems.append(teardownItem)
     }
 
     // The argument should not be expanded in-place as we can't return an
     // argument passed `inout` and expect it to remain semantically correct.
+    return ExprSyntax(node)
+  }
+
+  // MARK: - Variadics
+
+  override func visit(_ node: PackExpansionExprSyntax) -> ExprSyntax {
+    // We cannot expand parameter pack expressions.
+    isCancelled = true
+    return ExprSyntax(node)
+  }
+
+  override func visit(_ node: PackElementExprSyntax) -> ExprSyntax {
+    // We cannot expand parameter pack expressions.
+    isCancelled = true
     return ExprSyntax(node)
   }
 
@@ -540,7 +569,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
             declName: DeclReferenceExprSyntax(baseName: .keyword(.self))
           )
         ),
-        Argument(expression: type.expressionID(rootedAt: effectiveRootNode))
+        Argument(expression: type.expressionID(rootedAt: effectiveRootNode, in: context))
       ]
     )
   }
@@ -647,7 +676,7 @@ extension ConditionMacro {
   ///   - node: The root of a syntax tree to rewrite. This node may not itself
   ///     be the root of the overall syntax tree—it's just the root of the
   ///     subtree that we're rewriting.
-  ///   - expressionContextName: The name of the instance of
+  ///   - expectationContextName: The name of the instance of
   ///     `__ExpectationContext` to call at runtime.
   ///   - macro: The macro expression.
   ///   - effectiveRootNode: The node to treat as the root of the syntax tree
@@ -658,23 +687,26 @@ extension ConditionMacro {
   ///     known at macro expansion time.
   ///   - context: The macro context in which the expression is being parsed.
   ///
-  /// - Returns: A tuple containing the rewritten copy of `node`, a list of all
-  ///   the nodes within `node` (possibly including `node` itself) that were
-  ///   rewritten, and a code block containing code that should be inserted into
-  ///   the lexical scope of `node` _before_ its rewritten equivalent.
+  /// - Returns: The expanded form of `node` as a closure expression that calls
+  ///   the expression context named `expectationContextName` as well as the set
+  ///   of rewritten subnodes in `node`, or `nil` if the expression could not be
+  ///   rewritten.
   static func rewrite(
     _ node: some ExprSyntaxProtocol,
-    usingExpressionContextNamed expressionContextName: TokenSyntax,
+    usingExpectationContextNamed expectationContextName: TokenSyntax,
     for macro: some FreestandingMacroExpansionSyntax,
     rootedAt effectiveRootNode: some SyntaxProtocol,
     effectKeywordsToApply: Set<Keyword>,
     returnType: (some TypeSyntaxProtocol)?,
     in context: some MacroExpansionContext
-  ) -> (ClosureExprSyntax, rewrittenNodes: Set<Syntax>) {
+  ) -> (ClosureExprSyntax, rewrittenNodes: Set<Syntax>)? {
     _diagnoseTrivialBooleanValue(from: ExprSyntax(node), for: macro, in: context)
 
-    let contextInserter = _ContextInserter(in: context, for: macro, rootedAt: Syntax(effectiveRootNode), expressionContextName: expressionContextName)
+    let contextInserter = _ContextInserter(in: context, for: macro, rootedAt: Syntax(effectiveRootNode), expectationContextName: expectationContextName)
     var expandedExpr = contextInserter.rewrite(node, detach: true).cast(ExprSyntax.self)
+    if contextInserter.isCancelled {
+      return nil
+    }
     let rewrittenNodes = contextInserter.rewrittenNodes
 
     // Insert additional effect keywords/thunks as needed.
@@ -738,12 +770,17 @@ extension ConditionMacro {
           ClosureParameterClauseSyntax(
             parameters: ClosureParameterListSyntax {
               ClosureParameterSyntax(
-                firstName: expressionContextName,
+                firstName: expectationContextName,
                 colon: .colonToken(trailingTrivia: .space),
                 type: TypeSyntax(
                   MemberTypeSyntax(
                     baseType: IdentifierTypeSyntax(name: .identifier("Testing")),
-                    name: .identifier("__ExpectationContext")
+                    name: .identifier("__ExpectationContext"),
+                    genericArgumentClause: returnType.map { returnType in
+                      GenericArgumentClauseSyntax {
+                        GenericArgumentSyntax(argument: .type(TypeSyntax(returnType)))
+                      }
+                    }
                   )
                 )
               )
@@ -830,11 +867,12 @@ private final class _DollarIdentifierReplacer: SyntaxRewriter {
 ///     dictionary literal.
 ///   - effectiveRootNode: The node to treat as the root of the syntax tree
 ///     for the purposes of generating expression ID values.
+///   - context: The macro context in which the expression is being parsed.
 ///
 /// - Returns: A dictionary literal expression whose keys are expression IDs and
 ///   whose values are string literals containing the source code of the syntax
 ///   nodes in `nodes`.
-func createDictionaryExpr(forSourceCodeOf nodes: some Sequence<some SyntaxProtocol>, rootedAt effectiveRootNode: some SyntaxProtocol) -> DictionaryExprSyntax {
+func createDictionaryExpr(forSourceCodeOf nodes: some Sequence<some SyntaxProtocol>, rootedAt effectiveRootNode: some SyntaxProtocol, in context: some MacroExpansionContext) -> DictionaryExprSyntax {
   // Sort the nodes. This isn't strictly necessary for correctness but it does
   // make the produced code more consistent.
   let nodes = nodes.sorted { $0.id < $1.id }
@@ -842,7 +880,7 @@ func createDictionaryExpr(forSourceCodeOf nodes: some Sequence<some SyntaxProtoc
   return DictionaryExprSyntax {
     for node in nodes {
       DictionaryElementSyntax(
-        key: node.expressionID(rootedAt: effectiveRootNode),
+        key: node.expressionID(rootedAt: effectiveRootNode, in: context),
         value: StringLiteralExprSyntax(content: node.trimmedDescription)
       )
     }
@@ -855,10 +893,11 @@ func createDictionaryExpr(forSourceCodeOf nodes: some Sequence<some SyntaxProtoc
 /// - Parameters:
 ///   - node: The nodes whose source code should be included in the resulting
 ///     dictionary literal. This node is treated as the root node.
+///   - context: The macro context in which the expression is being parsed.
 ///
 /// - Returns: A dictionary literal expression containing one key/value pair
 ///   where the key is the expression ID of `node` and the value is its source
 ///   code.
-func createDictionaryExpr(forSourceCodeOf node: some SyntaxProtocol) -> DictionaryExprSyntax {
-  createDictionaryExpr(forSourceCodeOf: CollectionOfOne(node), rootedAt: node)
+func createDictionaryExpr(forSourceCodeOf node: some SyntaxProtocol, in context: some MacroExpansionContext) -> DictionaryExprSyntax {
+  createDictionaryExpr(forSourceCodeOf: CollectionOfOne(node), rootedAt: node, in: context)
 }

@@ -245,7 +245,7 @@ error if its condition isn't met:
 
 XCTest also has a function, [`XCTUnwrap()`](https://developer.apple.com/documentation/xctest/3380195-xctunwrap),
 that tests if an optional value is `nil` and throws an error if it is. When
-using the testing library, you can use ``require(_:_:sourceLocation:)-6w9oo``
+using the testing library, you can use ``require(_:_:sourceLocation:)-1k9w3``
 with optional expressions to unwrap them:
 
 @Row {
@@ -277,7 +277,7 @@ XCTest has a function, [`XCTFail()`](https://developer.apple.com/documentation/x
 that causes a test to fail immediately and unconditionally. This function is
 useful when the syntax of the language prevents the use of an `XCTAssert()`
 function. To record an unconditional issue using the testing library, use the
-``Issue/record(_:sourceLocation:)`` function:
+``Issue/record(_:severity:sourceLocation:)`` function:
 
 @Row {
   @Column {
@@ -549,6 +549,39 @@ test function with an instance of this trait type to control whether it runs:
       @Test(.enabled(if: FoodTruck.sells(.arepas)))
       func arepasAreTasty() {
         ...
+      }
+      ...
+    }
+    ```
+  }
+}
+
+If a test is running and you determine it cannot complete and should end early
+without failing, use ``Test/cancel(_:sourceLocation:)`` instead of [`XCTSkip`](https://developer.apple.com/documentation/xctest/xctskip)
+to cancel the task associated with the current test:
+
+@Row {
+  @Column {
+    ```swift
+    // Before
+    func testCashRegister() throws {
+      let cashRegister = CashRegister()
+      let drawer = cashRegister.open()
+      if drawer.isEmpty {
+        throw XCTSkip("Cash register is empty")
+      }
+      ...
+    }
+    ```
+  }
+  @Column {
+    ```swift
+    // After
+    @Test func cashRegister() throws {
+      let cashRegister = CashRegister()
+      let drawer = cashRegister.open()
+      if drawer.isEmpty {
+        try Test.cancel("Cash register is empty")
       }
       ...
     }

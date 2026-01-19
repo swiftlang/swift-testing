@@ -67,6 +67,8 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a structure",
       "@Test enum E {}":
         "Attribute 'Test' cannot be applied to an enumeration",
+      "@Test func +() {}":
+        "Attribute 'Test' cannot be applied to an operator",
 
       // Availability
       "@available(*, unavailable) @Suite struct S {}":
@@ -78,15 +80,31 @@ struct TestDeclarationMacroTests {
       "@_unavailableFromAsync @Suite actor A {}":
         "Attribute 'Suite' cannot be applied to this actor because it has been marked '@_unavailableFromAsync'",
 
-      // XCTestCase
+      // XCTest/XCTestCase/XCTestSuite
+      "@Suite final class C: XCTest {}":
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
       "@Suite final class C: XCTestCase {}":
-        "Attribute 'Suite' cannot be applied to a subclass of 'XCTestCase'",
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "@Suite final class C: XCTestSuite {}":
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "@Suite final class C: XCTest.XCTest {}":
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
       "@Suite final class C: XCTest.XCTestCase {}":
-        "Attribute 'Suite' cannot be applied to a subclass of 'XCTestCase'",
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "@Suite final class C: XCTest.XCTestSuite {}":
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "final class C: XCTest { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within class 'C' because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
       "final class C: XCTestCase { @Test func f() {} }":
-        "Attribute 'Test' cannot be applied to a function within class 'C'",
+        "Attribute 'Test' cannot be applied to a function within class 'C' because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "final class C: XCTestSuite { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within class 'C' because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "final class C: XCTest.XCTest { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within class 'C' because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
       "final class C: XCTest.XCTestCase { @Test func f() {} }":
-        "Attribute 'Test' cannot be applied to a function within class 'C'",
+        "Attribute 'Test' cannot be applied to a function within class 'C' because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "final class C: XCTest.XCTestSuite { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within class 'C' because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
 
       // Unsupported inheritance
       "@Suite protocol P {}":
@@ -217,20 +235,76 @@ struct TestDeclarationMacroTests {
           ]
         ),
 
-      #"@Test("Goodbye world") func `__raw__$helloWorld`()"#:
+      #"@Test("Goodbye world") func `hello world`()"#:
         (
-          message: "Attribute 'Test' specifies display name 'Goodbye world' for function with implicit display name 'helloWorld'",
+          message: "Attribute 'Test' specifies display name 'Goodbye world' for function with implicit display name 'hello world'",
           fixIts: [
             ExpectedFixIt(
               message: "Remove 'Goodbye world'",
               changes: [.replace(oldSourceCode: #""Goodbye world""#, newSourceCode: "")]
             ),
             ExpectedFixIt(
-              message: "Rename '__raw__$helloWorld'",
-              changes: [.replace(oldSourceCode: "`__raw__$helloWorld`", newSourceCode: "\(EditorPlaceholderExprSyntax("name"))")]
+              message: "Rename 'hello world'",
+              changes: [.replace(oldSourceCode: "`hello world`", newSourceCode: "\(EditorPlaceholderExprSyntax("name"))")]
             ),
           ]
         ),
+
+      // empty display name string literal
+      #"@Test("") func f() {}"#:
+        (
+          message: "Attribute 'Test' specifies an empty display name for this function",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Remove display name argument",
+              changes: [
+                .replace(oldSourceCode: #""""#, newSourceCode: "")
+              ]),
+            ExpectedFixIt(
+              message: "Add display name",
+              changes: [
+                .replace(
+                  oldSourceCode: #""""#,
+                  newSourceCode: #""\#(EditorPlaceholderExprSyntax("display name"))""#)
+              ])
+          ]
+        ),
+       ##"@Test(#""#) func f() {}"##:
+         (
+           message: "Attribute 'Test' specifies an empty display name for this function",
+           fixIts: [
+             ExpectedFixIt(
+               message: "Remove display name argument",
+               changes: [
+                 .replace(oldSourceCode: ##"#""#"##, newSourceCode: "")
+               ]),
+             ExpectedFixIt(
+               message: "Add display name",
+               changes: [
+                 .replace(
+                   oldSourceCode: ##"#""#"##,
+                   newSourceCode: #""\#(EditorPlaceholderExprSyntax("display name"))""#)
+               ])
+           ]
+         ),
+       #"@Suite("") struct S {}"#:
+       (
+         message: "Attribute 'Suite' specifies an empty display name for this structure",
+         fixIts: [
+           ExpectedFixIt(
+             message: "Remove display name argument",
+             changes: [
+               .replace(oldSourceCode: #""""#, newSourceCode: "")
+             ]),
+           ExpectedFixIt(
+            message: "Add display name",
+            changes: [
+              .replace(
+                oldSourceCode: #""""#,
+                newSourceCode: #""\#(EditorPlaceholderExprSyntax("display name"))""#)
+            ])
+         ]
+       )
     ]
   }
 
@@ -281,10 +355,10 @@ struct TestDeclarationMacroTests {
   @Test("Raw function name components")
   func rawFunctionNameComponents() throws {
     let decl = """
-    func `__raw__$hello`(`__raw__$world`: T, etc: U, `blah`: V) {}
+    func `hello there`(`world of mine`: T, etc: U, `blah`: V) {}
     """ as DeclSyntax
     let functionDecl = try #require(decl.as(FunctionDeclSyntax.self))
-    #expect(functionDecl.completeName.trimmedDescription == "`hello`(`world`:etc:blah:)")
+    #expect(functionDecl.completeName.trimmedDescription == "`hello there`(`world of mine`:etc:blah:)")
   }
 
   @Test("Warning diagnostics emitted on API misuse",
@@ -357,7 +431,12 @@ struct TestDeclarationMacroTests {
         [
           #"#if os(moofOS)"#,
           #".__available("moofOS", obsoleted: nil, message: "Moof!", "#,
-        ]
+        ],
+      #"@available(customAvailabilityDomain) @Test func f() {}"#:
+        [
+          #".__available("customAvailabilityDomain", introduced: nil, "#,
+          #"guard #available (customAvailabilityDomain) else"#,
+        ],
     ]
   )
   func availabilityAttributeCapture(input: String, expectedOutputs: [String]) throws {
@@ -377,10 +456,10 @@ struct TestDeclarationMacroTests {
       ("@Test @available(*, noasync) func f() {}", nil, "__requiringTry"),
       ("@Test @_unavailableFromAsync func f() {}", nil, "__requiringTry"),
       ("@Test(arguments: []) func f(f: () -> String) {}", "(() -> String).self", nil),
-      ("struct S {\n\t@Test func testF() {} }", nil, "__invokeXCTestCaseMethod"),
-      ("struct S {\n\t@Test func testF() throws {} }", nil, "__invokeXCTestCaseMethod"),
-      ("struct S {\n\t@Test func testF() async {} }", nil, "__invokeXCTestCaseMethod"),
-      ("struct S {\n\t@Test func testF() async throws {} }", nil, "__invokeXCTestCaseMethod"),
+      ("class S {\n\t@Test func testF() {} }", nil, "__invokeXCTestMethod"),
+      ("class S {\n\t@Test func testF() throws {} }", nil, "__invokeXCTestMethod"),
+      ("class S {\n\t@Test func testF() async {} }", nil, "__invokeXCTestMethod"),
+      ("class S {\n\t@Test func testF() async throws {} }", nil, "__invokeXCTestMethod"),
       (
         """
         struct S {
@@ -423,14 +502,6 @@ struct TestDeclarationMacroTests {
     }
   }
 
-  @Test("Self. in @Test attribute is removed")
-  func removeSelfKeyword() throws {
-    let (output, _) = try parse("@Test(arguments: Self.nested.uniqueArgsName, NoTouching.thisOne) func f() {}")
-    #expect(output.contains("nested.uniqueArgsName"))
-    #expect(!output.contains("Self.nested.uniqueArgsName"))
-    #expect(output.contains("NoTouching.thisOne"))
-  }
-
   @Test("Display name is preserved",
     arguments: [
       #"@Test("Display Name") func f() {}"#,
@@ -452,6 +523,7 @@ struct TestDeclarationMacroTests {
   }
 
   @Test("Valid tag expressions are allowed",
+    .tags(.traitRelated),
     arguments: [
       #"@Test(.tags(.f)) func f() {}"#,
       #"@Test(Tag.List.tags(.f)) func f() {}"#,
@@ -472,6 +544,7 @@ struct TestDeclarationMacroTests {
   }
 
   @Test("Invalid tag expressions are detected",
+    .tags(.traitRelated),
     arguments: [
       "f()", ".f()", "loose",
       "WrongType.tag", "WrongType.f()",
@@ -490,6 +563,7 @@ struct TestDeclarationMacroTests {
   }
 
   @Test("Valid bug identifiers are allowed",
+    .tags(.traitRelated),
     arguments: [
       #"@Test(.bug(id: 12345)) func f() {}"#,
       #"@Test(.bug(id: "12345")) func f() {}"#,
@@ -512,6 +586,7 @@ struct TestDeclarationMacroTests {
   }
 
   @Test("Invalid bug URLs are detected",
+    .tags(.traitRelated),
     arguments: [
       "mailto: a@example.com", "example.com",
     ]

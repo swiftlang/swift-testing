@@ -67,6 +67,9 @@ platform-specific attention.
 > conflicting requirements (for example, attempting to enable support for pipes
 > without also enabling support for file I/O.) You should be able to resolve
 > these issues by updating `Package.swift` and/or `CompilerSettings.cmake`.
+>
+> Don't forget to add your platform to the `BuildSettingCondition/whenApple(_:)`
+> function in `Package.swift`.
 
 Most platform dependencies can be resolved through the use of platform-specific
 API. For example, Swift Testing uses the C11 standard [`timespec`](https://en.cppreference.com/w/c/chrono/timespec)
@@ -169,8 +172,10 @@ to load that information:
 +    }
 +    let sb = SectionBounds(
 +      imageAddress: UnsafeRawPointer(bitPattern: UInt(refNum)),
-+      start: handle.pointee!,
-+      size: GetHandleSize(handle)
++      buffer: UnsafeRawBufferPointer(
++        start: handle.pointee,
++        count: GetHandleSize(handle)
++      )
 +    )
 +    result.append(sb)
 +  } while noErr == GetNextResourceFile(refNum, &refNum))

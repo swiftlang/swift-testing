@@ -50,6 +50,19 @@ func subexpressionShowcase() async throws {
 
   #expect(!Bool(true))
 
+#if false
+  // Unsupported: mutating member functions require inout semantics we can't
+  // provide (since we can't see where we might need to insert an `&` sigil).
+  // However, we _can_ provide a reasonable diagnostic for it now!
+  do {
+    struct S {
+      mutating func f() -> Bool { false }
+    }
+    var s = S()
+    #expect(s.f())
+  }
+#endif
+
   do {
     let n = Int.random(in: 0 ..< 100)
     var m = n
@@ -76,8 +89,21 @@ func subexpressionShowcase() async throws {
   // the expression.
   let s = S()
   #expect(s.h())
+#if false
   #expect(s.j()) // consuming -- this DOES still fail, no syntax-level way to tell
 #endif
+#endif
+
+  do {
+    struct E: ~Escapable {
+      borrowing func h() -> Bool { false }
+      consuming func j() -> Bool { false }
+    }
+
+    let e = E()
+    #expect(e.h())
+    #expect(e.j())
+  }
 
   let s2 = S()
   _ = try #require(.some(consume s2))
@@ -110,6 +136,16 @@ func subexpressionShowcase() async throws {
     x()
   }
   #expect(await k2(true))
+
+  class NonSendableClass {
+    var string: String = ""
+  }
+  func k3(_ x: NonSendableClass) async -> Bool {
+    (x as NonSendableClass?) == nil
+  }
+  let nonSendableObject = NonSendableClass()
+  #expect(await k3(nonSendableObject))
+  extendLifetime(nonSendableObject)
 
 #if false
   // Unsupported: __ec necessarily captures non-sendable state, so this will

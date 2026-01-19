@@ -94,6 +94,7 @@ struct EventRecorderTests {
   }
 
   @Test("Verbose output")
+  @available(_regexAPI, *)
   func verboseOutput() async throws {
     let stream = Stream()
 
@@ -112,6 +113,18 @@ struct EventRecorderTests {
     #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter)   lhs: Swift.String → "987""#))
     #expect(buffer.contains(#""Animal Crackers" (aka 'WrittenTests')"#))
     #expect(buffer.contains(#""Not A Lobster" (aka 'actuallyCrab()')"#))
+    do {
+      let regex = try Regex(".* Test case passing 1 argument i → 0 \\(Swift.Int\\) to multitudeOcelot\\(i:\\) started.")
+      #expect(try buffer.split(whereSeparator: \.isNewline).compactMap(regex.wholeMatch(in:)).first != nil)
+    }
+    do {
+      let regex = try Regex(".* Test case passing 1 argument i → 0 \\(Swift.Int\\) to multitudeOcelot\\(i:\\) passed after .*.")
+      #expect(try buffer.split(whereSeparator: \.isNewline).compactMap(regex.wholeMatch(in:)).first != nil)
+    }
+    do {
+      let regex = try Regex(".* Test case passing 1 argument i → 3 \\(Swift.Int\\) to multitudeOcelot\\(i:\\) failed after .* with 1 issue.")
+      #expect(try buffer.split(whereSeparator: \.isNewline).compactMap(regex.wholeMatch(in:)).first != nil)
+    }
 
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")
@@ -203,17 +216,15 @@ struct EventRecorderTests {
     await runTest(for: PredictablyFailingTests.self, configuration: configuration)
 
     let buffer = stream.buffer.rawValue
-    if testsWithSignificantIOAreEnabled {
-      print(buffer, terminator: "")
-    }
 
-    let aurgmentRegex = try Regex(expectedPattern)
+    let argumentRegex = try Regex(expectedPattern)
     
     #expect(
       (try buffer
         .split(whereSeparator: \.isNewline)
-        .compactMap(aurgmentRegex.wholeMatch(in:))
-        .first) != nil
+        .compactMap(argumentRegex.wholeMatch(in:))
+        .first) != nil,
+      "buffer: \(buffer)"
     )
   }
 
@@ -325,6 +336,7 @@ struct EventRecorderTests {
     let testCount = Reference<Int?>()
     let suiteCount = Reference<Int?>()
     let issueCount = Reference<Int?>()
+    let warningCount = Reference<Int?>()
     let knownIssueCount = Reference<Int?>()
 
     let runFailureRegex = Regex {
@@ -344,6 +356,8 @@ struct EventRecorderTests {
       " issue"
       Optionally("s")
       " (including "
+      Capture(as: warningCount) { OneOrMore(.digit) } transform: { Int($0) }
+      " warnings and "
       Capture(as: knownIssueCount) { OneOrMore(.digit) } transform: { Int($0) }
       " known issue"
       Optionally("s")
@@ -357,8 +371,9 @@ struct EventRecorderTests {
     )
     #expect(match[testCount] == 9)
     #expect(match[suiteCount] == 2)
-    #expect(match[issueCount] == 12)
-    #expect(match[knownIssueCount] == 5)
+    #expect(match[issueCount] == 16)
+    #expect(match[warningCount] == 3)
+    #expect(match[knownIssueCount] == 6)
   }
 
   @Test("Issue counts are summed correctly on run end for a test with only warning issues")

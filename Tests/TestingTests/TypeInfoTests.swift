@@ -122,6 +122,12 @@ struct TypeInfoTests {
     #expect(!TypeInfo(describing: String.self).isSwiftEnumeration)
     #expect(TypeInfo(describing: SomeEnum.self).isSwiftEnumeration)
   }
+
+  @Test func typeOfMoveOnlyValueIsInferred() {
+    let value = MoveOnlyType()
+    let unqualifiedName = TypeInfo(describingTypeOf: value).unqualifiedName
+    #expect(unqualifiedName == "MoveOnlyType")
+  }
 }
 
 // MARK: - Fixtures
@@ -131,3 +137,5 @@ extension String {
 }
 
 private enum SomeEnum {}
+
+private struct MoveOnlyType: ~Copyable {}

@@ -18,7 +18,7 @@ extension ABI {
   /// A protocol describing the types that represent different ABI versions.
   protocol Version: Sendable {
     /// The numeric representation of this ABI version.
-    static var versionNumber: Int { get }
+    static var versionNumber: VersionNumber { get }
 
 #if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
     /// Create an event handler that encodes events as JSON and forwards them to
@@ -43,7 +43,96 @@ extension ABI {
   }
 
   /// The current supported ABI version (ignoring any experimental versions.)
-  typealias CurrentVersion = v0
+  typealias CurrentVersion = v6_3
+
+  /// The highest defined and supported ABI version (including any experimental
+  /// versions.)
+  typealias HighestVersion = v6_3
+
+#if !hasFeature(Embedded)
+  /// Get the type representing a given ABI version.
+  ///
+  /// - Parameters:
+  ///   - versionNumber: The ABI version number for which a concrete type is
+  ///     needed.
+  ///   - swiftCompilerVersion: The version number of the Swift compiler. This
+  ///     is used when `versionNumber` is greater than the highest known version
+  ///     to determine whether a version type can be returned. The default value
+  ///     is the version of the Swift compiler which was used to build the
+  ///     testing library.
+  ///
+  /// - Returns: A type conforming to ``ABI/Version`` that represents the given
+  ///   ABI version, or `nil` if no such type exists.
+  static func version(
+    forVersionNumber versionNumber: VersionNumber,
+    givenSwiftCompilerVersion swiftCompilerVersion: @autoclosure () -> VersionNumber = swiftCompilerVersion
+  ) -> (any Version.Type)? {
+    if versionNumber > ABI.HighestVersion.versionNumber {
+      // If the caller requested an ABI version higher than the current Swift
+      // compiler version and it's not an ABI version we've explicitly defined,
+      // then we assume we don't know what they're talking about and return nil.
+      //
+      // Note that it is possible for the Swift compiler version to be lower
+      // than the highest defined ABI version (e.g. if you use a 6.2 toolchain
+      // to build this package's release/6.3 branch with a 6.3 ABI defined.)
+      //
+      // Note also that building an old version of Swift Testing with a newer
+      // compiler may produce incorrect results here. We don't generally support
+      // that configuration though.
+      if versionNumber > swiftCompilerVersion() {
+        return nil
+      }
+    }
+
+    return switch versionNumber {
+    case ABI.v6_3.versionNumber...:
+      ABI.v6_3.self
+    case ABI.v0.versionNumber...:
+      ABI.v0.self
+#if !SWT_NO_SNAPSHOT_TYPES
+    case ABI.Xcode16.versionNumber:
+      // Legacy support for Xcode 16. Support for this undocumented version will
+      // be removed in a future update. Do not use it.
+      ABI.Xcode16.self
+#endif
+    default:
+      nil
+    }
+  }
+#endif
+}
+
+/// The value of the environment variable flag which enables experimental event
+/// stream fields, if any.
+private let _shouldIncludeExperimentalFlags = Environment.flag(named: "SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED")
+
+extension ABI.Version {
+  /// Whether or not experimental fields should be included when using this
+  /// ABI version.
+  ///
+  /// The value of this property is `true` if any of the following conditions
+  /// are satisfied:
+  ///
+  /// - The version number is less than 6.3. This is to preserve compatibility
+  ///   with existing clients before the inclusion of experimental fields became
+  ///   opt-in starting in 6.3.
+  /// - The version number is greater than or equal to 6.3 and the environment
+  ///   variable flag `SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED` is set to a
+  ///   true value.
+  /// - The version number is greater than or equal to that of ``ABI/ExperimentalVersion``.
+  ///
+  /// Otherwise, the value of this property is `false`.
+  static var includesExperimentalFields: Bool {
+    switch versionNumber {
+    case ABI.ExperimentalVersion.versionNumber...:
+      true
+    case ABI.v6_3.versionNumber...:
+      _shouldIncludeExperimentalFlags == true
+    default:
+      // Maintain behavior for pre-6.3 versions.
+      true
+    }
+  }
 }
 
 // MARK: - Concrete ABI versions
@@ -54,28 +143,35 @@ extension ABI {
   ///
   /// - Warning: This type will be removed in a future update.
   enum Xcode16: Sendable, Version {
-    static var versionNumber: Int {
-      -1
+    static var versionNumber: VersionNumber {
+      VersionNumber(-1, 0)
     }
   }
 #endif
 
   /// A namespace and type for ABI version 0 symbols.
   public enum v0: Sendable, Version {
-    static var versionNumber: Int {
-      0
+    static var versionNumber: VersionNumber {
+      VersionNumber(0, 0)
     }
   }
 
-  /// A namespace and type for ABI version 1 symbols.
+  /// A namespace and type for ABI version 6.3 symbols.
   ///
   /// @Metadata {
-  ///   @Available("Swift Testing ABI", introduced: 1)
+  ///   @Available(Swift, introduced: 6.3)
   /// }
-  @_spi(Experimental)
-  public enum v1: Sendable, Version {
-    static var versionNumber: Int {
-      1
+  public enum v6_3: Sendable, Version {
+    static var versionNumber: VersionNumber {
+      VersionNumber(6, 3)
+    }
+  }
+
+  /// A namespace and type representing the ABI version whose symbols are
+  /// considered experimental.
+  enum ExperimentalVersion: Sendable, Version {
+    static var versionNumber: VersionNumber {
+      VersionNumber(99, 0)
     }
   }
 }

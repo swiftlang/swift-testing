@@ -18,7 +18,7 @@ public struct TypeInfo: Sendable {
     ///
     /// - Parameters:
     ///   - type: The concrete metatype.
-    case type(_ type: any ~Copyable.Type)
+    case type(_ type: any (~Copyable & ~Escapable).Type)
 
     /// The type info represents a metatype, but a reference to that metatype is
     /// not available at runtime.
@@ -38,7 +38,7 @@ public struct TypeInfo: Sendable {
   ///
   /// If this instance was created from a type name, or if it was previously
   /// encoded and decoded, the value of this property is `nil`.
-  public var type: (any ~Copyable.Type)? {
+  public var type: (any (~Copyable & ~Escapable).Type)? {
     if case let .type(type) = _kind {
       return type
     }
@@ -79,7 +79,7 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - type: The type which this instance should describe.
-  init(describing type: any ~Copyable.Type) {
+  init(describing type: (some (~Copyable & ~Escapable)).Type) {
     _kind = .type(type)
   }
 
@@ -88,8 +88,21 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - value: The value whose type this instance should describe.
-  init(describingTypeOf value: Any) {
-    self.init(describing: Swift.type(of: value))
+  init(describingTypeOf value: some Any) {
+#if !hasFeature(Embedded)
+    let value = value as Any
+#endif
+    let type = Swift.type(of: value)
+    self.init(describing: type)
+  }
+
+  /// Initialize an instance of this type describing the type of the specified
+  /// value.
+  ///
+  /// - Parameters:
+  ///   - value: The value whose type this instance should describe.
+  init<T>(describingTypeOf value: borrowing T) where T: ~Copyable {
+    self.init(describing: T.self)
   }
 }
 
@@ -142,6 +155,35 @@ func rawIdentifierAwareSplit<S>(_ string: S, separator: Character, maxSplits: In
 }
 
 extension TypeInfo {
+  /// Replace any non-breaking spaces in the given string with normal spaces.
+  ///
+  /// - Parameters:
+  ///   - rawIdentifier: The string to rewrite.
+  ///
+  /// - Returns: A copy of `rawIdentifier` with non-breaking spaces (`U+00A0`)
+  ///   replaced with normal spaces (`U+0020`).
+  ///
+  /// When the Swift runtime demangles a raw identifier, it [replaces](https://github.com/swiftlang/swift/blob/d033eec1aa427f40dcc38679d43b83d9dbc06ae7/lib/Basic/Mangler.cpp#L250)
+  /// normal ASCII spaces with non-breaking spaces to maintain compatibility
+  /// with historical usages of spaces in mangled name forms. Non-breaking
+  /// spaces are not otherwise valid in raw identifiers, so this transformation
+  /// is reversible.
+  private static func _rewriteNonBreakingSpacesAsASCIISpaces(in rawIdentifier: some StringProtocol) -> String? {
+    let nbsp = "\u{00A0}" as UnicodeScalar
+
+    // If there are no non-breaking spaces in the string, exit early to avoid
+    // any further allocations.
+    let unicodeScalars = rawIdentifier.unicodeScalars
+    guard unicodeScalars.contains(nbsp) else {
+      return nil
+    }
+
+    // Replace non-breaking spaces, then construct a new string from the
+    // resulting sequence.
+    let result = unicodeScalars.lazy.map { $0 == nbsp ? " " : $0 }
+    return String(String.UnicodeScalarView(result))
+  }
+
   /// An in-memory cache of fully-qualified type name components.
   private static let _fullyQualifiedNameComponentsCache = Locked<[ObjectIdentifier: [String]]>()
 
@@ -166,12 +208,21 @@ extension TypeInfo {
       components[0] = moduleName
     }
 
-    // If a type is private or embedded in a function, its fully qualified
-    // name may include "(unknown context at $xxxxxxxx)" as a component. Strip
-    // those out as they're uninteresting to us.
-    components = components.filter { !$0.starts(with: "(unknown context at") }
-
-    return components.map(String.init)
+    return components.lazy
+      .filter { component in
+        // If a type is private or embedded in a function, its fully qualified
+        // name may include "(unknown context at $xxxxxxxx)" as a component.
+        // Strip those out as they're uninteresting to us.
+        !component.starts(with: "(unknown context at")
+      }.map { component in
+        // Replace non-breaking spaces with spaces. See the helper function's
+        // documentation for more information.
+        if let component = _rewriteNonBreakingSpacesAsASCIISpaces(in: component) {
+          component[...]
+        } else {
+          component
+        }
+      }.map(String.init)
   }
 
   /// The complete name of this type, with the names of all referenced types
@@ -242,9 +293,14 @@ extension TypeInfo {
   public var unqualifiedName: String {
     switch _kind {
     case let .type(type):
-      String(describing: type)
+      // Replace non-breaking spaces with spaces. See the helper function's
+      // documentation for more information.
+      var result = String(describing: type)
+      result = Self._rewriteNonBreakingSpacesAsASCIISpaces(in: result) ?? result
+
+      return result
     case let .nameOnly(_, unqualifiedName, _):
-      unqualifiedName
+      return unqualifiedName
     }
   }
 
@@ -265,11 +321,7 @@ extension TypeInfo {
     }
     switch _kind {
     case let .type(type):
-#if compiler(>=6.1)
       return _mangledTypeName(type)
-#else
-      return _mangledTypeName(unsafeBitCast(type, to: Any.Type.self))
-#endif
     case let .nameOnly(_, _, mangledName):
       return mangledName
     }
@@ -321,13 +373,10 @@ extension TypeInfo {
 /// - Returns: Whether `subclass` is a subclass of, or is equal to,
 ///   `superclass`.
 func isClass(_ subclass: AnyClass, subclassOf superclass: AnyClass) -> Bool {
-  if subclass == superclass {
-    true
-  } else if let subclassImmediateSuperclass = _getSuperclass(subclass) {
-    isClass(subclassImmediateSuperclass, subclassOf: superclass)
-  } else {
-    false
+  func open<T, U>(_: T.Type, _: U.Type) -> Bool where T: AnyObject, U: AnyObject {
+    T.self is U.Type
   }
+  return open(subclass, superclass)
 }
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible, CustomTestStringConvertible
@@ -366,21 +415,6 @@ extension TypeInfo: Hashable {
 
   public func hash(into hasher: inout Hasher) {
     hasher.combine(fullyQualifiedName)
-  }
-}
-
-// MARK: - ObjectIdentifier support
-
-extension ObjectIdentifier {
-  /// Initialize an instance of this type from a type reference.
-  ///
-  /// - Parameters:
-  ///   - type: The type to initialize this instance from.
-  ///
-  /// - Bug: The standard library should support this conversion.
-  ///   ([134276458](rdar://134276458), [134415960](rdar://134415960))
-  fileprivate init(_ type: any ~Copyable.Type) {
-    self.init(unsafeBitCast(type, to: Any.Type.self))
   }
 }
 

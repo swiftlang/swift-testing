@@ -68,21 +68,6 @@ public struct __Expression: Sendable {
     /// Information about the type of this value.
     public var typeInfo: TypeInfo
 
-    /// The timing when a runtime value was captured.
-    @_spi(Experimental)
-    public enum Timing: String, Sendable {
-      /// The value was captured after the containing expression was evaluated.
-      case after
-    }
-
-    /// When the value represented by this instance was captured.
-    ///
-    /// The value of this property is typically `nil`. It may be set to a
-    /// non-`nil` value if this instance represents some `inout` argument passed
-    /// to a function with the `&` operator.
-    @_spi(Experimental)
-    public var timing: Timing?
-
     /// The label associated with this value, if any.
     ///
     /// For non-child instances, or for child instances of members who do not
@@ -144,15 +129,14 @@ public struct __Expression: Sendable {
     ///
     /// - Parameters:
     ///   - subject: The subject this instance should reflect.
-    ///   - timing: When the value represented by this instance was captured.
-    init?(reflecting subject: Any, timing: Timing? = nil) {
+    init?(reflecting subject: Any) {
       let configuration = Configuration.current ?? .init()
       guard let options = configuration.valueReflectionOptions else {
         return nil
       }
 
       var seenObjects: [ObjectIdentifier: AnyObject] = [:]
-      self.init(_reflecting: subject, label: nil, timing: timing, seenObjects: &seenObjects, depth: 0, options: options)
+      self.init(_reflecting: subject, label: nil, seenObjects: &seenObjects, depth: 0, options: options)
     }
 
     /// Initialize an instance of this type describing the specified subject and
@@ -163,7 +147,6 @@ public struct __Expression: Sendable {
     ///   - label: An optional label for this value. This should be a non-`nil`
     ///     value when creating instances of this type which describe
     ///     substructural values.
-    ///   - timing: When the value represented by this instance was captured.
     ///   - seenObjects: The objects which have been seen so far while calling
     ///     this initializer recursively, keyed by their object identifiers.
     ///     This is used to halt further recursion if a previously-seen object
@@ -174,7 +157,6 @@ public struct __Expression: Sendable {
     private init(
       _reflecting subject: Any,
       label: String?,
-      timing: Timing?,
       seenObjects: inout [ObjectIdentifier: AnyObject],
       depth: Int,
       options: Configuration.ValueReflectionOptions
@@ -243,10 +225,24 @@ public struct __Expression: Sendable {
             break
           }
 
-          children.append(Self(_reflecting: child.value, label: child.label, timing: timing, seenObjects: &seenObjects, depth: depth + 1, options: options))
+          children.append(Self(_reflecting: child.value, label: child.label, seenObjects: &seenObjects, depth: depth + 1, options: options))
         }
         self.children = children
       }
+    }
+
+    /// Initialize an instance of this type representing a value of the
+    /// specified type that could not be captured (due to e.g. not conforming to
+    /// `Copyable`.)
+    ///
+    /// - Parameters:
+    ///   - type: The type of the uncaptured value.
+    init?<T>(failingToReflectInstanceOf type: T.Type) where T: ~Copyable & ~Escapable {
+      let typeInfo = TypeInfo(describing: type)
+      self.description = "<instance of '\(typeInfo.unqualifiedName)'>"
+      self.debugDescription = "<instance of '\(typeInfo.fullyQualifiedName)'>"
+      self.typeInfo = typeInfo
+      self.isCollection = false
     }
   }
 
@@ -287,12 +283,6 @@ public struct __Expression: Sendable {
       let runtimeValueDescription = String(describingForTest: runtimeValue)
       // Hack: don't print string representations of function calls.
       if runtimeValueDescription != "(Function)" && runtimeValueDescription != result {
-        switch runtimeValue.timing {
-        case .after:
-          result = "\(result) (after)"
-        default:
-          break
-        }
         result = "\(result) → \(runtimeValueDescription)"
       }
     } else {
@@ -331,7 +321,6 @@ public struct __Expression: Sendable {
 extension __Expression: Codable {}
 extension __Expression.Kind: Codable {}
 extension __Expression.Value: Codable {}
-extension __Expression.Value.Timing: Codable {}
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
