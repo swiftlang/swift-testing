@@ -13,10 +13,6 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
-#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
-#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand @Suite")
-#endif
-
 /// A type describing the expansion of the `@Suite` attribute macro.
 ///
 /// This type is used to implement the `@Suite` attribute macro. Do not use it
@@ -74,14 +70,14 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     diagnostics += diagnoseIssuesWithLexicalContext(context.lexicalContext, containing: declaration, attribute: suiteAttribute)
     diagnostics += diagnoseIssuesWithLexicalContext(declaration, containing: declaration, attribute: suiteAttribute)
 
-    // Suites inheriting from XCTestCase are not supported. This check is
+    // Suites inheriting from XCTest.XCTest are not supported. This check is
     // duplicated in TestDeclarationMacro but is not part of
     // diagnoseIssuesWithLexicalContext() because it doesn't need to recurse
     // across the entire lexical context list, just the innermost type
     // declaration.
-    if let declaration = declaration.asProtocol((any DeclGroupSyntax).self),
-       declaration.inherits(fromTypeNamed: "XCTestCase", inModuleNamed: "XCTest") {
-      diagnostics.append(.xcTestCaseNotSupported(declaration, whenUsing: suiteAttribute))
+    let inheritsFromXCTestClass = declarationInheritsFromXCTestClass(declaration)
+    if inheritsFromXCTestClass == true {
+      diagnostics.append(.xcTestSubclassNotSupported(declaration, whenUsing: suiteAttribute))
     }
 
     // @Suite cannot be applied to a type extension (although a type extension
@@ -166,7 +162,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
       )
     )
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
+#if compiler(<6.3)
     // Emit a type that contains a reference to the test content record.
     let enumName = context.makeUniqueName("__🟡$")
     result.append(
