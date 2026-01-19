@@ -15,6 +15,7 @@ public import _Testing_CoreGraphics
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
+@available(_uttypesAPI, *)
 extension CIImage: AttachableAsImage, AttachableAsCGImage {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
@@ -26,6 +27,10 @@ extension CIImage: AttachableAsImage, AttachableAsCGImage {
       }
       return result
     }
+  }
+
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytesImpl(as: imageFormat, body)
   }
 
   public func _copyAttachableValue() -> Self {
