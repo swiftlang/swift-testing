@@ -197,13 +197,15 @@ extension Event {
       // Build fully qualified name
       let fullyQualifiedName = fullyQualifiedName(for: failedTest)
 
-      result += "\(symbol) \(fullyQualifiedName)\n"
+      result += "\(symbol) Test \(fullyQualifiedName)\n"
 
       // For parameterized tests: show test cases grouped under the parent test
       if !failedTest.testCases.isEmpty {
         for testCase in failedTest.testCases {
-          // Show test case arguments with additional indentation
-          result += "  (\(testCase.arguments))\n"
+          // Show test case with argument count phrase and arguments
+          let argumentCount = testCase.arguments.split(separator: ",").count
+          let argumentPhrase = argumentCount.counting("argument")
+          result += "  Test case with \(argumentPhrase): (\(testCase.arguments))\n"
           // List each issue for this test case with additional indentation
           for issue in testCase.issues {
             result += formatIssue(issue, indentLevel: 2)
