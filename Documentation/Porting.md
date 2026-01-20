@@ -205,18 +205,14 @@ platform if it does not use an image format already supported by Swift Testing:
 ```diff
 --- a/Sources/TestingMacros/Support/TestContentGeneration.swift
 +++ b/Sources/TestingMacros/Support/TestContentGeneration.swift
-   // ...
-+  #elseif objectFormat(CFM)
-+  @section(".rsrc,swft,__swift5_tests")
-   #else
-   @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
-   #endif
+   let objectFormatsAndSectionNames: [(objectFormat: String, sectionName: String)] = [
+     ("MachO", "__DATA_CONST,__swift5_tests"),
+     ("ELF", "swift5_tests"),
+     ("COFF", ".sw5test$B"),
+     ("Wasm", "swift5_tests"),
++    ("CFM", ".rsrc,swft,__swift5_tests"),
+   ]
 ```
-
-Keep in mind that this code is emitted by the `@Test` and `@Suite` macros
-directly into test authors' test targets, so you will not be able to use
-compiler conditionals defined in the Swift Testing package (including those that
-start with `"SWT_"`).
 
 ## Runtime test discovery with static linkage
 
