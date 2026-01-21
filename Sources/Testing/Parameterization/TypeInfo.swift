@@ -79,7 +79,7 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - type: The type which this instance should describe.
-  init(describing type: (some (~Copyable & ~Escapable)).Type) {
+  init<T>(describing type: T.Type) where T: ~Copyable & ~Escapable {
     _kind = .type(type)
   }
 
@@ -101,7 +101,7 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - value: The value whose type this instance should describe.
-  init<T>(describingTypeOf value: borrowing T) where T: ~Copyable {
+  init<T>(describingTypeOf value: borrowing T) where T: ~Copyable & ~Escapable {
     self.init(describing: T.self)
   }
 }

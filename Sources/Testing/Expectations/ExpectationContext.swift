@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -22,7 +22,7 @@
 ///
 /// - Warning: This type is used to implement the `#expect()` and `#require()`
 ///   macros. Do not use it directly.
-public final class __ExpectationContext<Output> where Output: ~Copyable & ~Escapable {
+public final class __ExpectationContext<Output> where Output: ~Copyable {
   /// The source code representations of any captured expressions.
   ///
   /// Unlike the rest of the state in this type, the source code dictionary is
@@ -154,11 +154,11 @@ public final class __ExpectationContext<Output> where Output: ~Copyable & ~Escap
 }
 
 @available(*, unavailable)
-extension __ExpectationContext: Sendable where Output: ~Copyable & ~Escapable {}
+extension __ExpectationContext: Sendable where Output: ~Copyable {}
 
 // MARK: - Expression capturing
 
-extension __ExpectationContext where Output: ~Copyable & ~Escapable {
+extension __ExpectationContext where Output: ~Copyable {
   /// Capture information about a value for use if the expectation currently
   /// being evaluated fails.
   ///
@@ -189,39 +189,13 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///
   /// - Returns: `value`, verbatim.
   ///
-  /// - Warning: This subscript is used to implement the `#expect()` and
+  /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public subscript<T>(value: /* borrowing */ T, id: __ExpressionID) -> T where T: ~Escapable {
-    @_lifetime(borrow value) get {
-      captureValue(value, id)
-      return value
-    }
-
-    @available(*, unavailable, message: "Cannot mutate the condition argument of macro 'expect(_:_:)' or 'require(_:_:)'")
-    set {}
+  @_lifetime(borrow value)
+  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T where T: ~Escapable {
+    captureValue(value, id)
+    return copy value
   }
-
-#if SWT_FIXED_109329233
-  /// Capture information about a value for use if the expectation currently
-  /// being evaluated fails.
-  ///
-  /// - Parameters:
-  ///   - value: The value to pass through.
-  ///   - id: A value that uniquely identifies the represented expression in the
-  ///     context of the expectation currently being evaluated.
-  ///
-  /// - Returns: `value`, verbatim.
-  ///
-  /// - Warning: This subscript is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  @_disfavoredOverload
-  public subscript<T>(value: borrowing T, id: __ExpressionID) -> T where T: ~Copyable & ~Escapable {
-    @_lifetime(borrow value) _read {
-      captureValue(value, id)
-      yield value
-    }
-  }
-#endif
 
   /// Capture information about a value passed `inout` to a function call after
   /// the function has returned.
@@ -240,7 +214,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
 
 // MARK: - Collection comparison and diffing
 
-extension __ExpectationContext where Output: ~Copyable & ~Escapable {
+extension __ExpectationContext where Output: ~Copyable {
   /// Generate a description of a previously-computed collection difference.
   ///
   /// - Parameters:
@@ -354,7 +328,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
     _ lhsID: __ExpressionID,
     _ rhs: borrowing U,
     _ rhsID: __ExpressionID
-  ) throws(E) -> Bool where T: ~Copyable & ~Escapable, U: ~Copyable & ~Escapable {
+  ) throws(E) -> Bool where T: ~Copyable, U: ~Copyable {
     captureValue(lhs, lhsID)
     captureValue(rhs, rhsID)
 
@@ -374,7 +348,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
 
 // MARK: - Casting
 
-extension __ExpectationContext where Output: ~Copyable & ~Escapable {
+extension __ExpectationContext where Output: ~Copyable {
   /// Perform a conditional cast (`as?`) on a value.
   ///
   /// - Parameters:

@@ -58,7 +58,7 @@ struct DiscoveryTests {
   }
 #endif
 
-#if !SWT_NO_DYNAMIC_LINKING && hasFeature(SymbolLinkageMarkers)
+#if compiler(>=6.3) && !SWT_NO_DYNAMIC_LINKING
   struct MyTestContent: DiscoverableAsTestContent {
     typealias TestContentAccessorHint = UInt32
 
@@ -80,17 +80,17 @@ struct DiscoveryTests {
       record.context
     }
 
-#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
-    @_section("__DATA_CONST,__swift5_tests")
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
-    @_section("swift5_tests")
-#elseif os(Windows)
-    @_section(".sw5test$B")
+#if objectFormat(MachO)
+    @section("__DATA_CONST,__swift5_tests")
+#elseif objectFormat(ELF) || objectFormat(Wasm)
+    @section("swift5_tests")
+#elseif objectFormat(COFF)
+    @section(".sw5test$B")
 #else
     @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
 #endif
-    @_used
-    private static let record: __TestContentRecord = (
+    @used
+    fileprivate static let record: __TestContentRecord = (
       0xABCD1234,
       0,
       { outValue, type, hint, _ in
@@ -105,12 +105,12 @@ struct DiscoveryTests {
         _ = outValue.initializeMemory(as: Self.self, to: .init(value: expectedValue))
         return true
       },
-      UInt(truncatingIfNeeded: UInt64(0x0204060801030507)),
+      0x02040608,
       0
     )
   }
 
-  @Test func testDiscovery() async {
+  @Test func testDiscovery() {
     // Check the type of the test record sequence (it should be lazy.)
     let allRecordsSeq = MyTestContent.allTestContentRecords()
 #if SWT_FIXED_143080508
@@ -142,22 +142,22 @@ struct DiscoveryTests {
       && record.context == MyTestContent.expectedContext
     })
   }
-#endif
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY && hasFeature(SymbolLinkageMarkers)
-  @Test("Legacy test discovery finds the same number of tests") func discoveredTestCount() async {
-    let oldFlag = Environment.variable(named: "SWT_USE_LEGACY_TEST_DISCOVERY")
-    defer {
-      Environment.setVariable(oldFlag, named: "SWT_USE_LEGACY_TEST_DISCOVERY")
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+  struct `__🟡$LegacyTestContentRecord`: __TestContentRecordContainer {
+    static var __testContentRecord: __TestContentRecord {
+      MyTestContent.record
     }
-
-    Environment.setVariable("1", named: "SWT_USE_LEGACY_TEST_DISCOVERY")
-    let testsWithOldCode = await Array(Test.all).count
-
-    Environment.setVariable("0", named: "SWT_USE_LEGACY_TEST_DISCOVERY")
-    let testsWithNewCode = await Array(Test.all).count
-
-    #expect(testsWithOldCode == testsWithNewCode)
   }
+
+  @Test func legacyTestDiscovery() throws {
+    let allRecords = Array(MyTestContent.allTypeMetadataBasedTestContentRecords())
+    #expect(allRecords.count == 1)
+    let record = try #require(allRecords.first)
+    #expect(record.context == MyTestContent.expectedContext)
+    let content = try #require(record.load())
+    #expect(content.value == MyTestContent.expectedValue)
+  }
+#endif
 #endif
 }

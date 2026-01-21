@@ -13,11 +13,6 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 This document describes the format and location of test content that the testing
 library emits at compile time and can discover at runtime.
 
-> [!WARNING]
-> The content of this document is subject to change pending efforts to define a
-> Swift-wide standard mechanism for runtime metadata emission and discovery.
-> Treat the information in this document as experimental.
-
 ## Basic format
 
 Swift Testing stores test content records in a dedicated platform-specific
