@@ -634,7 +634,7 @@ extension ExitTestConditionMacro {
           diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: lexicalContext))
         } else if let whereClause = lexicalContext.genericWhereClause {
           diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: lexicalContext))
-        } else if [.arrayType, .dictionaryType, .optionalType, .implicitlyUnwrappedOptionalType, .inlineArrayType].contains(lexicalContext.type.kind) {
+        } else if lexicalContext.type.isExplicitlyGeneric {
           diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: lexicalContext.type, on: lexicalContext))
         }
       } else if let functionDecl = lexicalContext.as(FunctionDeclSyntax.self) {
