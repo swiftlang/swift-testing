@@ -617,3 +617,23 @@ struct MiscellaneousTests {
     #expect(duration < .seconds(1))
   }
 }
+
+#if compiler(>=6.2)
+extension Span {
+  var isNonEmpty: Bool { !isEmpty }
+  var nonZeroCount: Int? { isEmpty ? nil : count }
+}
+
+extension MiscellaneousTests {
+  @available(macOS 26, iOS 26, watchOS 26, tvOS 26, visionOS 26, *)
+  @Test("Instance property of nonescapable type")
+  func propertyAccessOfNonescapable() throws {
+    let array = [1, 2, 3, 4, 5]
+    let span = array.span
+    #expect(!span.isEmpty)
+    #expect(span.isNonEmpty)
+    let count = try #require(span.nonZeroCount)
+    #expect(count == span.count)
+  }
+}
+#endif
