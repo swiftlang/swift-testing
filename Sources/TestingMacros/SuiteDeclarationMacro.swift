@@ -17,7 +17,7 @@ public import SwiftSyntaxMacros
 ///
 /// This type is used to implement the `@Suite` attribute macro. Do not use it
 /// directly.
-public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
+public struct SuiteDeclarationMacro: PeerMacro, Sendable {
   public static func expansion(
     of node: AttributeSyntax,
     providingMembersOf declaration: some DeclGroupSyntax,
