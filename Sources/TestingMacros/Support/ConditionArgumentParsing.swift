@@ -141,7 +141,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   private var _rewriteDepth = 0
 
   /// Rewrite a given syntax node by inserting a call to the expression context
-  /// (or rather, a subscript thereof).
+  /// (or rather, its `callAsFunction(_:_:)` member).
   ///
   /// - Parameters:
   ///   - node: The node to rewrite.
@@ -175,34 +175,25 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     let additionalArguments = additionalArguments()
     rewrittenNodes.insert(Syntax(originalNode))
 
-    let argumentList = LabeledExprListSyntax {
-      LabeledExprSyntax(expression: node.trimmed)
-      LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode, in: context))
-      for argument in additionalArguments {
-        LabeledExprSyntax(argument)
-      }
+    let calledExpr: ExprSyntax = if let functionName {
+      ExprSyntax(MemberAccessExprSyntax(base: expectationContextNameExpr, name: functionName))
+    } else {
+      ExprSyntax(expectationContextNameExpr)
     }
 
-    var result = if let functionName {
-      ExprSyntax(
-        FunctionCallExprSyntax(
-          calledExpression: MemberAccessExprSyntax(
-            base: expectationContextNameExpr,
-            name: functionName
-          ),
-          leftParen: .leftParenToken(),
-          arguments: argumentList,
-          rightParen: .rightParenToken()
-        )
-      )
-    } else {
-      ExprSyntax(
-        SubscriptCallExprSyntax(
-          calledExpression: expectationContextNameExpr,
-          arguments: argumentList
-        )
-      )
-    }
+    var result = ExprSyntax(
+      FunctionCallExprSyntax(
+        calledExpression: calledExpr,
+        leftParen: .leftParenToken(),
+        rightParen: .rightParenToken()
+      ) {
+        LabeledExprSyntax(expression: node.trimmed)
+        LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode, in: context))
+        for argument in additionalArguments {
+          LabeledExprSyntax(argument)
+        }
+      }
+    )
 
     // If the resulting expression has an optional type due to containing an
     // optional chaining expression (e.g. `foo?`) *and* its immediate parent
