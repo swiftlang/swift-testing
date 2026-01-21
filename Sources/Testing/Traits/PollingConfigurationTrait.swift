@@ -1,0 +1,79 @@
+//
+// This source file is part of the Swift.org open source project
+//
+// Copyright (c) 2025 Apple Inc. and the Swift project authors
+// Licensed under Apache License v2.0 with Runtime Library Exception
+//
+// See https://swift.org/LICENSE.txt for license information
+// See https://swift.org/CONTRIBUTORS.txt for Swift project authors
+//
+
+/// A trait to provide a default polling configuration to all usages of
+/// ``confirmation(_:until:within:pollingEvery:sourceLocation:_:)->_``
+/// and
+/// ``confirmation(_:until:within:pollingEvery:sourceLocation:_:)->()``
+/// within a test or suite using the specified stop condition.
+///
+/// To add this trait to a test, use the ``Trait/pollingConfirmationDefaults``
+/// function.
+@_spi(Experimental)
+@available(_clockAPI, *)
+public struct PollingConfirmationConfigurationTrait: TestTrait, SuiteTrait {
+  /// The stop condition to this configuration is valid for
+  public var stopCondition: PollingStopCondition
+
+  /// How long to continue polling for. If nil, this will fall back to the next
+  /// inner-most `PollingConfirmationConfigurationTrait.duration` value for this
+  /// stop condition.
+  /// If no non-nil values are found, then it will use 1 second.
+  public var duration: Duration?
+
+  /// The minimum amount of time to wait between polling attempts. If nil, this
+  /// will fall back to earlier `PollingConfirmationConfigurationTrait.interval`
+  /// values for this stop condition. If no non-nil values are found, then it
+  /// will use 1 millisecond.
+  public var interval: Duration?
+
+  public var isRecursive: Bool { true }
+
+  public init(
+    stopCondition: PollingStopCondition,
+    duration: Duration?,
+    interval: Duration?
+  ) {
+    self.stopCondition = stopCondition
+    self.duration = duration
+    self.interval = interval
+  }
+}
+
+@_spi(Experimental)
+@available(_clockAPI, *)
+extension Trait where Self == PollingConfirmationConfigurationTrait {
+  /// Specifies defaults for polling confirmations in the test or suite.
+  ///
+  /// - Parameters:
+  ///   - stopCondition: The `PollingStopCondition` this trait applies to.
+  ///   - duration: The expected length of time to continue polling for.
+  ///     This value may not correspond to the wall-clock time that polling
+  ///     lasts for, especially on highly-loaded systems with a lot of tests
+  ///     running.
+  ///     If nil, polling will be attempted for approximately 1 second.
+  ///     If specified, `duration` must be greater than or equal to `interval`.
+  ///   - interval: The minimum amount of time to wait between polling
+  ///     attempts.
+  ///     If nil, polling will wait at least 1 millisecond between polling
+  ///     attempts.
+  ///     If specified, `interval` must be greater than 0.
+  public static func pollingConfirmationDefaults(
+    until stopCondition: PollingStopCondition,
+    within duration: Duration? = nil,
+    pollingEvery interval: Duration? = nil
+  ) -> Self {
+    PollingConfirmationConfigurationTrait(
+      stopCondition: stopCondition,
+      duration: duration,
+      interval: interval
+    )
+  }
+}
