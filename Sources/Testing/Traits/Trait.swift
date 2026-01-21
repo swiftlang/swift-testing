@@ -40,6 +40,26 @@ public protocol Trait: Sendable {
   /// The default implementation of this method does nothing.
   func prepare(for test: Test) async throws
 
+#if !hasFeature(Embedded)
+  /// Combine this trait with another instance of the same trait type.
+  ///
+  /// - Parameters:
+  ///   - other: Another instance of this trait's type.
+  ///
+  /// - Returns: A single trait combining `other` and `self`. If `nil`, the two
+  ///   traits were not combined.
+  ///
+  /// This function allows traits with duplicate or overlapping information to
+  /// be reduced into a smaller set of traits. The default implementation
+  /// returns `nil` and does not modify `other` or `self`.
+  ///
+  /// This function is called after the testing library applies recursive traits
+  /// (those whose ``SuiteTrait/isRecursive`` properties have the value `true`)
+  /// to child suites and test functions.
+  @_spi(Experimental)
+  func _reduce(into other: any Trait) -> (any Trait)?
+#endif
+
   /// The user-provided comments for this trait.
   ///
   /// The default value of this property is an empty array.
@@ -251,6 +271,14 @@ public protocol SuiteTrait: Trait {
 
 extension Trait {
   public func prepare(for test: Test) async throws {}
+
+#if !hasFeature(Embedded)
+  /// - Warning: This function is experimental. It is publicly visible due to
+  ///   Swift language requirements. It may be removed in a future update.
+  public func _reduce(into other: any Trait) -> (any Trait)? {
+    nil
+  }
+#endif
 
   public var comments: [Comment] {
     []

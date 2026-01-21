@@ -180,6 +180,11 @@ static int swt_setfdflags(int fd, int flags) {
 }
 #endif
 
+
+extern struct Freezer *current_freezer;
+extern void plug_in_freezer(struct Freezer freezer);
+extern void unplug_freezer(void);
+
 SWT_ASSUME_NONNULL_END
 
 #endif
