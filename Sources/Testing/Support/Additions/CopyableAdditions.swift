@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2025 Apple Inc. and the Swift project authors
+// Copyright (c) 2025–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -9,22 +9,29 @@
 //
 
 #if !hasFeature(Embedded)
-/// A helper protocol for ``boxCopyableValue(_:)``.
-private protocol _CopyablePointer {
+/// A helper protocol for ``makeExistential(_:)``.
+private protocol _CopierProtocol<Referent> {
+  /// The type of value that a conforming type can copy.
+  associatedtype Referent
+
   /// Load the value at this address into an existential box.
   ///
   /// - Returns: The value at this address.
-  func load() -> Any
+  static func load(from value: Referent) -> Any?
 }
 
-extension UnsafePointer: _CopyablePointer where Pointee: Copyable {
-  func load() -> Any {
-    pointee
+/// A helper type for ``makeExistential(_:)``
+private struct _Copier<Referent> where Referent: ~Copyable & ~Escapable {}
+
+extension _Copier: _CopierProtocol where Referent: Copyable & Escapable {
+  static func load(from value: Referent) -> Any? {
+    value
   }
 }
 #endif
 
-/// Copy a value to an existential box if its type conforms to `Copyable`.
+/// Copy a value to an existential box if its type conforms to `Copyable` and
+/// `Escapable`.
 ///
 /// - Parameters:
 ///   - value: The value to copy.
@@ -35,13 +42,14 @@ extension UnsafePointer: _CopyablePointer where Pointee: Copyable {
 /// When using Embedded Swift, this function always returns `nil`.
 #if !hasFeature(Embedded)
 @available(_castingWithNonCopyableGenerics, *)
-func boxCopyableValue(_ value: borrowing some ~Copyable) -> Any? {
-  withUnsafePointer(to: value) { address in
-    return (address as? any _CopyablePointer)?.load()
+func makeExistential<T>(_ value: borrowing T) -> Any? where T: ~Copyable & ~Escapable {
+  if let type = _Copier<T>.self as? any _CopierProtocol<T>.Type {
+    return type.load(from: value)
   }
+  return nil
 }
 #else
-func boxCopyableValue(_ value: borrowing some ~Copyable) -> Void? {
+func makeExistential<T>(_ value: borrowing T) -> Void? where T: ~Copyable & ~Escapable {
   nil
 }
 #endif
