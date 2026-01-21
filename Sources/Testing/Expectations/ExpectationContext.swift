@@ -1,16 +1,12 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
-
-#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
-private import Builtin
-#endif
 
 /// A type representing the context within a call to the `#expect()` and
 /// `#require()` macros.
