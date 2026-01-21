@@ -31,21 +31,21 @@ public import WinSDK
 ///
 /// This protocol is not part of the public interface of the testing library. It
 /// allows us to reuse code across all subclasses of `IWICBitmapSource`.
-protocol IWICBitmapSourceProtocol: _AttachableByAddressAsIWICBitmapSource {}
+public protocol _IWICBitmapSourceProtocol: _AttachableByAddressAsIWICBitmapSource {}
 
-extension IWICBitmapSource: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-extension IWICBitmap: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-extension IWICBitmapClipper: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-extension IWICBitmapFlipRotator: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-extension IWICBitmapFrameDecode: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-extension IWICBitmapScaler: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-extension IWICColorTransform: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-extension IWICFormatConverter: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-extension IWICPlanarFormatConverter: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
+extension IWICBitmapSource: _AttachableByAddressAsIWICBitmapSource, _IWICBitmapSourceProtocol {}
+extension IWICBitmap: _AttachableByAddressAsIWICBitmapSource, _IWICBitmapSourceProtocol {}
+extension IWICBitmapClipper: _AttachableByAddressAsIWICBitmapSource, _IWICBitmapSourceProtocol {}
+extension IWICBitmapFlipRotator: _AttachableByAddressAsIWICBitmapSource, _IWICBitmapSourceProtocol {}
+extension IWICBitmapFrameDecode: _AttachableByAddressAsIWICBitmapSource, _IWICBitmapSourceProtocol {}
+extension IWICBitmapScaler: _AttachableByAddressAsIWICBitmapSource, _IWICBitmapSourceProtocol {}
+extension IWICColorTransform: _AttachableByAddressAsIWICBitmapSource, _IWICBitmapSourceProtocol {}
+extension IWICFormatConverter: _AttachableByAddressAsIWICBitmapSource, _IWICBitmapSourceProtocol {}
+extension IWICPlanarFormatConverter: _AttachableByAddressAsIWICBitmapSource, _IWICBitmapSourceProtocol {}
 
 // MARK: - Upcasting conveniences
 
-extension UnsafeMutablePointer where Pointee: IWICBitmapSourceProtocol {
+extension UnsafeMutablePointer where Pointee: _IWICBitmapSourceProtocol {
   /// Upcast this WIC bitmap to a WIC bitmap source (its parent type).
   ///
   /// - Returns: `self`, cast to the parent type via `QueryInterface()`. The
@@ -78,7 +78,7 @@ extension UnsafeMutablePointer where Pointee: IWICBitmapSourceProtocol {
 
 // MARK: - _AttachableByAddressAsIWICBitmapSource implementation
 
-extension IWICBitmapSourceProtocol {
+extension _IWICBitmapSourceProtocol {
   public static func _copyAttachableIWICBitmapSource(
     from imageAddress: UnsafeMutablePointer<Self>,
     using factory: UnsafeMutablePointer<IWICImagingFactory>

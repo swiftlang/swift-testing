@@ -13,10 +13,6 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
-#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
-#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand @Test")
-#endif
-
 /// A type describing the expansion of the `@Test` attribute macro.
 ///
 /// This type is used to implement the `@Test` attribute macro. Do not use it
@@ -131,21 +127,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         if parameter.type.isSome {
           diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: parameter, on: function))
         }
-      }
-    }
-
-    // Disallow non-escapable types as suites. In order to support them, the
-    // compiler team needs to finish implementing the lifetime dependency
-    // feature so that `init()`, ``__requiringTry()`, and `__requiringAwait()`
-    // can be correctly expressed.
-    if let containingType = lexicalContext.first?.asProtocol((any DeclGroupSyntax).self),
-       let inheritedTypes = containingType.inheritanceClause?.inheritedTypes {
-      let escapableNonConformances = inheritedTypes
-        .map(\.type)
-        .compactMap { $0.as(SuppressedTypeSyntax.self) }
-        .filter { $0.type.isNamed("Escapable", inModuleNamed: "Swift") }
-      for escapableNonConformance in escapableNonConformances {
-        diagnostics.append(.containingNodeUnsupported(containingType, whenUsing: testAttribute, on: function, withSuppressedConformanceToEscapable: escapableNonConformance))
       }
     }
 
@@ -502,11 +483,12 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         in: typeName,
         ofKind: .testDeclaration,
         accessingWith: accessorName,
-        context: attributeInfo.testContentRecordFlags
+        context: attributeInfo.testContentRecordFlags,
+        in: context
       )
     )
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
+#if compiler(<6.3)
     // Emit a type that contains a reference to the test content record.
     let enumName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟡$")
     result.append(

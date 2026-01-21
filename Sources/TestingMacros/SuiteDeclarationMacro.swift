@@ -13,10 +13,6 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
-#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
-#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand @Suite")
-#endif
-
 /// A type describing the expansion of the `@Suite` attribute macro.
 ///
 /// This type is used to implement the `@Suite` attribute macro. Do not use it
@@ -162,11 +158,12 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
         in: declaration.type,
         ofKind: .testDeclaration,
         accessingWith: accessorName,
-        context: attributeInfo.testContentRecordFlags
+        context: attributeInfo.testContentRecordFlags,
+        in: context
       )
     )
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
+#if compiler(<6.3)
     // Emit a type that contains a reference to the test content record.
     let enumName = context.makeUniqueName("__🟡$")
     result.append(

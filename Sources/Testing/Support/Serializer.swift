@@ -30,10 +30,14 @@ private var _cpuCoreCount: Int? {
 #endif
 
 /// The default parallelization width when parallelized testing is enabled.
-var defaultParallelizationWidth: Int {
+let defaultParallelizationWidth: Int = {
   // _cpuCoreCount.map { max(1, $0) * 2 } ?? .max
-  .max
-}
+  if let environmentValue = Environment.variable(named: "SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH").flatMap(Int.init),
+     environmentValue > 0 {
+    return environmentValue
+  }
+  return .max
+}()
 
 /// A type whose instances can run a series of work items in strict order.
 ///
@@ -42,13 +46,8 @@ var defaultParallelizationWidth: Int {
 /// items do not start running; they must wait until the suspended work item
 /// either returns or throws an error.
 ///
-/// The generic type parameter `T` is unused. It avoids warnings when multiple
-/// copies of the testing library are loaded into a runner process on platforms
-/// which use the Objective-C runtime, due to non-generic actor types being
-/// implemented as classes there.
-///
 /// This type is not part of the public interface of the testing library.
-final actor Serializer<T> {
+final actor Serializer {
   /// The maximum number of work items that may run concurrently.
   nonisolated let maximumWidth: Int
 
