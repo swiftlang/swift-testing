@@ -90,7 +90,9 @@ extension Test {
               await generator.rawValue()
             }
           }
-          result = await taskGroup.reduce(into: result) { $0.insert($1) }
+          for await task in taskGroup {
+            result.insert(task)
+          }
         }
       }
 
@@ -104,7 +106,10 @@ extension Test {
               await generator.rawValue()
             }
           }
-          result = await taskGroup.reduce(into: result) { $0.insert($1) }
+          // result = await taskGroup.reduce(into: result) { $0.insert($1) } // TODO: reduce is not usable since it sends taskGroup
+          for await task in taskGroup {
+            result.insert(task)
+          }
         }
       }
 #endif

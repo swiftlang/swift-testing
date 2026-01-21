@@ -106,7 +106,7 @@ extension TestCancellable {
   /// This function sets up a task cancellation handler and calls `body`. If
   /// the current task, test, or test case is cancelled, it records a
   /// corresponding cancellation event.
-  func withCancellationHandling<R>(_ body: () async throws -> R) async rethrows -> R {
+  nonisolated(nonsending) func withCancellationHandling<R>(_ body: nonisolated(nonsending) () async throws -> R) async rethrows -> R {
     let taskCanceller = _TaskCanceller()
     var currentTaskCancellers = _currentTaskCancellers
     currentTaskCancellers[ObjectIdentifier(Self.self)] = taskCanceller

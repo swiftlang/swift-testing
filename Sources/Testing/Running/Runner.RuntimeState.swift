@@ -203,7 +203,7 @@ extension Test {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ test: Self, perform body: () async throws -> R) async rethrows -> R {
+  static nonisolated(nonsending) func withCurrent<R>(_ test: Self, perform body: nonisolated(nonsending) () async throws -> R) async rethrows -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.test = test
     runtimeState.testCase = nil
@@ -239,7 +239,7 @@ extension Test.Case {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ testCase: Self, perform body: () async throws -> R) async rethrows -> R {
+  static func withCurrent<R>(_ testCase: Self, perform body: nonisolated(nonsending) () async throws -> R) async rethrows -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.testCase = testCase
     return try await Runner.RuntimeState.$current.withValue(runtimeState) {
