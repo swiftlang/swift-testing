@@ -217,6 +217,7 @@ struct TestsWithStaticMemberAccessBySelfKeyword {
   func j(i: Box<@Sendable (Int) -> Range<Int>>) {}
 #endif
 
+  @Suite(.hidden, .enabled(if: Self.x.contains(0)))
   struct Nested {
     static let x = 0 ..< 100
   }
