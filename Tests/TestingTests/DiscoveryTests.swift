@@ -80,30 +80,17 @@ struct DiscoveryTests {
       record.context
     }
 
-#if compiler(>=6.3)
-#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
+#if objectFormat(MachO)
     @section("__DATA_CONST,__swift5_tests")
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#elseif objectFormat(ELF) || objectFormat(Wasm)
     @section("swift5_tests")
-#elseif os(Windows)
+#elseif objectFormat(COFF)
     @section(".sw5test$B")
 #else
     @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
 #endif
     @used
-#else
-#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
-    @_section("__DATA_CONST,__swift5_tests")
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
-    @_section("swift5_tests")
-#elseif os(Windows)
-    @_section(".sw5test$B")
-#else
-    @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
-#endif
-    @_used
-#endif
-    private static let record: __TestContentRecord = (
+    fileprivate static let record: __TestContentRecord = (
       0xABCD1234,
       0,
       { outValue, type, hint, _ in
@@ -123,7 +110,7 @@ struct DiscoveryTests {
     )
   }
 
-  @Test func testDiscovery() async {
+  @Test func testDiscovery() {
     // Check the type of the test record sequence (it should be lazy.)
     let allRecordsSeq = MyTestContent.allTestContentRecords()
 #if SWT_FIXED_143080508

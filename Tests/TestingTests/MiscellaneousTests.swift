@@ -217,6 +217,7 @@ struct TestsWithStaticMemberAccessBySelfKeyword {
   func j(i: Box<@Sendable (Int) -> Range<Int>>) {}
 #endif
 
+  @Suite(.hidden, .enabled(if: Self.x.contains(0)))
   struct Nested {
     static let x = 0 ..< 100
   }
@@ -270,6 +271,14 @@ struct MultiLineSuite {
 @Test(.hidden) func complexOptionalChainingWithRequire() throws {
   let x: String? = nil
   _ = try #require(x?[...].last)
+}
+
+extension Bool {
+  func throwingValue() throws -> Bool { self }
+}
+
+@Test(.hidden) func `Effectful keywords are found in the lexical context of an expression macro`() throws {
+  try #expect(true.throwingValue())
 }
 
 @Suite("Miscellaneous tests")

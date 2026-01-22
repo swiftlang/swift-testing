@@ -553,21 +553,13 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   var configuration = Configuration()
 
   // Parallelization (on by default)
-  if let parallel = args.parallel, !parallel {
+  if let parallel = args.parallel {
     configuration.isParallelizationEnabled = parallel
-  } else {
-    var maximumParallelizationWidth = args.experimentalMaximumParallelizationWidth
-    if maximumParallelizationWidth == nil && Test.current == nil {
-      // Don't check the environment variable when a current test is set (which
-      // presumably means we're running our own unit tests).
-      maximumParallelizationWidth = Environment.variable(named: "SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH").flatMap(Int.init)
+  } else if let maximumParallelizationWidth = args.experimentalMaximumParallelizationWidth {
+    if maximumParallelizationWidth < 1 {
+      throw _EntryPointError.invalidArgument("--experimental-maximum-parallelization-width", value: String(describing: maximumParallelizationWidth))
     }
-    if let maximumParallelizationWidth {
-      if maximumParallelizationWidth < 1 {
-        throw _EntryPointError.invalidArgument("--experimental-maximum-parallelization-width", value: String(describing: maximumParallelizationWidth))
-      }
-      configuration.maximumParallelizationWidth = maximumParallelizationWidth
-    }
+    configuration.maximumParallelizationWidth = maximumParallelizationWidth
   }
 
   // Whether or not to symbolicate backtraces in the event stream.

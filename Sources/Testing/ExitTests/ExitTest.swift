@@ -803,7 +803,7 @@ extension ExitTest {
         ?? parentArguments.dropFirst().last
       // If the running executable appears to be the XCTest runner executable in
       // Xcode, figure out the path to the running XCTest bundle. If we can find
-      // it, then we can re-run the host XCTestCase instance.
+      // it, then we can spawn a child process of it.
       var isHostedByXCTest = false
       if let executablePath = try? childProcessExecutablePath.get() {
         executablePath.withCString { childProcessExecutablePath in
@@ -816,12 +816,9 @@ extension ExitTest {
       }
 
       if isHostedByXCTest, let xctestTargetPath {
-        // HACK: if the current test is being run from within Xcode, we don't
-        // always know we're being hosted by an XCTestCase instance. In cases
-        // where we don't, but the XCTest environment variable specifying the
-        // test bundle is set, assume we _are_ being hosted and specify a
-        // blank test identifier ("/") to force the xctest command-line tool
-        // to run.
+        // HACK: specify a blank test identifier ("/") to force the xctest
+        // command-line tool to run. Xcode will then (eventually) invoke the
+        // testing library which will then start the exit test.
         result += ["-XCTest", "/", xctestTargetPath]
       }
 
