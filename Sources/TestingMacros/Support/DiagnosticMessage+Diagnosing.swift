@@ -189,7 +189,7 @@ func diagnoseIssuesWithLexicalContext(
     diagnostics.append(.genericDeclarationNotSupported(decl, whenUsing: attribute, becauseOf: genericClause, on: lexicalContext))
   } else if let whereClause = lexicalContext.genericWhereClause {
     diagnostics.append(.genericDeclarationNotSupported(decl, whenUsing: attribute, becauseOf: whereClause, on: lexicalContext))
-  } else if [.arrayType, .dictionaryType, .optionalType, .implicitlyUnwrappedOptionalType, .inlineArrayType].contains(lexicalContext.type.kind) {
+  } else if lexicalContext.type.isExplicitlyGeneric {
     diagnostics.append(.genericDeclarationNotSupported(decl, whenUsing: attribute, becauseOf: lexicalContext.type, on: lexicalContext))
   }
 

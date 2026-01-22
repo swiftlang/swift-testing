@@ -143,6 +143,14 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to this function because it has been marked '@available(*, noasync)'",
       "@available(*, noasync) struct S { @Suite struct S {} }":
         "Attribute 'Suite' cannot be applied to this structure because it has been marked '@available(*, noasync)'",
+      "extension S<T> { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type 'S<T>'",
+      "extension S<T> { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'S<T>'",
+      "extension S<T>.U { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type 'S<T>.U'",
+      "extension S<T>.U { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'S<T>.U'",
       "extension [T] { @Test func f() {} }":
         "Attribute 'Test' cannot be applied to a function within a generic extension to type '[T]'",
       "extension [T] { @Suite struct S {} }":
@@ -163,6 +171,14 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function within a generic extension to type '[1 of T]'",
       "extension [1 of T] { @Suite struct S {} }":
         "Attribute 'Suite' cannot be applied to a structure within a generic extension to type '[1 of T]'",
+      "extension (some T).S { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type '(some T).S'",
+      "extension (some T).S { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type '(some T).S'",
+      "extension (any T).S { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type '(any T).S'",
+      "extension (any T).S { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type '(any T).S'",
     ]
   )
   func apiMisuseErrors(input: String, expectedMessage: String) throws {
@@ -486,10 +502,11 @@ struct TestDeclarationMacroTests {
   func differentFunctionTypes(input: String, expectedTypeName: String?, otherCode: String?) throws {
     let (output, _) = try parse(input)
 
-#if hasFeature(SymbolLinkageMarkers)
-    #expect(output.contains("@_section"))
-#endif
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
+#if compiler(>=6.3)
+    #expect(output.contains("@section"))
+    #expect(!output.contains("__TestContentRecordContainer"))
+#else
+    #expect(!output.contains("@section"))
     #expect(output.contains("__TestContentRecordContainer"))
 #endif
     if let expectedTypeName {

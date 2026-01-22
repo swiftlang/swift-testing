@@ -66,7 +66,7 @@ public typealias __XCTestCompatibleSelector = Never
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
-@attached(member) @attached(peer)
+@attached(peer)
 @_documentation(visibility: private)
 public macro Suite(
   _ traits: any SuiteTrait...
@@ -93,7 +93,7 @@ public macro Suite(
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
-@attached(member) @attached(peer) public macro Suite(
+@attached(peer) public macro Suite(
   _ displayName: _const String? = nil,
   _ traits: any SuiteTrait...
 ) = #externalMacro(module: "TestingMacros", type: "SuiteDeclarationMacro")
