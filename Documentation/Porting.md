@@ -194,6 +194,11 @@ to load that information:
  #endif
 ```
 
+> [!NOTE]
+> We are not using `objectFormat()` yet to maintain compatibility with the Swift
+> 6.2 toolchain. We will migrate to `objectFormat()` when we drop Swift 6.2
+> toolchain support (presumably after Swift 6.3 ships).
+
 You may also need to update the `makeTestContentRecordDecl()` function in the
 `TestingMacros` target to emit the correct `@section` attribute for your
 platform if it does not use an image format already supported by Swift Testing:
@@ -210,11 +215,6 @@ platform if it does not use an image format already supported by Swift Testing:
 +    ("CFM", ".rsrc,swft,__swift5_tests"),
    ]
 ```
-
-> [!NOTE]
-> We are not using `objectFormat()` yet to maintain compatibility with the Swift
-> 6.2 toolchain. We will migrate to `objectFormat()` when we drop Swift 6.2
-> toolchain support (presumably after Swift 6.3 ships).
 
 ## Runtime test discovery with static linkage
 
