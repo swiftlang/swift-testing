@@ -36,7 +36,7 @@ public struct Test: Sendable {
       var name: String
       var displayName: String?
       var traits: [any Trait]
-      var sourceBounds: SourceBounds
+      var sourceBounds: __SourceBounds
       var containingTypeInfo: TypeInfo?
       var xcTestCompatibleSelector: __XCTestCompatibleSelector?
       var testCasesState: TestCasesState?
@@ -45,7 +45,7 @@ public struct Test: Sendable {
     }
 
     /// The properties stored by this instance.
-    var properties: Properties
+    let properties: Properties
 
     init(_ properties: Properties) {
       self.properties = properties
@@ -117,7 +117,7 @@ public struct Test: Sendable {
       sourceBounds.lowerBound
     }
     set {
-      sourceBounds = SourceBounds(
+      sourceBounds = __SourceBounds(
         __uncheckedLowerBound: newValue,
         upperBound: (newValue.line, newValue.column + 1)
       )
@@ -157,7 +157,7 @@ public struct Test: Sendable {
   /// On platforms that do not support Objective-C interop, the value of this
   /// property is always `nil`.
   @_spi(ForToolsIntegrationOnly)
-  public nonisolated(unsafe) var xcTestCompatibleSelector: __XCTestCompatibleSelector? {
+  public var xcTestCompatibleSelector: __XCTestCompatibleSelector? {
     get {
       _storage.properties.xcTestCompatibleSelector
     }
@@ -321,17 +321,18 @@ public struct Test: Sendable {
     containingTypeInfo: TypeInfo,
     isSynthesized: Bool = false
   ) {
+    let name = containingTypeInfo.unqualifiedName
     var displayName = displayName
     if displayName == nil && isSynthesized,
        name.count > 2 && name.first == "`" && name.last == "`" {
       displayName = String(name.dropFirst().dropLast())
     }
-    let sourceBounds = SourceBounds(
-      __uncheckedLowerBound: newValue,
-      upperBound: (newValue.line, newValue.column + 1)
+    let sourceBounds = __SourceBounds(
+      __uncheckedLowerBound: sourceLocation,
+      upperBound: (sourceLocation.line, sourceLocation.column + 1)
     )
-    var properties = _Storage.Properties(
-      name: containingTypeInfo.unqualifiedName,
+    let properties = _Storage.Properties(
+      name: name,
       displayName: displayName,
       traits: traits,
       sourceBounds: sourceBounds,

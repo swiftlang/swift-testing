@@ -311,9 +311,7 @@ extension Test {
   /// returns `nil`.
   init?(containing sourceLocation: SourceLocation) {
     let result = Runner.scheduledTests.binarySearch { test in
-      guard let sourceBounds = test.sourceBounds else {
-        return SourceLocation.compare(sourceLocation, test.sourceLocation)
-      }
+      let sourceBounds = test.sourceBounds
       if sourceBounds.contains(sourceLocation) {
         return 0
       }
