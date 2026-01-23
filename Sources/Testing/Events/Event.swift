@@ -316,7 +316,10 @@ extension Event {
   /// `configuration` is not `nil`, `self` is passed to its
   /// ``Configuration/eventHandler`` property. If `configuration` is `nil`, and
   /// ``Configuration/current`` is _not_ `nil`, its event handler is used
-  /// instead. If there is no current configuration, the event is posted to
+  /// instead. If there is no current configuration, we try and post the event
+  /// to a fallback event handler, if one exists.
+  ///
+  /// If we still couldn't find somewhere to send the event, we then post it to
   /// the event handlers of all configurations set as current across all tasks
   /// in the process.
   private borrowing func _post(in context: borrowing Context, configuration: Configuration? = nil) {
@@ -326,6 +329,8 @@ extension Event {
       if configuration.eventHandlingOptions.shouldHandleEvent(self) {
         configuration.handleEvent(self, in: context)
       }
+    } else if postToFallbackHandler(in: context) {
+      // The fallback event handler handled this event.
     } else {
       // The current task does NOT have an associated configuration. This event
       // will be lost! Post it to every registered event handler to avoid that.
