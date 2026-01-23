@@ -32,6 +32,7 @@ add_library(Testing
   Attachments/Attachment.swift
   Events/Clock.swift
   Events/Event.swift
+  Events/Event+FallbackHandler.swift
   Events/Recorder/Event.AdvancedConsoleOutputRecorder.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
   Events/Recorder/Event.HumanReadableOutputRecorder.swift
@@ -122,7 +123,8 @@ add_library(Testing
   Traits/Trait.swift)
 target_link_libraries(Testing PRIVATE
   _TestDiscovery
-  _TestingInternals)
+  _TestingInternals
+  _TestingInterop)
 if(NOT APPLE)
   if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
     target_link_libraries(Testing PUBLIC
