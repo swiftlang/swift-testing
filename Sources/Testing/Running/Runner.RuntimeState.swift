@@ -280,6 +280,13 @@ extension Runner {
   /// ``Runner/run()`` calls this function automatically when a runner begins
   /// running its planned tests.
   static func schedule(_ testsToSchedule: some Sequence<Test>) {
+    // Ignore any synthesized tests as their source location information is
+    // arbitrarily computed from some nested test or suite.
+    let testsToSchedule = testsToSchedule.lazy.filter { !$0.isSynthesized }
+
+    // Merge the incoming tests with the existing set and re-sort them. (In
+    // practice, this function will only be called once and the existing value
+    // will be the empty set).
     _scheduledTests.withLock { scheduledTests in
       var combinedTests = Set(scheduledTests)
       combinedTests.formUnion(testsToSchedule)

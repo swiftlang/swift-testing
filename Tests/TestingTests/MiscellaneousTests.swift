@@ -518,7 +518,7 @@ struct MiscellaneousTests {
   @Test("Properties related to parameterization")
   func parameterizationRelatedProperties() async throws {
     do {
-      let test = Test.__type(SendableTests.self, displayName: "", traits: [], sourceBounds: __SourceBounds(#_sourceLocation))
+      let test = Test.__type(SendableTests.self, displayName: "", traits: [], sourceBounds: __SourceBounds(lowerBoundOnly: #_sourceLocation))
       #expect(!test.isParameterized)
       #expect(test.testCases == nil)
       #expect(test.parameters == nil)
@@ -561,7 +561,7 @@ struct MiscellaneousTests {
 
   @Test("Test.id property")
   func id() async throws {
-    let typeTest = Test.__type(SendableTests.self, displayName: "SendableTests", traits: [], sourceBounds: __SourceBounds(#_sourceLocation))
+    let typeTest = Test.__type(SendableTests.self, displayName: "SendableTests", traits: [], sourceBounds: __SourceBounds(lowerBoundOnly: #_sourceLocation))
     #expect(String(describing: typeTest.id) == "TestingTests.SendableTests")
 
     let fileID = "Module/Y.swift"
@@ -569,7 +569,7 @@ struct MiscellaneousTests {
     let line = 12345
     let column = 67890
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let testFunction = Test.__function(named: "myTestFunction()", in: nil as Never.Type?, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceBounds: __SourceBounds(sourceLocation)) {}
+    let testFunction = Test.__function(named: "myTestFunction()", in: nil as Never.Type?, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceBounds: __SourceBounds(lowerBoundOnly: sourceLocation)) {}
     #expect(String(describing: testFunction.id) == "Module.myTestFunction()/Y.swift:12345:67890")
   }
 
@@ -598,7 +598,26 @@ struct MiscellaneousTests {
 #if !hasFeature(Embedded)
   @Test("Test type is one object/pointer wide")
   func testTypeSize() {
-    #expect(MemoryLayout<Test>.size == MemoryLayout<AnyObject>.size)
+    #expect(MemoryLayout<Test>.stride == MemoryLayout<AnyObject>.stride)
+  }
+#endif
+
+#if DEBUG
+  @Test("Mutation count of the current test is small")
+  func testMutationCount() throws {
+    let test = try #require(Test.current)
+    #expect(
+      test.mutationCount <= 2,
+      """
+      More mutations than expected on test '\(test.name)'. This is not
+      necessarily a bug. Please double-check where the additional mutations came
+      from and confirm they were expected before modifying this test.
+      """
+    )
+
+    var testCopy = test
+    testCopy.name = "\(test.name) copy"
+    #expect(testCopy.mutationCount == test.mutationCount + 1)
   }
 #endif
 

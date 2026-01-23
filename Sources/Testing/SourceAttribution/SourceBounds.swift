@@ -49,6 +49,10 @@ extension __SourceBounds {
 
     self.init(lowerBound: lowerBound, _upperBound: (upperBound.line, upperBound.column))
   }
+
+  init(lowerBoundOnly lowerBound: SourceLocation) {
+    self.init(lowerBound: lowerBound, _upperBound: (lowerBound.line, lowerBound.column + 1))
+  }
 }
 
 // MARK: - RangeExpression
@@ -90,7 +94,7 @@ extension __SourceBounds: RangeExpression {
   }
 }
 
-// MARK: -
+// MARK: - Macro support
 
 extension __SourceBounds {
   /// - Warning: This initializer is used to implement the `@Test` macro. Do not

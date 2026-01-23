@@ -42,6 +42,9 @@ public struct Test: Sendable {
       var testCasesState: TestCasesState?
       var parameters: [Parameter]?
       var isSynthesized: Bool
+#if DEBUG
+      var mutationCount = 0
+#endif
     }
 
     /// The properties stored by this instance.
@@ -63,6 +66,9 @@ public struct Test: Sendable {
   private mutating func _setValue<V>(_ newValue: consuming V, forKeyPath keyPath: WritableKeyPath<_Storage.Properties, V>) {
     var properties = _storage.properties
     properties[keyPath: keyPath] = newValue
+#if DEBUG
+    properties.mutationCount += 1
+#endif
     _storage = _Storage(properties)
   }
 
@@ -117,10 +123,7 @@ public struct Test: Sendable {
       sourceBounds.lowerBound
     }
     set {
-      sourceBounds = __SourceBounds(
-        __uncheckedLowerBound: newValue,
-        upperBound: (newValue.line, newValue.column + 1)
-      )
+      sourceBounds = __SourceBounds(lowerBoundOnly: newValue)
     }
   }
 
@@ -313,6 +316,14 @@ public struct Test: Sendable {
     }
   }
 
+#if DEBUG
+  /// The number of times any property on this instance of ``Test`` has been
+  /// mutated after initialization.
+  var mutationCount: Int {
+    _storage.properties.mutationCount
+  }
+#endif
+
   /// Initialize an instance of this type representing a test suite type.
   init(
     displayName: String? = nil,
@@ -327,10 +338,7 @@ public struct Test: Sendable {
        name.count > 2 && name.first == "`" && name.last == "`" {
       displayName = String(name.dropFirst().dropLast())
     }
-    let sourceBounds = __SourceBounds(
-      __uncheckedLowerBound: sourceLocation,
-      upperBound: (sourceLocation.line, sourceLocation.column + 1)
-    )
+    let sourceBounds = __SourceBounds(lowerBoundOnly: sourceLocation)
     let properties = _Storage.Properties(
       name: name,
       displayName: displayName,
