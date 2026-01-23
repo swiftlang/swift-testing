@@ -1046,6 +1046,29 @@ final class IssueTests: XCTestCase {
 
 #if !SWT_NO_UNSTRUCTURED_TASKS
   func testFailWithoutCurrentTest() async throws {
+    let lowerBound = #_sourceLocation
+    var upperBound = lowerBound
+    upperBound.line += 10 // ballpark number
+    let test = Test(sourceBounds: __SourceBounds(lowerBound: lowerBound, upperBound: upperBound)) {
+      await Task.detached {
+        _ = Issue.record()
+      }.value
+    }
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      XCTAssertFalse(issue.isKnown)
+      XCTAssertNotNil(event.testID)
+      XCTAssertEqual(event.testID, test.id)
+    }
+
+    await test.run(configuration: configuration)
+  }
+
+  func testFailWithoutCurrentTestAndNoSourceLocation() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
@@ -1055,12 +1078,17 @@ final class IssueTests: XCTestCase {
       XCTAssertNil(event.testID)
     }
 
+    @Sendable func body() {
+      _ = Issue.record()
+    }
+
     await Test {
       await Task.detached {
-        _ = Issue.record()
+        body()
       }.value
     }.run(configuration: configuration)
   }
+
 #endif
 
   func testFailBecauseOfError() async throws {

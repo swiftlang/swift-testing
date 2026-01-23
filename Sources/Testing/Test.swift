@@ -53,6 +53,12 @@ public struct Test: Sendable {
   /// The source location of this test.
   public var sourceLocation: SourceLocation
 
+  /// The source bounds of this test.
+  ///
+  /// If this instance represents a test suite, the value of this property is
+  /// `nil` because test suites can span multiple source files.
+  var sourceBounds: __SourceBounds?
+
   /// Information about the type containing this test, if any.
   ///
   /// If a test is associated with a free function or static function, the value
@@ -220,7 +226,7 @@ public struct Test: Sendable {
     name: String,
     displayName: String? = nil,
     traits: [any Trait],
-    sourceLocation: SourceLocation,
+    sourceBounds: __SourceBounds,
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
     testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
@@ -229,7 +235,8 @@ public struct Test: Sendable {
     self.name = name
     self.displayName = displayName
     self.traits = traits
-    self.sourceLocation = sourceLocation
+    self.sourceLocation = sourceBounds.lowerBound
+    self.sourceBounds = sourceBounds
     self.containingTypeInfo = containingTypeInfo
     self.xcTestCompatibleSelector = xcTestCompatibleSelector
     self.testCasesState = .unevaluated { try await testCases() }
@@ -241,7 +248,7 @@ public struct Test: Sendable {
     name: String,
     displayName: String? = nil,
     traits: [any Trait],
-    sourceLocation: SourceLocation,
+    sourceBounds: __SourceBounds,
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
     testCases: Test.Case.Generator<S>,
@@ -250,7 +257,8 @@ public struct Test: Sendable {
     self.name = name
     self.displayName = displayName
     self.traits = traits
-    self.sourceLocation = sourceLocation
+    self.sourceLocation = sourceBounds.lowerBound
+    self.sourceBounds = sourceBounds
     self.containingTypeInfo = containingTypeInfo
     self.xcTestCompatibleSelector = xcTestCompatibleSelector
     self.testCasesState = .evaluated(testCases)

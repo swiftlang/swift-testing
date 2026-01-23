@@ -1,12 +1,22 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
+
+private import _TestingInternals
+
+/// Context for the implementation of ``Array/binarySearch(_:)``.
+///
+/// This type is declared outside an extension to `Array` because it cannot be
+/// generic over `Array.Element`.
+private struct _BinarySearchContext {
+  var compare: (UnsafeRawPointer?) -> CInt
+}
 
 extension Array {
   /// Initialize an array from a single optional value.
@@ -19,6 +29,38 @@ extension Array {
   /// the resulting array is empty.
   init(_ optionalValue: Element?) {
     self = optionalValue.map { [$0] } ?? []
+  }
+
+  /// Perform a binary search on this array looking for an element that matches
+  /// the given predicate function.
+  ///
+  /// - Parameters:
+  ///   - predicate: A predicate function to call. It should return a negative
+  ///     number if the instance of `Element` passed to it sorts _before_ the
+  ///     desired instance, a positive number if it sorts _after_, and `0` if it
+  ///     equals the desired instance.
+  ///
+  /// - Returns: The first element found that matches `predicate`, or `nil` if
+  ///   no matching element is found.
+  ///
+  /// - Precondition: The array _must_ already be sorted according to
+  ///   `predicate`. If it is not sorted, the result is undefined.
+  func binarySearch(_ predicate: (borrowing Element) -> Int) -> Element? {
+    withoutActuallyEscaping(predicate) { predicate in
+      let context = _BinarySearchContext { elementAddress in
+        let elementAddress = elementAddress!.assumingMemoryBound(to: Element.self)
+        return CInt(clamping: predicate(elementAddress.pointee))
+      }
+      return withUnsafePointer(to: context) { context in
+        self.withUnsafeBufferPointer { elements in
+          let result = bsearch(context, elements.baseAddress!, elements.count, MemoryLayout<Element>.stride) { contextAddress, elementAddress in
+            let context = contextAddress!.load(as: _BinarySearchContext.self)
+            return context.compare(elementAddress)
+          }
+          return result?.load(as: Element.self)
+        }
+      }
+    }
   }
 }
 

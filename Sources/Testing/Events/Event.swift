@@ -245,7 +245,18 @@ public struct Event: Sendable {
     // configuration property of Event.Context to nil initially because we'll
     // reset it to the actual configuration that handles the event when we call
     // handleEvent() later, so there's no need to make a copy of it yet.
-    let (test, testCase) = testAndTestCase
+    var (test, testCase) = testAndTestCase
+    if test == nil && testCase == nil,
+       case let .issueRecorded(issue) = kind,
+       let issueSourceLocation = issue.sourceLocation {
+      // There was no test on the current task, but an issue was recorded. Check
+      // if its source location lines up with the bounds of any known test and
+      // attribute it to that test (but no test case) if so.
+      test = Test(containing: issueSourceLocation)
+      if let test, !test.isParameterized {
+        testCase = test.testCases?.first { _ in true }
+      }
+    }
     let event = Event(kind, testID: test?.id, testCaseID: testCase?.id, instant: instant)
     let context = Event.Context(test: test, testCase: testCase, configuration: nil)
     event._post(in: context, configuration: configuration)

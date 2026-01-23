@@ -39,3 +39,13 @@ func createSourceLocationExpr(of expr: some SyntaxProtocol, context: some MacroE
 
   return "Testing.SourceLocation(fileID: \(fileIDSourceLoc.file), filePath: \(filePathSourceLoc.file), line: \(fileIDSourceLoc.line), column: \(fileIDSourceLoc.column))"
 }
+
+func createSourceBoundsExpr(from lowerBoundNode: some SyntaxProtocol, to upperBoundNode: some SyntaxProtocol, context: some MacroExpansionContext) -> ExprSyntax {
+  let lowerBoundExpr = createSourceLocationExpr(of: lowerBoundNode, context: context)
+  let upperBoundExpr: ExprSyntax = if let upperBoundSourceLoc = context.location(of: upperBoundNode, at: .beforeTrailingTrivia, filePathMode: .fileID) {
+    "(\(upperBoundSourceLoc.line), \(upperBoundSourceLoc.column))"
+  } else {
+    "(.max, .max)"
+  }
+  return "Testing.__SourceBounds(__uncheckedLowerBound: \(lowerBoundExpr), upperBound: \(upperBoundExpr))"
+}

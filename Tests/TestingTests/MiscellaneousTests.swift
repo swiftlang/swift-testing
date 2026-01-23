@@ -518,7 +518,7 @@ struct MiscellaneousTests {
   @Test("Properties related to parameterization")
   func parameterizationRelatedProperties() async throws {
     do {
-      let test = Test.__type(SendableTests.self, displayName: "", traits: [], sourceLocation: #_sourceLocation)
+      let test = Test.__type(SendableTests.self, displayName: "", traits: [], sourceBounds: __SourceBounds(#_sourceLocation))
       #expect(!test.isParameterized)
       #expect(test.testCases == nil)
       #expect(test.parameters == nil)
@@ -561,7 +561,7 @@ struct MiscellaneousTests {
 
   @Test("Test.id property")
   func id() async throws {
-    let typeTest = Test.__type(SendableTests.self, displayName: "SendableTests", traits: [], sourceLocation: #_sourceLocation)
+    let typeTest = Test.__type(SendableTests.self, displayName: "SendableTests", traits: [], sourceBounds: __SourceBounds(#_sourceLocation))
     #expect(String(describing: typeTest.id) == "TestingTests.SendableTests")
 
     let fileID = "Module/Y.swift"
@@ -569,7 +569,7 @@ struct MiscellaneousTests {
     let line = 12345
     let column = 67890
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let testFunction = Test.__function(named: "myTestFunction()", in: nil as Never.Type?, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceLocation: sourceLocation) {}
+    let testFunction = Test.__function(named: "myTestFunction()", in: nil as Never.Type?, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceBounds: __SourceBounds(sourceLocation)) {}
     #expect(String(describing: testFunction.id) == "Module.myTestFunction()/Y.swift:12345:67890")
   }
 
