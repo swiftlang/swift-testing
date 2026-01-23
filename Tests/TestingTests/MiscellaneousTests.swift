@@ -595,6 +595,13 @@ struct MiscellaneousTests {
     #expect(id.keyPathRepresentation == [""])
   }
 
+#if !hasFeature(Embedded)
+  @Test("Test type is one object/pointer wide")
+  func testTypeSize() {
+    #expect(MemoryLayout<Test>.size == MemoryLayout<AnyObject>.size)
+  }
+#endif
+
   @Test("failureBreakpoint() call")
   func failureBreakpointCall() {
     failureBreakpointValue = 1
