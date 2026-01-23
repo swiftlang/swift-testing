@@ -58,7 +58,7 @@ struct DiscoveryTests {
   }
 #endif
 
-#if compiler(>=6.3) && !SWT_NO_DYNAMIC_LINKING
+#if !SWT_NO_DYNAMIC_LINKING
   struct MyTestContent: DiscoverableAsTestContent {
     typealias TestContentAccessorHint = UInt32
 
@@ -142,22 +142,5 @@ struct DiscoveryTests {
       && record.context == MyTestContent.expectedContext
     })
   }
-
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-  struct `__🟡$LegacyTestContentRecord`: __TestContentRecordContainer {
-    static var __testContentRecord: __TestContentRecord {
-      MyTestContent.record
-    }
-  }
-
-  @Test func legacyTestDiscovery() throws {
-    let allRecords = Array(MyTestContent.allTypeMetadataBasedTestContentRecords())
-    #expect(allRecords.count == 1)
-    let record = try #require(allRecords.first)
-    #expect(record.context == MyTestContent.expectedContext)
-    let content = try #require(record.load())
-    #expect(content.value == MyTestContent.expectedValue)
-  }
-#endif
 #endif
 }

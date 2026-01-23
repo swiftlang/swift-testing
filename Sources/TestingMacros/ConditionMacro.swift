@@ -491,19 +491,6 @@ extension ExitTestConditionMacro {
         in: context
       )
 
-      // Create another local type for legacy test discovery.
-      var recordDecl: DeclSyntax?
-#if compiler(<6.3)
-      let legacyEnumName = context.makeUniqueName("__🟡$")
-      recordDecl = """
-      enum \(legacyEnumName): Testing.__TestContentRecordContainer {
-        nonisolated static var __testContentRecord: Testing.__TestContentRecord {
-          unsafe \(enumName).testContentRecord
-        }
-      }
-      """
-#endif
-
       decls.append(
         """
         @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
@@ -519,8 +506,6 @@ extension ExitTestConditionMacro {
           }
 
           \(testContentRecordDecl)
-
-          \(recordDecl)
         }
         """
       )
