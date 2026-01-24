@@ -25,6 +25,7 @@ jobs:
       ios_host_exclude_xcode_versions: '[{"xcode_version": "16.2"}, {"xcode_version": "16.3"}, {"xcode_version": "16.4"}]'
       enable_wasm_sdk_build: true
       enable_android_sdk_build: true
+      enable_android_sdk_checks: true
       android_ndk_versions: '["r28c"]'
       android_sdk_triples: '["aarch64-unknown-linux-android33", "x86_64-unknown-linux-android28"]'
   soundness:
