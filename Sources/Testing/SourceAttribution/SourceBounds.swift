@@ -15,6 +15,7 @@ public struct __SourceBounds: Sendable {
   /// The lower bound of this range.
   ///
   /// The range includes this source location.
+  @_spi(Experimental)
   public fileprivate(set) var lowerBound: SourceLocation
 
   /// Storage for ``upperBound``.
@@ -23,6 +24,7 @@ public struct __SourceBounds: Sendable {
   /// The upper bound of this range.
   ///
   /// The range does _not_ include this source location.
+  @_spi(Experimental)
   public var upperBound: SourceLocation {
     SourceLocation(
       fileID: lowerBound.fileID,
