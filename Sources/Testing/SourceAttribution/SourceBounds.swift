@@ -76,17 +76,13 @@ extension __SourceBounds: RangeExpression {
     // ```
     //
     // However that implementation produces extra redundant string comparisons.
-    if element.line == lowerBound.line {
-      guard element.column >= lowerBound.column else {
-        // `element` is earlier on the same line as `lowerBound`.
-        return false
-      }
+    if element.line == lowerBound.line && element.column < lowerBound.column {
+      // `element` is earlier on the same line as `lowerBound`.
+      return false
     }
-    if element.line == _upperBound.line {
-      guard element.column < _upperBound.column else {
-        // `element` is later on the same line as `_upperBound`.
-        return false
-      }
+    if element.line == _upperBound.line && element.column >= _upperBound.column {
+      // `element` is later on the same line as `_upperBound`.
+      return false
     }
     if element.line >= lowerBound.line && element.line < _upperBound.line,
        element.fileID == lowerBound.fileID && element.filePath == lowerBound.filePath {
