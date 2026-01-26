@@ -130,7 +130,13 @@ When porting to a new platform, you may need to provide a new implementation for
 on Swift metadata discovery which is an inherently platform-specific operation.
 
 _Most_ platforms in use today use the ELF image format and will be able to reuse
-the implementation used by Linux.
+the implementation used by Linux, FreeBSD, etc.
+
+> [!NOTE]
+> We are not using `objectFormat()` in this file yet in order to maintain
+> compatibility with the Swift 6.2 toolchain. We will migrate to
+> `objectFormat()` when the `_TestDiscovery` target drops Swift 6.2 toolchain
+> support in the future.
 
 Classic does not use the ELF image format, so you'll need to write a custom
 implementation of `_sectionBounds(_:)` instead. Assuming that the Swift compiler
@@ -192,27 +198,21 @@ to load that information:
  #endif
 ```
 
-You will also need to update the `makeTestContentRecordDecl()` function in the
-`TestingMacros` target to emit the correct `@_section` attribute for your
-platform. If your platform uses the ELF image format and supports the
-`dl_iterate_phdr()` function, add it to the existing `#elseif os(Linux) || ...`
-case. Otherwise, add a new case for your platform:
+You may also need to update the `makeTestContentRecordDecl()` function in the
+`TestingMacros` target to emit the correct `@section` attribute for your
+platform if it does not use an image format already supported by Swift Testing:
 
 ```diff
 --- a/Sources/TestingMacros/Support/TestContentGeneration.swift
 +++ b/Sources/TestingMacros/Support/TestContentGeneration.swift
-   // ...
-+  #elseif os(Classic)
-+  @_section(".rsrc,swft,__swift5_tests")
-   #else
-   @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
-   #endif
+   let objectFormatsAndSectionNames: [(objectFormat: String, sectionName: String)] = [
+     ("MachO", "__DATA_CONST,__swift5_tests"),
+     ("ELF", "swift5_tests"),
+     ("COFF", ".sw5test$B"),
+     ("Wasm", "swift5_tests"),
++    ("CFM", ".rsrc,swft,__swift5_tests"),
+   ]
 ```
-
-Keep in mind that this code is emitted by the `@Test` and `@Suite` macros
-directly into test authors' test targets, so you will not be able to use
-compiler conditionals defined in the Swift Testing package (including those that
-start with `"SWT_"`).
 
 ## Runtime test discovery with static linkage
 

@@ -13,10 +13,6 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
-#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
-#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand #expect(processExitsWith:)")
-#endif
-
 /// A protocol containing the common implementation for the expansions of the
 /// `#expect()` and `#require()` macros.
 ///
@@ -491,12 +487,13 @@ extension ExitTestConditionMacro {
         named: .identifier("testContentRecord"),
         in: TypeSyntax(IdentifierTypeSyntax(name: enumName)),
         ofKind: .exitTest,
-        accessingWith: .identifier("accessor")
+        accessingWith: .identifier("accessor"),
+        in: context
       )
 
       // Create another local type for legacy test discovery.
       var recordDecl: DeclSyntax?
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
+#if compiler(<6.3)
       let legacyEnumName = context.makeUniqueName("__🟡$")
       recordDecl = """
       enum \(legacyEnumName): Testing.__TestContentRecordContainer {
@@ -637,7 +634,7 @@ extension ExitTestConditionMacro {
           diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: lexicalContext))
         } else if let whereClause = lexicalContext.genericWhereClause {
           diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: lexicalContext))
-        } else if [.arrayType, .dictionaryType, .optionalType, .implicitlyUnwrappedOptionalType, .inlineArrayType].contains(lexicalContext.type.kind) {
+        } else if lexicalContext.type.isExplicitlyGeneric {
           diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: lexicalContext.type, on: lexicalContext))
         }
       } else if let functionDecl = lexicalContext.as(FunctionDeclSyntax.self) {

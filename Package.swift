@@ -142,9 +142,18 @@ let package = Package(
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("Testing"),
-      linkerSettings: [
-        .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
-      ]
+      linkerSettings: {
+        var result = [LinkerSetting]()
+        result += [
+          .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
+        ]
+#if compiler(>=6.3)
+        result += [
+          .linkedLibrary("_TestingInterop"),
+        ]
+#endif
+        return result
+      }()
     ),
     .testTarget(
       name: "TestingTests",
@@ -378,11 +387,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableUpcomingFeature("InternalImportsByDefault"),
 
       .enableUpcomingFeature("MemberImportVisibility"),
-
-      // This setting is enabled in the package, but not in the toolchain build
-      // (via CMake). Enabling it is dependent on acceptance of the @section
-      // proposal via Swift Evolution.
-      .enableExperimentalFeature("SymbolLinkageMarkers"),
 
       // Enabled to allow tests to be added to ~Escapable suites.
       .enableExperimentalFeature("Lifetimes"),
