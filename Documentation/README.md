@@ -23,6 +23,10 @@ as supplemental content located in the
 [`Sources/Testing/Testing.docc/`](https://github.com/swiftlang/swift-testing/tree/main/Sources/Testing/Testing.docc)
 directory.
 
+[Obtaining Swift Testing](https://github.com/swiftlang/swift-testing/blob/main/Documentation/Distributions.md)
+discusses the various ways Swift Testing is distributed and offers recommended
+usage workflows.
+
 ## Vision document and API proposals
 
 The [Vision document](https://github.com/swiftlang/swift-evolution/blob/main/visions/swift-testing.md)
