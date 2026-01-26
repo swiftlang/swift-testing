@@ -74,7 +74,7 @@ struct Test_CaseTests {
           {"bytes": [1]}
         ]}
         """.utf8)
-      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData)
+      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData.bytes)
       #expect(testCaseID.isStable)
 
       let argumentIDs = try #require(testCaseID.argumentIDs)
@@ -83,7 +83,7 @@ struct Test_CaseTests {
 
     @Test func legacyDecoding_nonStable() throws {
       let encodedData = Data("{}".utf8)
-      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData)
+      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData.bytes)
       #expect(!testCaseID.isStable)
 
       let argumentIDs = try #require(testCaseID.argumentIDs)
@@ -92,7 +92,7 @@ struct Test_CaseTests {
 
     @Test func legacyDecoding_nonParameterized() throws {
       let encodedData = Data(#"{"argumentIDs": []}"#.utf8)
-      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData)
+      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData.bytes)
       #expect(testCaseID.isStable)
       #expect(testCaseID.argumentIDs == nil)
       #expect(testCaseID.discriminator == nil)
@@ -100,7 +100,7 @@ struct Test_CaseTests {
 
     @Test func newDecoding_nonParameterized() throws {
       let encodedData = Data(#"{"isStable": true}"#.utf8)
-      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData)
+      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData.bytes)
       #expect(testCaseID.isStable)
       #expect(testCaseID.argumentIDs == nil)
       #expect(testCaseID.discriminator == nil)
@@ -116,7 +116,7 @@ struct Test_CaseTests {
           "discriminator": 0
         }
         """.utf8)
-      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData)
+      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData.bytes)
       #expect(testCaseID.isStable)
       #expect(testCaseID.argumentIDs?.count == 1)
       #expect(testCaseID.discriminator == 0)
