@@ -8,8 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
-
 /// A type representing a location in source code.
 public struct SourceLocation: Sendable {
   /// The file ID of the source file.

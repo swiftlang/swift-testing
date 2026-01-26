@@ -8,10 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
-private import Foundation
-#endif
-
 extension ABI {
   /// A type implementing the JSON encoding of ``SourceLocation`` for the ABI
   /// entry point and event stream output.
