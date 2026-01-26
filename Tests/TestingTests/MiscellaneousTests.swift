@@ -595,6 +595,32 @@ struct MiscellaneousTests {
     #expect(id.keyPathRepresentation == [""])
   }
 
+#if !hasFeature(Embedded)
+  @Test("Test type is one object/pointer wide")
+  func testTypeSize() {
+    #expect(MemoryLayout<Test>.stride == MemoryLayout<AnyObject>.stride)
+  }
+#endif
+
+#if DEBUG
+  @Test("Mutation count of the current test is small")
+  func testMutationCount() throws {
+    let test = try #require(Test.current)
+    #expect(
+      test.mutationCount <= 2,
+      """
+      More mutations than expected on test '\(test.name)'. This is not
+      necessarily a bug. Please double-check where the additional mutations came
+      from and confirm they were expected before modifying this test.
+      """
+    )
+
+    var testCopy = test
+    testCopy.name = "\(test.name) copy"
+    #expect(testCopy.mutationCount == test.mutationCount + 1)
+  }
+#endif
+
   @Test("failureBreakpoint() call")
   func failureBreakpointCall() {
     failureBreakpointValue = 1
