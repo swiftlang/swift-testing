@@ -1045,7 +1045,48 @@ final class IssueTests: XCTestCase {
   }
 
 #if !SWT_NO_UNSTRUCTURED_TASKS
+  // Positioned outside the bounds of the test function. Checks that source
+  // location info can be successfully propagated to a callee and recovered from
+  // the issue.
+  @Sendable private static func recordIssue(sourceLocation: SourceLocation) {
+    _ = Issue.record(sourceLocation: sourceLocation)
+  }
+
   func testFailWithoutCurrentTest() async throws {
+    let issueRecorded = expectation(description: "Issue recorded")
+    issueRecorded.expectedFulfillmentCount = 2
+
+    let lowerBound = #_sourceLocation
+    let upperBound = Self.testFailWithoutCurrentTestEnd
+    let sourceBounds = __SourceBounds(
+      __uncheckedLowerBound: lowerBound,
+      upperBound: (upperBound.line, upperBound.column)
+    )
+    let test = Test(sourceBounds: sourceBounds) {
+      await Task.detached {
+        _ = Issue.record()
+        Self.recordIssue(sourceLocation: #_sourceLocation)
+      }.value
+    }
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      XCTAssertFalse(issue.isKnown)
+      XCTAssertNotNil(event.testID)
+      XCTAssertEqual(event.testID, test.id)
+      issueRecorded.fulfill()
+    }
+
+    await test.run(configuration: configuration)
+
+    await fulfillment(of: [issueRecorded], timeout: 0.0)
+  }
+  private static let testFailWithoutCurrentTestEnd = #_sourceLocation
+
+  func testFailWithoutCurrentTestAndNoSourceLocation() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
@@ -1055,12 +1096,17 @@ final class IssueTests: XCTestCase {
       XCTAssertNil(event.testID)
     }
 
+    @Sendable func helper() {
+      _ = Issue.record()
+    }
+
     await Test {
       await Task.detached {
-        _ = Issue.record()
+        helper()
       }.value
     }.run(configuration: configuration)
   }
+
 #endif
 
   func testFailBecauseOfError() async throws {
