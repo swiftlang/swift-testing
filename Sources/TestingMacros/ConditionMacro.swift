@@ -487,7 +487,17 @@ extension ExitTestConditionMacro {
         named: .identifier("testContentRecord"),
         in: TypeSyntax(IdentifierTypeSyntax(name: enumName)),
         ofKind: .exitTest,
-        accessingWith: .identifier("accessor"),
+        accessingWith: """
+        { outValue, type, hint, _ in
+          Testing.ExitTest.__store(
+            \(idExpr),
+            \(bodyThunkName),
+            into: outValue,
+            asTypeAt: type,
+            withHintAt: hint
+          )
+        }
+        """,
         in: context
       )
 
@@ -508,16 +518,6 @@ extension ExitTestConditionMacro {
         """
         @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
         enum \(enumName) {
-          private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint, _ in
-            Testing.ExitTest.__store(
-              \(idExpr),
-              \(bodyThunkName),
-              into: outValue,
-              asTypeAt: type,
-              withHintAt: hint
-            )
-          }
-
           \(testContentRecordDecl)
 
           \(recordDecl)
