@@ -188,7 +188,7 @@ extension Attachment: CustomStringConvertible where AttachableValue: ~Copyable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public var description: String {
-    if #available(_castingWithNonCopyableGenerics, *), let attachableValue = boxCopyableValue(attachableValue) {
+    if #available(_castingWithNonCopyableGenerics, *), let attachableValue = makeExistential(attachableValue) {
       return #""\#(preferredName)": \#(String(describingForTest: attachableValue))"#
     }
     let typeInfo = TypeInfo(describing: AttachableValue.self)

@@ -12,14 +12,14 @@
 public struct Expectation: Sendable {
   /// The expression evaluated by this expectation.
   @_spi(ForToolsIntegrationOnly)
-  public var evaluatedExpression: Expression
+  public internal(set) var evaluatedExpression: Expression
 
   /// A description of the error mismatch that occurred, if any.
   ///
   /// If this expectation passed, the value of this property is `nil` because no
   /// error mismatch occurred.
   @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-  public var mismatchedErrorDescription: String?
+  public internal(set) var mismatchedErrorDescription: String?
 
   /// A description of the difference between the operands in the expression
   /// evaluated by this expectation, if the difference could be determined.
@@ -28,14 +28,9 @@ public struct Expectation: Sendable {
   /// the difference is only computed when necessary to assist with diagnosing
   /// test failures.
   @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-  public var differenceDescription: String?
-
-  /// A description of the exit condition that was expected to be matched.
-  ///
-  /// If this expectation passed, the value of this property is `nil` because no
-  /// exit test failed.
-  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-  public var mismatchedExitConditionDescription: String?
+  public var differenceDescription: String? {
+    evaluatedExpression.differenceDescription
+  }
 
   /// Whether the expectation passed or failed.
   ///
@@ -100,7 +95,7 @@ extension Expectation {
     /// - Parameter expectation: The real expectation.
     public init(snapshotting expectation: borrowing Expectation) {
       self.evaluatedExpression = expectation.evaluatedExpression
-      self.mismatchedErrorDescription = expectation.mismatchedErrorDescription ?? expectation.mismatchedExitConditionDescription
+      self.mismatchedErrorDescription = expectation.mismatchedErrorDescription
       self.differenceDescription = expectation.differenceDescription
       self.isPassing = expectation.isPassing
       self.isRequired = expectation.isRequired

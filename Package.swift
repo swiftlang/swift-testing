@@ -186,6 +186,13 @@ let package = Package(
       path: "Tests/_MemorySafeTestingTests",
       swiftSettings: .packageSettings + [.strictMemorySafety()]
     ),
+    .testTarget(
+      name: "SubexpressionShowcase",
+      dependencies: [
+        "Testing",
+      ],
+      swiftSettings: .packageSettings
+    ),
 
     .macro(
       name: "TestingMacros",
@@ -392,6 +399,8 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("Lifetimes"),
 
       .enableUpcomingFeature("InferIsolatedConformances"),
+
+      .enableExperimentalFeature("Lifetimes"),
 
       // When building as a package, the macro plugin always builds as an
       // executable rather than a library.
