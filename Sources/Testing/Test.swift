@@ -128,9 +128,6 @@ public struct Test: Sendable {
   }
 
   /// The source bounds of this test.
-  ///
-  /// If this instance represents a test suite, the value of this property is
-  /// `nil` because test suites can span multiple source files.
   var sourceBounds: __SourceBounds {
     get {
       _storage.properties.sourceBounds

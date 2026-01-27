@@ -140,7 +140,7 @@ struct AttributeInfo {
 
     // Use the start of the test attribute's name as the canonical source
     // location of the test.
-    sourceBounds = createSourceBoundsExpr(from: attribute.attributeName, to: declaration, context: context)
+    sourceBounds = createSourceBoundsExpr(from: attribute.attributeName, to: declaration, in: context)
 
     // After this instance is fully initialized, diagnose known issues.
     diagnoseIssuesWithTraits(in: context)

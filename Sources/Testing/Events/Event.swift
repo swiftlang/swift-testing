@@ -251,7 +251,9 @@ public struct Event: Sendable {
        let issueSourceLocation = issue.sourceLocation {
       // There was no test on the current task, but an issue was recorded. Check
       // if its source location lines up with the bounds of any known test and
-      // attribute it to that test (but no test case) if so.
+      // attribute it to that test if so. We only set the test case if the test
+      // is monomorphic (because for parameterized tests, we can't reliably tell
+      // which set of inputs triggered the issue).
       test = Test(containing: issueSourceLocation)
       if let test, !test.isParameterized {
         testCase = test.testCases?.first { _ in true }

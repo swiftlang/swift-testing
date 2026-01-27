@@ -1047,9 +1047,11 @@ final class IssueTests: XCTestCase {
 #if !SWT_NO_UNSTRUCTURED_TASKS
   func testFailWithoutCurrentTest() async throws {
     let lowerBound = #_sourceLocation
-    var upperBound = lowerBound
-    upperBound.line += 10 // ballpark number
-    let test = Test(sourceBounds: __SourceBounds(lowerBound: lowerBound, upperBound: upperBound)) {
+    let sourceBounds = __SourceBounds(
+      __uncheckedLowerBound: lowerBound,
+      upperBound: (lowerBound.line + 10, lowerBound.column) // ballpark number
+    )
+    let test = Test(sourceBounds: sourceBounds) {
       await Task.detached {
         _ = Issue.record()
       }.value

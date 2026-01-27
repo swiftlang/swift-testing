@@ -19,6 +19,10 @@ public struct __SourceBounds: Sendable {
   public fileprivate(set) var lowerBound: SourceLocation
 
   /// Storage for ``upperBound``.
+  ///
+  /// - Note: If we ever need to save a word in this structure, we can probably
+  ///   narrow the fields of this tuple to `Int32` without affecting any
+  ///   real-world use cases.
   private var _upperBound: (line: Int, column: Int)
 
   /// The upper bound of this range.
@@ -39,19 +43,6 @@ public struct __SourceBounds: Sendable {
 
 @_spi(Experimental)
 extension __SourceBounds {
-  public init(lowerBound: SourceLocation, upperBound: SourceLocation) {
-#if DEBUG
-    precondition(lowerBound.fileID == upperBound.fileID, "Cannot construct an instance of '__SourceBounds' across two different file IDs")
-    precondition(lowerBound.filePath == upperBound.filePath, "Cannot construct an instance of '__SourceBounds' across two different file paths")
-    precondition(lowerBound.line <= upperBound.line, "Cannot construct an instance of '__SourceBounds' whose upper bound comes before its lower bound")
-    if lowerBound.line == upperBound.line {
-      precondition(lowerBound.column < upperBound.column, "Cannot construct an instance of '__SourceBounds' whose upper bound comes before its lower bound")
-    }
-#endif
-
-    self.init(lowerBound: lowerBound, _upperBound: (upperBound.line, upperBound.column))
-  }
-
   init(lowerBoundOnly lowerBound: SourceLocation) {
     self.init(lowerBound: lowerBound, _upperBound: (lowerBound.line, lowerBound.column + 1))
   }
@@ -69,13 +60,12 @@ extension __SourceBounds: RangeExpression {
   }
   
   public func contains(_ element: SourceLocation) -> Bool {
-    // This function can also be implemented more simply as:
-    //
-    // ```swift
-    // lowerBound <= element && element < _upperBound
-    // ```
-    //
-    // However that implementation produces extra redundant string comparisons.
+    return lowerBound <= element && element < upperBound
+
+    // The trivial implementation compares fileID and filePath twice. We can
+    // avoid those comparisons with the algorithm below if needed (and if the
+    // compiler is unable to optimize away the extra comparisons):
+#if false
     if element.line == lowerBound.line && element.column < lowerBound.column {
       // `element` is earlier on the same line as `lowerBound`.
       return false
@@ -89,6 +79,7 @@ extension __SourceBounds: RangeExpression {
       return true
     }
     return false
+#endif
   }
 }
 

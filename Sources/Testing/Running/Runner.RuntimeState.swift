@@ -275,7 +275,7 @@ extension Runner {
   ///     ``Test/id`` property), it is only tracked once.
   ///
   /// To get a list of all tests that have been passed to this function, get the
-  /// value of the ``testsThatHaveRun`` property.
+  /// value of the ``scheduledTests`` property.
   ///
   /// ``Runner/run()`` calls this function automatically when a runner begins
   /// running its planned tests.
