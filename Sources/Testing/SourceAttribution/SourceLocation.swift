@@ -134,18 +134,42 @@ extension SourceLocation: Equatable, Hashable, Comparable {
   }
 
   public static func <(lhs: Self, rhs: Self) -> Bool {
+    return Self.compare(lhs, rhs) < 0
+  }
+
+  public static func <=(lhs: Self, rhs: Self) -> Bool {
+    return Self.compare(lhs, rhs) <= 0
+  }
+
+  public static func >(lhs: Self, rhs: Self) -> Bool {
+    return Self.compare(lhs, rhs) > 0
+  }
+
+  public static func >=(lhs: Self, rhs: Self) -> Bool {
+    return Self.compare(lhs, rhs) >= 0
+  }
+
+  /// Get the relative ordering of two source locations.
+  ///
+  /// - Parameters:
+  ///   - lhs: The first instance to compare.
+  ///   - rhs: The second instance to compare.
+  ///
+  /// - Returns: If `lhs` sorts before `rhs`, a negative number. If `lhs` sorts
+  ///   after `rhs`, a positive number. If they sort equal, `0`.
+  static func compare(_ lhs: SourceLocation, _ rhs: SourceLocation) -> Int {
     // Tests are sorted in the order in which they appear in source, with file
     // IDs sorted alphabetically in the neutral locale.
-    if lhs.fileID < rhs.fileID {
-      return true
-    } else if lhs.fileID == rhs.fileID {
-      if lhs.line < rhs.line {
-        return true
-      } else if lhs.line == rhs.line {
-        return lhs.column < rhs.column
-      }
+    if lhs.fileID != rhs.fileID {
+      return lhs.fileID < rhs.fileID ? -1 : 1
     }
-    return false
+    if lhs.line != rhs.line {
+      return lhs.line - rhs.line
+    }
+    if lhs.column != rhs.column {
+      return lhs.column - rhs.column
+    }
+    return 0
   }
 }
 
