@@ -48,14 +48,14 @@ struct TagListTests {
   }
 
   @Test("Tag.description property", arguments: [
-    Tag.namedConstant: ".namedConstant",
-    .anotherConstant: ".anotherConstant",
-    .red: ".red",
-    .orange: ".orange",
-    .yellow: ".yellow",
-    .green: ".green",
-    .blue: ".blue",
-    .purple: ".purple",
+    Tag.namedConstant: "namedConstant",
+    .anotherConstant: "anotherConstant",
+    .red: "red",
+    .orange: "orange",
+    .yellow: "yellow",
+    .green: "green",
+    .blue: "blue",
+    .purple: "purple",
   ])
   func tagDescription(tag: Tag, expectedDescription: String) throws {
     #expect(String(describing: tag) == expectedDescription)
@@ -65,7 +65,7 @@ struct TagListTests {
   func tagListDescription() throws {
     let trait = Tag.List.tags(.namedConstant, .anotherConstant, .red, .orange, .yellow, .green, .blue, .purple)
     #expect((trait as Any) is Tag.List)
-    #expect(String(describing: trait) == ".namedConstant, .anotherConstant, .red, .orange, .yellow, .green, .blue, .purple")
+    #expect(String(describing: trait) == "namedConstant, anotherConstant, red, orange, yellow, green, blue, purple")
   }
 
   @Test("Tag.List comparisons")
