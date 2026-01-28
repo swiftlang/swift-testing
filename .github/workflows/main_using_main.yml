@@ -19,6 +19,7 @@ jobs:
     with:
       linux_swift_versions: '["nightly-main"]'
       linux_os_versions: '["amazonlinux2", "jammy"]'
+      linux_static_sdk_versions: '["nightly-main"]'
       windows_swift_versions: '["nightly-main"]'
       enable_macos_checks: true
       macos_exclude_xcode_versions: '[{"xcode_version": "16.2"}, {"xcode_version": "16.3"}, {"xcode_version": "16.4"}]'
