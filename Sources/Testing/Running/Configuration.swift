@@ -236,6 +236,16 @@ public struct Configuration: Sendable {
   public var eventHandler: Event.Handler = { _, _ in }
 
 #if !SWT_NO_EXIT_TESTS
+  /// Storage for ``exitTestHandler``.
+  private var _exitTestHandler: (any Sendable)? = {
+    if #available(_posixSpawnAPI, *) {
+      return { exitTest in
+        throw SystemError(description: "Exit test support has not been implemented by the current testing infrastructure.")
+      } as ExitTest.Handler
+    }
+    return nil
+  }()
+
   /// A handler that is invoked when an exit test starts.
   ///
   /// For an explanation of how this property is used, see ``ExitTest/Handler``.
@@ -243,8 +253,14 @@ public struct Configuration: Sendable {
   /// When using the `swift test` command from Swift Package Manager, this
   /// property is pre-configured. Otherwise, the default value of this property
   /// records an issue indicating that it has not been configured.
-  public var exitTestHandler: ExitTest.Handler = { exitTest in
-    throw SystemError(description: "Exit test support has not been implemented by the current testing infrastructure.")
+	@available(_posixSpawnAPI, *)
+  public var exitTestHandler: ExitTest.Handler {
+    get {
+      _exitTestHandler as! ExitTest.Handler
+    }
+    set {
+      _exitTestHandler = newValue
+    }
   }
 #endif
 
