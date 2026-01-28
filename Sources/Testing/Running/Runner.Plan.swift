@@ -294,6 +294,8 @@ extension Runner.Plan {
       Backtrace.flushThrownErrorCache()
     }
 
+    _ = Event.installFallbackEventHandler()
+
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining
     // them, in which case it will be .recordIssue().
