@@ -150,21 +150,6 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
       )
     )
 
-#if compiler(<6.3)
-    // Emit a type that contains a reference to the test content record.
-    let enumName = context.makeUniqueName("__🟡$")
-    result.append(
-      """
-      @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      enum \(enumName): Testing.__TestContentRecordContainer {
-        nonisolated static var __testContentRecord: Testing.__TestContentRecord {
-          unsafe \(testContentRecordName)
-        }
-      }
-      """
-    )
-#endif
-
     return result
   }
 }

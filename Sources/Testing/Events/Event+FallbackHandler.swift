@@ -11,7 +11,7 @@
 private import _TestingInternals
 
 extension Event {
-#if compiler(>=6.3) && !SWT_NO_INTEROP
+#if !SWT_NO_INTEROP
   private static let _fallbackEventHandler: SWTFallbackEventHandler? = {
     _swift_testing_getFallbackEventHandler()
   }()
@@ -26,7 +26,7 @@ extension Event {
   ///   currently-installed handler belongs to the testing library, returns
   ///   `false`.
   borrowing func postToFallbackHandler(in context: borrowing Context) -> Bool {
-#if compiler(>=6.3) && !SWT_NO_INTEROP
+#if !SWT_NO_INTEROP
     guard let fallbackEventHandler = Self._fallbackEventHandler else {
       return false
     }

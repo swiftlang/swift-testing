@@ -53,14 +53,12 @@ struct AttachmentTests {
     #expect(attachment.description.contains("MySendableAttachable("))
   }
 
-#if compiler(>=6.3) || !os(Windows) // WORKAROUND: swift-#84184
   @Test func moveOnlyDescription() {
     let attachableValue = MyAttachable(string: "<!doctype html>")
     let attachment = Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
     #expect(attachment.description.contains(#""\#(attachment.preferredName)""#))
     #expect(attachment.description.contains("'MyAttachable'"))
   }
-#endif
 
   @Test func preferredNameOfStringAttachment() {
     let attachment1 = Attachment("", named: "abc123")

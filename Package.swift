@@ -142,18 +142,10 @@ let package = Package(
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("Testing"),
-      linkerSettings: {
-        var result = [LinkerSetting]()
-        result += [
-          .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
-        ]
-#if compiler(>=6.3)
-        result += [
-          .linkedLibrary("_TestingInterop"),
-        ]
-#endif
-        return result
-      }()
+      linkerSettings: [
+        .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd])),
+        .linkedLibrary("_TestingInterop"),
+      ]
     ),
     .testTarget(
       name: "TestingTests",
@@ -372,9 +364,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static var packageSettings: Self {
     var result = availabilityMacroSettings
 
-#if compiler(>=6.3)
     result.append(.treatWarning("ExplicitSendable", as: .warning))
-#endif
 
     if buildingForEmbedded {
       result.append(.enableExperimentalFeature("Embedded"))

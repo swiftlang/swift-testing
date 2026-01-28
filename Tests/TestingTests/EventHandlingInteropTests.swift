@@ -15,7 +15,7 @@ private import _TestingInternals
 import Foundation
 #endif
 
-#if !SWT_NO_EXIT_TESTS && compiler(>=6.3) && !SWT_NO_INTEROP && canImport(Foundation)
+#if !SWT_NO_EXIT_TESTS && !SWT_NO_INTEROP && canImport(Foundation)
 struct EventHandlingInteropTests {
   private typealias InstallFallbackEventHandler =
     @convention(c) (SWTFallbackEventHandler) -> CBool
