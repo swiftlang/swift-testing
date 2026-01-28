@@ -9,6 +9,7 @@
 //
 
 private import _TestingInternals
+
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 
 #if canImport(Foundation)
@@ -20,17 +21,10 @@ import Synchronization
 
 #if !SWT_NO_EXIT_TESTS && compiler(>=6.3) && !SWT_NO_INTEROP && canImport(Foundation)
 struct EventHandlingInteropTests {
-  private typealias InstallFallbackEventHandler =
-    @convention(c) (SWTFallbackEventHandler) -> CBool
-  private static let installer: InstallFallbackEventHandler? = {
-    symbol(named: "_swift_testing_installFallbackEventHandler").map {
-      castCFunction(at: $0, to: InstallFallbackEventHandler.self)
-    }
-  }()
-
   static let handlerContents = Mutex<(version: String, record: String?)?>()
 
-  private static let capturingHandler: SWTFallbackEventHandler = { schemaVersion, recordJSONBaseAddress, recordJSONByteCount, _ in
+  private static let capturingHandler: SWTFallbackEventHandler = {
+    schemaVersion, recordJSONBaseAddress, recordJSONByteCount, _ in
     let version = String(cString: schemaVersion)
     let record = String(
       data: Data(bytes: recordJSONBaseAddress, count: recordJSONByteCount),
@@ -48,10 +42,9 @@ struct EventHandlingInteropTests {
   @Test func `Post event without config -> fallback handler`() async throws {
     await #expect(processExitsWith: .success) {
       Configuration.removeAll()
-
-      let installer = try #require(Self.installer)
       try #require(
-        installer(Self.capturingHandler), "Installation of fallback handler should succeed")
+        _swift_testing_installFallbackEventHandler(Self.capturingHandler),
+        "Installation of fallback handler should succeed")
 
       // The detached task forces the event to be posted when Configuration.current
       // is nil and triggers the post to fallback handler path
@@ -66,6 +59,15 @@ struct EventHandlingInteropTests {
         #expect(contents.version == "\(ABI.CurrentVersion.versionNumber)")
         #expect(contents.record?.contains("A system failure occurred") ?? false)
       }
+    }
+  }
+
+  @Test func `When interop enabled, a handle exists`() async {
+    // This needs to be set _before_ spawning the new test process
+    Environment.setVariable("1", named: "SWT_EXPERIMENTAL_INTEROP_ENABLED")
+    await #expect(processExitsWith: .success) {
+      let ok = _swift_testing_installFallbackEventHandler(Self.capturingHandler)
+      #expect(!ok)
     }
   }
 }

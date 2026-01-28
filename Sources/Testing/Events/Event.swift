@@ -349,7 +349,7 @@ extension Event {
       if configurations.isEmpty {
         // There are no registered event handlers. Use the fallback event
         // handler instead.
-        _ = postToFallbackHandler(in: context)
+        _ = postToFallbackEventHandler(in: context)
       } else {
         for configuration in configurations {
           _post(in: context, configuration: configuration)
