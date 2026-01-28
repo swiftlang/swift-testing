@@ -551,7 +551,7 @@ public func __checkPropertyAccess<T>(
   return __checkValue(
     condition,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, condition),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -581,7 +581,7 @@ public func __checkPropertyAccess<T, U>(
   return __checkValue(
     optionalValue,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, optionalValue as U??),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
