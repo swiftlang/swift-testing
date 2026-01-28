@@ -126,8 +126,12 @@ struct TagListTests {
   @Test("Colors are read from disk")
   func tagColorsReadFromDisk() throws {
     let tempDirPath = try temporaryDirectory()
-    let jsonPath = appendPathComponent("tag-colors.json", to: tempDirPath)
-    var jsonContent = """
+    let jsonFileName = "tag-colors-\(UInt64.random(in: 0 ... .max)).json"
+    let jsonPath = appendPathComponent(jsonFileName, to: tempDirPath)
+    defer {
+      remove(jsonPath)
+    }
+    let jsonContent = """
     {
     "alpha": "red",
     "beta": "#00CCFF",
@@ -142,15 +146,13 @@ struct TagListTests {
     "encode purple": "purple"
     }
     """
-    try jsonContent.withUTF8 { jsonContent in
-      let fileHandle = try FileHandle(forWritingAtPath: jsonPath)
-      try fileHandle.write(jsonContent)
-    }
+    let fileHandle = try FileHandle(forWritingAtPath: jsonPath)
+    try fileHandle.write(jsonContent.utf8.span.bytes)
     defer {
       _ = remove(jsonPath)
     }
 
-    let tagColors = try Testing.loadTagColors(fromFileInDirectoryAtPath: tempDirPath)
+    let tagColors = try Testing.loadTagColors(fromFileNamed: jsonFileName, inDirectoryAtPath: tempDirPath)
     #expect(tagColors[Tag("alpha")] == .red)
     #expect(tagColors[Tag("beta")] == .rgb(0, 0xCC, 0xFF))
     #expect(tagColors[Tag("gamma")] == .rgb(0xAA, 0xBB, 0xCC))
@@ -167,17 +169,14 @@ struct TagListTests {
   @Test("No colors are read from a bad path")
   func noTagColorsReadFromBadPath() throws {
     #expect(throws: (any Error).self) {
-      try Testing.loadTagColors(fromFileInDirectoryAtPath: "Directory/That/Does/Not/Exist")
+      try Testing.loadTagColors(inDirectoryAtPath: "Directory/That/Does/Not/Exist")
     }
   }
 
   @Test("Invalid tag color decoding", arguments: [##""#NOTHEX""##, #""garbageColorName""#])
   func noTagColorsReadFromBadPath(tagColorJSON: String) throws {
-    var tagColorJSON = tagColorJSON
-    tagColorJSON.withUTF8 { tagColorJSON in
-      _ = #expect(throws: (any Error).self) {
-        _ = try JSON.decode(Tag.Color.self, from: .init(tagColorJSON))
-      }
+    _ = #expect(throws: (any Error).self) {
+      _ = try JSON.decode(Tag.Color.self, from: tagColorJSON.utf8.span.bytes)
     }
   }
 #endif

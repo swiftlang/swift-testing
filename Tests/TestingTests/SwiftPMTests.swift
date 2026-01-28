@@ -26,9 +26,7 @@ private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String
   try FileHandle(forReadingAtPath: filePath).readToEnd()
     .split(whereSeparator: \.isASCIINewline)
     .map { line in
-      try line.withUnsafeBytes { line in
-        return try JSON.decode(ABI.Record<V>.self, from: line)
-      }
+      try JSON.decode(ABI.Record<V>.self, from: line.span.bytes)
     }
 }
 
