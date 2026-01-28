@@ -77,7 +77,7 @@
 /// ## See Also
 ///
 /// - ``Swift/String/init(describingForTest:)``
-public protocol CustomTestStringConvertible {
+public protocol CustomTestStringConvertible: ~Copyable & ~Escapable {
   /// A description of this instance to use when presenting it in a test's
   /// output.
   ///
@@ -125,6 +125,38 @@ extension String {
       self.init(describing: value)
     }
   }
+
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  @_disfavoredOverload
+  public init(describingForTest value: borrowing (some CustomTestStringConvertible & ~Copyable & ~Escapable)) {
+    self = value.testDescription
+  }
+
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  @_disfavoredOverload
+  public init<T>(describingForTest value: borrowing T) where T: ~Copyable & ~Escapable {
+    if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
+      self = String(describingForTest: value)
+    } else {
+      let typeInfo = TypeInfo(describing: T.self)
+      self = "instance of '\(typeInfo.unqualifiedName)'"
+    }
+  }
+
 }
 
 // MARK: - Built-in implementations
@@ -141,7 +173,7 @@ private func _testDescription(of type: any Any.Type) -> String {
   TypeInfo(describing: type).unqualifiedName
 }
 
-extension Optional: CustomTestStringConvertible {
+extension Optional: CustomTestStringConvertible where Wrapped: ~Copyable & ~Escapable {
   public var testDescription: String {
     switch self {
     case let .some(unwrappedValue):
