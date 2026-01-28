@@ -72,6 +72,7 @@ add_library(Testing
   SourceAttribution/CustomTestStringConvertible.swift
   SourceAttribution/Expression.swift
   SourceAttribution/Expression+Macro.swift
+  SourceAttribution/SourceBounds.swift
   SourceAttribution/SourceContext.swift
   SourceAttribution/SourceLocation.swift
   SourceAttribution/SourceLocation+Macro.swift

@@ -40,11 +40,12 @@ struct AttributeInfo {
     testFunctionArguments != nil
   }
 
-  /// The source location of the attribute.
+  /// The source bounds of the attribute.
   ///
   /// When parsing, the testing library uses the start of the attribute's name
-  /// as the canonical source location of the test or suite.
-  var sourceLocation: ExprSyntax
+  /// as the canonical lower-bound source location of the test or suite and uses
+  /// the end of the attached declaration as the upper-bound source location.
+  var sourceBounds: ExprSyntax
 
   /// Flags to apply to the test content record generated from this instance.
   var testContentRecordFlags: UInt32 {
@@ -139,7 +140,7 @@ struct AttributeInfo {
 
     // Use the start of the test attribute's name as the canonical source
     // location of the test.
-    sourceLocation = createSourceLocationExpr(of: attribute.attributeName, context: context)
+    sourceBounds = createSourceBoundsExpr(from: attribute.attributeName, to: declaration, in: context)
 
     // After this instance is fully initialized, diagnose known issues.
     diagnoseIssuesWithTraits(in: context)
@@ -175,7 +176,7 @@ struct AttributeInfo {
       }
     }
 
-    arguments.append(Argument(label: "sourceLocation", expression: sourceLocation))
+    arguments.append(Argument(label: "sourceBounds", expression: sourceBounds))
 
     return LabeledExprListSyntax(arguments)
   }

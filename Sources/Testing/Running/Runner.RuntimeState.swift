@@ -260,3 +260,74 @@ func currentTestAndTestCase() -> (Test?, Test.Case?) {
   }
   return (state.test, state.testCase)
 }
+
+// MARK: - Finding running tests by source location
+
+extension Runner {
+  /// Storage for ``scheduledTests``.
+  private static let _scheduledTests = Locked<[Test]>()
+
+  /// Report a set of tests that some instance of ``Runner`` will run.
+  ///
+  /// - Parameters:
+  ///   - testsToSchedule: The set of tests that the caller is about to run. If
+  ///     a test is passed to this function more than once (as identified by its
+  ///     ``Test/id`` property), it is only tracked once.
+  ///
+  /// To get a list of all tests that have been passed to this function, get the
+  /// value of the ``scheduledTests`` property.
+  ///
+  /// ``Runner/run()`` calls this function automatically when a runner begins
+  /// running its planned tests.
+  static func schedule(_ testsToSchedule: some Sequence<Test>) {
+    // Ignore any synthesized tests as their source location information is
+    // arbitrarily computed from some nested test or suite.
+    let testsToSchedule = testsToSchedule.lazy.filter { !$0.isSynthesized }
+
+    // Merge the incoming tests with the existing set and re-sort them. (In
+    // practice, this function will only be called once and the existing value
+    // will be the empty set).
+    _scheduledTests.withLock { scheduledTests in
+      var combinedTests = Set(scheduledTests)
+      combinedTests.formUnion(testsToSchedule)
+      scheduledTests = combinedTests.sorted { $0.sourceLocation < $1.sourceLocation }
+    }
+  }
+
+  /// The set of tests that have been scheduled to run (including those that are
+  /// running or have finished running) by any instance of ``Runner`` in the
+  /// current process.
+  ///
+  /// The tests in this property's value are sorted by the values of their
+  /// ``Test/sourceLocation`` properties.
+  static var scheduledTests: [Test] {
+    _scheduledTests.rawValue
+  }
+}
+
+extension Test {
+  /// Get an instance of ``Test`` whose associated source bounds contain the
+  /// given source location.
+  ///
+  /// - Parameters:
+  ///   - sourceLocation: The source location of interest.
+  ///
+  /// If the testing library has run (or scheduled to run) an instance of
+  /// ``Test`` whose source bounds contain `sourceLocation`, the resulting
+  /// instance of ``Test`` equals that instance. Otherwise, this initializer
+  /// returns `nil`.
+  init?(containing sourceLocation: SourceLocation) {
+    let result = Runner.scheduledTests.binarySearch { test in
+      let sourceBounds = test.sourceBounds
+      if sourceBounds.contains(sourceLocation) {
+        return 0
+      }
+      return SourceLocation.compare(sourceLocation, sourceBounds.lowerBound)
+    }
+    if let result {
+      self = result
+    } else {
+      return nil
+    }
+  }
+}

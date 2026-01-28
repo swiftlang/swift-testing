@@ -466,23 +466,17 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       """
     )
 
-    let accessorName = context.makeUniqueName(thunking: functionDecl, withPrefix: "accessor")
-    result.append(
-      """
-      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-      private \(staticKeyword(for: typeName)) nonisolated let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _, _ in
-        Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
-      }
-      """
-    )
-
     let testContentRecordName = context.makeUniqueName(thunking: functionDecl, withPrefix: "testContentRecord")
     result.append(
       makeTestContentRecordDecl(
         named: testContentRecordName,
         in: typeName,
         ofKind: .testDeclaration,
-        accessingWith: accessorName,
+        accessingWith: """
+        { outValue, type, _, _ in
+          Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
+        }
+        """,
         context: attributeInfo.testContentRecordFlags,
         in: context
       )

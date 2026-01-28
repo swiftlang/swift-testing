@@ -48,8 +48,7 @@ enum TestContentKind: UInt32 {
 ///   - typeName: The name of the type enclosing the resulting declaration, or
 ///     `nil` if it will not be emitted into a type's scope.
 ///   - kind: The kind of test content record being emitted.
-///   - accessorName: The Swift name of an `@convention(c)` function to emit
-///     into the resulting record.
+///   - accessorExpr: An expression to use as the record's accessor function.
 ///   - contextFieldValue: A value to emit as the `context` field of the test
 ///     content record.
 ///   - context: The macro context in which the expression is being parsed.
@@ -57,7 +56,7 @@ enum TestContentKind: UInt32 {
 /// - Returns: A variable declaration that, when emitted into Swift source, will
 ///   cause the linker to emit data in a location that is discoverable at
 ///   runtime.
-func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax? = nil, ofKind kind: TestContentKind, accessingWith accessorName: TokenSyntax, context contextFieldValue: UInt32 = 0, in context: some MacroExpansionContext) -> DeclSyntax {
+func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax? = nil, ofKind kind: TestContentKind, accessingWith accessorExpr: ExprSyntax, context contextFieldValue: UInt32 = 0, in context: some MacroExpansionContext) -> DeclSyntax {
   let kindExpr = IntegerLiteralExprSyntax(kind.rawValue, radix: .hex)
   let contextExpr = if contextFieldValue == 0 {
     IntegerLiteralExprSyntax(0)
@@ -70,7 +69,7 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
   private nonisolated \(staticKeyword(for: typeName)) let \(name): Testing.__TestContentRecord = (
     \(kindExpr), \(kind.commentRepresentation)
     0,
-    { unsafe \(accessorName)($0, $1, $2, $3) },
+    \(accessorExpr),
     \(contextExpr),
     0
   )
