@@ -263,6 +263,18 @@ typedef void (* SWTFallbackEventHandler)(const char *recordJSONSchemaVersionNumb
                                       size_t recordJSONByteCount,
                                       const void *_Nullable reserved);
 
+/// Set the current fallback event handler if one has not already been set.
+///
+/// - Parameters:
+///   - handler: The handler function to set.
+///
+/// - Returns: Whether or not `handler` was installed.
+///
+/// The fallback event handler can only be installed once per process, typically
+/// by the first testing library to run. If this function has already been
+/// called and the handler set, it does not replace the previous handler.
+SWT_EXTERN bool _swift_testing_installFallbackEventHandler(SWTFallbackEventHandler);
+
 /// Get the current fallback event handler.
 /// Shadows the function with the same name in _TestingInterop.
 ///
