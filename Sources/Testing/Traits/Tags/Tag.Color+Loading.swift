@@ -94,7 +94,7 @@ var swiftTestingDirectoryPath: String? {
 /// assumed to contain a JSON object (a dictionary) where the keys are tags'
 /// string values and the values represent tag colors. For a list of the
 /// supported formats for tag colors in this dictionary, see <doc:AddingTags>.
-func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? = swiftTestingDirectoryPath) throws -> [Tag: Tag.Color] {
+func loadTagColors(fromFileNamed fileName: String = "tag-colors.json", inDirectoryAtPath swiftTestingDirectoryPath: String? = swiftTestingDirectoryPath) throws -> [Tag: Tag.Color] {
   guard let swiftTestingDirectoryPath else {
     // If the platform does not support user-specific configuration, skip custom
     // tag colors.
@@ -102,7 +102,7 @@ func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? 
   }
 
   // Find the path to the tag-colors.json file and try to load its contents.
-  let tagColorsPath = appendPathComponent("tag-colors.json", to: swiftTestingDirectoryPath)
+  let tagColorsPath = appendPathComponent(fileName, to: swiftTestingDirectoryPath)
   let fileHandle = try FileHandle(forReadingAtPath: tagColorsPath)
   let tagColorsData = try fileHandle.readToEnd()
 

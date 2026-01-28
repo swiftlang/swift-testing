@@ -126,7 +126,11 @@ struct TagListTests {
   @Test("Colors are read from disk")
   func tagColorsReadFromDisk() throws {
     let tempDirPath = try temporaryDirectory()
-    let jsonPath = appendPathComponent("tag-colors.json", to: tempDirPath)
+    let jsonFileName = "tag-colors-\(UInt64.random(in: 0 ... .max)).json"
+    let jsonPath = appendPathComponent(jsonFileName, to: tempDirPath)
+    defer {
+      remove(jsonPath)
+    }
     let jsonContent = """
     {
     "alpha": "red",
@@ -148,7 +152,7 @@ struct TagListTests {
       _ = remove(jsonPath)
     }
 
-    let tagColors = try Testing.loadTagColors(fromFileInDirectoryAtPath: tempDirPath)
+    let tagColors = try Testing.loadTagColors(fromFileNamed: jsonFileName, inDirectoryAtPath: tempDirPath)
     #expect(tagColors[Tag("alpha")] == .red)
     #expect(tagColors[Tag("beta")] == .rgb(0, 0xCC, 0xFF))
     #expect(tagColors[Tag("gamma")] == .rgb(0xAA, 0xBB, 0xCC))
@@ -165,7 +169,7 @@ struct TagListTests {
   @Test("No colors are read from a bad path")
   func noTagColorsReadFromBadPath() throws {
     #expect(throws: (any Error).self) {
-      try Testing.loadTagColors(fromFileInDirectoryAtPath: "Directory/That/Does/Not/Exist")
+      try Testing.loadTagColors(inDirectoryAtPath: "Directory/That/Does/Not/Exist")
     }
   }
 
