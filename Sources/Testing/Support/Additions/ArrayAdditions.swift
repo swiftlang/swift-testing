@@ -37,6 +37,7 @@ extension Array {
   /// This property is equivalent to the `span` property in the Swift standard
   /// library, but is available on earlier Apple platforms.
   var span: Span<Element> {
+    @_lifetime(borrow self)
     _read {
       let slice = self[...]
       yield slice.span
@@ -51,6 +52,7 @@ extension String.UTF8View {
   /// This property is equivalent to the `span` property in the Swift standard
   /// library, but is available on earlier Apple platforms.
   var span: Span<Element> {
+    @_lifetime(borrow self)
     _read {
       // This implementation incurs a copy even for native Swift strings. This
       // isn't currently a hot path in the testing library though.
