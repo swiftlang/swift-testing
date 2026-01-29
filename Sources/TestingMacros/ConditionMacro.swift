@@ -497,7 +497,7 @@ extension ExitTestConditionMacro {
       let legacyEnumName = context.makeUniqueName("__🟡$")
       recordDecl = """
       enum \(legacyEnumName): Testing.__TestContentRecordContainer {
-        nonisolated static var __testContentRecord: Testing.__TestContentRecord {
+        nonisolated static var __testContentRecord: Testing.__TestContentRecord6_2 {
           unsafe \(enumName).testContentRecord
         }
       }

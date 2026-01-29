@@ -11,6 +11,21 @@
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) internal import _TestDiscovery
 
+/// The content of a test content record as defined in the Swift 6.2 toolchain.
+///
+/// The layout of this type must match that of the corresponding type in the
+/// `_TestDiscovery` module. For more information, see `ABI/TestContent.md`.
+///
+/// - Warning: This type is used to implement the `@Test` macro. Do not use it
+///   directly.
+public typealias __TestContentRecord6_2 = (
+  kind: UInt32,
+  reserved1: UInt32,
+  accessor: __TestContentRecordAccessor?,
+  context: UInt,
+  reserved2: UInt
+)
+
 /// A protocol describing a type that contains tests.
 ///
 /// - Warning: This protocol is used to implement the `@Test` macro. Do not use
@@ -21,7 +36,7 @@ public protocol __TestContentRecordContainer {
   ///
   /// - Warning: This property is used to implement the `@Test` macro. Do not
   ///   use it directly.
-  nonisolated static var __testContentRecord: __TestContentRecord { get }
+  nonisolated static var __testContentRecord: __TestContentRecord6_2 { get }
 }
 
 extension DiscoverableAsTestContent {
@@ -37,7 +52,7 @@ extension DiscoverableAsTestContent {
         return false
       }
 
-      buffer.withMemoryRebound(to: __TestContentRecord.self) { buffer in
+      buffer.withMemoryRebound(to: __TestContentRecord6_2.self) { buffer in
         buffer.baseAddress!.initialize(to: type.__testContentRecord)
       }
       return true
