@@ -145,7 +145,7 @@ struct DiscoveryTests {
 
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
   struct `__🟡$LegacyTestContentRecord`: __TestContentRecordContainer {
-    static var __testContentRecord: __TestContentRecord {
+    static var __testContentRecord: __TestContentRecord6_2 {
       MyTestContent.record
     }
   }
