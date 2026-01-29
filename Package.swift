@@ -391,6 +391,9 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // Enabled to allow tests to be added to ~Escapable suites.
       .enableExperimentalFeature("Lifetimes"),
 
+      // Enabled to allow forward-declaring C functions.
+      .enableExperimentalFeature("Extern"),
+
       .enableUpcomingFeature("InferIsolatedConformances"),
 
       // When building as a package, the macro plugin always builds as an
@@ -427,6 +430,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("AvailabilityMacro=_clockAPI:macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0"),
       .enableExperimentalFeature("AvailabilityMacro=_regexAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0"),
       .enableExperimentalFeature("AvailabilityMacro=_swiftVersionAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_dyldImageHeaderAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0"),
       .enableExperimentalFeature("AvailabilityMacro=_typedThrowsAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
       .enableExperimentalFeature("AvailabilityMacro=_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
 
