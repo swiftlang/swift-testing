@@ -34,6 +34,9 @@ extension Event {
       /// The test's display name, if any.
       var displayName: String?
 
+      /// Whether this is a suite rather than an individual test.
+      var isSuite: Bool
+
       /// For non-parameterized tests: issues recorded directly on the test.
       var issues: [HumanReadableOutputRecorder.Context.TestData.IssueInfo]
 
@@ -81,6 +84,7 @@ extension Event {
                 path: parentPath,
                 name: parentPath.last ?? "Unknown",
                 displayName: testData.displayName,
+                isSuite: testData.isSuite,
                 issues: [],
                 testCases: (testData.testCaseArguments?.isEmpty ?? true) ? [] : [FailedTestCase(
                   arguments: testData.testCaseArguments ?? "",
@@ -96,6 +100,7 @@ extension Event {
               path: path,
               name: testName,
               displayName: testData.displayName,
+              isSuite: testData.isSuite,
               issues: issues,
               testCases: []
             )
@@ -197,7 +202,9 @@ extension Event {
       // Build fully qualified name
       let fullyQualifiedName = fullyQualifiedName(for: failedTest)
 
-      result += "\(symbol) Test \(fullyQualifiedName)\n"
+      // Use "Suite" or "Test" based on whether this is a suite
+      let label = failedTest.isSuite ? "Suite" : "Test"
+      result += "\(symbol) \(label) \(fullyQualifiedName)\n"
 
       // For parameterized tests: show test cases grouped under the parent test
       if !failedTest.testCases.isEmpty {
@@ -357,6 +364,9 @@ extension Event {
 
         /// The test case arguments, formatted for display (for parameterized tests).
         var testCaseArguments: String?
+
+        /// Whether this is a suite rather than an individual test.
+        var isSuite: Bool = false
       }
 
       /// Data tracked on a per-test basis.
@@ -625,13 +635,15 @@ extension Event.HumanReadableOutputRecorder {
           )
           testData.issues.append(issueInfo)
 
-          // Capture test display name and test case arguments once per test (not per issue)
+          // Capture test metadata once per test (not per issue)
           if testData.displayName == nil {
             testData.displayName = test?.displayName
           }
           if testData.testCaseArguments == nil {
             testData.testCaseArguments = testCase?.labeledArguments()
           }
+          // Track whether this is a suite (for failure summary labeling)
+          testData.isSuite = test?.isSuite ?? false
         }
 
         context.testData[keyPath] = testData
