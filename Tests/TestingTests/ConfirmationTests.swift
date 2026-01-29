@@ -100,6 +100,121 @@ struct ConfirmationTests {
   }
 #endif
 
+#if !SWT_NO_UNSTRUCTURED_TASKS
+  @available(_clockAPI, *)
+  @Test("Confirmation times out")
+  func timesOut() async {
+    await confirmation("Timed out") { timedOut in
+      await confirmation("Miscounted", expectedCount: 0) { confirmationMiscounted in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          if case let .issueRecorded(issue) = event.kind {
+            switch issue.kind {
+            case .timeLimitExceeded:
+              timedOut()
+            case .confirmationMiscounted:
+              confirmationMiscounted()
+            default:
+              break
+            }
+          }
+        }
+        await Test {
+          await confirmation(within: .milliseconds(10)) { confirmation in
+            try? await Test.Clock.sleep(for: .milliseconds(15))
+            confirmation()
+          }
+        }.run(configuration: configuration)
+      }
+    }
+  }
+
+  @available(_clockAPI, *)
+  @Test("Confirmation times out regardless of confirming when 0 duration")
+  func timesOutWithZeroDuration() async {
+    await confirmation("Timed out") { timedOut in
+      await confirmation("Miscounted", expectedCount: 0) { confirmationMiscounted in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          if case let .issueRecorded(issue) = event.kind {
+            switch issue.kind {
+            case .timeLimitExceeded:
+              timedOut()
+            case .confirmationMiscounted:
+              confirmationMiscounted()
+            default:
+              break
+            }
+          }
+        }
+        await Test {
+          await confirmation(within: .zero) { confirmation in
+            confirmation()
+          }
+        }.run(configuration: configuration)
+      }
+    }
+  }
+
+  @available(_clockAPI, *)
+  @Test("Confirmation does not take up the full run time when confirmed")
+  func doesNotTimeOutWhenConfirmed() async {
+    let duration = await Test.Clock().measure {
+      await confirmation("Timed out", expectedCount: 0) { timedOut in
+        await confirmation("Miscounted", expectedCount: 0) { confirmationMiscounted in
+          var configuration = Configuration()
+          configuration.eventHandler = { event, _ in
+            if case let .issueRecorded(issue) = event.kind {
+              switch issue.kind {
+              case .timeLimitExceeded:
+                timedOut()
+              case .confirmationMiscounted:
+                confirmationMiscounted()
+              default:
+                break
+              }
+            }
+          }
+          await Test {
+            await confirmation(within: .seconds(120)) { confirmation in
+              _ = Task {
+                try await Test.Clock.sleep(for: .milliseconds(50))
+                confirmation()
+              }
+            }
+          }.run(configuration: configuration)
+        }
+      }
+    }
+    #expect(duration < .seconds(30))
+  }
+
+  @available(_clockAPI, *)
+  @Test("Confirmation records a timeout AND miscount when not confirmed")
+  func timesOutAndMiscounts() async {
+    await confirmation("Timed out") { timedOut in
+      await confirmation("Miscounted") { confirmationMiscounted in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          if case let .issueRecorded(issue) = event.kind {
+            switch issue.kind {
+            case .timeLimitExceeded:
+              timedOut()
+            case .confirmationMiscounted:
+              confirmationMiscounted()
+            default:
+              break
+            }
+          }
+        }
+        await Test {
+          await confirmation(within: .zero) { _ in }
+        }.run(configuration: configuration)
+      }
+    }
+  }
+#endif
+
   @Test("Main actor isolation")
   @MainActor
   func mainActorIsolated() async {

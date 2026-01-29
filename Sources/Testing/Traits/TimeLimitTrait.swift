@@ -36,6 +36,12 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
     public static func minutes(_ minutes: some BinaryInteger) -> Self {
       Self(underlyingDuration: .seconds(60) * minutes)
     }
+
+    /// An infinite time limit duration.
+    @_spi(Experimental)
+    public static var infinity: Self {
+      Self(underlyingDuration: .init(secondsComponent: .max, attosecondsComponent: .max))
+    }
   }
 
   /// The maximum amount of time a test may run for before timing out.
@@ -247,18 +253,6 @@ extension Test {
 
 // MARK: -
 
-/// An error that is reported when a test times out.
-///
-/// This type is not part of the public interface of the testing library.
-struct TimeoutError: Error, CustomStringConvertible {
-  /// The time limit exceeded by the test that timed out.
-  var timeLimit: TimeValue
-
-  var description: String {
-    "Timed out after \(timeLimit) seconds."
-  }
-}
-
 #if !SWT_NO_UNSTRUCTURED_TASKS
 /// Invoke a function with a timeout.
 ///
@@ -281,13 +275,24 @@ func withTimeLimit(
   taskName: String? = nil,
   _ body: @escaping @Sendable () async throws -> Void,
   timeoutHandler: @escaping @Sendable () -> Void
-) async throws {
+) async rethrows {
+  // Early exit if the time limit has already been met (this simplifies callers
+  // that need to divide up a time limit across multiple operations.)
+  if timeLimit <= .zero {
+    timeoutHandler()
+    return
+  }
+
   try await withThrowingTaskGroup { group in
     group.addTask(name: decorateTaskName(taskName, withAction: "waiting for timeout")) {
+      do {
+        try await Test.Clock.sleep(for: timeLimit)
+      } catch {
+        return
+      }
       // If sleep() returns instead of throwing a CancellationError, that means
       // the timeout was reached before this task could be cancelled, so call
       // the timeout handler.
-      try await Test.Clock.sleep(for: timeLimit)
       timeoutHandler()
     }
     group.addTask(name: decorateTaskName(taskName, withAction: "running"), operation: body)
@@ -322,7 +327,7 @@ func withTimeLimit(
   configuration: Configuration,
   _ body: @escaping @Sendable () async throws -> Void,
   timeoutHandler: @escaping @Sendable (_ timeLimit: (seconds: Int64, attoseconds: Int64)) -> Void
-) async throws {
+) async rethrows {
   if #available(_clockAPI, *),
      let timeLimit = test.adjustedTimeLimit(configuration: configuration) {
 #if SWT_NO_UNSTRUCTURED_TASKS
