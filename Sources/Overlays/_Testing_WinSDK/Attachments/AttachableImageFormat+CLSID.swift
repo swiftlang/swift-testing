@@ -136,7 +136,7 @@ extension AttachableImageFormat {
             0 == _wcsicmp(pathExtension, encoderExt)
           }
         }
-      }.map { $0.key.rawValue }
+      }.map(\.key)
   }
 
   /// Get the `CLSID` value of the WIC image encoder corresponding to the same
@@ -280,7 +280,7 @@ extension AttachableImageFormat.Kind: CustomStringConvertible, CustomDebugString
     case .jpeg:
       CLSID_WICJpegEncoder
     case let .systemValue(clsid):
-      (clsid as! CLSID).rawValue
+      clsid as! CLSID
     }
   }
 
