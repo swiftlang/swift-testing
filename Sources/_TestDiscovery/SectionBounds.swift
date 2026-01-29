@@ -60,11 +60,12 @@ private func _dyld_get_dlopen_image_header(_ handle: UnsafeMutableRawPointer) ->
 /// Get section bounds for the given section from the given Mach header.
 ///
 /// - Parameters:
-///   - kind: Which kind of metadata section to return.
+///   - segmentName: The Mach-O segment name of interest.
+///   - sectionName: The Mach-O section name of interest.
 ///   - mh: The Mach header.
 ///
 /// - Returns: The requested section bounds, or `nil` if they couldn't be found.
-private func _sectionBounds(_ kind: SectionBounds.Kind, for mh: UnsafePointer<mach_header>) -> SectionBounds? {
+private func _sectionBounds(_ segmentName: String, _ sectionName: String, in mh: UnsafePointer<mach_header>) -> SectionBounds? {
 #if _pointerBitWidth(_64)
   let mh = UnsafeRawPointer(mh).assumingMemoryBound(to: mach_header_64.self)
 #endif
@@ -77,16 +78,6 @@ private func _sectionBounds(_ kind: SectionBounds.Kind, for mh: UnsafePointer<ma
     return nil
   }
 
-  // If this image contains the Swift section(s) we need, get the section bounds
-  // of interest.
-  let (segmentName, sectionName) = switch kind {
-  case .testContent:
-    ("__DATA_CONST", "__swift5_tests")
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-  case .typeMetadata:
-    ("__TEXT", "__swift5_types")
-#endif
-  }
   var size = CUnsignedLong(0)
   if let start = getsectiondata(mh, segmentName, sectionName, &size), size > 0 {
     let buffer = UnsafeRawBufferPointer(start: start, count: Int(clamping: size))
@@ -104,34 +95,47 @@ private func _sectionBounds(_ kind: SectionBounds.Kind, for mh: UnsafePointer<ma
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessCollection<SectionBounds> {
+  // If this image contains the Swift section(s) we need, get the section bounds
+  // of interest.
+  let (segmentName, sectionName) = switch kind {
+  case .testContent:
+    ("__DATA_CONST", "__swift5_tests")
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+  case .typeMetadata:
+    ("__TEXT", "__swift5_types")
+#endif
+  }
+
 #if _runtime(_ObjC)
-  if Bool(true) {
+  let imageNames: [String] = {
     var imageCount = UInt32(0)
     let imageNames = objc_copyImageNames(&imageCount)
     defer {
       free(imageNames)
     }
-    return (0 ..< imageCount).lazy
-      .map { imageNames[Int($0)] }
-      .compactMap { imageName in
-        guard let handle = dlopen(imageName, RTLD_LAZY | RTLD_NOLOAD) else {
-          return nil
-        }
-        defer {
-          dlclose(handle)
-        }
-        guard let mh = _dyld_get_dlopen_image_header(handle) else {
-          return nil
-        }
-        return _sectionBounds(kind, for: mh)
-      }
-  }
-#endif
 
+    return UnsafeBufferPointer(start: imageNames, count: Int(imageCount))
+      .compactMap(String.init(validatingCString:))
+  }()
+
+  return imageNames.lazy.compactMap { imageName in
+    guard let handle = dlopen(imageName, RTLD_LAZY | RTLD_NOLOAD) else {
+      return nil
+    }
+    defer {
+      dlclose(handle)
+    }
+    guard let mh = _dyld_get_dlopen_image_header(handle) else {
+      return nil
+    }
+    return _sectionBounds(sectionName, segmentName, in: mh)
+  }
+#else
   let imageCount = _dyld_image_count()
-  return (0 ..< imageCount).lazy
+  return (0 ..< imageCount)
     .compactMap(_dyld_get_image_header)
-    .compactMap { _sectionBounds(kind, for: $0) }
+    .compactMap { _sectionBounds(segmentName, sectionName, in: $0) }
+#endif
 }
 
 #elseif (os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)) && !SWT_NO_DYNAMIC_LINKING
