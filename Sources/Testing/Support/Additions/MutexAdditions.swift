@@ -14,7 +14,15 @@ internal import _TestingInternals
 internal import Synchronization
 #endif
 
-/// # Q: When should I use `Mutex<T>` vs. `Allocated<Mutex<T>>`?
+#if SWT_TARGET_OS_APPLE
+/// A type that replicates the interface of ``Synchronization/Mutex``.
+///
+/// This type is used on Apple platforms because our deployment target there is
+/// earlier than the availability of the ``Synchronization/Mutex`` type. It
+/// replicates the interface of that type but is implemented differently (using
+/// heap-allocated storage for the underlying lock and the value it guards).
+///
+/// **Q:** When should I use `Mutex<T>` vs. `Allocated<Mutex<T>>`?
 ///
 /// **A (short):** Whenever the compiler lets you use `Mutex<T>`, use that.
 ///
@@ -24,14 +32,6 @@ internal import Synchronization
 ///   `Allocated`. If, however, you need a mutex to be an instance member of a
 ///   copyable value type (a structure or enumeration), then it _must_ be boxed
 ///   with `Allocated` (or something else that moves its storage onto the heap).
-
-#if SWT_TARGET_OS_APPLE
-/// A type that replicates the interface of ``Synchronization/Mutex``.
-///
-/// This type is used on Apple platforms because our deployment target there is
-/// earlier than the availability of the ``Synchronization/Mutex`` type. It
-/// replicates the interface of that type but is implemented differently (using
-/// heap-allocated storage for the underlying lock and the value it guards).
 struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
   /// The underlying lock type.
 #if !SWT_NO_OS_UNFAIR_LOCK
