@@ -13,6 +13,9 @@
 #if canImport(Foundation)
 private import Foundation
 #endif
+#if canImport(Synchronization)
+private import Synchronization
+#endif
 
 @Suite("TimeLimitTrait Tests", .tags(.traitRelated))
 struct TimeLimitTraitTests {

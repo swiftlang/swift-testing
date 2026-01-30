@@ -10,6 +10,10 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 @Suite("Parallelization Trait Tests", .tags(.traitRelated))
 struct ParallelizationTraitTests {
   @Test(".serialized trait serializes parameterized test", arguments: await [

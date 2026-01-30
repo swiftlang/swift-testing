@@ -9,8 +9,9 @@
 //
 
 internal import _TestingInternals
+
 #if canImport(Synchronization)
-private import Synchronization
+internal import Synchronization
 #endif
 
 #if SWT_TARGET_OS_APPLE

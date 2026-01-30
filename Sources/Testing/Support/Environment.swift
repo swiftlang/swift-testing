@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type describing the environment of the current process.
 ///
 /// This type can be used to access the current process' environment variables.

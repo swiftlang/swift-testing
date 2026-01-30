@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A description of the type of a value encountered during testing or a
 /// parameter of a test function.
 @_spi(ForToolsIntegrationOnly)

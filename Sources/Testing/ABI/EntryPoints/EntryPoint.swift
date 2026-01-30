@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// The common implementation of the entry point functions in this package.
 ///
 /// - Parameters:

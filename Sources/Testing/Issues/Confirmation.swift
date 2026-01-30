@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type that can be used to confirm that an event occurs zero or more times.
 public struct Confirmation: Sendable {
   /// The number of times ``confirm(count:)`` has been called.

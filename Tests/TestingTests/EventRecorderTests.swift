@@ -9,14 +9,18 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-#if !os(Windows)
-import RegexBuilder
-#endif
+
 #if canImport(Foundation)
 import Foundation
 #endif
 #if canImport(FoundationXML)
 import FoundationXML
+#endif
+#if !os(Windows)
+import RegexBuilder
+#endif
+#if canImport(Synchronization)
+import Synchronization
 #endif
 
 #if FIXED_118452948

@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type representing a backtrace or stack trace.
 @_spi(ForToolsIntegrationOnly)
 public struct Backtrace: Sendable {

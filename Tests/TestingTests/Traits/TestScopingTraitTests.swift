@@ -10,6 +10,10 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
+#if canImport(Synchronization)
+import Synchronization
+#endif
+
 @Suite("TestScoping-conforming Trait Tests", .tags(.traitRelated))
 struct TestScopingTraitTests {
   @Test("Execute code before and after a non-parameterized test.")

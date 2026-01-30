@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type that represents an active
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``
 /// call and any parent calls.
@@ -29,7 +33,7 @@ struct KnownIssueScope: Sendable {
   var matcher: Matcher
 
   /// The number of issues this scope and its ancestors have matched.
-  let matchCounter: Allocated<Mutex<Int>>
+  fileprivate let matchCounter: Allocated<Mutex<Int>>
 
   /// Create a new ``KnownIssueScope`` by combining a new issue matcher with
   /// any already-active scope.

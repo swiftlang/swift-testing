@@ -8,10 +8,14 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+
+#if canImport(Synchronization)
+import Synchronization
+#endif
 #if canImport(XCTest)
 import XCTest
 #endif
-@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 struct MyError: Error, Equatable {
 }

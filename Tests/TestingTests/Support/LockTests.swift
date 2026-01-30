@@ -11,6 +11,10 @@
 @testable import Testing
 private import _TestingInternals
 
+#if canImport(Synchronization)
+import Synchronization
+#endif
+
 @Suite("Mutex Tests")
 final class LockTests: Sendable {
   let lock = Mutex(0)

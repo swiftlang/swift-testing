@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 extension Runner {
   /// A type which collects the task-scoped runtime state for a running
   /// ``Runner`` instance, the tests it runs, and other objects it interacts

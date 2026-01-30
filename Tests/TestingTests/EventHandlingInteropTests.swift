@@ -14,6 +14,9 @@ private import _TestingInternals
 #if canImport(Foundation)
 import Foundation
 #endif
+#if canImport(Synchronization)
+import Synchronization
+#endif
 
 #if !SWT_NO_EXIT_TESTS && compiler(>=6.3) && !SWT_NO_INTEROP && canImport(Foundation)
 struct EventHandlingInteropTests {

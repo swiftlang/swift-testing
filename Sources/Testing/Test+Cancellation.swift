@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A protocol describing cancellable tests and test cases.
 ///
 /// This protocol is used to abstract away the common implementation of test and

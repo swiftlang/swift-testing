@@ -10,7 +10,11 @@
 
 #if canImport(Foundation)
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+
 import Foundation
+#if canImport(Synchronization)
+import Synchronization
+#endif
 
 @Suite("Advanced Console Output Recorder Tests")
 struct AdvancedConsoleOutputRecorderTests {
