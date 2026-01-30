@@ -84,7 +84,7 @@ extension Event {
 
     /// This event recorder's mutable context about events it has received,
     /// which may be used to inform how subsequent events are written.
-    private var _context = Locked(rawValue: Context())
+    private var _context = Allocated(Mutex(Context()))
 
     /// Initialize a new human-readable event recorder.
     ///
@@ -282,7 +282,7 @@ extension Event.HumanReadableOutputRecorder {
 
     // First, make any updates to the context/state associated with this
     // recorder.
-    let context = _context.withLock { context in
+    let context = _context.value.withLock { context in
       switch event.kind {
       case .runStarted:
         context.runStartInstant = instant

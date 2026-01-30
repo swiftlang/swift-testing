@@ -25,7 +25,7 @@ struct EventHandlingInteropTests {
     }
   }()
 
-  static let handlerContents = Locked<(version: String, record: String?)?>(rawValue: nil)
+  static let handlerContents = Mutex<(version: String, record: String?)?>()
 
   private static let capturingHandler: SWTFallbackEventHandler = { schemaVersion, recordJSONBaseAddress, recordJSONByteCount, _ in
     let version = String(cString: schemaVersion)

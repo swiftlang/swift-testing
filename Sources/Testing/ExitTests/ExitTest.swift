@@ -151,14 +151,7 @@ public struct ExitTest: Sendable, ~Copyable {
 
 extension ExitTest {
   /// Storage for ``current``.
-  ///
-  /// A pointer is used for indirection because `ManagedBuffer` cannot yet hold
-  /// move-only types.
-  private static nonisolated(unsafe) let _current: Locked<UnsafeMutablePointer<ExitTest?>> = {
-    let current = UnsafeMutablePointer<ExitTest?>.allocate(capacity: 1)
-    current.initialize(to: nil)
-    return Locked(rawValue: current)
-  }()
+  private static let _current = Mutex<ExitTest?>()
 
   /// The exit test that is running in the current process, if any.
   ///
@@ -180,7 +173,7 @@ extension ExitTest {
       // we must make a copy so that we don't yield lock-guarded memory to the
       // caller (which is not concurrency-safe.)
       let currentCopy = _current.withLock { current in
-        return current.pointee?.unsafeCopy()
+        return current?.unsafeCopy()
       }
       yield currentCopy
     }
@@ -288,8 +281,8 @@ extension ExitTest {
 
     // Set ExitTest.current before the test body runs.
     Self._current.withLock { current in
-      precondition(current.pointee == nil, "Set the current exit test twice in the same process. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
-      current.pointee = self.unsafeCopy()
+      precondition(current == nil, "Set the current exit test twice in the same process. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      current = self.unsafeCopy()
     }
 
     let error = await Issue.withErrorRecording(at: nil) {

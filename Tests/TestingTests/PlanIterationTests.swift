@@ -58,7 +58,7 @@ struct PlanIterationTests {
 
   @Test("Iteration until issue recorded")
   func iterationUntilIssueRecorded() async {
-    let iterationIndex = Locked(rawValue: 0)
+    let iterationIndex = Mutex(0)
     let iterationCount = 10
     let iterationWithIssue = 5
     await confirmation("N iterations started", expectedCount: iterationWithIssue + 1) { started in
@@ -87,7 +87,7 @@ struct PlanIterationTests {
 
   @Test("Iteration while issue recorded")
   func iterationWhileIssueRecorded() async {
-    let iterationIndex = Locked(rawValue: 0)
+    let iterationIndex = Mutex(0)
     let iterationCount = 10
     let iterationWithoutIssue = 5
     await confirmation("N iterations started", expectedCount: iterationWithoutIssue + 1) { started in

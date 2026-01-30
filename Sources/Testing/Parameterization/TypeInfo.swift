@@ -185,7 +185,7 @@ extension TypeInfo {
   }
 
   /// An in-memory cache of fully-qualified type name components.
-  private static let _fullyQualifiedNameComponentsCache = Locked<[ObjectIdentifier: [String]]>()
+  private static let _fullyQualifiedNameComponentsCache = Mutex<[ObjectIdentifier: [String]]>()
 
   /// Split the given fully-qualified type name into its components.
   ///

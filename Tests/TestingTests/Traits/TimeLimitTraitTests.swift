@@ -168,7 +168,7 @@ struct TimeLimitTraitTests {
     // waiting for the test's task to be scheduled by the Swift runtime. We
     // only want to measure the time from the start of the test until the call
     // to run(configuration:) returns.
-    let timeStarted = Locked<Test.Clock.Instant?>()
+    let timeStarted = Mutex<Test.Clock.Instant?>()
     await Test {
       timeStarted.withLock { timeStarted in
         timeStarted = .now
@@ -177,8 +177,11 @@ struct TimeLimitTraitTests {
     }.run(configuration: configuration)
     let timeEnded = Test.Clock.Instant.now
 
-    let timeAwaited = try #require(timeStarted.rawValue).duration(to: timeEnded)
-    #expect(timeAwaited < .seconds(5))
+    do {
+      let timeStarted = timeStarted.rawValue
+      let timeAwaited = try #require(timeStarted).duration(to: timeEnded)
+      #expect(timeAwaited < .seconds(5))
+    }
   }
 
   @available(_clockAPI, *)

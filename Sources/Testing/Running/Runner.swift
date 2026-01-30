@@ -447,7 +447,7 @@ extension Runner {
 #endif
 
     // Track whether or not any issues were recorded across the entire run.
-    let issueRecorded = Locked(rawValue: false)
+    let issueRecorded = Mutex(false)
     runner.configuration.eventHandler = { [eventHandler = runner.configuration.eventHandler] event, context in
       if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
         issueRecorded.withLock { issueRecorded in

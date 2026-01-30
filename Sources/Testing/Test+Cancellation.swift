@@ -28,7 +28,7 @@ protocol TestCancellable: Sendable {
 /// A structure that is able to cancel a task.
 private struct _TaskCanceller: Sendable {
   /// The unsafe underlying reference to the associated task.
-  private nonisolated(unsafe) var _unsafeCurrentTask = Locked<UnsafeCurrentTask?>()
+  private nonisolated(unsafe) var _unsafeCurrentTask: Allocated<Mutex<UnsafeCurrentTask?>>
 
   init() {
     // WARNING! Normally, allowing an instance of `UnsafeCurrentTask` to escape
@@ -41,13 +41,16 @@ private struct _TaskCanceller: Sendable {
     // `async` overload of `withUnsafeCurrentTask()` from the body of
     // `withCancellationHandling(_:)`. That will allow us to use the task object
     // in a safely scoped fashion.
-    _unsafeCurrentTask = withUnsafeCurrentTask { Locked(rawValue: $0) }
+    _unsafeCurrentTask = withUnsafeCurrentTask { unsafeCurrentTask in
+      nonisolated(unsafe) let unsafeCurrentTask = unsafeCurrentTask
+      return Allocated(Mutex(unsafeCurrentTask))
+    }
   }
 
   /// Clear this instance's reference to its associated task without first
   /// cancelling it.
   func clear() {
-    _unsafeCurrentTask.withLock { unsafeCurrentTask in
+    _unsafeCurrentTask.value.withLock { unsafeCurrentTask in
       unsafeCurrentTask = nil
     }
   }
@@ -63,7 +66,7 @@ private struct _TaskCanceller: Sendable {
   func cancel(with skipInfo: SkipInfo) -> Bool {
     // trylock means a recursive call to this function won't ruin our day, nor
     // should interleaving locks.
-    _unsafeCurrentTask.withLockIfAvailable { unsafeCurrentTask in
+    _unsafeCurrentTask.value.withLockIfAvailable { unsafeCurrentTask in
       defer {
         unsafeCurrentTask = nil
       }

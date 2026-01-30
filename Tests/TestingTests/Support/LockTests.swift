@@ -11,11 +11,12 @@
 @testable import Testing
 private import _TestingInternals
 
-@Suite("Locked Tests")
-struct LockTests {
+@Suite("Mutex Tests")
+final class LockTests: Sendable {
+  let lock = Mutex(0)
+
   @Test("Locking and unlocking")
   func locking() {
-    let lock = Locked(rawValue: 0)
     #expect(lock.rawValue == 0)
     lock.withLock { value in
       value = 1
@@ -25,11 +26,10 @@ struct LockTests {
 
   @Test("Repeatedly accessing a lock")
   func lockRepeatedly() async {
-    let lock = Locked(rawValue: 0)
     await withTaskGroup { taskGroup in
       for _ in 0 ..< 100_000 {
         taskGroup.addTask {
-          lock.increment()
+          self.lock.increment()
         }
       }
     }

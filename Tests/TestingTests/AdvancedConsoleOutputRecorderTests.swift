@@ -15,7 +15,7 @@ import Foundation
 @Suite("Advanced Console Output Recorder Tests")
 struct AdvancedConsoleOutputRecorderTests {
   final class Stream: TextOutputStream, Sendable {
-    let buffer = Locked<String>(rawValue: "")
+    let buffer = Mutex<String>("")
 
     @Sendable func write(_ string: String) {
       buffer.withLock {

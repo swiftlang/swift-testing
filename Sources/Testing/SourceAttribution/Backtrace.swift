@@ -220,13 +220,13 @@ extension Backtrace {
   /// same location.)
   ///
   /// Access to this dictionary is guarded by a lock.
-  private static let _errorMappingCache = Locked<[_ErrorMappingCacheKey: _ErrorMappingCacheEntry]>()
+  private static let _errorMappingCache = Mutex<[_ErrorMappingCacheKey: _ErrorMappingCacheEntry]>()
 
   /// The previous `swift_willThrow` handler, if any.
-  private static let _oldWillThrowHandler = Locked<SWTWillThrowHandler?>()
+  private static let _oldWillThrowHandler = Mutex<SWTWillThrowHandler?>()
 
   /// The previous `swift_willThrowTyped` handler, if any.
-  private static let _oldWillThrowTypedHandler = Locked<SWTWillThrowTypedHandler?>()
+  private static let _oldWillThrowTypedHandler = Mutex<SWTWillThrowTypedHandler?>()
 
   /// Handle a thrown error.
   ///

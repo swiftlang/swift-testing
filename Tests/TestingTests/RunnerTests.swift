@@ -974,7 +974,7 @@ extension OrderedTests.Inner {
 }
 
 @Suite(.hidden, .serialized) struct OrderedTests {
-  static let state = Locked(rawValue: 0)
+  static let state = Mutex(0)
 
   @Test(.hidden) func z() { XCTAssertEqual(Self.state.increment(), 1) }
   @Test(.hidden) func y() { XCTAssertEqual(Self.state.increment(), 2) }

@@ -114,7 +114,7 @@ extension AttachmentSavingTrait: TestScoping {
     }
     let oldConfiguration = configuration
 
-    let context = Locked(rawValue: Context())
+    let context = Mutex(Context())
     configuration.eventHandler = { event, eventContext in
       var eventDeferred = false
       defer {

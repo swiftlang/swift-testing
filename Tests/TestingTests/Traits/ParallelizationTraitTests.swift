@@ -20,7 +20,7 @@ struct ParallelizationTraitTests {
     var configuration = Configuration()
     configuration.isParallelizationEnabled = true
 
-    let indicesRecorded = Locked<[Int]>()
+    let indicesRecorded = Mutex<[Int]>()
     configuration.eventHandler = { event, _ in
       if case let .issueRecorded(issue) = event.kind,
          let comment = issue.comments.first,

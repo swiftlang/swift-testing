@@ -24,7 +24,7 @@ import FoundationXML
 #endif
 struct EventRecorderTests {
   final class Stream: TextOutputStream, Sendable {
-    let buffer = Locked<String>(rawValue: "")
+    let buffer = Mutex<String>("")
 
     @Sendable func write(_ string: String) {
       buffer.withLock {
@@ -570,7 +570,7 @@ struct EventRecorderTests {
   func knownIssueComments(testName: String, expectedComments: [String]) async throws {
     var configuration = Configuration()
     let recorder = Event.HumanReadableOutputRecorder()
-    let messages = Locked<[Event.HumanReadableOutputRecorder.Message]>(rawValue: [])
+    let messages = Mutex<[Event.HumanReadableOutputRecorder.Message]>([])
     configuration.eventHandler = { event, context in
       guard case .issueRecorded = event.kind else { return }
       messages.withLock {

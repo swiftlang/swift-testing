@@ -23,7 +23,7 @@ package enum Environment {
   /// platform-specific implementation details. Callers should not read from
   /// this dictionary directly; use ``variable(named:)`` or ``flag(named:)``
   /// instead.
-  static let simulatedEnvironment = Locked<[String: String]>()
+  static let simulatedEnvironment = Mutex<[String: String]>()
 #endif
 
   /// Split a string containing an environment variable's name and value into

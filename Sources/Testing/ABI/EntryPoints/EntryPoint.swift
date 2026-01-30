@@ -26,7 +26,7 @@ private import _TestingInternals
 /// ``ABI/v0/entryPoint-swift.type.property`` to get a reference to an
 /// ABI-stable version of this function.
 func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
-  let exitCode = Locked(rawValue: EXIT_SUCCESS)
+  let exitCode = Mutex(EXIT_SUCCESS)
 
   do {
 #if !SWT_NO_EXIT_TESTS
