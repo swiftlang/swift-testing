@@ -14,6 +14,17 @@ internal import _TestingInternals
 internal import Synchronization
 #endif
 
+/// # Q: When should I use `Mutex<T>` vs. `Allocated<Mutex<T>>`?
+///
+/// **A (short):** Whenever the compiler lets you use `Mutex<T>`, use that.
+///
+/// **A (long):** Mutexes can generally be locally allocated when they are
+///   function-local, global, or `static`. If your mutex is an instance member
+///   of a reference type (a class or actor), you again generally won't need
+///   `Allocated`. If, however, you need a mutex to be an instance member of a
+///   copyable value type (a structure or enumeration), then it _must_ be boxed
+///   with `Allocated` (or something else that moves its storage onto the heap).
+
 #if SWT_TARGET_OS_APPLE
 /// A type that replicates the interface of ``Synchronization/Mutex``.
 ///
@@ -22,9 +33,6 @@ internal import Synchronization
 /// replicates the interface of that type but is implemented differently (using
 /// heap-allocated storage for the underlying lock and the value it guards).
 struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
-  /// Storage for the underlying lock and the value it guards.
-  private nonisolated(unsafe) let _storage: UnsafeMutableRawPointer
-
   /// The underlying lock type.
 #if !SWT_NO_OS_UNFAIR_LOCK
   private typealias _Lock = os_unfair_lock_s
@@ -32,48 +40,32 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
   private typealias _Lock = pthread_mutex_t
 #endif
 
+  /// Storage for the underlying lock.
+  private nonisolated(unsafe) let _lockAddress: UnsafeMutablePointer<_Lock>
+
+  /// Storage for the value this instance guards.
+  private nonisolated(unsafe) let _valueAddress: UnsafeMutablePointer<Value>
+
   public init(_ initialValue: consuming sending Value) {
-    _storage = UnsafeMutableRawPointer.allocate(
-      byteCount: Self._valueOffset + MemoryLayout<Value>.size,
-      alignment: max(MemoryLayout<_Lock>.alignment, MemoryLayout<Value>.alignment)
-    )
+    _lockAddress = .allocate(capacity: 1)
 #if !SWT_NO_OS_UNFAIR_LOCK
     _lockAddress.initialize(to: .init())
 #else
     _ = pthread_mutex_init(_lockAddress, nil)
 #endif
+    _valueAddress = .allocate(capacity: 1)
     _valueAddress.initialize(to: initialValue)
   }
 
   deinit {
-    do {
-      _valueAddress.deinitialize(count: 1)
+    _valueAddress.deinitialize(count: 1)
+    _valueAddress.deallocate()
 #if !SWT_NO_OS_UNFAIR_LOCK
-      _lockAddress.deinitialize(count: 1)
+    _lockAddress.deinitialize(count: 1)
 #else
-      _ = pthread_mutex_destroy(_lockAddress)
+    _ = pthread_mutex_destroy(_lockAddress)
 #endif
-    }
-    _storage.deallocate()
-  }
-
-  /// The offset into an instance's storage where the value it guards is stored.
-  private static var _valueOffset: Int {
-    max(MemoryLayout<_Lock>.stride, MemoryLayout<Value>.alignment)
-  }
-
-  /// A pointer to this instance's underlying lock.
-  ///
-  /// - Important: This pointer is only valid for the lifetime of `self`.
-  private var _lockAddress: UnsafeMutablePointer<_Lock> {
-    _storage.bindMemory(to: _Lock.self, capacity: 1)
-  }
-
-  /// A pointer to the value this instance guards.
-  ///
-  /// - Important: This pointer is only valid for the lifetime of `self`.
-  private var _valueAddress: UnsafeMutablePointer<Value> {
-    (_storage + Self._valueOffset).bindMemory(to: Value.self, capacity: 1)
+    _lockAddress.deallocate()
   }
 
   /// Acquire the lock.

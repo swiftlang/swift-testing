@@ -15,12 +15,10 @@ private import _TestingInternals
 import Synchronization
 #endif
 
-@Suite("Mutex Tests")
-final class LockTests: Sendable {
+final class `Mutex tests`: Sendable {
   let lock = Mutex(0)
 
-  @Test("Locking and unlocking")
-  func locking() {
+  @Test func `Locking and unlocking`() {
     #expect(lock.rawValue == 0)
     lock.withLock { value in
       value = 1
@@ -28,8 +26,7 @@ final class LockTests: Sendable {
     #expect(lock.rawValue == 1)
   }
 
-  @Test("Repeatedly accessing a lock")
-  func lockRepeatedly() async {
+  @Test func `Repeatedly accessing a lock`() async {
     await withTaskGroup { taskGroup in
       for _ in 0 ..< 100_000 {
         taskGroup.addTask {
