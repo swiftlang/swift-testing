@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023–2025 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -13,7 +13,7 @@ internal import _TestingInternals
 private import Synchronization
 #endif
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
+#if SWT_TARGET_OS_APPLE
 /// A type that replicates the interface of ``Synchronization/Mutex``.
 ///
 /// This type is used on Apple platforms because our deployment target there is
@@ -24,13 +24,24 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
   /// Storage for the underlying lock and the value it guards.
   private nonisolated(unsafe) let _storage: UnsafeMutableRawPointer
 
+  /// The underlying lock type.
+#if !SWT_NO_OS_UNFAIR_LOCK
+  private typealias _Lock = os_unfair_lock_s
+#else
+  private typealias _Lock = pthread_mutex_t
+#endif
+
   public init(_ initialValue: consuming sending Value) {
     _storage = UnsafeMutableRawPointer.allocate(
       byteCount: Self._valueOffset + MemoryLayout<Value>.size,
-      alignment: max(MemoryLayout<os_unfair_lock_s>.alignment, MemoryLayout<Value>.alignment)
+      alignment: max(MemoryLayout<_Lock>.alignment, MemoryLayout<Value>.alignment)
     )
     let (lock, value) = _lockAndValueAddresses
+#if !SWT_NO_OS_UNFAIR_LOCK
     lock.initialize(to: .init())
+#else
+    _ = pthread_mutex_init(lock, nil)
+#endif
     value.initialize(to: initialValue)
   }
 
@@ -38,21 +49,25 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
     do {
       let (lock, value) = _lockAndValueAddresses
       value.deinitialize(count: 1)
+#if !SWT_NO_OS_UNFAIR_LOCK
       lock.deinitialize(count: 1)
+#else
+      _ = pthread_mutex_destroy(lock)
+#endif
     }
     _storage.deallocate()
   }
 
   /// The offset into an instance's storage where the value it guards is stored.
   private static var _valueOffset: Int {
-    max(MemoryLayout<os_unfair_lock_s>.stride, MemoryLayout<Value>.alignment)
+    max(MemoryLayout<_Lock>.stride, MemoryLayout<Value>.alignment)
   }
 
   /// Pointers to this instance's underlying lock and the value it guards.
   ///
   /// - Important: These pointers are only valid for the lifetime of `self`.
-  private var _lockAndValueAddresses: (lock: UnsafeMutablePointer<os_unfair_lock_s>, value: UnsafeMutablePointer<Value>) {
-    let lock = _storage.bindMemory(to: os_unfair_lock_s.self, capacity: 1)
+  private var _lockAndValueAddresses: (lock: UnsafeMutablePointer<_Lock>, value: UnsafeMutablePointer<Value>) {
+    let lock = _storage.bindMemory(to: _Lock.self, capacity: 1)
     let value = (_storage + Self._valueOffset).bindMemory(to: Value.self, capacity: 1)
     return (lock, value)
   }
@@ -62,10 +77,17 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
   /// See ``Synchronization/Mutex/withLock(_:)`` for more details.
   borrowing func withLock<R, E>(_ body: (inout sending Value) throws(E) -> sending R) throws(E) -> sending R where R: ~Copyable {
     let (lock, value) = _lockAndValueAddresses
+#if !SWT_NO_OS_UNFAIR_LOCK
     os_unfair_lock_lock(lock)
     defer {
       os_unfair_lock_unlock(lock)
     }
+#else
+    _ = pthread_mutex_lock(lock)
+    defer {
+      _ = pthread_mutex_unlock(lock)
+    }
+#endif
     return try body(&value.pointee)
   }
 
@@ -74,12 +96,21 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
   /// See ``Synchronization/Mutex/withLockIfAvailable(_:)`` for more details.
   borrowing func withLockIfAvailable<R, E>(_ body: (inout sending Value) throws(E) -> sending R) throws(E) -> sending R? where R: ~Copyable {
     let (lock, value) = _lockAndValueAddresses
+#if !SWT_NO_OS_UNFAIR_LOCK
     guard os_unfair_lock_trylock(lock) else {
       return nil
     }
     defer {
       os_unfair_lock_unlock(lock)
     }
+#else
+    guard 0 == pthread_mutex_trylock(lock) else {
+      return nil
+    }
+    defer {
+      _ = pthread_mutex_unlock(lock)
+    }
+#endif
     return try body(&value.pointee)
   }
 }
