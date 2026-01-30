@@ -11,7 +11,7 @@
 @testable import Testing
 private import _TestingInternals
 
-#if canImport(Synchronization)
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
 import Synchronization
 #endif
 

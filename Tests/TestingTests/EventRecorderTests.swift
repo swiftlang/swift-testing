@@ -19,7 +19,7 @@ import FoundationXML
 #if !os(Windows)
 import RegexBuilder
 #endif
-#if canImport(Synchronization)
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
 import Synchronization
 #endif
 

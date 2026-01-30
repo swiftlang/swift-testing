@@ -37,23 +37,21 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
       byteCount: Self._valueOffset + MemoryLayout<Value>.size,
       alignment: max(MemoryLayout<_Lock>.alignment, MemoryLayout<Value>.alignment)
     )
-    let (lock, value) = _lockAndValueAddresses
 #if !SWT_NO_OS_UNFAIR_LOCK
-    lock.initialize(to: .init())
+    _lockAddress.initialize(to: .init())
 #else
-    _ = pthread_mutex_init(lock, nil)
+    _ = pthread_mutex_init(_lockAddress, nil)
 #endif
-    value.initialize(to: initialValue)
+    _valueAddress.initialize(to: initialValue)
   }
 
   deinit {
     do {
-      let (lock, value) = _lockAndValueAddresses
-      value.deinitialize(count: 1)
+      _valueAddress.deinitialize(count: 1)
 #if !SWT_NO_OS_UNFAIR_LOCK
-      lock.deinitialize(count: 1)
+      _lockAddress.deinitialize(count: 1)
 #else
-      _ = pthread_mutex_destroy(lock)
+      _ = pthread_mutex_destroy(_lockAddress)
 #endif
     }
     _storage.deallocate()
@@ -64,20 +62,25 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
     max(MemoryLayout<_Lock>.stride, MemoryLayout<Value>.alignment)
   }
 
-  /// Pointers to this instance's underlying lock and the value it guards.
+  /// A pointer to this instance's underlying lock.
   ///
-  /// - Important: These pointers are only valid for the lifetime of `self`.
-  private var _lockAndValueAddresses: (lock: UnsafeMutablePointer<_Lock>, value: UnsafeMutablePointer<Value>) {
-    let lock = _storage.bindMemory(to: _Lock.self, capacity: 1)
-    let value = (_storage + Self._valueOffset).bindMemory(to: Value.self, capacity: 1)
-    return (lock, value)
+  /// - Important: This pointer is only valid for the lifetime of `self`.
+  private var _lockAddress: UnsafeMutablePointer<_Lock> {
+    _storage.bindMemory(to: _Lock.self, capacity: 1)
+  }
+
+  /// A pointer to the value this instance guards.
+  ///
+  /// - Important: This pointer is only valid for the lifetime of `self`.
+  private var _valueAddress: UnsafeMutablePointer<Value> {
+    (_storage + Self._valueOffset).bindMemory(to: Value.self, capacity: 1)
   }
 
   /// Acquire the lock.
   ///
   /// See ``Synchronization/Mutex/withLock(_:)`` for more details.
   borrowing func withLock<R, E>(_ body: (inout sending Value) throws(E) -> sending R) throws(E) -> sending R where R: ~Copyable {
-    let (lock, value) = _lockAndValueAddresses
+    let lock = _lockAddress
 #if !SWT_NO_OS_UNFAIR_LOCK
     os_unfair_lock_lock(lock)
     defer {
@@ -89,14 +92,14 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
       _ = pthread_mutex_unlock(lock)
     }
 #endif
-    return try body(&value.pointee)
+    return try body(&_valueAddress.pointee)
   }
 
   /// Acquire the lock if available.
   ///
   /// See ``Synchronization/Mutex/withLockIfAvailable(_:)`` for more details.
   borrowing func withLockIfAvailable<R, E>(_ body: (inout sending Value) throws(E) -> sending R) throws(E) -> sending R? where R: ~Copyable {
-    let (lock, value) = _lockAndValueAddresses
+    let lock = _lockAddress
 #if !SWT_NO_OS_UNFAIR_LOCK
     guard os_unfair_lock_trylock(lock) else {
       return nil
@@ -112,7 +115,7 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
       _ = pthread_mutex_unlock(lock)
     }
 #endif
-    return try body(&value.pointee)
+    return try body(&_valueAddress.pointee)
   }
 }
 #elseif !canImport(Synchronization)

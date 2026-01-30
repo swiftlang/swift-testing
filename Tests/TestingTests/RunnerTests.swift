@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if canImport(Synchronization)
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
 import Synchronization
 #endif
 #if canImport(XCTest)
