@@ -80,11 +80,11 @@ struct DiscoveryTests {
       record.context
     }
 
-#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
+#if objectFormat(MachO)
     @section("__DATA_CONST,__swift5_tests")
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#elseif objectFormat(ELF) || objectFormat(Wasm)
     @section("swift5_tests")
-#elseif os(Windows)
+#elseif objectFormat(COFF)
     @section(".sw5test$B")
 #else
     @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
@@ -145,7 +145,7 @@ struct DiscoveryTests {
 
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
   struct `__🟡$LegacyTestContentRecord`: __TestContentRecordContainer {
-    static var __testContentRecord: __TestContentRecord {
+    static var __testContentRecord: __TestContentRecord6_2 {
       MyTestContent.record
     }
   }

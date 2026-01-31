@@ -17,30 +17,17 @@ public import SwiftSyntaxMacros
 ///
 /// This type is used to implement the `@Suite` attribute macro. Do not use it
 /// directly.
-public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
-  public static func expansion(
-    of node: AttributeSyntax,
-    providingMembersOf declaration: some DeclGroupSyntax,
-    conformingTo protocols: [TypeSyntax],
-    in context: some MacroExpansionContext
-  ) throws -> [DeclSyntax] {
-    guard _diagnoseIssues(with: declaration, suiteAttribute: node, in: context) else {
-      return []
-    }
-    return _createSuiteDecls(for: declaration, suiteAttribute: node, in: context)
-  }
-
+public struct SuiteDeclarationMacro: PeerMacro, Sendable {
   public static func expansion(
     of node: AttributeSyntax,
     providingPeersOf declaration: some DeclSyntaxProtocol,
     in context: some MacroExpansionContext
   ) throws -> [DeclSyntax] {
-    // The peer macro expansion of this macro is only used to diagnose misuses
-    // on symbols that are not decl groups.
-    if !declaration.isProtocol((any DeclGroupSyntax).self) {
-      _ = _diagnoseIssues(with: declaration, suiteAttribute: node, in: context)
+    guard _diagnoseIssues(with: declaration, suiteAttribute: node, in: context),
+          let declaration = declaration.asProtocol((any DeclGroupSyntax).self) else {
+      return []
     }
-    return []
+    return _createSuiteDecls(for: declaration, suiteAttribute: node, in: context)
   }
 
   public static var formatMode: FormatMode {
@@ -121,6 +108,12 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
       return []
     }
 
+    // The type, if any, containing this suite. This type (if there is one) will
+    // end up hosting the declarations we emit. We emit them as peers of the
+    // suite rather than members so that, in particular, `Self` is correctly
+    // resolved in traits like `@Suite(.enabled(if: Self.someCondition))`.
+    let containingType = context.typeOfLexicalContext
+
     if let genericGuardDecl = makeGenericGuardDecl(guardingAgainst: declaration, in: context) {
       result.append(genericGuardDecl)
     }
@@ -132,7 +125,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     result.append(
       """
       @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-      @Sendable private static func \(generatorName)() async -> Testing.Test {
+      @Sendable private \(staticKeyword(for: containingType)) func \(generatorName)() async -> Testing.Test {
         .__type(
           \(declaration.type.trimmed).self,
           \(raw: attributeInfo.functionArgumentList(in: context))
@@ -141,24 +134,19 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
       """
     )
 
-    let accessorName = context.makeUniqueName("accessor")
-    result.append(
-      """
-      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-      private nonisolated static let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _, _ in
-        Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
-      }
-      """
-    )
-
     let testContentRecordName = context.makeUniqueName("testContentRecord")
     result.append(
       makeTestContentRecordDecl(
         named: testContentRecordName,
-        in: declaration.type,
+        in: containingType,
         ofKind: .testDeclaration,
-        accessingWith: accessorName,
-        context: attributeInfo.testContentRecordFlags
+        accessingWith: """
+        { outValue, type, _, _ in
+            Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
+        }
+        """,
+        context: attributeInfo.testContentRecordFlags,
+        in: context
       )
     )
 
@@ -169,7 +157,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       enum \(enumName): Testing.__TestContentRecordContainer {
-        nonisolated static var __testContentRecord: Testing.__TestContentRecord {
+        nonisolated static var __testContentRecord: Testing.__TestContentRecord6_2 {
           unsafe \(testContentRecordName)
         }
       }

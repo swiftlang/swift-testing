@@ -32,6 +32,7 @@ add_library(Testing
   Attachments/Attachment.swift
   Events/Clock.swift
   Events/Event.swift
+  Events/Event+FallbackHandler.swift
   Events/Recorder/Event.AdvancedConsoleOutputRecorder.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
   Events/Recorder/Event.HumanReadableOutputRecorder.swift
@@ -71,6 +72,7 @@ add_library(Testing
   SourceAttribution/CustomTestStringConvertible.swift
   SourceAttribution/Expression.swift
   SourceAttribution/Expression+Macro.swift
+  SourceAttribution/SourceBounds.swift
   SourceAttribution/SourceContext.swift
   SourceAttribution/SourceLocation.swift
   SourceAttribution/SourceLocation+Macro.swift
@@ -78,10 +80,12 @@ add_library(Testing
   Support/Additions/CollectionDifferenceAdditions.swift
   Support/Additions/CommandLineAdditions.swift
   Support/Additions/CopyableAdditions.swift
+  Support/Additions/MutexAdditions.swift
   Support/Additions/NumericAdditions.swift
   Support/Additions/ResultAdditions.swift
   Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
+  Support/Allocated.swift
   Support/CartesianProduct.swift
   Support/CError.swift
   Support/CustomIssueRepresentable.swift
@@ -90,7 +94,6 @@ add_library(Testing
   Support/GetSymbol.swift
   Support/Graph.swift
   Support/JSON.swift
-  Support/Locked.swift
   Support/Serializer.swift
   Support/VersionNumber.swift
   Support/Versions.swift
@@ -121,7 +124,8 @@ add_library(Testing
   Traits/Trait.swift)
 target_link_libraries(Testing PRIVATE
   _TestDiscovery
-  _TestingInternals)
+  _TestingInternals
+  _TestingInterop)
 if(NOT APPLE)
   if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
     target_link_libraries(Testing PUBLIC

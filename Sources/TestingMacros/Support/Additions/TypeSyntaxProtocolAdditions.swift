@@ -10,6 +10,12 @@
 
 import SwiftSyntax
 
+/// An array of syntax node kinds that always represent generic types.
+private let _knownGenericTypeKinds: [SyntaxKind] = [
+  .arrayType, .dictionaryType, .optionalType,
+  .implicitlyUnwrappedOptionalType, .inlineArrayType
+]
+
 extension TypeSyntaxProtocol {
   /// Whether or not this type is an optional type (`T?`, `Optional<T>`, etc.)
   var isOptional: Bool {
@@ -41,6 +47,35 @@ extension TypeSyntaxProtocol {
     tokens(viewMode: .fixedUp).lazy
       .map(\.tokenKind)
       .contains(.keyword(.any))
+  }
+
+  /// Whether or not this type is explicitly a generic type.
+  var isExplicitlyGeneric: Bool {
+    // Fast(er) path: check if this type's syntax node kind is one that always
+    // represents generic types.
+    if _knownGenericTypeKinds.contains(kind) {
+      return true
+    }
+
+    // Check if this type has a generic argument clause.
+    if `as`(IdentifierTypeSyntax.self)?.genericArgumentClause != nil {
+      return true
+    }
+
+    // Check if the `some` or `any` keyword is present somewhere in this type.
+    let containsSomeOrAny = tokens(viewMode: .fixedUp).lazy
+      .map(\.tokenKind)
+      .contains { $0 == .keyword(.some) || $0 == .keyword(.any) }
+    if containsSomeOrAny {
+      return true
+    }
+
+    // Check the base type of this type (if any).
+    if let baseType = `as`(MemberTypeSyntax.self)?.baseType {
+      return baseType.isExplicitlyGeneric
+    }
+
+    return false
   }
 
   /// Check whether or not this type is named with the specified name and

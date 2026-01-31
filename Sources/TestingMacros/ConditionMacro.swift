@@ -487,7 +487,18 @@ extension ExitTestConditionMacro {
         named: .identifier("testContentRecord"),
         in: TypeSyntax(IdentifierTypeSyntax(name: enumName)),
         ofKind: .exitTest,
-        accessingWith: .identifier("accessor")
+        accessingWith: """
+        { outValue, type, hint, _ in
+          Testing.ExitTest.__store(
+            \(idExpr),
+            \(bodyThunkName),
+            into: outValue,
+            asTypeAt: type,
+            withHintAt: hint
+          )
+        }
+        """,
+        in: context
       )
 
       // Create another local type for legacy test discovery.
@@ -496,7 +507,7 @@ extension ExitTestConditionMacro {
       let legacyEnumName = context.makeUniqueName("__🟡$")
       recordDecl = """
       enum \(legacyEnumName): Testing.__TestContentRecordContainer {
-        nonisolated static var __testContentRecord: Testing.__TestContentRecord {
+        nonisolated static var __testContentRecord: Testing.__TestContentRecord6_2 {
           unsafe \(enumName).testContentRecord
         }
       }
@@ -507,16 +518,6 @@ extension ExitTestConditionMacro {
         """
         @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
         enum \(enumName) {
-          private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint, _ in
-            Testing.ExitTest.__store(
-              \(idExpr),
-              \(bodyThunkName),
-              into: outValue,
-              asTypeAt: type,
-              withHintAt: hint
-            )
-          }
-
           \(testContentRecordDecl)
 
           \(recordDecl)
@@ -633,7 +634,7 @@ extension ExitTestConditionMacro {
           diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: lexicalContext))
         } else if let whereClause = lexicalContext.genericWhereClause {
           diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: lexicalContext))
-        } else if [.arrayType, .dictionaryType, .optionalType, .implicitlyUnwrappedOptionalType, .inlineArrayType].contains(lexicalContext.type.kind) {
+        } else if lexicalContext.type.isExplicitlyGeneric {
           diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: lexicalContext.type, on: lexicalContext))
         }
       } else if let functionDecl = lexicalContext.as(FunctionDeclSyntax.self) {

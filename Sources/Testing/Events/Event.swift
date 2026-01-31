@@ -245,7 +245,20 @@ public struct Event: Sendable {
     // configuration property of Event.Context to nil initially because we'll
     // reset it to the actual configuration that handles the event when we call
     // handleEvent() later, so there's no need to make a copy of it yet.
-    let (test, testCase) = testAndTestCase
+    var (test, testCase) = testAndTestCase
+    if test == nil && testCase == nil,
+       case let .issueRecorded(issue) = kind,
+       let issueSourceLocation = issue.sourceLocation {
+      // There was no test on the current task, but an issue was recorded. Check
+      // if its source location lines up with the bounds of any known test and
+      // attribute it to that test if so. We only set the test case if the test
+      // is monomorphic (because for parameterized tests, we can't reliably tell
+      // which set of inputs triggered the issue).
+      test = Test(containing: issueSourceLocation)
+      if let test, !test.isParameterized {
+        testCase = test.testCases?.first { _ in true }
+      }
+    }
     let event = Event(kind, testID: test?.id, testCaseID: testCase?.id, instant: instant)
     let context = Event.Context(test: test, testCase: testCase, configuration: nil)
     event._post(in: context, configuration: configuration)
@@ -316,7 +329,10 @@ extension Event {
   /// `configuration` is not `nil`, `self` is passed to its
   /// ``Configuration/eventHandler`` property. If `configuration` is `nil`, and
   /// ``Configuration/current`` is _not_ `nil`, its event handler is used
-  /// instead. If there is no current configuration, the event is posted to
+  /// instead. If there is no current configuration, we try and post the event
+  /// to a fallback event handler, if one exists.
+  ///
+  /// If we still couldn't find somewhere to send the event, we then post it to
   /// the event handlers of all configurations set as current across all tasks
   /// in the process.
   private borrowing func _post(in context: borrowing Context, configuration: Configuration? = nil) {
@@ -326,6 +342,8 @@ extension Event {
       if configuration.eventHandlingOptions.shouldHandleEvent(self) {
         configuration.handleEvent(self, in: context)
       }
+    } else if postToFallbackHandler(in: context) {
+      // The fallback event handler handled this event.
     } else {
       // The current task does NOT have an associated configuration. This event
       // will be lost! Post it to every registered event handler to avoid that.

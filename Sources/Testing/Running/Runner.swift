@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type that runs tests according to a given configuration.
 @_spi(ForToolsIntegrationOnly)
 public struct Runner: Sendable {
@@ -447,7 +451,7 @@ extension Runner {
 #endif
 
     // Track whether or not any issues were recorded across the entire run.
-    let issueRecorded = Locked(rawValue: false)
+    let issueRecorded = Mutex(false)
     runner.configuration.eventHandler = { [eventHandler = runner.configuration.eventHandler] event, context in
       if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
         issueRecorded.withLock { issueRecorded in
@@ -475,9 +479,11 @@ extension Runner {
     await Configuration.withCurrent(runner.configuration) {
       // Post an event for every test in the test plan being run. These events
       // are turned into JSON objects if JSON output is enabled.
-      for test in runner.plan.steps.lazy.map(\.test) {
+      let tests = runner.plan.stepGraph.compactMap { $0.value?.test }
+      for test in tests {
         Event.post(.testDiscovered, for: (test, nil), configuration: runner.configuration)
       }
+      schedule(tests)
 
       Event.post(.runStarted, for: (nil, nil), configuration: runner.configuration)
       defer {

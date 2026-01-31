@@ -128,7 +128,7 @@ let package = Package(
     // manager to use the lexicographically highest-sorted tag with the
     // specified semantic version, meaning the most recent "prerelease" tag will
     // always be used.
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "603.0.0-latest"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "604.0.0-latest"),
   ],
 
   targets: [
@@ -142,9 +142,18 @@ let package = Package(
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("Testing"),
-      linkerSettings: [
-        .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
-      ]
+      linkerSettings: {
+        var result = [LinkerSetting]()
+        result += [
+          .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
+        ]
+#if compiler(>=6.3)
+        result += [
+          .linkedLibrary("_TestingInterop"),
+        ]
+#endif
+        return result
+      }()
     ),
     .testTarget(
       name: "TestingTests",
