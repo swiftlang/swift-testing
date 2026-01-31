@@ -134,7 +134,7 @@ extension String {
   /// ## See Also
   ///
   /// - ``CustomTestStringConvertible``
-  @_disfavoredOverload
+  @_disfavoredOverload // otherwise ambiguous with the existential-based overload above
   public init(describingForTest value: borrowing (some CustomTestStringConvertible & ~Copyable & ~Escapable)) {
     self = value.testDescription
   }
@@ -156,7 +156,6 @@ extension String {
       self = "instance of '\(typeInfo.unqualifiedName)'"
     }
   }
-
 }
 
 // MARK: - Built-in implementations
