@@ -23,53 +23,40 @@ public import ObjectiveC
 /// Two instances of this type are considered to be equal if the values of their
 /// ``Test/id-swift.property`` properties are equal.
 public struct Test: Sendable {
-  /// A type that stores most of the properties of an instance of ``Test``.
+  /// A type describing the indirectly stored properties of ``Test``.
   ///
-  /// This type is used to implement copy-on-write semantics for ``Test`` so
-  /// that individual instances and copies thereof take up less memory.
-  private final class _Storage: Sendable {
-    /// A type describing the properties stored by an instance of `_Storage`.
-    ///
-    /// For a description of this type's properties, see the corresponding
-    /// properties on ``Test`` itself.
-    struct Properties: Sendable {
-      var name: String
-      var displayName: String?
-      var traits: [any Trait]
-      var sourceBounds: __SourceBounds
-      var containingTypeInfo: TypeInfo?
-      var xcTestCompatibleSelector: __XCTestCompatibleSelector?
-      var testCasesState: TestCasesState?
-      var parameters: [Parameter]?
-      var isSynthesized: Bool
+  /// For a description of this type's properties, see the corresponding
+  /// properties on ``Test`` itself.
+  private struct _Properties: Sendable {
+    var name: String
+    var displayName: String?
+    var traits: [any Trait]
+    var sourceBounds: __SourceBounds
+    var containingTypeInfo: TypeInfo?
+    var xcTestCompatibleSelector: __XCTestCompatibleSelector?
+    var testCasesState: TestCasesState?
+    var parameters: [Parameter]?
+    var isSynthesized: Bool
 #if DEBUG
-      var mutationCount = 0
+    var mutationCount = 0
 #endif
-    }
-
-    /// The properties stored by this instance.
-    let properties: Properties
-
-    init(_ properties: Properties) {
-      self.properties = properties
-    }
   }
 
   /// Storage for most of the properties of this instance.
-  private var _storage: _Storage
+  private var _properties: Allocated<_Properties>
 
-  /// Mutate a single property stored in this instance's `_storage` property.
+  /// Mutate a single property stored in `_properties`.
   ///
   /// - Parameters:
   ///   - newValue: The new value to assign.
   ///   - keyPath: The key path to modify.
-  private mutating func _setValue<V>(_ newValue: consuming V, forKeyPath keyPath: WritableKeyPath<_Storage.Properties, V>) {
-    var properties = _storage.properties
+  private mutating func _setValue<V>(_ newValue: consuming V, forKeyPath keyPath: WritableKeyPath<_Properties, V>) {
+    var properties = _properties.value
     properties[keyPath: keyPath] = newValue
 #if DEBUG
     properties.mutationCount += 1
 #endif
-    _storage = _Storage(properties)
+    _properties = Allocated(properties)
   }
 
   /// The name of this instance.
@@ -80,7 +67,7 @@ public struct Test: Sendable {
   /// attribute, use the ``Test/displayName`` property.
   public var name: String {
     get {
-      _storage.properties.name
+      _properties.value.name
     }
     set {
       _setValue(newValue, forKeyPath: \.name)
@@ -90,7 +77,7 @@ public struct Test: Sendable {
   /// The customized display name of this instance, if specified.
   public var displayName: String? {
     get {
-      _storage.properties.displayName
+      _properties.value.displayName
     }
     set {
       _setValue(newValue, forKeyPath: \.displayName)
@@ -100,7 +87,7 @@ public struct Test: Sendable {
   /// The set of traits added to this instance when it was initialized.
   public var traits: [any Trait] {
     get {
-      _storage.properties.traits
+      _properties.value.traits
     }
     set {
       // Prevent programmatically adding suite traits to test functions or test
@@ -130,7 +117,7 @@ public struct Test: Sendable {
   /// The source bounds of this test.
   var sourceBounds: __SourceBounds {
     get {
-      _storage.properties.sourceBounds
+      _properties.value.sourceBounds
     }
     set {
       _setValue(newValue, forKeyPath: \.sourceBounds)
@@ -144,7 +131,7 @@ public struct Test: Sendable {
   /// refers to this type itself, check the ``isSuite`` property.
   var containingTypeInfo: TypeInfo? {
     get {
-      _storage.properties.containingTypeInfo
+      _properties.value.containingTypeInfo
     }
     set {
       _setValue(newValue, forKeyPath: \.containingTypeInfo)
@@ -159,7 +146,7 @@ public struct Test: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public var xcTestCompatibleSelector: __XCTestCompatibleSelector? {
     get {
-      _storage.properties.xcTestCompatibleSelector
+      _properties.value.xcTestCompatibleSelector
     }
     set {
       _setValue(newValue, forKeyPath: \.xcTestCompatibleSelector)
@@ -194,7 +181,7 @@ public struct Test: Sendable {
   /// If this test represents a suite type, the value of this property is `nil`.
   fileprivate var testCasesState: TestCasesState? {
     get {
-      _storage.properties.testCasesState
+      _properties.value.testCasesState
     }
     set {
       _setValue(newValue, forKeyPath: \.testCasesState)
@@ -279,7 +266,7 @@ public struct Test: Sendable {
   @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
   public var parameters: [Parameter]? {
     get {
-      _storage.properties.parameters
+      _properties.value.parameters
     }
     set {
       _setValue(newValue, forKeyPath: \.parameters)
@@ -306,7 +293,7 @@ public struct Test: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public var isSynthesized: Bool {
     get {
-      _storage.properties.isSynthesized
+      _properties.value.isSynthesized
     }
     set {
       _setValue(newValue, forKeyPath: \.isSynthesized)
@@ -317,7 +304,7 @@ public struct Test: Sendable {
   /// The number of times any property on this instance of ``Test`` has been
   /// mutated after initialization.
   var mutationCount: Int {
-    _storage.properties.mutationCount
+    _properties.value.mutationCount
   }
 #endif
 
@@ -336,7 +323,7 @@ public struct Test: Sendable {
       displayName = String(name.dropFirst().dropLast())
     }
     let sourceBounds = __SourceBounds(lowerBoundOnly: sourceLocation)
-    let properties = _Storage.Properties(
+    let properties = _Properties(
       name: name,
       displayName: displayName,
       traits: traits,
@@ -344,7 +331,7 @@ public struct Test: Sendable {
       containingTypeInfo: containingTypeInfo,
       isSynthesized: isSynthesized
     )
-    _storage = _Storage(properties)
+    _properties = Allocated(properties)
   }
 
   /// Initialize an instance of this type representing a test function.
@@ -358,7 +345,7 @@ public struct Test: Sendable {
     testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
     parameters: [Parameter]
   ) {
-    let properties = _Storage.Properties(
+    let properties = _Properties(
       name: name,
       displayName: displayName,
       traits: traits,
@@ -369,7 +356,7 @@ public struct Test: Sendable {
       parameters: parameters,
       isSynthesized: false
     )
-    _storage = _Storage(properties)
+    _properties = Allocated(properties)
   }
 
   /// Initialize an instance of this type representing a test function.
@@ -383,7 +370,7 @@ public struct Test: Sendable {
     testCases: Test.Case.Generator<S>,
     parameters: [Parameter]
   ) {
-    let properties = _Storage.Properties(
+    let properties = _Properties(
       name: name,
       displayName: displayName,
       traits: traits,
@@ -394,7 +381,7 @@ public struct Test: Sendable {
       parameters: parameters,
       isSynthesized: false
     )
-    _storage = _Storage(properties)
+    _properties = Allocated(properties)
   }
 }
 

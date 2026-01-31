@@ -10,6 +10,10 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+import Synchronization
+#endif
+
 @Suite("Configuration.RepetitionPolicy Tests")
 struct PlanIterationTests {
   @Test("One iteration (default behavior)")
@@ -58,7 +62,7 @@ struct PlanIterationTests {
 
   @Test("Iteration until issue recorded")
   func iterationUntilIssueRecorded() async {
-    let iterationIndex = Locked(rawValue: 0)
+    let iterationIndex = Mutex(0)
     let iterationCount = 10
     let iterationWithIssue = 5
     await confirmation("N iterations started", expectedCount: iterationWithIssue + 1) { started in
@@ -87,7 +91,7 @@ struct PlanIterationTests {
 
   @Test("Iteration while issue recorded")
   func iterationWhileIssueRecorded() async {
-    let iterationIndex = Locked(rawValue: 0)
+    let iterationIndex = Mutex(0)
     let iterationCount = 10
     let iterationWithoutIssue = 5
     await confirmation("N iterations started", expectedCount: iterationWithoutIssue + 1) { started in

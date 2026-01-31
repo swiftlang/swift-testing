@@ -9,14 +9,18 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-#if !os(Windows)
-import RegexBuilder
-#endif
+
 #if canImport(Foundation)
 import Foundation
 #endif
 #if canImport(FoundationXML)
 import FoundationXML
+#endif
+#if !os(Windows)
+import RegexBuilder
+#endif
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+import Synchronization
 #endif
 
 #if FIXED_118452948
@@ -24,7 +28,7 @@ import FoundationXML
 #endif
 struct EventRecorderTests {
   final class Stream: TextOutputStream, Sendable {
-    let buffer = Locked<String>(rawValue: "")
+    let buffer = Mutex<String>("")
 
     @Sendable func write(_ string: String) {
       buffer.withLock {
@@ -570,7 +574,7 @@ struct EventRecorderTests {
   func knownIssueComments(testName: String, expectedComments: [String]) async throws {
     var configuration = Configuration()
     let recorder = Event.HumanReadableOutputRecorder()
-    let messages = Locked<[Event.HumanReadableOutputRecorder.Message]>(rawValue: [])
+    let messages = Mutex<[Event.HumanReadableOutputRecorder.Message]>([])
     configuration.eventHandler = { event, context in
       guard case .issueRecorded = event.kind else { return }
       messages.withLock {

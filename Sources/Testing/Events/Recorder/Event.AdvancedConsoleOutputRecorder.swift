@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 extension Event {
   /// An experimental console output recorder that provides enhanced test result
   /// display capabilities.
@@ -146,7 +150,7 @@ extension Event {
     private let _baseOptions: Event.ConsoleOutputRecorder.Options
     
     /// Context storage for test information and results.
-    private let _context: Locked<_Context>
+    private let _context: Allocated<Mutex<_Context>>
     
     /// Human-readable output recorder for generating messages.
     private let _humanReadableRecorder: Event.HumanReadableOutputRecorder
@@ -160,7 +164,7 @@ extension Event {
       self.options = options
       self.write = write
       self._baseOptions = options.base
-      self._context = Locked(rawValue: _Context())
+      self._context = Allocated(Mutex(_Context()))
       self._humanReadableRecorder = Event.HumanReadableOutputRecorder()
     }
   }
@@ -241,7 +245,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     if case .testDiscovered = eventKind, let test = testValue {
       let encodedTest = ABI.EncodedTest<V>(encoding: test)
       
-      _context.withLock { context in
+      _context.value.withLock { context in
         _buildTestHierarchy(encodedTest, in: &context)
       }
     }
@@ -439,7 +443,7 @@ extension Event.AdvancedConsoleOutputRecorder {
   /// - Parameters:
   ///   - encodedEvent: The ABI-encoded event to process.
   private func _processABIEvent(_ encodedEvent: ABI.EncodedEvent<V>) {
-    _context.withLock { context in
+    _context.value.withLock { context in
       switch encodedEvent.kind {
       case .runStarted:
         context.runStartTime = encodedEvent.instant
