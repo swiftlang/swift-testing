@@ -162,6 +162,7 @@ private func _testDescription(of type: any Any.Type) -> String {
   TypeInfo(describing: type).unqualifiedName
 }
 
+@_preInverseGenerics
 extension Optional: CustomTestStringConvertible where Wrapped: ~Copyable & ~Escapable {
   public var testDescription: String {
     switch self {
