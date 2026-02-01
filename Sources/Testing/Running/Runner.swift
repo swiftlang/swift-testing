@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type that runs tests according to a given configuration.
 @_spi(ForToolsIntegrationOnly)
 public struct Runner: Sendable {
@@ -447,7 +451,7 @@ extension Runner {
 #endif
 
     // Track whether or not any issues were recorded across the entire run.
-    let issueRecorded = Locked(rawValue: false)
+    let issueRecorded = Mutex(false)
     runner.configuration.eventHandler = { [eventHandler = runner.configuration.eventHandler] event, context in
       if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
         issueRecorded.withLock { issueRecorded in

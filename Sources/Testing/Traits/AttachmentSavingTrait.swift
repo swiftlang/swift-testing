@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type that defines a condition which must be satisfied for the testing
 /// library to save attachments recorded by a test.
 ///
@@ -114,7 +118,7 @@ extension AttachmentSavingTrait: TestScoping {
     }
     let oldConfiguration = configuration
 
-    let context = Locked(rawValue: Context())
+    let context = Mutex(Context())
     configuration.eventHandler = { event, eventContext in
       var eventDeferred = false
       defer {

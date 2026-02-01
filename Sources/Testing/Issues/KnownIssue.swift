@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type that represents an active
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``
 /// call and any parent calls.
@@ -29,7 +33,7 @@ struct KnownIssueScope: Sendable {
   var matcher: Matcher
 
   /// The number of issues this scope and its ancestors have matched.
-  let matchCounter: Locked<Int>
+  fileprivate let matchCounter: Allocated<Mutex<Int>>
 
   /// Create a new ``KnownIssueScope`` by combining a new issue matcher with
   /// any already-active scope.
@@ -42,7 +46,7 @@ struct KnownIssueScope: Sendable {
   ///   - context: The context to be associated with issues matched by
   ///     `issueMatcher`.
   init(parent: KnownIssueScope? = .current, issueMatcher: @escaping KnownIssueMatcher, context: Issue.KnownIssueContext) {
-    let matchCounter = Locked(rawValue: 0)
+    let matchCounter = Allocated(Mutex(0))
     self.matchCounter = matchCounter
     matcher = { issue in
       let matchedContext = if issueMatcher(issue) {
@@ -51,7 +55,7 @@ struct KnownIssueScope: Sendable {
         parent?.matcher(issue)
       }
       if matchedContext != nil {
-        matchCounter.increment()
+        matchCounter.value.increment()
       }
       return matchedContext
     }
@@ -106,8 +110,8 @@ private func _matchError(_ error: any Error, in scope: KnownIssueScope, comment:
 ///     function.
 ///   - sourceLocation: The source location to which the issue should be
 ///     attributed.
-private func _handleMiscount(by matchCounter: Locked<Int>, comment: Comment?, sourceLocation: SourceLocation) {
-  if matchCounter.rawValue == 0 {
+private func _handleMiscount(by matchCounter: Allocated<Mutex<Int>>, comment: Comment?, sourceLocation: SourceLocation) {
+  if matchCounter.value.rawValue == 0 {
     let issue = Issue(
       kind: .knownIssueNotRecorded,
       comments: Array(comment),

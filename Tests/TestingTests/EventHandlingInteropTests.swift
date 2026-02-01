@@ -14,6 +14,9 @@ private import _TestingInternals
 #if canImport(Foundation)
 import Foundation
 #endif
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+import Synchronization
+#endif
 
 #if !SWT_NO_EXIT_TESTS && !SWT_NO_INTEROP && canImport(Foundation)
 struct EventHandlingInteropTests {
@@ -25,7 +28,7 @@ struct EventHandlingInteropTests {
     }
   }()
 
-  static let handlerContents = Locked<(version: String, record: String?)?>(rawValue: nil)
+  static let handlerContents = Mutex<(version: String, record: String?)?>()
 
   private static let capturingHandler: SWTFallbackEventHandler = { schemaVersion, recordJSONBaseAddress, recordJSONByteCount, _ in
     let version = String(cString: schemaVersion)

@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 extension Runner {
   /// A type which collects the task-scoped runtime state for a running
   /// ``Runner`` instance, the tests it runs, and other objects it interacts
@@ -116,7 +120,7 @@ extension Configuration {
   }
 
   /// Mutable storage for ``Configuration/all``.
-  private static let _all = Locked(rawValue: _All())
+  private static let _all = Mutex(_All())
 
   /// A collection containing all instances of this type that are currently set
   /// as the current configuration for a task.
@@ -160,7 +164,7 @@ extension Configuration {
   /// An atomic counter that tracks the number of "current" configurations that
   /// have set ``EventHandlingOptions/isExpectationCheckedEventEnabled`` to
   /// `true`.
-  private static let _deliverExpectationCheckedEventsCount = Locked(rawValue: 0)
+  private static let _deliverExpectationCheckedEventsCount = Mutex(0)
 
   /// Whether or not events of the kind
   /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
@@ -265,7 +269,7 @@ func currentTestAndTestCase() -> (Test?, Test.Case?) {
 
 extension Runner {
   /// Storage for ``scheduledTests``.
-  private static let _scheduledTests = Locked<[Test]>()
+  private static let _scheduledTests = Mutex<[Test]>()
 
   /// Report a set of tests that some instance of ``Runner`` will run.
   ///
