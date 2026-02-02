@@ -29,7 +29,7 @@ enum JSON {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body` or by the encoding process.
-  static func withEncoding<R>(of value: some Encodable, userInfo: [CodingUserInfoKey: any Sendable] = [:], _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  static func withEncoding<R>(of value: some Encodable, userInfo: [CodingUserInfoKey: any Sendable] = [:], _ body: (borrowing RawSpan) throws -> R) throws -> R {
 #if canImport(Foundation)
     let encoder = JSONEncoder()
 
@@ -44,7 +44,7 @@ enum JSON {
     encoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs})
 
     let data = try encoder.encode(value)
-    return try data.withUnsafeBytes(body)
+    return try body(data.bytes)
 #else
     throw SystemError(description: "JSON encoding requires Foundation which is not available in this environment.")
 #endif
@@ -60,14 +60,17 @@ enum JSON {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func asJSONLine<R>(_ json: UnsafeRawBufferPointer, _ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-    if _slowPath(json.contains(where: \.isASCIINewline)) {
+  static func asJSONLine<R>(_ json: borrowing RawSpan, _ body: (borrowing RawSpan) throws -> R) rethrows -> R {
+    let containsASCIINewline = json.withUnsafeBytes { json in
+      json.contains(where: \.isASCIINewline)
+    }
+    if _slowPath(containsASCIINewline) {
       // Remove the newline characters to conform to JSON lines specification.
       // This is not actually expected to happen in practice with Foundation's
       // JSON encoder.
       var json = Array(json)
       json.removeAll(where: \.isASCIINewline)
-      return try json.withUnsafeBytes(body)
+      return try body(json.span.bytes)
     } else {
       // No newlines found, no need to copy the buffer.
       return try body(json)
@@ -83,20 +86,22 @@ enum JSON {
   /// - Returns: An instance of `T` decoded from `jsonRepresentation`.
   ///
   /// - Throws: Whatever is thrown by the decoding process.
-  static func decode<T>(_ type: T.Type, from jsonRepresentation: UnsafeRawBufferPointer) throws -> T where T: Decodable {
+  static func decode<T>(_ type: T.Type, from jsonRepresentation: borrowing RawSpan) throws -> T where T: Decodable {
 #if canImport(Foundation)
     try withExtendedLifetime(jsonRepresentation) {
-      let byteCount = jsonRepresentation.count
-      let data = if byteCount > 0 {
-        Data(
-          bytesNoCopy: .init(mutating: jsonRepresentation.baseAddress!),
-          count: byteCount,
-          deallocator: .none
-        )
-      } else {
-        Data()
+      try jsonRepresentation.withUnsafeBytes { jsonRepresentation in
+        let byteCount = jsonRepresentation.count
+        let data = if byteCount > 0 {
+          Data(
+            bytesNoCopy: .init(mutating: jsonRepresentation.baseAddress!),
+            count: byteCount,
+            deallocator: .none
+          )
+        } else {
+          Data()
+        }
+        return try JSONDecoder().decode(type, from: data)
       }
-      return try JSONDecoder().decode(type, from: data)
     }
 #else
     throw SystemError(description: "JSON decoding requires Foundation which is not available in this environment.")
