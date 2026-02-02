@@ -16,7 +16,7 @@ public import WinSDK
 /// }
 extension AttachableImageFormat {
   private static let _encoderPathExtensionsByCLSID = Result {
-    var result = [CLSID.Wrapper: [String]]()
+    var result = [CLSID: [String]]()
 
     // Create an imaging factory.
     let factory = try IWICImagingFactory.create()
@@ -69,7 +69,7 @@ extension AttachableImageFormat {
         continue
       }
       let extensions = _pathExtensions(for: info)
-      result[CLSID.Wrapper(clsid)] = extensions
+      result[clsid] = extensions
     }
 
     return result
@@ -136,7 +136,7 @@ extension AttachableImageFormat {
             0 == _wcsicmp(pathExtension, encoderExt)
           }
         }
-      }.map { $0.key.rawValue }
+      }.map(\.key)
   }
 
   /// Get the `CLSID` value of the WIC image encoder corresponding to the same
@@ -172,13 +172,13 @@ extension AttachableImageFormat {
   static func appendPathExtension(for clsid: CLSID, to preferredName: String) -> String {
     // If there's already a CLSID associated with the filename, and it matches
     // the one passed to us, no changes are needed.
-    if let existingCLSID = computeEncoderCLSID(forPreferredName: preferredName), CLSID.Wrapper(clsid) == CLSID.Wrapper(existingCLSID) {
+    if let existingCLSID = computeEncoderCLSID(forPreferredName: preferredName), clsid == existingCLSID {
       return preferredName
     }
 
     // Find the preferred path extension for the encoder with the given CLSID.
     let encoderPathExtensionsByCLSID = (try? _encoderPathExtensionsByCLSID.get()) ?? [:]
-    if let ext = encoderPathExtensionsByCLSID[CLSID.Wrapper(clsid)]?.first {
+    if let ext = encoderPathExtensionsByCLSID[clsid]?.first {
       return "\(preferredName).\(ext)"
     }
 
@@ -221,10 +221,9 @@ extension AttachableImageFormat {
   ///   @Available(Swift, introduced: 6.3)
   /// }
   public init(encoderCLSID: CLSID, encodingQuality: Float = 1.0) {
-    let encoderCLSID = CLSID.Wrapper(encoderCLSID)
-    let kind: Kind = if encoderCLSID == CLSID.Wrapper(CLSID_WICPngEncoder) {
+    let kind: Kind = if encoderCLSID == CLSID_WICPngEncoder {
       .png
-    } else if encoderCLSID == CLSID.Wrapper(CLSID_WICJpegEncoder) {
+    } else if encoderCLSID == CLSID_WICJpegEncoder {
       .jpeg
     } else {
       .systemValue(encoderCLSID)
@@ -281,7 +280,7 @@ extension AttachableImageFormat.Kind: CustomStringConvertible, CustomDebugString
     case .jpeg:
       CLSID_WICJpegEncoder
     case let .systemValue(clsid):
-      (clsid as! CLSID.Wrapper).rawValue
+      clsid as! CLSID
     }
   }
 
@@ -308,7 +307,7 @@ extension AttachableImageFormat.Kind: CustomStringConvertible, CustomDebugString
   package var description: String {
     let clsid = encoderCLSID
     let encoderPathExtensionsByCLSID = (try? AttachableImageFormat._encoderPathExtensionsByCLSID.get()) ?? [:]
-    if let ext = encoderPathExtensionsByCLSID[CLSID.Wrapper(clsid)]?.first {
+    if let ext = encoderPathExtensionsByCLSID[clsid]?.first {
       return "\(ext.uppercased()) format"
     }
     return Self._description(of: clsid)
@@ -318,7 +317,7 @@ extension AttachableImageFormat.Kind: CustomStringConvertible, CustomDebugString
     let clsid = encoderCLSID
     let clsidDescription = Self._description(of: clsid)
     let encoderPathExtensionsByCLSID = (try? AttachableImageFormat._encoderPathExtensionsByCLSID.get()) ?? [:]
-    if let ext = encoderPathExtensionsByCLSID[CLSID.Wrapper(clsid)]?.first {
+    if let ext = encoderPathExtensionsByCLSID[clsid]?.first {
       return "\(ext.uppercased()) format (\(clsidDescription))"
     }
     return clsidDescription
