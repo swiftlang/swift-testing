@@ -141,7 +141,8 @@ if(NOT BUILD_SHARED_LIBS)
   # libraries.
   target_compile_options(Testing PRIVATE
     "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestDiscovery"
-    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals")
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals"
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInterop")
 endif()
 add_dependencies(Testing
   TestingMacros)
