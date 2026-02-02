@@ -126,28 +126,47 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 }
 #endif
 
-#if !defined(__ANDROID__)
-#if __has_include(<signal.h>) && defined(si_pid)
+#if !SWT_NO_PROCESS_SPAWNING && __has_include(<signal.h>)
+#if defined(__APPLE__) || defined(si_pid)
 /// Get the value of the `si_pid` field of a `siginfo_t` structure.
 ///
 /// This function is provided because `si_pid` is a complex macro on some
-/// platforms and cannot be imported directly into Swift. It is renamed back to
-/// `siginfo_t.si_pid` in Swift.
-SWT_SWIFT_NAME(getter:siginfo_t.si_pid(self:))
-static pid_t swt_siginfo_t_si_pid(const siginfo_t *siginfo) {
-  return siginfo->si_pid;
+/// platforms and cannot be imported directly into Swift.
+static pid_t swt_siginfo_t_si_pid(siginfo_t siginfo) {
+  return siginfo.si_pid;
 }
 #endif
 
-#if __has_include(<signal.h>) && defined(si_status)
+#if defined(__APPLE__) || defined(si_status)
 /// Get the value of the `si_status` field of a `siginfo_t` structure.
 ///
 /// This function is provided because `si_status` is a complex macro on some
-/// platforms and cannot be imported directly into Swift. It is renamed back to
-/// `siginfo_t.si_status` in Swift.
-SWT_SWIFT_NAME(getter:siginfo_t.si_status(self:))
-static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
-  return siginfo->si_status;
+/// platforms and cannot be imported directly into Swift.
+static int swt_siginfo_t_si_status(siginfo_t siginfo) {
+  return siginfo.si_status;
+}
+#endif
+
+#if defined(__ANDROID__)
+/// Get the default signal handler.
+///
+/// This function is provided because `SIG_DFL` is a complex macro in the
+/// Android NDK and cannot be imported directly into Swift.
+static __typeof__(SIG_DFL) _Null_unspecified swt_SIG_DFL(void) {
+  return SIG_DFL;
+}
+
+/// Call `posix_spawn(3)`.
+///
+/// This function is provided because the nullability for `posix_spawn(3)` is
+/// incorrectly specified in the Android NDK.
+static int swt_posix_spawn(
+  pid_t *_Nullable pid, const char *path,
+  const posix_spawn_file_actions_t _Nonnull *_Nullable fileActions,
+  const posix_spawnattr_t _Nonnull *_Nullable attrs,
+  char *const _Nullable argv[_Nonnull], char *const _Nullable env[_Nonnull]
+) {
+  return posix_spawn(pid, path, fileActions, attrs, argv, env);
 }
 #endif
 #endif

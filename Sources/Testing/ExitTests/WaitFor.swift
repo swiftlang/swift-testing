@@ -11,7 +11,7 @@
 #if !SWT_NO_PROCESS_SPAWNING
 internal import _TestingInternals
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
 /// Block the calling thread, wait for the target process to exit, and return
 /// a value describing the conditions under which it exited.
 ///
@@ -20,6 +20,7 @@ internal import _TestingInternals
 ///
 /// - Throws: If the exit status of the process with ID `pid` cannot be
 ///   determined (i.e. it does not represent an exit condition.)
+@available(_posixSpawnAPI, *)
 private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
   let pid = consume pid
 
@@ -29,9 +30,9 @@ private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
     if 0 == waitid(P_PID, id_t(pid), &siginfo, WEXITED) {
       switch siginfo.si_code {
       case .init(CLD_EXITED):
-        return .exitCode(siginfo.si_status)
+        return .exitCode(swt_siginfo_t_si_status(siginfo))
       case .init(CLD_KILLED), .init(CLD_DUMPED):
-        return .signal(siginfo.si_status)
+        return .signal(swt_siginfo_t_si_status(siginfo))
       default:
         throw SystemError(description: "Unexpected siginfo_t value. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new and include this information: \(String(reflecting: siginfo))")
       }
@@ -61,6 +62,7 @@ private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
 /// - Note: The open-source implementation of libdispatch available on Linux
 ///   and other platforms does not support `DispatchSourceProcess`. Those
 ///   platforms use an alternate implementation below.
+@available(_posixSpawnAPI, *)
 func wait(for pid: consuming pid_t) async throws -> ExitStatus {
   let pid = consume pid
 
@@ -78,8 +80,9 @@ func wait(for pid: consuming pid_t) async throws -> ExitStatus {
 
   return try _blockAndWait(for: pid)
 }
-#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
+@available(_posixSpawnAPI, *)
 private nonisolated(unsafe) let _childProcessContinuations = {
   let result = ManagedBuffer<[pid_t: CheckedContinuation<ExitStatus, any Error>], pthread_mutex_t>.create(
     minimumCapacity: 1,
@@ -101,6 +104,7 @@ private nonisolated(unsafe) let _childProcessContinuations = {
 /// - Returns: Whatever is returned by `body`.
 ///
 /// - Throws: Whatever is thrown by `body`.
+@available(_posixSpawnAPI, *)
 private func _withLockedChildProcessContinuations<R>(
   _ body: (
     _ childProcessContinuations: inout [pid_t: CheckedContinuation<ExitStatus, any Error>],
@@ -119,6 +123,7 @@ private func _withLockedChildProcessContinuations<R>(
 
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.
+@available(_posixSpawnAPI, *)
 private nonisolated(unsafe) let _waitThreadNoChildrenCondition = {
   let result = UnsafeMutablePointer<pthread_cond_t>.allocate(capacity: 1)
   _ = pthread_cond_init(result, nil)
@@ -138,6 +143,7 @@ private let _pthread_setname_np = symbol(named: "pthread_setname_np").map {
 
 /// Create a waiter thread that is responsible for waiting for child processes
 /// to exit.
+@available(_posixSpawnAPI, *)
 private let _createWaitThread: Void = {
   // The body of the thread's run loop.
   func waitForAnyChild() {
@@ -146,7 +152,7 @@ private let _createWaitThread: Void = {
     // continuation (if available) before reaping.
     var siginfo = siginfo_t()
     if 0 == waitid(P_ALL, 0, &siginfo, WEXITED | WNOWAIT) {
-      if case let pid = siginfo.si_pid, pid != 0 {
+      if case let pid = swt_siginfo_t_si_pid(siginfo), pid != 0 {
         let continuation = _withLockedChildProcessContinuations { childProcessContinuations, _ in
           childProcessContinuations.removeValue(forKey: pid)
         }
@@ -189,8 +195,9 @@ private let _createWaitThread: Void = {
     { _ in
       // Set the thread name to help with diagnostics. Note that different
       // platforms support different thread name lengths. See MAXTHREADNAMESIZE
-      // on Darwin, TASK_COMM_LEN on Linux, MAXCOMLEN on FreeBSD, and _MAXCOMLEN
-      // on OpenBSD. We try to maximize legibility in the available space.
+      // on Darwin, TASK_COMM_LEN on Linux, MAXCOMLEN on FreeBSD, _MAXCOMLEN on
+      // OpenBSD, and MAX_TASK_COMM_LEN on Android. We try to maximize
+      // legibility in the available space.
 #if SWT_TARGET_OS_APPLE
       _ = pthread_setname_np("Swift Testing exit test monitor")
 #elseif os(Linux)
@@ -201,6 +208,8 @@ private let _createWaitThread: Void = {
       pthread_set_name_np(pthread_self(), "SWT ex test monitor")
 #elseif os(OpenBSD)
       pthread_set_name_np(pthread_self(), "SWT exit test monitor")
+#elseif os(Android)
+      _ = pthread_setname_np(pthread_self(), "SWT ExT monitor")
 #else
 #warning("Platform-specific implementation missing: thread naming unavailable")
 #endif
@@ -233,6 +242,7 @@ private let _createWaitThread: Void = {
 ///
 /// On Apple platforms, the libdispatch-based implementation above is more
 /// efficient because it does not need to permanently reserve a thread.
+@available(_posixSpawnAPI, *)
 func wait(for pid: consuming pid_t) async throws -> ExitStatus {
   let pid = consume pid
 

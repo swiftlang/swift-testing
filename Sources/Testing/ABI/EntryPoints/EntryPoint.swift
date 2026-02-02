@@ -35,7 +35,8 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
   do {
 #if !SWT_NO_EXIT_TESTS
       // If an exit test was specified, run it. `exitTest` returns `Never`.
-      if let exitTest = ExitTest.findInEnvironmentForEntryPoint() {
+      if #available(_posixSpawnAPI, *),
+         let exitTest = ExitTest.findInEnvironmentForEntryPoint() {
         await exitTest()
       }
 #endif
@@ -668,7 +669,9 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
 #if !SWT_NO_EXIT_TESTS
   // Enable exit test handling via __swiftPMEntryPoint().
-  configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+  if #available(_posixSpawnAPI, *) {
+    configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+  }
 #endif
 
   // Warning issues (experimental).

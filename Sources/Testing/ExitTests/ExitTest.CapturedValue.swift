@@ -11,7 +11,9 @@
 private import _TestingInternals
 
 @_spi(ForToolsIntegrationOnly)
-#if SWT_NO_EXIT_TESTS
+#if !SWT_NO_EXIT_TESTS
+@available(_posixSpawnAPI, *)
+#else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -131,6 +133,7 @@ extension ExitTest {
 #if !SWT_NO_EXIT_TESTS
 // MARK: - Collection conveniences
 
+@available(_posixSpawnAPI, *)
 extension Array where Element == ExitTest.CapturedValue {
   init<each T>(_ wrappedValues: repeat each T) where repeat each T: Codable & Sendable {
     self.init()
@@ -143,6 +146,7 @@ extension Array where Element == ExitTest.CapturedValue {
   }
 }
 
+@available(_posixSpawnAPI, *)
 extension Collection where Element == ExitTest.CapturedValue {
   /// Cast the elements in this collection to a tuple of their wrapped values.
   ///

@@ -17,7 +17,7 @@ internal import _TestingInternals
 
 /// A platform-specific value identifying a process running on the current
 /// system.
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
 typealias ProcessID = pid_t
 #elseif os(Windows)
 typealias ProcessID = HANDLE
@@ -62,6 +62,7 @@ private let _posix_spawn_file_actions_addclosefrom_np = symbol(named: "posix_spa
 ///   resources.
 ///
 /// - Throws: Any error that prevented the process from spawning.
+@available(_posixSpawnAPI, *)
 func spawnExecutable(
   atPath executablePath: String,
   arguments: [String],
@@ -71,15 +72,16 @@ func spawnExecutable(
   standardError: borrowing FileHandle? = nil,
   additionalFileHandles: [UnsafePointer<FileHandle>] = []
 ) throws -> ProcessID {
-  // Darwin and Linux differ in their optionality for the posix_spawn types we
-  // use, so use this typealias to paper over the differences.
+  // Darwin, the BSDs, Linux, and Android all differ in their optionality for
+  // the posix_spawn types we use, so use this typealias and helper function to
+  // paper over the differences.
 #if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
   typealias P<T> = T?
-#elseif os(Linux)
+#elseif os(Linux) || os(Android)
   typealias P<T> = T
 #endif
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
   return try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
     let fileActions = fileActions.baseAddress!
     let fileActionsInitialized = posix_spawn_file_actions_init(fileActions)
@@ -92,7 +94,13 @@ func spawnExecutable(
 
     return try withUnsafeTemporaryAllocation(of: P<posix_spawnattr_t>.self, capacity: 1) { attrs in
       let attrs = attrs.baseAddress!
+#if os(Android)
+      let attrsInitialized = attrs.withMemoryRebound(to: posix_spawnattr_t?.self, capacity: 1) { attrs in
+        posix_spawnattr_init(attrs)
+      }
+#else
       let attrsInitialized = posix_spawnattr_init(attrs)
+#endif
       guard 0 == attrsInitialized else {
         throw CError(rawValue: attrsInitialized)
       }
@@ -188,10 +196,11 @@ func spawnExecutable(
       // `posix_spawn_file_actions_addclosefrom_np`, and FreeBSD does not use
       // glibc nor guard symbols behind `_DEFAULT_SOURCE`.
       _ = posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
-#elseif os(OpenBSD)
+#elseif os(OpenBSD) || (os(Android) && !SWT_NO_DYNAMIC_LINKING)
       // OpenBSD does not have posix_spawn_file_actions_addclosefrom_np().
       // However, it does have closefrom(2), which we can call from within the
-      // spawned child process if we control its execution.
+      // spawned child process if we control its execution. Android has
+      // close_range(2) which serves the same purpose.
       var environment = environment
       environment["SWT_CLOSEFROM"] = String(describing: highestFD + 1)
 #else
@@ -225,7 +234,11 @@ func spawnExecutable(
       }
 
       var pid = pid_t()
+#if os(Android)
+      let processSpawned = swt_posix_spawn(&pid, executablePath, fileActions, attrs, argv, environ)
+#else
       let processSpawned = posix_spawn(&pid, executablePath, fileActions, attrs, argv, environ)
+#endif
       guard 0 == processSpawned else {
         throw CError(rawValue: processSpawned)
       }
@@ -463,6 +476,7 @@ private func _escapeCommandLine(_ arguments: [String]) -> String {
 /// This function is a convenience that spawns the given process and waits for
 /// it to terminate. It is primarily for use by other targets in this package
 /// such as its cross-import overlays.
+@available(_posixSpawnAPI, *)
 package func spawnExecutableAtPathAndWait(
   _ executablePath: String,
   arguments: [String] = [],

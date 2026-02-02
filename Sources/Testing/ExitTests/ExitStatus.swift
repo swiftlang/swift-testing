@@ -23,7 +23,10 @@ private import _TestingInternals
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
 /// }
-#if SWT_NO_PROCESS_SPAWNING
+#if !SWT_NO_PROCESS_SPAWNING
+@available(_posixSpawnAPI, *)
+#else
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 public enum ExitStatus: Sendable {
@@ -90,7 +93,10 @@ public enum ExitStatus: Sendable {
 
 // MARK: - Equatable
 
-#if SWT_NO_PROCESS_SPAWNING
+#if !SWT_NO_PROCESS_SPAWNING
+@available(_posixSpawnAPI, *)
+#else
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 extension ExitStatus: Equatable {}
@@ -109,7 +115,10 @@ private let _sigabbrev_np = symbol(named: "sigabbrev_np").map {
 }
 #endif
 
-#if SWT_NO_PROCESS_SPAWNING
+#if !SWT_NO_PROCESS_SPAWNING
+@available(_posixSpawnAPI, *)
+#else
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 extension ExitStatus: CustomStringConvertible {
