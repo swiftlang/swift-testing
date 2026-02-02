@@ -1005,7 +1005,7 @@ extension ExitTest {
 
     for recordJSON in bytes.split(whereSeparator: \.isASCIINewline) where !recordJSON.isEmpty {
       do {
-        return try Self._processRecord(recordJSON.span.bytes, fromBackChannel: backChannel)
+        try Self._processRecord(recordJSON.span.bytes, fromBackChannel: backChannel)
       } catch {
         // NOTE: an error caught here indicates a decoding problem.
         // TODO: should we record these issues as systemic instead?

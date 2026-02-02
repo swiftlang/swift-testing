@@ -110,9 +110,7 @@ extension Test.Case.Argument.ID {
   ///
   /// - Throws: Any error encountered during encoding.
   private static func _encode(_ value: some Encodable, parameter: Test.Parameter) throws -> [UInt8] {
-    try JSON.withEncoding(of: value, userInfo: [._testParameterUserInfoKey: parameter]) { json in
-      Array(json)
-    }
+    try JSON.withEncoding(of: value, userInfo: [._testParameterUserInfoKey: parameter], Array.init)
   }
 #endif
 }
