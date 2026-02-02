@@ -63,8 +63,9 @@ struct CommentTests {
     let value1: Int = 123
     let value2: Int? = nil
     let value3: Any.Type = Int.self
-    let comment: Comment = "abc\(value1)def\(value2)ghi\(value3)"
-    #expect(comment.rawValue == "abc123defnilghiInt")
+    let value4: String? = nil
+    let comment: Comment = "abc\(value1)def\(value2)ghi\(value3)\(value4)"
+    #expect(comment.rawValue == "abc123defnilghiIntnil")
   }
 
   @Test("String interpolation with a custom type")
@@ -81,6 +82,30 @@ struct CommentTests {
 
     let comment: Comment = "abc\(S())def\(S() as S?)ghi\(S.self)jkl\("string")"
     #expect(comment.rawValue == "abcright!defright!ghiSjklstring")
+  }
+
+  @Test("String interpolation with a move-only value")
+  func stringInterpolationWithMoveOnlyValue() {
+    struct S: ~Copyable {}
+
+    let s = S()
+    let comment: Comment = "abc\(s)"
+    #expect(comment.rawValue == "abcinstance of 'S'")
+    _ = s
+  }
+
+  @Test("String interpolation with a move-only value conforming to CustomTestStringConvertible")
+  func stringInterpolationWithMoveOnlyValueConformingToProtocol() {
+    struct S: CustomTestStringConvertible, ~Copyable {
+      var testDescription: String {
+        "right!"
+      }
+    }
+
+    let s = S()
+    let comment: Comment = "abc\(s)"
+    #expect(comment.rawValue == "abcright!")
+    _ = s
   }
 }
 

@@ -77,7 +77,7 @@
 /// ## See Also
 ///
 /// - ``Swift/String/init(describingForTest:)``
-public protocol CustomTestStringConvertible {
+public protocol CustomTestStringConvertible: ~Copyable & ~Escapable {
   /// A description of this instance to use when presenting it in a test's
   /// output.
   ///
@@ -95,34 +95,55 @@ extension String {
   /// ## See Also
   ///
   /// - ``CustomTestStringConvertible``
-  public init(describingForTest value: some Any) {
-    // The mangled type name SPI doesn't handle generic types very well, so we
-    // ask for the dynamic type of `value` (type(of:)) instead of just T.self.
-    lazy var valueTypeInfo = TypeInfo(describingTypeOf: value)
-    if let value = value as? any CustomTestStringConvertible {
-      self = value.testDescription
-    } else if let value = value as? any CustomStringConvertible {
-      self.init(describing: value)
-    } else if let value = value as? any TextOutputStreamable {
-      self.init(describing: value)
-    } else if let value = value as? any CustomDebugStringConvertible {
-      self.init(reflecting: value)
-    } else if let value = value as? any Any.Type {
-      self = _testDescription(of: value)
-    } else if let value = value as? any RawRepresentable, let type = valueTypeInfo.type, valueTypeInfo.isImportedFromC {
-      // Present raw-representable C types, which we assume to be imported
-      // enumerations, in a consistent fashion. The case names of C enumerations
-      // are not statically visible, so instead present the enumeration type's
-      // name along with the raw value of `value`.
-      let typeName = String(describingForTest: type)
-      self = "\(typeName)(rawValue: \(String(describingForTest: value.rawValue)))"
-    } else if valueTypeInfo.isSwiftEnumeration {
-      // Add a leading period to enumeration cases to more closely match their
-      // source representation. SEE: _adHocPrint_unlocked() in the stdlib.
-      self = ".\(value)"
+  public init(describingForTest value: borrowing (some CustomTestStringConvertible & ~Copyable & ~Escapable)) {
+    self = value.testDescription
+  }
+
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  @_disfavoredOverload // prefer compile-time conformance check
+  public init<T>(describingForTest value: borrowing T) where T: ~Copyable & ~Escapable {
+    // TODO: when associated types with suppressed conformances land, check for
+    // conformance to `CustomTestStringConvertible` before casting to `Any` with
+    // `makeExistential()`. See SE-0503.
+    if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
+      // The mangled type name SPI doesn't handle generic types very well, so we
+      // ask for the dynamic type of `value` (type(of:)) instead of just T.self.
+      lazy var valueTypeInfo = TypeInfo(describingTypeOf: value)
+      if let value = value as? any CustomTestStringConvertible {
+        self = value.testDescription
+      } else if let value = value as? any CustomStringConvertible {
+        self.init(describing: value)
+      } else if let value = value as? any TextOutputStreamable {
+        self.init(describing: value)
+      } else if let value = value as? any CustomDebugStringConvertible {
+        self.init(reflecting: value)
+      } else if let value = value as? any Any.Type {
+        self = _testDescription(of: value)
+      } else if let value = value as? any RawRepresentable, let type = valueTypeInfo.type, valueTypeInfo.isImportedFromC {
+        // Present raw-representable C types, which we assume to be imported
+        // enumerations, in a consistent fashion. The case names of C enumerations
+        // are not statically visible, so instead present the enumeration type's
+        // name along with the raw value of `value`.
+        let typeName = String(describingForTest: type)
+        self = "\(typeName)(rawValue: \(String(describingForTest: value.rawValue)))"
+      } else if valueTypeInfo.isSwiftEnumeration {
+        // Add a leading period to enumeration cases to more closely match their
+        // source representation. SEE: _adHocPrint_unlocked() in the stdlib.
+        self = ".\(value)"
+      } else {
+        // Use the generic description of the value.
+        self.init(describing: value)
+      }
     } else {
-      // Use the generic description of the value.
-      self.init(describing: value)
+      let typeInfo = TypeInfo(describing: T.self)
+      self = "instance of '\(typeInfo.unqualifiedName)'"
     }
   }
 }
@@ -141,7 +162,8 @@ private func _testDescription(of type: any Any.Type) -> String {
   TypeInfo(describing: type).unqualifiedName
 }
 
-extension Optional: CustomTestStringConvertible {
+@_preInverseGenerics
+extension Optional: CustomTestStringConvertible where Wrapped: ~Copyable & ~Escapable {
   public var testDescription: String {
     switch self {
     case let .some(unwrappedValue):

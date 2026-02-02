@@ -124,6 +124,16 @@ extension Comment: ExpressibleByStringInterpolation {
         rawValue += String(describingForTest: value)
       }
     }
+
+    @_disfavoredOverload
+    @inlinable public mutating func appendInterpolation(_ value: borrowing (some CustomTestStringConvertible & ~Copyable & ~Escapable)) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @_disfavoredOverload
+    @inlinable public mutating func appendInterpolation(_ value: borrowing (some ~Copyable & ~Escapable)) {
+      rawValue += String(describingForTest: value)
+    }
   }
 }
 
