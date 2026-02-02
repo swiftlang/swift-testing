@@ -100,10 +100,6 @@ extension String.UTF8View {
   ///
   /// This property is equivalent to the `span` property in the Swift standard
   /// library, but is available on earlier Apple platforms.
-  ///
-  /// For strings with native UTF-8 storage, getting the value of this property
-  /// is an _O_(1) operation. For strings with non-native or non-UTF-8 storage
-  /// (i.e. bridged from Objective-C), the operation may be up to _O_(_n_).
   var span: Span<Element> {
     @_lifetime(borrow self)
     _read {
