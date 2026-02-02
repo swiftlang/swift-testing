@@ -11,11 +11,14 @@
 @testable import Testing
 private import _TestingInternals
 
-@Suite("Locked Tests")
-struct LockTests {
-  @Test("Locking and unlocking")
-  func locking() {
-    let lock = Locked(rawValue: 0)
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+import Synchronization
+#endif
+
+final class `Mutex tests`: Sendable {
+  let lock = Mutex(0)
+
+  @Test func `Locking and unlocking`() {
     #expect(lock.rawValue == 0)
     lock.withLock { value in
       value = 1
@@ -23,13 +26,11 @@ struct LockTests {
     #expect(lock.rawValue == 1)
   }
 
-  @Test("Repeatedly accessing a lock")
-  func lockRepeatedly() async {
-    let lock = Locked(rawValue: 0)
+  @Test func `Repeatedly accessing a lock`() async {
     await withTaskGroup { taskGroup in
       for _ in 0 ..< 100_000 {
         taskGroup.addTask {
-          lock.increment()
+          self.lock.increment()
         }
       }
     }

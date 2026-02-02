@@ -24,22 +24,8 @@ private import _TestingInternals
 ///   @Available(Xcode, introduced: 26.0)
 /// }
 public struct Attachment<AttachableValue> where AttachableValue: Attachable & ~Copyable {
-  /// A class that stores an attachment's (potentially move-only) attachable
-  /// value.
-  ///
-  /// We use a class to store the attachable value so that ``Attachment`` can
-  /// conform to `Copyable` even if `AttachableValue` doesn't.
-  fileprivate final class Storage {
-    /// Storage for ``Attachment/attachableValue-7dyjv``.
-    let attachableValue: AttachableValue
-
-    init(_ attachableValue: consuming AttachableValue) {
-      self.attachableValue = attachableValue
-    }
-  }
-
   /// Storage for ``attachableValue-7dyjv``.
-  private var _storage: Storage
+  private var _storage: Allocated<AttachableValue>
 
   /// The path to which the this attachment was saved, if any.
   ///
@@ -95,8 +81,7 @@ public struct Attachment<AttachableValue> where AttachableValue: Attachable & ~C
   public internal(set) var sourceLocation: SourceLocation
 }
 
-extension Attachment: Sendable where AttachableValue: Sendable {}
-extension Attachment.Storage: Sendable where AttachableValue: Sendable {}
+extension Attachment: Sendable where AttachableValue: Sendable & ~Copyable {}
 
 // MARK: - Initializing an attachment
 
@@ -119,7 +104,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
-    self._storage = Storage(attachableValue)
+    self._storage = Allocated(attachableValue)
     self._preferredName = preferredName
     self.sourceLocation = sourceLocation
   }
@@ -188,7 +173,7 @@ extension Attachment: CustomStringConvertible where AttachableValue: ~Copyable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public var description: String {
-    if #available(_castingWithNonCopyableGenerics, *), let attachableValue = boxCopyableValue(attachableValue) {
+    if #available(_castingWithNonCopyableGenerics, *), let attachableValue = makeExistential(attachableValue) {
       return #""\#(preferredName)": \#(String(describingForTest: attachableValue))"#
     }
     let typeInfo = TypeInfo(describing: AttachableValue.self)
@@ -207,7 +192,7 @@ extension Attachment where AttachableValue: ~Copyable {
   /// }
   @_disfavoredOverload public var attachableValue: AttachableValue {
     _read {
-      yield _storage.attachableValue
+      yield _storage.value
     }
   }
 }
@@ -482,7 +467,7 @@ extension Attachment where AttachableValue: ~Copyable {
     // There should be no code path that leads to this call where the attachable
     // value is nil.
     try withUnsafeBytes { buffer in
-      try file!.write(buffer)
+      try file!.write(buffer.bytes)
     }
 
     return result

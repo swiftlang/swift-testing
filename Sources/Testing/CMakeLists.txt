@@ -81,10 +81,12 @@ add_library(Testing
   Support/Additions/CollectionDifferenceAdditions.swift
   Support/Additions/CommandLineAdditions.swift
   Support/Additions/CopyableAdditions.swift
+  Support/Additions/MutexAdditions.swift
   Support/Additions/NumericAdditions.swift
   Support/Additions/ResultAdditions.swift
   Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
+  Support/Allocated.swift
   Support/CartesianProduct.swift
   Support/CError.swift
   Support/CustomIssueRepresentable.swift
@@ -93,7 +95,6 @@ add_library(Testing
   Support/GetSymbol.swift
   Support/Graph.swift
   Support/JSON.swift
-  Support/Locked.swift
   Support/Serializer.swift
   Support/VersionNumber.swift
   Support/Versions.swift
@@ -143,7 +144,8 @@ if(NOT BUILD_SHARED_LIBS)
   # libraries.
   target_compile_options(Testing PRIVATE
     "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestDiscovery"
-    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals")
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals"
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInterop")
 endif()
 add_dependencies(Testing
   TestingMacros)

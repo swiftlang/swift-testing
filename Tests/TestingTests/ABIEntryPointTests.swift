@@ -65,7 +65,7 @@ struct ABIEntryPointTests {
 
   private func _invokeEntryPointV0(
     passing arguments: __CommandLineArguments_v0,
-    recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }
+    recordHandler: @escaping @Sendable (_ recordJSON: borrowing RawSpan) -> Void = { _ in }
   ) async throws -> Bool {
 #if !(os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)) && !SWT_NO_DYNAMIC_LINKING
     // Get the ABI entry point by dynamically looking it up at runtime.
@@ -84,23 +84,27 @@ struct ABIEntryPointTests {
     let abiEntryPoint = unsafeBitCast(abiv0_getEntryPoint(), to: ABI.v0.EntryPoint.self)
 
     let argumentsJSON = try JSON.withEncoding(of: arguments) { argumentsJSON in
-      let result = UnsafeMutableRawBufferPointer.allocate(byteCount: argumentsJSON.count, alignment: 1)
-      result.copyMemory(from: argumentsJSON)
-      return result
+      argumentsJSON.withUnsafeBytes { argumentsJSON in
+        let result = UnsafeMutableRawBufferPointer.allocate(byteCount: argumentsJSON.count, alignment: 1)
+        result.copyMemory(from: argumentsJSON)
+        return result
+      }
     }
     defer {
       argumentsJSON.deallocate()
     }
 
     // Call the entry point function.
-    return try await abiEntryPoint(.init(argumentsJSON), recordHandler)
+    return try await abiEntryPoint(.init(argumentsJSON)) { recordJSON in
+      recordHandler(recordJSON.bytes)
+    }
   }
 
 #if canImport(Foundation)
   @Test func decodeEmptyConfiguration() throws {
     let emptyBuffer = UnsafeRawBufferPointer(start: nil, count: 0)
     #expect(throws: DecodingError.self) {
-      _ = try JSON.decode(__CommandLineArguments_v0.self, from: emptyBuffer)
+      _ = try JSON.decode(__CommandLineArguments_v0.self, from: emptyBuffer.bytes)
     }
   }
 
