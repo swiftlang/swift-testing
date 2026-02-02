@@ -77,10 +77,8 @@ struct SourceLocationTests {
 #else
     var json = #"{"filePath": "/fake/dir/FileName.swift/", "line": 1, "column": 1}"#
 #endif
-    let sourceLocation = try json.withUTF8 { json in
-      let esl = try JSON.decode(ABI.EncodedSourceLocation<ABI.v6_3>.self, from: UnsafeRawBufferPointer(json))
-      return try #require(SourceLocation(esl))
-    }
+    let esl = try JSON.decode(ABI.EncodedSourceLocation<ABI.v6_3>.self, from: json.utf8.span.bytes)
+    let sourceLocation = try #require(SourceLocation(esl))
     #expect(SourceLocation.synthesizedModuleName == "__C")
     #expect(sourceLocation.fileID == "\(SourceLocation.synthesizedModuleName)/FileName.swift")
     #expect(sourceLocation.moduleName == SourceLocation.synthesizedModuleName)
