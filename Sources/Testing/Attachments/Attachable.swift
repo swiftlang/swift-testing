@@ -80,6 +80,9 @@ public protocol Attachable: ~Copyable {
   /// }
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
 
+  @_lifetime(borrow self)
+  borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> RawSpan
+
   /// Generate a preferred name for the given attachment.
   ///
   /// - Parameters:
@@ -99,6 +102,18 @@ public protocol Attachable: ~Copyable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String
+}
+
+// MARK: -
+
+/// An error type that is thrown when the testing library cannot satisfy a
+/// request for an attachment's bytes.
+struct BytesUnavailableError: Error {}
+
+extension BytesUnavailableError: CustomStringConvertible {
+  var description: String {
+    "The attachment's content could not be deserialized."
+  }
 }
 
 // MARK: - Default implementations
@@ -122,6 +137,11 @@ extension Attachable where Self: ~Copyable {
   /// }
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     suggestedName
+  }
+
+  @_lifetime(borrow self)
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> RawSpan {
+    throw BytesUnavailableError()
   }
 }
 
@@ -202,6 +222,11 @@ extension ContiguousArray<UInt8>: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
+
+  @_lifetime(borrow self)
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> RawSpan {
+    span.bytes
+  }
 }
 
 /// @Metadata {
@@ -215,6 +240,11 @@ extension ArraySlice<UInt8>: Attachable {
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
+  }
+
+  @_lifetime(borrow self)
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> RawSpan {
+    span.bytes
   }
 }
 
