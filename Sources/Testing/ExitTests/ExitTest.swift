@@ -605,8 +605,8 @@ extension ExitTest {
   /// and standard error streams of the current process.
   private static func _writeBarrierValues() {
     let barrierValue = Self.barrierValue
-    try? FileHandle.stdout.write(barrierValue)
-    try? FileHandle.stderr.write(barrierValue)
+    try? FileHandle.stdout.write(barrierValue.span.bytes)
+    try? FileHandle.stderr.write(barrierValue.span.bytes)
   }
 
   /// A handler that is invoked when an exit test starts.
@@ -712,13 +712,11 @@ extension ExitTest {
 
   /// The ID of the exit test to run, if any, specified in the environment.
   static var environmentIDForEntryPoint: ID? {
-    guard var idString = Environment.variable(named: Self._idEnvironmentVariableName) else {
+    guard let idString = Environment.variable(named: Self._idEnvironmentVariableName) else {
       return nil
     }
 
-    return try? idString.withUTF8 { idBuffer in
-      try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
-    }
+    return try? JSON.decode(ExitTest.ID.self, from: idString.utf8.span.bytes)
   }
 
   /// Find the exit test function specified in the environment of the current
@@ -870,7 +868,7 @@ extension ExitTest {
       // Insert a specific variable that tells the child process which exit test
       // to run.
       try JSON.withEncoding(of: exitTest.id) { json in
-        childEnvironment[Self._idEnvironmentVariableName] = String(decoding: json, as: UTF8.self)
+        childEnvironment[Self._idEnvironmentVariableName] = String(decoding: Array(json), as: UTF8.self)
       }
 
       typealias ResultUpdater = @Sendable (inout ExitTest.Result) -> Void
@@ -1007,9 +1005,7 @@ extension ExitTest {
 
     for recordJSON in bytes.split(whereSeparator: \.isASCIINewline) where !recordJSON.isEmpty {
       do {
-        try recordJSON.withUnsafeBufferPointer { recordJSON in
-          try Self._processRecord(.init(recordJSON), fromBackChannel: backChannel)
-        }
+        try Self._processRecord(recordJSON.span.bytes, fromBackChannel: backChannel)
       } catch {
         // NOTE: an error caught here indicates a decoding problem.
         // TODO: should we record these issues as systemic instead?
@@ -1026,7 +1022,7 @@ extension ExitTest {
   ///   - backChannel: The file handle that `recordJSON` was read from.
   ///
   /// - Throws: Any error encountered attempting to decode or process the JSON.
-  private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
+  private static func _processRecord(_ recordJSON: borrowing RawSpan, fromBackChannel backChannel: borrowing FileHandle) throws {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
     guard case let .event(event) = record.kind else {
       return
@@ -1093,9 +1089,7 @@ extension ExitTest {
       var capturedValue = capturedValue
 
       func open<T>(_ type: T.Type) throws -> T where T: Codable & Sendable {
-        return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
-          try JSON.decode(type, from: capturedValueJSON)
-        }
+        return try JSON.decode(type, from: capturedValueJSON.span.bytes)
       }
       capturedValue.wrappedValue = try open(capturedValue.typeOfWrappedValue)
 
@@ -1118,7 +1112,7 @@ extension ExitTest {
   /// This function should only be used when the process was started via the
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
-  private borrowing func _withEncodedCapturedValuesForEntryPoint(_ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void {
+  private borrowing func _withEncodedCapturedValuesForEntryPoint(_ body: (borrowing RawSpan) throws -> Void) throws -> Void {
     for capturedValue in capturedValues {
       try JSON.withEncoding(of: capturedValue.wrappedValue!) { capturedValueJSON in
         try JSON.asJSONLine(capturedValueJSON, body)
