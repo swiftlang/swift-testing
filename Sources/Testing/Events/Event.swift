@@ -342,7 +342,7 @@ extension Event {
       if configuration.eventHandlingOptions.shouldHandleEvent(self) {
         configuration.handleEvent(self, in: context)
       }
-    } else if postToFallbackHandler(in: context) {
+    } else if postToFallbackEventHandler(in: context) {
       // The fallback event handler handled this event.
     } else {
       // The current task does NOT have an associated configuration. This event
