@@ -12,26 +12,8 @@ private import _TestingInternals
 
 extension Event {
 #if compiler(>=6.3) && !SWT_NO_INTEROP
-  /// The installed fallback event handler.
   private static let _fallbackEventHandler: SWTFallbackEventHandler? = {
     _swift_testing_getFallbackEventHandler()
-  }()
-
-  /// Encode an event and pass it to the installed fallback event handler.
-  private static let _encodeAndInvoke: Event.Handler? = { [fallbackEventHandler = _fallbackEventHandler] in
-    guard let fallbackEventHandler else {
-      return nil
-    }
-    return ABI.CurrentVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
-      recordJSON.withUnsafeBytes { recordJSON in
-        fallbackEventHandler(
-          String(describing: ABI.CurrentVersion.versionNumber),
-          recordJSON.baseAddress!,
-          recordJSON.count,
-          nil
-        )
-      }
-    }
   }()
 #endif
 
@@ -45,12 +27,23 @@ extension Event {
   ///   `false`.
   borrowing func postToFallbackHandler(in context: borrowing Context) -> Bool {
 #if compiler(>=6.3) && !SWT_NO_INTEROP
-    // Encode the event as JSON and pass it to the handler.
-    if let encodeAndInvoke = Self._encodeAndInvoke {
-      encodeAndInvoke(self, context)
-      return true
+    guard let fallbackEventHandler = Self._fallbackEventHandler else {
+      return false
     }
-#endif
+
+    // Encode the event as JSON and pass it to the handler.
+    let encodeAndInvoke = ABI.CurrentVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
+      fallbackEventHandler(
+        String(describing: ABI.CurrentVersion.versionNumber),
+        recordJSON.baseAddress!,
+        recordJSON.count,
+        nil
+      )
+    }
+    encodeAndInvoke(self, context)
+    return true
+#else
     return false
+#endif
   }
 }

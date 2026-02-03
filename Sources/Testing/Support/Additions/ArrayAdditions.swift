@@ -67,52 +67,6 @@ extension Array {
   }
 }
 
-// MARK: - Span/RawSpan support
-
-extension Array where Element == UInt8 {
-  init(_ bytes: borrowing RawSpan) {
-    self = bytes.withUnsafeBytes { Array($0) }
-  }
-}
-
-#if SWT_TARGET_OS_APPLE
-extension Array {
-  /// The elements of this array as a span.
-  ///
-  /// This property is equivalent to the `span` property in the Swift standard
-  /// library, but is available on earlier Apple platforms.
-  ///
-  /// For arrays with contiguous storage, getting the value of this property is
-  /// an _O_(1) operation. For arrays with non-contiguous storage (i.e. bridged
-  /// from Objective-C), the operation may be up to _O_(_n_).
-  var span: Span<Element> {
-    @_lifetime(borrow self)
-    _read {
-      let slice = self[...]
-      yield slice.span
-    }
-  }
-}
-
-extension String.UTF8View {
-  /// A raw span representing this string as UTF-8, not including a trailing
-  /// null character.
-  ///
-  /// This property is equivalent to the `span` property in the Swift standard
-  /// library, but is available on earlier Apple platforms.
-  var span: Span<Element> {
-    @_lifetime(borrow self)
-    _read {
-      // This implementation incurs a copy even for native Swift strings. This
-      // isn't currently a hot path in the testing library though.
-      yield ContiguousArray(self).span
-    }
-  }
-}
-#endif
-
-// MARK: - Parameter pack additions
-
 /// Get the number of elements in a parameter pack.
 ///
 /// - Parameters:
