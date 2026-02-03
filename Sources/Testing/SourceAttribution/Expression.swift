@@ -80,7 +80,7 @@ public struct __Expression: Sendable {
     ///   - value: The value whose property was accessed.
     ///   - keyPath: The key path, relative to `value`, that was accessed, not
     ///     including a leading backslash or period.
-    indirect case propertyAccess(value: __Expression, keyPath: __Expression)
+    indirect case propertyAccess(value: __Expression, keyPath: String)
 
     /// The expression negates another expression.
     ///
@@ -123,7 +123,7 @@ public struct __Expression: Sendable {
       }
       return "\(functionName)(\(argumentList))"
     case let .propertyAccess(value, keyPath):
-      return "\(value.sourceCode).\(keyPath.sourceCode)"
+      return "\(value.sourceCode).\(keyPath)"
     case let .negation(expression, isParenthetical):
       var sourceCode = expression.sourceCode
       if isParenthetical {
@@ -353,7 +353,9 @@ public struct __Expression: Sendable {
 
     // Convert the variadic generic argument list to an array.
     var additionalValuesArray = [Any?]()
-    repeat additionalValuesArray.append(each additionalValues)
+    for additionalValue in repeat each additionalValues {
+      additionalValuesArray.append(additionalValue)
+    }
 
     switch kind {
     case .generic, .stringLiteral:
@@ -375,7 +377,7 @@ public struct __Expression: Sendable {
     case let .propertyAccess(value, keyPath):
       result.kind = .propertyAccess(
         value: value.capturingRuntimeValues(firstValue),
-        keyPath: keyPath.capturingRuntimeValues(additionalValuesArray.first ?? nil)
+        keyPath: keyPath
       )
     case let .negation(expression, isParenthetical):
       result.kind = .negation(
@@ -476,9 +478,7 @@ public struct __Expression: Sendable {
         "\(functionName)(\(argumentList))"
       }
     case let .propertyAccess(value, keyPath):
-      var keyPathContext = childContext
-      keyPathContext.includeParenthesesIfNeeded = false
-      result = "\(value._expandedDescription(in: childContext)).\(keyPath._expandedDescription(in: keyPathContext))"
+      result = "\(value._expandedDescription(in: childContext)).\(keyPath)"
     case let .negation(expression, isParenthetical):
       childContext.includeParenthesesIfNeeded = !isParenthetical
       var expandedDescription = expression._expandedDescription(in: childContext)
@@ -530,8 +530,8 @@ public struct __Expression: Sendable {
       } else {
         arguments.lazy.map(\.value)
       }
-    case let .propertyAccess(value: value, keyPath: keyPath):
-      [value, keyPath]
+    case let .propertyAccess(value, _):
+      [value]
     case let .negation(expression, _):
       [expression]
     }
