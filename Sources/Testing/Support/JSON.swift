@@ -44,7 +44,10 @@ enum JSON {
     encoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs})
 
     let data = try encoder.encode(value)
-    return try body(data.bytes)
+    // WORKAROUND for older SDK on swift-ci (rdar://169480914)
+    return try data.withUnsafeBytes { data in
+      try body(data.bytes)
+    }
 #else
     throw SystemError(description: "JSON encoding requires Foundation which is not available in this environment.")
 #endif
