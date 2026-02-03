@@ -37,7 +37,7 @@ extension ABI {
     /// associated context is created and is passed to `eventHandler`.
     static func eventHandler(
       encodeAsJSONLines: Bool,
-      forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: borrowing RawSpan) -> Void
+      forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
     ) -> Event.Handler
 #endif
   }

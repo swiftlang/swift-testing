@@ -365,7 +365,7 @@ extension FileHandle {
 // MARK: - Writing
 
 extension FileHandle {
-  /// Write a span of bytes to this file handle.
+  /// Write a sequence of bytes to this file handle.
   ///
   /// - Parameters:
   ///   - bytes: The bytes to write. This untyped buffer is interpreted as a
@@ -376,7 +376,7 @@ extension FileHandle {
   ///
   /// - Throws: Any error that occurred while writing `bytes`. If an error
   ///   occurs while flushing the file, it is not thrown.
-  func write(_ bytes: borrowing RawSpan, flushAfterward: Bool = true) throws {
+  func write(_ bytes: UnsafeBufferPointer<UInt8>, flushAfterward: Bool = true) throws {
     try withUnsafeCFILEHandle { file in
       defer {
         if flushAfterward {
@@ -384,15 +384,46 @@ extension FileHandle {
         }
       }
 
-      if bytes.isEmpty {
-        return
-      }
-      let countWritten = bytes.withUnsafeBytes { bytes in
-        fwrite(bytes.baseAddress!, MemoryLayout<UInt8>.stride, bytes.count, file)
-      }
-      if countWritten < bytes.byteCount {
+      let countWritten = fwrite(bytes.baseAddress!, MemoryLayout<UInt8>.stride, bytes.count, file)
+      if countWritten < bytes.count {
         throw CError(rawValue: swt_errno())
       }
+    }
+  }
+
+  /// Write a sequence of bytes to this file handle.
+  ///
+  /// - Parameters:
+  ///   - bytes: The bytes to write.
+  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
+  ///     after writing. If `true`, `fflush()` is called even if an error
+  ///     occurred while writing.
+  ///
+  /// - Throws: Any error that occurred while writing `bytes`. If an error
+  ///   occurs while flushing the file, it is not thrown.
+  ///
+  /// - Precondition: `bytes` must provide contiguous storage.
+  func write(_ bytes: some Sequence<UInt8>, flushAfterward: Bool = true) throws {
+    let hasContiguousStorage: Void? = try bytes.withContiguousStorageIfAvailable { bytes in
+      try write(bytes, flushAfterward: flushAfterward)
+    }
+    precondition(hasContiguousStorage != nil, "byte sequence must provide contiguous storage: \(bytes)")
+  }
+
+  /// Write a sequence of bytes to this file handle.
+  ///
+  /// - Parameters:
+  ///   - bytes: The bytes to write. This untyped buffer is interpreted as a
+  ///     sequence of `UInt8` values.
+  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
+  ///     after writing. If `true`, `fflush()` is called even if an error
+  ///     occurred while writing.
+  ///
+  /// - Throws: Any error that occurred while writing `bytes`. If an error
+  ///   occurs while flushing the file, it is not thrown.
+  func write(_ bytes: UnsafeRawBufferPointer, flushAfterward: Bool = true) throws {
+    try bytes.withMemoryRebound(to: UInt8.self) { bytes in
+      try write(bytes, flushAfterward: flushAfterward)
     }
   }
 
@@ -410,7 +441,19 @@ extension FileHandle {
   /// `string` is converted to a UTF-8 C string (UTF-16 on Windows) and written
   /// to this file handle.
   func write(_ string: String, flushAfterward: Bool = true) throws {
-    try write(string.utf8.span.bytes, flushAfterward: flushAfterward)
+    try withUnsafeCFILEHandle { file in
+      defer {
+        if flushAfterward {
+          _ = fflush(file)
+        }
+      }
+
+      try string.withCString { string in
+        if EOF == fputs(string, file) {
+          throw CError(rawValue: swt_errno())
+        }
+      }
+    }
   }
 }
 

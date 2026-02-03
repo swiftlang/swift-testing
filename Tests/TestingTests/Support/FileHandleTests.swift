@@ -77,10 +77,20 @@ struct FileHandleTests {
   func canWrite() throws {
     try withTemporaryPath { path in
       let fileHandle = try FileHandle(forWritingAtPath: path)
-      try fileHandle.write([0, 1, 2, 3, 4, 5].span.bytes)
+      try fileHandle.write([0, 1, 2, 3, 4, 5])
       try fileHandle.write("Hello world!")
     }
   }
+
+#if !SWT_NO_EXIT_TESTS
+  @Test("Writing requires contiguous storage")
+  func writeIsContiguous() async {
+    await #expect(processExitsWith: .failure) {
+      let fileHandle = try FileHandle.null(mode: "wb")
+      try fileHandle.write([1, 2, 3, 4, 5].lazy.filter { $0 == 1 })
+    }
+  }
+#endif
 
   @Test("Can read from a file")
   func canRead() throws {
@@ -90,7 +100,7 @@ struct FileHandleTests {
     try withTemporaryPath { path in
       do {
         let fileHandle = try FileHandle(forWritingAtPath: path)
-        try fileHandle.write(bytes.span.bytes)
+        try fileHandle.write(bytes)
       }
       let fileHandle = try FileHandle(forReadingAtPath: path)
       let bytes2 = try fileHandle.readToEnd()
@@ -102,7 +112,7 @@ struct FileHandleTests {
   func cannotWriteBytesToReadOnlyFile() throws {
     let fileHandle = try FileHandle.null(mode: "rb")
     #expect(throws: CError.self) {
-      try fileHandle.write([0, 1, 2, 3, 4, 5].span.bytes)
+      try fileHandle.write([0, 1, 2, 3, 4, 5])
     }
   }
 
