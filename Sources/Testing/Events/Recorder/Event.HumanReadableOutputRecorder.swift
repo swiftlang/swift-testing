@@ -13,6 +13,269 @@ private import Synchronization
 #endif
 
 extension Event {
+  /// A type that generates a failure summary from test run data.
+  ///
+  /// This type encapsulates the logic for collecting failed tests from a test
+  /// data graph and formatting them into a human-readable failure summary.
+  private struct TestRunSummary: Sendable {
+    /// Information about a single failed test case (for parameterized tests).
+    struct FailedTestCase: Sendable {
+      /// The test case arguments for this parameterized test case.
+      var arguments: String
+
+      /// All issues recorded for this test case.
+      var issues: [HumanReadableOutputRecorder.Context.TestData.IssueInfo]
+    }
+
+    /// Information about a single failed test.
+    struct FailedTest: Sendable {
+      /// The full hierarchical path to the test (e.g., suite names).
+      var path: [String]
+
+      /// The test's simple name (last component of the path).
+      var name: String
+
+      /// The test's display name, if any.
+      var displayName: String?
+
+      /// Whether this is a suite rather than an individual test.
+      var isSuite: Bool
+
+      /// For non-parameterized tests: issues recorded directly on the test.
+      var issues: [HumanReadableOutputRecorder.Context.TestData.IssueInfo]
+
+      /// For parameterized tests: test cases with their issues.
+      var testCases: [FailedTestCase]
+    }
+
+    /// The list of failed tests collected from the test run.
+    private let failedTests: [FailedTest]
+
+    /// Initialize a test run summary by collecting failures from a test data graph.
+    ///
+    /// - Parameters:
+    ///   - testData: The root test data graph to traverse.
+    fileprivate init(from testData: Graph<HumanReadableOutputRecorder.Context.TestDataKey, HumanReadableOutputRecorder.Context.TestData?>) {
+      var testMap: [String: FailedTest] = [:]
+
+      // Traverse the graph to find all tests with failures
+      func traverse(graph: Graph<HumanReadableOutputRecorder.Context.TestDataKey, HumanReadableOutputRecorder.Context.TestData?>, path: [String], isTestCase: Bool = false) {
+        // Check if this node has test data with failures
+        if let testData = graph.value, !testData.issues.isEmpty {
+          let testName = path.last ?? "Unknown"
+
+          // Use issues directly from testData
+          let issues = testData.issues
+
+          if isTestCase {
+            // This is a test case node - add it to the parent test's testCases array
+            // The parent test path is the path without the test case ID component
+            let parentPath = path.filter { !$0.hasPrefix("arguments:") }
+            let parentPathKey = parentPath.joined(separator: "/")
+
+            if var parentTest = testMap[parentPathKey] {
+              // Add this test case to the parent
+              if let arguments = testData.testCaseArguments, !arguments.isEmpty {
+                parentTest.testCases.append(FailedTestCase(
+                  arguments: arguments,
+                  issues: issues
+                ))
+                testMap[parentPathKey] = parentTest
+              }
+            } else {
+              // Parent test not found in map, but should exist - create it
+              let parentTest = FailedTest(
+                path: parentPath,
+                name: parentPath.last ?? "Unknown",
+                displayName: testData.displayName,
+                isSuite: testData.isSuite,
+                issues: [],
+                testCases: (testData.testCaseArguments?.isEmpty ?? true) ? [] : [FailedTestCase(
+                  arguments: testData.testCaseArguments ?? "",
+                  issues: issues
+                )]
+              )
+              testMap[parentPathKey] = parentTest
+            }
+          } else {
+            // This is a test node (not a test case)
+            let pathKey = path.joined(separator: "/")
+            let failedTest = FailedTest(
+              path: path,
+              name: testName,
+              displayName: testData.displayName,
+              isSuite: testData.isSuite,
+              issues: issues,
+              testCases: []
+            )
+            testMap[pathKey] = failedTest
+          }
+        }
+
+        // Recursively traverse children
+        for (key, childGraph) in graph.children {
+          let pathComponent: String?
+          let isChildTestCase: Bool
+          switch key {
+          case let .string(s):
+            let parts = s.split(separator: ":")
+            if s.hasSuffix(".swift:") || (parts.count >= 2 && parts[0].hasSuffix(".swift")) {
+              pathComponent = nil // Filter out source location strings
+              isChildTestCase = false
+            } else {
+              pathComponent = s
+              isChildTestCase = false
+            }
+          case let .testCaseID(id):
+            // Only include parameterized test case IDs in path
+            if let argumentIDs = id.argumentIDs, let discriminator = id.discriminator {
+              pathComponent = "arguments: \(argumentIDs), discriminator: \(discriminator)"
+              isChildTestCase = true
+            } else {
+              pathComponent = nil // Filter out non-parameterized test case IDs
+              isChildTestCase = false
+            }
+          }
+
+          let newPath = pathComponent.map { path + [$0] } ?? path
+          traverse(graph: childGraph, path: newPath, isTestCase: isChildTestCase)
+        }
+      }
+
+      // Start traversal from root
+      traverse(graph: testData, path: [])
+
+      // Convert map to array, ensuring we only include tests that have failures
+      self.failedTests = Array(testMap.values).filter { !$0.issues.isEmpty || !$0.testCases.isEmpty }
+    }
+
+    /// Generate a formatted failure summary string.
+    ///
+    /// - Parameters:
+    ///   - options: Options for formatting (e.g., for ANSI colors and symbols).
+    ///
+    /// - Returns: A formatted string containing the failure summary, or `nil`
+    ///   if there were no failures.
+    public func formatted(with options: Event.ConsoleOutputRecorder.Options) -> String? {
+      // If no failures, return nil
+      guard !failedTests.isEmpty else {
+        return nil
+      }
+
+      // Begin with the summary header.
+      var summary = header()
+
+      // Get the failure symbol
+      let failSymbol = Event.Symbol.fail.stringValue(options: options)
+
+      // Format each failed test
+      for failedTest in failedTests {
+        summary += formatFailedTest(failedTest, withSymbol: failSymbol)
+      }
+
+      return summary
+    }
+
+    /// Generate the summary header with failure counts.
+    ///
+    /// - Returns: A string containing the header line.
+    private func header() -> String {
+      let failedTestsPhrase = failedTests.count.counting("test")
+      var totalIssuesCount = 0
+      for test in failedTests {
+        totalIssuesCount += test.issues.count
+        for testCase in test.testCases {
+          totalIssuesCount += testCase.issues.count
+        }
+      }
+      let issuesPhrase = totalIssuesCount.counting("issue")
+      return "Test run had \(failedTestsPhrase) which recorded \(issuesPhrase) total:\n"
+    }
+
+    /// Format a single failed test entry.
+    ///
+    /// - Parameters:
+    ///   - failedTest: The failed test to format.
+    ///   - symbol: The failure symbol string to use.
+    ///
+    /// - Returns: A formatted string representing the failed test and its
+    ///   issues.
+    private func formatFailedTest(_ failedTest: FailedTest, withSymbol symbol: String) -> String {
+      var result = ""
+
+      // Build fully qualified name
+      let fullyQualifiedName = fullyQualifiedName(for: failedTest)
+
+      // Use "Suite" or "Test" based on whether this is a suite
+      let label = failedTest.isSuite ? "Suite" : "Test"
+      result += "\(symbol) \(label) \(fullyQualifiedName)\n"
+
+      // For parameterized tests: show test cases grouped under the parent test
+      if !failedTest.testCases.isEmpty {
+        for testCase in failedTest.testCases {
+          // Show test case with argument count phrase and arguments
+          let argumentCount = testCase.arguments.split(separator: ",").count
+          let argumentPhrase = argumentCount.counting("argument")
+          result += "  Test case with \(argumentPhrase): (\(testCase.arguments))\n"
+          // List each issue for this test case with additional indentation
+          for issue in testCase.issues {
+            result += formatIssue(issue, indentLevel: 2)
+          }
+        }
+      } else {
+        // For non-parameterized tests: show issues directly
+        for issue in failedTest.issues {
+          result += formatIssue(issue)
+        }
+      }
+
+      return result
+    }
+
+    /// Build the fully qualified name for a failed test.
+    ///
+    /// - Parameters:
+    ///   - failedTest: The failed test.
+    ///
+    /// - Returns: The fully qualified name, with display name substituted if
+    ///   available. Test case ID components are filtered out since they're
+    ///   shown separately.
+    private func fullyQualifiedName(for failedTest: FailedTest) -> String {
+      // Omit the leading path component representing the module name from the
+      // fully-qualified name of the test.
+      var path = Array(failedTest.path.dropFirst())
+
+      // Filter out test case ID components (they're shown separately with arguments)
+      path = path.filter { !$0.hasPrefix("arguments:") }
+
+      // If we have a display name, replace the function name component (which is
+      // now the last component after filtering) with the display name. This avoids
+      // showing both the function name and display name.
+      if let displayName = failedTest.displayName, !path.isEmpty {
+        path[path.count - 1] = #""\#(displayName)""#
+      }
+
+      return path.joined(separator: "/")
+    }
+
+    /// Format a single issue entry.
+    ///
+    /// - Parameters:
+    ///   - issue: The issue to format.
+    ///   - indentLevel: The number of indentation levels (each level is 2 spaces).
+    ///     Defaults to 1.
+    ///
+    /// - Returns: A formatted string representing the issue with indentation.
+    private func formatIssue(_ issue: HumanReadableOutputRecorder.Context.TestData.IssueInfo, indentLevel: Int = 1) -> String {
+      let indent = String(repeating: "  ", count: indentLevel)
+      var result = "\(indent)- \(issue.description)\n"
+      if let location = issue.sourceLocation {
+        result += "\(indent)    at \(location)\n"
+      }
+      return result
+    }
+  }
+
   /// A type which handles ``Event`` instances and outputs representations of
   /// them as human-readable messages.
   ///
@@ -68,6 +331,21 @@ extension Event {
 
       /// A type describing data tracked on a per-test basis.
       struct TestData {
+        /// A lightweight struct containing information about a single issue.
+        struct IssueInfo: Sendable {
+          /// The source location where the issue occurred.
+          var sourceLocation: SourceLocation?
+
+          /// A detailed description of what failed (using expanded description).
+          var description: String
+
+          /// Whether this issue is a known issue.
+          var isKnown: Bool
+
+          /// The severity of this issue.
+          var severity: Issue.Severity
+        }
+
         /// The instant at which the test started.
         var startInstant: Test.Clock.Instant
 
@@ -80,6 +358,19 @@ extension Event {
 
         /// Information about the cancellation of this test or test case.
         var cancellationInfo: SkipInfo?
+
+        /// Array of all issues recorded for this test (for failure summary).
+        /// Each issue is stored individually with its own source location.
+        var issues: [IssueInfo] = []
+
+        /// The test's display name, if any.
+        var displayName: String?
+
+        /// The test case arguments, formatted for display (for parameterized tests).
+        var testCaseArguments: String?
+
+        /// Whether this is a suite rather than an individual test.
+        var isSuite: Bool = false
       }
 
       /// Data tracked on a per-test basis.
@@ -321,6 +612,44 @@ extension Event.HumanReadableOutputRecorder {
           let issueCount = testData.issueCount[issue.severity] ?? 0
           testData.issueCount[issue.severity] = issueCount + 1
         }
+
+        // Store individual issue information for failure summary, but only for
+        // issues whose severity is error or greater.
+        if issue.severity >= .error {
+          // Extract detailed failure message
+          let description: String
+          if case let .expectationFailed(expectation) = issue.kind {
+            // Use expandedDebugDescription only when verbose, otherwise use expandedDescription
+            description = if verbosity > 0 {
+              expectation.evaluatedExpression.expandedDebugDescription()
+            } else {
+              expectation.evaluatedExpression.expandedDescription()
+            }
+          } else if let comment = issue.comments.first {
+            description = comment.rawValue
+          } else {
+            description = "Test failed"
+          }
+
+          let issueInfo = Context.TestData.IssueInfo(
+            sourceLocation: issue.sourceLocation,
+            description: description,
+            isKnown: issue.isKnown,
+            severity: issue.severity
+          )
+          testData.issues.append(issueInfo)
+
+          // Capture test metadata once per test (not per issue)
+          if testData.displayName == nil {
+            testData.displayName = test?.displayName
+          }
+          if testData.testCaseArguments == nil {
+            testData.testCaseArguments = testCase?.labeledArguments()
+          }
+          // Track whether this is a suite (for failure summary labeling)
+          testData.isSuite = test?.isSuite ?? false
+        }
+
         context.testData[keyPath] = testData
       
       case .testCaseStarted:
@@ -635,6 +964,22 @@ extension Event.HumanReadableOutputRecorder {
     }
 
     return []
+  }
+
+  /// Generate a failure summary string with all failed tests and their issues.
+  ///
+  /// This method creates a ``TestRunSummary`` from the test data graph and
+  /// formats it for display.
+  ///
+  /// - Parameters:
+  ///   - options: Options for formatting (e.g., for ANSI colors and symbols).
+  ///
+  /// - Returns: A formatted string containing the failure summary, or `nil`
+  ///   if there were no failures.
+  func generateFailureSummary(options: Event.ConsoleOutputRecorder.Options) -> String? {
+    let context = _context.rawValue
+    let summary = Event.TestRunSummary(from: context.testData)
+    return summary.formatted(with: options)
   }
 }
 
