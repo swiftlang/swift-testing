@@ -103,10 +103,6 @@ extension ABI.EncodedAttachment: Attachable {
     _bytes?.rawValue.count
   }
 
-  /// An error type that is thrown when ``ABI/EncodedAttachment`` cannot satisfy
-  /// a request for the underlying attachment's bytes.
-  fileprivate struct BytesUnavailableError: Error {}
-
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     if let bytes = _bytes?.rawValue {
       return try bytes.withUnsafeBytes(body)
@@ -133,11 +129,5 @@ extension ABI.EncodedAttachment: Attachable {
 
   borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     _preferredName ?? suggestedName
-  }
-}
-
-extension ABI.EncodedAttachment.BytesUnavailableError: CustomStringConvertible {
-  var description: String {
-    "The attachment's content could not be deserialized."
   }
 }

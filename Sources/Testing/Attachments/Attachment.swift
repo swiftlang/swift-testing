@@ -366,6 +366,20 @@ extension Attachment where AttachableValue: ~Copyable {
   @inlinable public borrowing func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try attachableValue.withUnsafeBytes(for: self, body)
   }
+
+  @_lifetime(borrow self)
+  private func _makeBytes(from attachableValue: borrowing AttachableValue) throws -> RawSpan {
+    let result = try attachableValue.bytes(for: self)
+    return _overrideLifetime(result, copying: self)
+  }
+
+  @_spi(Experimental)
+  public var bytes: RawSpan {
+    @_lifetime(borrow self)
+    borrowing get throws {
+      try _makeBytes(from: _storage.value)
+    }
+  }
 }
 
 #if !SWT_NO_FILE_IO
