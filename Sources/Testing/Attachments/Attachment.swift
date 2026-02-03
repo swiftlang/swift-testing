@@ -467,7 +467,7 @@ extension Attachment where AttachableValue: ~Copyable {
     // There should be no code path that leads to this call where the attachable
     // value is nil.
     try withUnsafeBytes { buffer in
-      try file!.write(buffer)
+      try file!.write(buffer.bytes)
     }
 
     return result
