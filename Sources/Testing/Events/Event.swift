@@ -116,6 +116,13 @@ public struct Event: Sendable {
     ///   - attachment: The attachment that was created.
     indirect case valueAttached(_ attachment: Attachment<AnyAttachable>)
 
+    /// A message was logged using a supported logging mechanism.
+    ///
+    /// - Parameters:
+    ///   - message: The message that was logged.
+    @_spi(Experimental)
+    indirect case messageLogged(_ message: any LogMessage)
+
     /// A test ended.
     ///
     /// The test that ended is contained in the ``Event/Context`` instance that
@@ -486,6 +493,9 @@ extension Event.Kind {
     /// An attachment was created.
     case valueAttached
 
+    /// A message was logged.
+    case messageLogged
+
     /// A test ended.
     case testEnded
 
@@ -564,6 +574,8 @@ extension Event.Kind {
         self = .issueRecorded(Issue.Snapshot(snapshotting: issue))
       case .valueAttached:
         self = .valueAttached
+      case .messageLogged:
+        self = .messageLogged
       case .testEnded:
         self = .testEnded
       case let .testSkipped(skipInfo):

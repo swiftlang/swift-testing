@@ -552,6 +552,14 @@ extension Event.HumanReadableOutputRecorder {
       }
       return result
 
+    case let .messageLogged(message):
+      return [
+        Message(
+          symbol: nil,
+          stringValue: String(message.stringValue)
+        )
+      ]
+
     case .testCaseStarted:
       guard let testCase, testCase.isParameterized, let arguments = testCase.arguments else {
         break
