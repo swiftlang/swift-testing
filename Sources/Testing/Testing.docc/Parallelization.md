@@ -19,7 +19,7 @@ accomplished by the testing library using task groups, and tests generally all
 run in the same process. The number of tests that run concurrently is controlled
 by the Swift runtime.
 
-## Disable Parallelization
+## Disable parallelization
 
 Parallelization can be disabled on a per-function or per-suite basis using the
 ``Trait/serialized`` trait:
@@ -57,7 +57,7 @@ This trait doesn't affect the execution of a test relative to its peers or to
 unrelated tests. This trait has no effect if test parallelization is globally
 disabled (by, for example, passing `--no-parallel` to the `swift test` command.)
 
-## Serialize Tests Across Multiple Files
+## Serialize tests across multiple files
 
 It may be desirable to organize tests across multiple files while preserving the
 serialization of a test suite. For example, consider a scenario where you spin
