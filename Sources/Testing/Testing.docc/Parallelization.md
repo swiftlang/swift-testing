@@ -49,9 +49,9 @@ test function, this trait has no effect. When applied to a test suite, this
 trait causes that suite to run its contained test functions and sub-suites
 serially instead of in parallel.
 
-The `.serialized` trait is recursively applied: if it is applied to a suite, any
-parameterized tests or test suites contained in that suite are also serialized
-(as are any tests contained in those suites, and so on.)
+The ``Trait/serialized`` trait is recursively applied: if it is applied to a
+suite, any parameterized tests or test suites contained in that suite are also
+serialized (as are any tests contained in those suites, and so on.)
 
 This trait doesn't affect the execution of a test relative to its peers or to
 unrelated tests. This trait has no effect if test parallelization is globally
@@ -59,14 +59,14 @@ disabled (by, for example, passing `--no-parallel` to the `swift test` command.)
 
 ## Serialize tests across multiple files
 
-It may be desirable to organize tests across multiple files while preserving the
+You may want to organize tests across multiple files while preserving the
 serialization of a test suite. For example, consider a scenario where you spin
 up a live database for integration testing. You may want to have a large suite
 of tests across many files use that same database, but concurrent access to the
 database could cause test failures. To achieve this, you can mark a test suite
-as `.serialized` and extend that type across your various files. Using the fact
-that `.serialized` is recursively applied, you can even put your tests in
-sub-suites.
+as ``Trait/serialized`` and extend that type across your various files.
+Furthermore, because ``Trait/serialized`` is applied recursively, you can even
+put your tests in sub-suites.
 
 - `FoodTruckDatabaseTests.swift`
   ```swift
@@ -91,7 +91,7 @@ sub-suites.
   }
   ```
 
-In the example above, all the test functions in the
-`FoodTruckDatabaseTests` extension and in `ReadingTests` will run
-serially with respect to each other because they are eventually contained
-within a test suite which is declared `.serialized`.
+In the example above, all the test functions in the `FoodTruckDatabaseTests`
+extension and in `ReadingTests` will run serially with respect to each other
+because they are eventually contained within a test suite which is declared
+``Trait/serialized``.
