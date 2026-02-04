@@ -19,7 +19,7 @@ public struct Runner: Sendable {
   public var plan: Plan
 
   /// The set of tests this runner will run.
-  public var tests: [Test] { plan.steps.map(\.test) }
+  public var tests: [Test] { .init(plan.tests) }
 
   /// The runner's configuration.
   public var configuration: Configuration
