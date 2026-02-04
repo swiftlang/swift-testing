@@ -54,9 +54,10 @@ extension Array {
       return withUnsafePointer(to: context) { context in
         self.withUnsafeBufferPointer { elements in
           let result = bsearch(context, elements.baseAddress!, elements.count, MemoryLayout<Element>.stride) { contextAddress, elementAddress in
-#if os(Android) || os(FreeBSD)
-            let contextAddress = contextAddress as UnsafeRawPointer?
-#endif
+            // Some platforms mark this argument `_Nonnull`, so unconditionally
+            // cast it to an optional before loading from it (the compiler will
+            // optimize this line away).
+            let contextAddress: UnsafeRawPointer? = contextAddress
             let context = contextAddress!.load(as: _BinarySearchContext.self)
             return context.compare(elementAddress)
           }
