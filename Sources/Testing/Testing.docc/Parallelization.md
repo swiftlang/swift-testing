@@ -65,8 +65,8 @@ up a live database for integration testing. You may want to have a large suite
 of tests across many files use that same database, but concurrent access to the
 database could cause test failures. To achieve this, you can mark a test suite
 as ``Trait/serialized`` and extend that type across your various files.
-Furthermore, because ``Trait/serialized`` is applied recursively, you can even
-put your tests in sub-suites.
+Because the testing library recursively applies `Trait/serialized` to all test
+content within a suite, you can even put your tests in sub-suites.
 
 - `FoodTruckDatabaseTests.swift`
   ```swift
