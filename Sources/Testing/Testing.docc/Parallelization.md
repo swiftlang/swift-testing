@@ -19,7 +19,7 @@ accomplished by the testing library using task groups, and tests generally all
 run in the same process. The number of tests that run concurrently is controlled
 by the Swift runtime.
 
-## Disabling parallelization
+## Disable Parallelization
 
 Parallelization can be disabled on a per-function or per-suite basis using the
 ``Trait/serialized`` trait:
@@ -49,10 +49,49 @@ test function, this trait has no effect. When applied to a test suite, this
 trait causes that suite to run its contained test functions and sub-suites
 serially instead of in parallel.
 
-This trait is recursively applied: if it is applied to a suite, any
+The `.serialized` trait is recursively applied: if it is applied to a suite, any
 parameterized tests or test suites contained in that suite are also serialized
 (as are any tests contained in those suites, and so on.)
 
 This trait doesn't affect the execution of a test relative to its peers or to
 unrelated tests. This trait has no effect if test parallelization is globally
 disabled (by, for example, passing `--no-parallel` to the `swift test` command.)
+
+## Serialize Tests Across Multiple Files
+
+It may be desirable to organize tests across multiple files while preserving the
+serialization of a test suite. For example, consider a scenario where you spin
+up a live database for integration testing. You may want to have a large suite
+of tests across many files use that same database, but concurrent access to the
+database could cause test failures. To achieve this, you can mark a test suite
+as `.serialized` and extend that type across your various files. Using the fact
+that `.serialized` is recursively applied, you can even put your tests in
+sub-suites.
+
+- `FoodTruckDatabaseTests.swift`
+  ```swift
+  @Suite(.serialized) struct FoodTruckDatabaseTests {}
+  ```
+- `FoodTruckDatabaseTests+Writing.swift`
+  ```swift
+  extension FoodTruckDatabaseTests {
+    @Test func insertOrder() { /* ... */ }
+    @Test func updateOrder() { /* ... */ }
+    @Test func deleteOrder() { /* ... */ }
+  }
+  ```
+- `FoodTruckDatabaseTests+Reading.swift`
+  ```swift
+  extension FoodTruckDatabaseTests {
+    @Suite struct ReadingTests {
+      @Test func fetchOrder() { /* ... */ }
+      @Test func fetchMenu() { /* ... */ }
+      @Test func fetchIngredients() { /* ... */ }
+    }
+  }
+  ```
+
+In the example above, all the test functions in the
+`FoodTruckDatabaseTests` extension and in `ReadingTests` will run
+serially with respect to each other because they are eventually contained
+within a test suite which is declared `.serialized`.
