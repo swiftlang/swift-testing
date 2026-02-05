@@ -633,8 +633,39 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
     return try Configuration.TestFilter(membership: membership, matchingAnyOf: regexes)
   }
-  filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))
-  filters.append(try testFilter(forRegularExpressions: args.skip, label: "--skip", membership: .excluding))
+
+  // Extract any filters or skips without the `tag:` prefix; those will be treated as normal regexes.
+  let tagPrefix = "tag:"
+  let escapedTagPrefix = "tag\\:"
+  var nonTagFilterRegexes: [String] = []
+  var nonTagSkipRegexes: [String] = []
+
+  for var filter in args.filter ?? [] {
+    if filter.hasPrefix(tagPrefix) {
+      filters.append(Configuration.TestFilter(includingAnyOf: [Tag(userProvidedStringValue: String(filter.dropFirst(4)))]))
+    } else {
+      // If we run into the escaped tag prefix, we need to to remove the escape character before adding it as a regex filter
+      if filter.hasPrefix(escapedTagPrefix) {
+        filter.replaceSubrange(escapedTagPrefix.startIndex..<escapedTagPrefix.endIndex, with: tagPrefix)
+      }
+      nonTagFilterRegexes.append(filter)
+    }
+  }
+
+  for var skip in args.skip ?? [] {
+    if skip.hasPrefix(tagPrefix) {
+      filters.append(Configuration.TestFilter(includingAnyOf: [Tag(userProvidedStringValue: String(skip.dropFirst(4)))]))
+    } else {
+      // If we run into the escaped tag prefix, we need to to remove the escape character before adding it as a regex filter
+      if skip.hasPrefix(escapedTagPrefix) {
+        skip.replaceSubrange(escapedTagPrefix.startIndex..<escapedTagPrefix.endIndex, with: tagPrefix)
+      }
+      nonTagSkipRegexes.append(skip)
+    }
+  }
+
+  filters.append(try testFilter(forRegularExpressions: nonTagFilterRegexes, label: "--filter", membership: .including))
+  filters.append(try testFilter(forRegularExpressions: nonTagSkipRegexes, label: "--skip", membership: .excluding))
 
   configuration.testFilter = filters.reduce(.unfiltered) { $0.combining(with: $1) }
   if args.includeHiddenTests == true {
