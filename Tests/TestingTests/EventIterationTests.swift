@@ -44,7 +44,7 @@ struct EventIterationTests {
 
       // Verify all expected iterations were recorded
       let iteration = recordedIteration.rawValue
-      #expect(iteration == expectedIterations, "Final observed iteration did not match expected number of iterations", sourceLocation: location)
+      #expect(iteration == expectedIterations, sourceLocation: location)
     }
   }
 
@@ -96,9 +96,7 @@ struct EventIterationTests {
       repetitionPolicy: policy,
       expectedIterations: expectedIterations
     ) { iteration in
-      if iteration < 3 {
-        Issue.record("Failure")
-      }
+      #expect(iteration >= 3)
     }
   }
 }

@@ -15,16 +15,16 @@ import Synchronization
 #endif
 
 @Suite("Configuration.RepetitionPolicy Tests")
-struct PlanIterationTests {
+struct TestCaseIterationTests {
   @Test("One iteration (default behavior)")
   func oneIteration() async {
-    await confirmation("N iterations started") { started in
-      await confirmation("N iterations ended") { ended in
+    await confirmation("1 iteration started") { started in
+      await confirmation("1 iteration ended") { ended in
         var configuration = Configuration()
         configuration.eventHandler = { event, _ in
-          if case .iterationStarted = event.kind {
+          if case .testStarted = event.kind {
             started()
-          } else if case .iterationEnded = event.kind {
+          } else if case .testEnded = event.kind {
             ended()
           }
         }
@@ -43,9 +43,9 @@ struct PlanIterationTests {
       await confirmation("N iterations ended", expectedCount: iterationCount) { ended in
         var configuration = Configuration()
         configuration.eventHandler = { event, _ in
-          if case .iterationStarted = event.kind {
+          if case .testStarted = event.kind {
             started()
-          } else if case .iterationEnded = event.kind {
+          } else if case .testEnded = event.kind {
             ended()
           }
         }
@@ -62,28 +62,25 @@ struct PlanIterationTests {
 
   @Test("Iteration until issue recorded")
   func iterationUntilIssueRecorded() async {
-    let iterationIndex = Mutex(0)
+    let iterations = Mutex(0)
     let iterationCount = 10
     let iterationWithIssue = 5
     await confirmation("N iterations started", expectedCount: iterationWithIssue + 1) { started in
       await confirmation("N iterations ended", expectedCount: iterationWithIssue + 1) { ended in
         var configuration = Configuration()
-        configuration.eventHandler = { event, _ in
-          if case let .iterationStarted(index) = event.kind {
-            iterationIndex.withLock { iterationIndex in
-              iterationIndex = index
-            }
+        configuration.eventHandler = { event, context in
+          guard let iteration = context.iteration else { return }
+          if case .testStarted = event.kind {
+            iterations.withLock { $0 = iteration }
             started()
-          } else if case .iterationEnded = event.kind {
+          } else if case .testEnded = event.kind {
             ended()
           }
         }
         configuration.repetitionPolicy = .repeating(.untilIssueRecorded, maximumIterationCount: iterationCount)
 
         await Test {
-          if iterationIndex.rawValue == iterationWithIssue {
-            #expect(Bool(false))
-          }
+          #expect(iterations.rawValue < iterationWithIssue)
         }.run(configuration: configuration)
       }
     }
@@ -91,31 +88,64 @@ struct PlanIterationTests {
 
   @Test("Iteration while issue recorded")
   func iterationWhileIssueRecorded() async {
-    let iterationIndex = Mutex(0)
+    let iterations = Mutex(0)
     let iterationCount = 10
     let iterationWithoutIssue = 5
-    await confirmation("N iterations started", expectedCount: iterationWithoutIssue + 1) { started in
-      await confirmation("N iterations ended", expectedCount: iterationWithoutIssue + 1) { ended in
+    await confirmation("N iterations started", expectedCount: iterationWithoutIssue) { started in
+      await confirmation("N iterations ended", expectedCount: iterationWithoutIssue) { ended in
         var configuration = Configuration()
-        configuration.eventHandler = { event, _ in
-          if case let .iterationStarted(index) = event.kind {
-            iterationIndex.withLock { iterationIndex in
-              iterationIndex = index
-            }
+        configuration.eventHandler = { event, context in
+          guard let iteration = context.iteration else { return }
+          if case .testStarted = event.kind {
+            iterations.withLock { $0 = iteration }
             started()
-          } else if case .iterationEnded = event.kind {
+          } else if case .testEnded = event.kind {
             ended()
           }
         }
         configuration.repetitionPolicy = .repeating(.whileIssueRecorded, maximumIterationCount: iterationCount)
 
         await Test {
-          if iterationIndex.rawValue < iterationWithoutIssue {
-            #expect(Bool(false))
-          }
+          #expect(iterations.rawValue >= iterationWithoutIssue)
         }.run(configuration: configuration)
       }
     }
+  }
+
+  @Test
+  func iterationOnlyRepeatsFailingTest() async {
+    let iterationForFailingTest = Mutex(0)
+    let iterationForSucceedingTest = Mutex(0)
+
+    let iterationCount = 10
+    let iterationWithoutIssue = 5
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, context in
+      guard let test = context.test, let iteration = context.iteration else { return }
+      if test.name.contains("Failing") {
+        iterationForFailingTest.withLock { $0 = iteration }
+      }
+      if test.name.contains("Succeeding") {
+        iterationForSucceedingTest.withLock { $0 = iteration }
+      }
+    }
+    configuration.repetitionPolicy = .repeating(.whileIssueRecorded, maximumIterationCount: iterationCount)
+
+    let runner = await Runner(testing: [
+      Test(name: "Failing") {
+        #expect(iterationForFailingTest.rawValue >= iterationWithoutIssue)
+      },
+      Test(name: "Succeeding") {
+        #expect(Bool(true))
+      },
+
+    ], configuration: configuration)
+
+    await runner.run()
+
+    #expect(iterationForFailingTest.rawValue == iterationWithoutIssue)
+    #expect(iterationForSucceedingTest.rawValue == 1)
   }
 
 #if !SWT_NO_EXIT_TESTS
