@@ -325,6 +325,16 @@ struct SwiftPMTests {
     #expect(versionTypeInfo == nil)
   }
 
+#if !SWT_NO_SNAPSHOT_TYPES
+  @Test("Severity field included in Issue.Snapshot")
+  func issueSnapshotIncludesSeverity() async throws {
+    let configuration = try configurationForEntryPoint(
+      withArguments: ["PATH", "--event-stream-version", "-1"]
+    )
+    #expect(configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled)
+  }
+#endif
+
   @Test("Severity and isFailure fields included in version 6.3")
   func validateEventStreamContents() async throws {
     let tempDirPath = try temporaryDirectory()
