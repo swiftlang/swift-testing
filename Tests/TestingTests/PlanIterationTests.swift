@@ -15,7 +15,7 @@ import Synchronization
 #endif
 
 @Suite("Configuration.RepetitionPolicy Tests")
-struct PlanIterationTests {
+struct TestCaseIterationTests {
   @Test("One iteration (default behavior)")
   func oneIteration() async {
     await confirmation("N iterations started") { started in
@@ -116,6 +116,51 @@ struct PlanIterationTests {
         }.run(configuration: configuration)
       }
     }
+  }
+
+  @Test
+  func iterationOnlyRepeatsFailingTest() async {
+    let iterationIndexForFailingTest = Mutex(0)
+    let iterationIndexForSucceedingTest = Mutex(0)
+
+    let iterationCount = 10
+    let iterationWithoutIssue = 5
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, context in
+      guard let test = context.test else { return }
+
+      if case let .iterationStarted(index) = event.kind {
+        if test.name.contains("Failing") {
+          iterationIndexForFailingTest.withLock { iterationIndex in
+            iterationIndex = index
+          }
+        }
+        if test.name.contains("Succeeding") {
+          iterationIndexForSucceedingTest.withLock { iterationIndex in
+            iterationIndex = index
+          }
+        }
+      }
+    }
+    configuration.repetitionPolicy = .repeating(.whileIssueRecorded, maximumIterationCount: iterationCount)
+
+    let runner = await Runner(testing: [
+      Test(name: "Failing") {
+        if iterationIndexForFailingTest.rawValue < iterationWithoutIssue {
+          #expect(Bool(false))
+        }
+      },
+      Test(name: "Succeeding") {
+        #expect(Bool(true))
+      },
+
+    ], configuration: configuration)
+
+    await runner.run()
+
+    #expect(iterationIndexForFailingTest.rawValue == iterationWithoutIssue)
+    #expect(iterationIndexForSucceedingTest.rawValue == 0)
   }
 
 #if !SWT_NO_EXIT_TESTS
