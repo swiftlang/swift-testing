@@ -254,6 +254,7 @@ struct AttachmentTests {
             valueAttached()
           } else if case let .issueRecorded(issue) = event.kind,
                     case let .valueAttachmentFailed(error) = issue.kind,
+                    issue.severity == .warning,
                     error is MyError {
             #expect(issue.sourceLocation?.fileID == #fileID)
             issueRecorded()
