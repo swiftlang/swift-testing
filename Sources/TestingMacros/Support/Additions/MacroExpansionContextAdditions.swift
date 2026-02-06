@@ -8,10 +8,12 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import SwiftIfConfig
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import SwiftDiagnostics
+import SwiftParser
 
 extension MacroExpansionContext {
   /// Get the type of the given lexical context.
@@ -87,6 +89,33 @@ extension MacroExpansionContext {
 
     return makeUniqueName("\(prefix)\(suffix)")
   }
+
+  /// Generate a unique name for use in the macro as a closure parameter.
+  ///
+  /// - Parameters:
+  ///   - name: The name to use as a basis for the uniquely-generated name.
+  ///   - node: A syntax node within which `name` must be unique.
+  ///
+  /// - Returns: an identifier token containing a unique name suitable for use
+  ///   as a closure parameter.
+  func makeUniqueClosureParameterName(_ name: String, in node: some SyntaxProtocol) -> TokenSyntax {
+    precondition(name.isValidSwiftIdentifier(for: .variableName))
+    var result = TokenSyntax.identifier(name)
+
+    func isNameUsed(_ name: TokenSyntax) -> Bool {
+      node.tokens(viewMode: .sourceAccurate).lazy
+        .map(\.tokenKind)
+        .contains(name.tokenKind)
+    }
+
+    var suffix = 0
+    while isNameUsed(result) {
+      defer { suffix += 1 }
+      result = .identifier("\(name)\(suffix)")
+    }
+
+    return result
+  }
 }
 
 // MARK: -
@@ -150,5 +179,14 @@ extension MacroExpansionContext {
   ///   - message: The message to emit into the build log.
   func debug(_ message: some Any, node: some SyntaxProtocol) {
     diagnose(DiagnosticMessage(syntax: Syntax(node), message: String(describing: message), severity: .warning))
+  }
+}
+
+// MARK: - Build configuration
+
+extension BuildConfiguration {
+  /// Whether or not the target OS appears to be a Darwin-based (i.e. Apple) OS.
+  func isDarwinTargetOS() throws -> Bool {
+    try isActiveTargetRuntime(name: "_ObjC") || isActiveTargetObjectFormat(name: "MachO")
   }
 }
