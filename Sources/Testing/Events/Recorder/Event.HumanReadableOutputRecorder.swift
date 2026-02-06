@@ -29,6 +29,15 @@ extension Event {
       /// The symbol associated with this message, if any.
       var symbol: Symbol?
 
+      /// How much to indent this message when presenting it.
+      ///
+      /// The way in which this additional indentation is rendered is
+      /// implementation-defined. Typically, the greater the value of this
+      /// property, the more whitespace characters are inserted.
+      ///
+      /// Rendering of indentation is optional.
+      var indentation = 0
+
       /// The human-readable message.
       var stringValue: String
 
@@ -503,20 +512,18 @@ extension Event.HumanReadableOutputRecorder {
         additionalMessages.append(_formattedComment(knownIssueComment))
       }
 
-      if verbosity > 0, case let .expectationFailed(expectation) = issue.kind {
+      if verbosity >= 0, case let .expectationFailed(expectation) = issue.kind {
         let expression = expectation.evaluatedExpression
-        func addMessage(about expression: __Expression) {
-          let description = expression.expandedDebugDescription()
-          additionalMessages.append(Message(symbol: .details, stringValue: description))
-        }
-        let subexpressions = expression.subexpressions
-        if subexpressions.isEmpty {
-          addMessage(about: expression)
-        } else {
-          for subexpression in subexpressions {
-            addMessage(about: subexpression)
+        func addMessage(about expression: __Expression, depth: Int) {
+          let description = expression.expandedDescription(verbose: verbosity > 0)
+          if description != expression.sourceCode {
+            additionalMessages.append(Message(symbol: .details, indentation: depth, stringValue: description))
+          }
+          for subexpression in expression.subexpressions {
+            addMessage(about: subexpression, depth: depth + 1)
           }
         }
+        addMessage(about: expression, depth: 0)
       }
 
       let atSourceLocation = issue.sourceLocation.map { " at \($0)" } ?? ""

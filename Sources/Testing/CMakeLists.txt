@@ -18,6 +18,8 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedBacktrace.swift
   ABI/Encoded/ABI.EncodedError.swift
   ABI/Encoded/ABI.EncodedEvent.swift
+  ABI/Encoded/ABI.EncodedExpectation.swift
+  ABI/Encoded/ABI.EncodedExpression.swift
   ABI/Encoded/ABI.EncodedInstant.swift
   ABI/Encoded/ABI.EncodedIssue.swift
   ABI/Encoded/ABI.EncodedMessage.swift
@@ -49,6 +51,7 @@ add_library(Testing
   Expectations/Expectation.swift
   Expectations/Expectation+Macro.swift
   Expectations/ExpectationChecking+Macro.swift
+  Expectations/ExpectationContext.swift
   Issues/Confirmation.swift
   Issues/ErrorSnapshot.swift
   Issues/Issue.swift
@@ -71,7 +74,7 @@ add_library(Testing
   SourceAttribution/Backtrace+Symbolication.swift
   SourceAttribution/CustomTestStringConvertible.swift
   SourceAttribution/Expression.swift
-  SourceAttribution/Expression+Macro.swift
+  SourceAttribution/ExpressionID.swift
   SourceAttribution/SourceBounds.swift
   SourceAttribution/SourceContext.swift
   SourceAttribution/SourceLocation.swift
