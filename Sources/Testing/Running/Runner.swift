@@ -402,31 +402,83 @@ extension Runner {
   /// This function sets ``Test/Case/current``, then invokes the test case's
   /// body closure.
   private static func _runTestCase(_ testCase: Test.Case, within step: Plan.Step, context: _Context) async {
-    let configuration = _configuration
+    await _applyRepetitionPolicy(test: step.test, testCase: testCase) {
+      let configuration = _configuration
 
-    Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
-    defer {
-      Event.post(.testCaseEnded, for: (step.test, testCase), configuration: configuration)
-    }
+      Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
+      defer {
+        Event.post(.testCaseEnded, for: (step.test, testCase), configuration: configuration)
+      }
 
-    await Test.Case.withCurrent(testCase) {
-      let sourceLocation = step.test.sourceLocation
-      await Issue.withErrorRecording(at: sourceLocation, configuration: configuration) {
-        // Exit early if the task has already been cancelled.
-        try Task.checkCancellation()
+      await Test.Case.withCurrent(testCase) {
+        let sourceLocation = step.test.sourceLocation
+        await Issue.withErrorRecording(at: sourceLocation, configuration: configuration) {
+          // Exit early if the task has already been cancelled.
+          try Task.checkCancellation()
 
-        try await withTimeLimit(for: step.test, configuration: configuration) {
-          try await _applyScopingTraits(for: step.test, testCase: testCase) {
-            try await testCase.body()
+          try await withTimeLimit(for: step.test, configuration: configuration) {
+            try await _applyScopingTraits(for: step.test, testCase: testCase) {
+              try await testCase.body()
+            }
+          } timeoutHandler: { timeLimit in
+            let issue = Issue(
+              kind: .timeLimitExceeded(timeLimitComponents: timeLimit),
+              comments: [],
+              sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
+            )
+            issue.record(configuration: configuration)
           }
-        } timeoutHandler: { timeLimit in
-          let issue = Issue(
-            kind: .timeLimitExceeded(timeLimitComponents: timeLimit),
-            comments: [],
-            sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
-          )
-          issue.record(configuration: configuration)
         }
+      }
+    }
+  }
+
+  /// Applies the repetition policy specified in the current configuration by running the provided test case
+  /// repeatedly until the continuation condition is satisfied.
+  ///
+  /// - Parameters:
+  ///   - test: The test being executed.
+  ///   - testCase: The test case being iterated.
+  ///   - body: The actual body of the function which must ultimately call into the test function.
+  ///
+  /// - Note: This function updates ``Configuration/current`` before invoking the test body.
+  private static func _applyRepetitionPolicy(
+    test: Test,
+    testCase: Test.Case,
+    perform body: () async -> Void
+  ) async {
+    var config = _configuration
+
+    for i in 0..<config.repetitionPolicy.maximumIterationCount {
+      let issueRecorded = Mutex(false)
+      config.eventHandler = { [eventHandler = config.eventHandler] event, context in
+        if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
+          issueRecorded.withLock { issueRecorded in
+            issueRecorded = true
+          }
+        }
+        eventHandler(event, context)
+      }
+
+      await Configuration.withCurrent(config) {
+        Event.post(.iterationStarted(i), for: (test, testCase))
+        defer {
+          Event.post(.iterationEnded(i), for: (test, testCase))
+        }
+        await body()
+      }
+
+      // Determine if the test plan should iterate again.
+      let shouldContinue = switch config.repetitionPolicy.continuationCondition {
+      case nil:
+        true
+      case .untilIssueRecorded:
+        !issueRecorded.rawValue
+      case .whileIssueRecorded:
+        issueRecorded.rawValue
+      }
+      guard shouldContinue else {
+        break
       }
     }
   }
@@ -449,17 +501,6 @@ extension Runner {
 #if !SWT_NO_FILE_IO
     runner.configureAttachmentHandling()
 #endif
-
-    // Track whether or not any issues were recorded across the entire run.
-    let issueRecorded = Mutex(false)
-    runner.configuration.eventHandler = { [eventHandler = runner.configuration.eventHandler] event, context in
-      if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
-        issueRecorded.withLock { issueRecorded in
-          issueRecorded = true
-        }
-      }
-      eventHandler(event, context)
-    }
 
     // Context to pass into the test run. We intentionally don't pass the Runner
     // itself (implicitly as `self` nor as an argument) because we don't want to
@@ -490,43 +531,11 @@ extension Runner {
         Event.post(.runEnded, for: (nil, nil), configuration: runner.configuration)
       }
 
-      let repetitionPolicy = runner.configuration.repetitionPolicy
-      let iterationCount = repetitionPolicy.maximumIterationCount
-      for iterationIndex in 0 ..< iterationCount {
-        Event.post(.iterationStarted(iterationIndex), for: (nil, nil), configuration: runner.configuration)
-        defer {
-          Event.post(.iterationEnded(iterationIndex), for: (nil, nil), configuration: runner.configuration)
+      await withTaskGroup { [runner] taskGroup in
+        _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: nil)) {
+          try? await _runStep(atRootOf: runner.plan.stepGraph, context: context)
         }
-
-        await withTaskGroup { [runner] taskGroup in
-          var taskAction: String?
-          if iterationCount > 1 {
-            taskAction = "running iteration #\(iterationIndex + 1)"
-          }
-          _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: taskAction)) {
-            try? await _runStep(atRootOf: runner.plan.stepGraph, context: context)
-          }
-          await taskGroup.waitForAll()
-        }
-
-        // Determine if the test plan should iterate again. (The iteration count
-        // is handled by the outer for-loop.)
-        let shouldContinue = switch repetitionPolicy.continuationCondition {
-        case nil:
-          true
-        case .untilIssueRecorded:
-          !issueRecorded.rawValue
-        case .whileIssueRecorded:
-          issueRecorded.rawValue
-        }
-        guard shouldContinue else {
-          break
-        }
-
-        // Reset the run-wide "issue was recorded" flag for this iteration.
-        issueRecorded.withLock { issueRecorded in
-          issueRecorded = false
-        }
+        await taskGroup.waitForAll()
       }
     }
   }
