@@ -19,13 +19,13 @@ private import Synchronization
 
 @Suite("TimeLimitTrait Tests", .tags(.traitRelated))
 struct TimeLimitTraitTests {
-    @Test(".timeLimit() factory method")
+  @Test(".timeLimit() factory method")
   func timeLimitTrait() throws {
     let test = Test(.timeLimit(.minutes(2))) {}
     #expect(test.timeLimit == .seconds(60) * 2)
   }
 
-    @Test("adjustedTimeLimit(configuration:) function")
+  @Test("adjustedTimeLimit(configuration:) function")
   func adjustedTimeLimitMethod() throws {
     let oneHour = Duration.seconds(60 * 60)
 
@@ -45,7 +45,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-    @Test("Configuration.maximumTestTimeLimit property")
+  @Test("Configuration.maximumTestTimeLimit property")
   func maximumTimeLimit() throws {
     let tenMinutes = Duration.seconds(60 * 10)
     var configuration = Configuration()
@@ -55,7 +55,7 @@ struct TimeLimitTraitTests {
     #expect(adjustedTimeLimit == tenMinutes)
   }
 
-    @Test("Configuration.defaultTestTimeLimit property")
+  @Test("Configuration.defaultTestTimeLimit property")
   func defaultTimeLimit() throws {
     var configuration = Configuration()
     configuration.defaultTestTimeLimit = .seconds(99)
@@ -64,7 +64,7 @@ struct TimeLimitTraitTests {
     #expect(adjustedTimeLimit == .seconds(120))
   }
 
-    @Test("Configuration.defaultTestTimeLimit property set higher than maximum")
+  @Test("Configuration.defaultTestTimeLimit property set higher than maximum")
   func defaultTimeLimitGreaterThanMaximum() throws {
     var configuration = Configuration()
     configuration.maximumTestTimeLimit = .seconds(130)
@@ -74,7 +74,7 @@ struct TimeLimitTraitTests {
     #expect(adjustedTimeLimit == .seconds(130))
   }
 
-    @Test("Test times out when overrunning .timeLimit() trait")
+  @Test("Test times out when overrunning .timeLimit() trait")
   func testTimesOutDueToTrait() async throws {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
       var configuration = Configuration()
@@ -93,7 +93,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-    @Test("Test times out when overrunning .timeLimit() trait (inherited)")
+  @Test("Test times out when overrunning .timeLimit() trait (inherited)")
   func testTimesOutDueToInheritedTrait() async throws {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
       var configuration = Configuration()
@@ -111,7 +111,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-    @Test("Test times out when overrunning default time limit")
+  @Test("Test times out when overrunning default time limit")
   func testTimesOutDueToDefaultTimeLimit() async throws {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
       var configuration = Configuration()
@@ -131,7 +131,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-    @Test("Test times out when overrunning maximum time limit")
+  @Test("Test times out when overrunning maximum time limit")
   func testTimesOutDueToMaximumTimeLimit() async throws {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
       var configuration = Configuration()
@@ -151,7 +151,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-    @Test("Test does not block until end of time limit")
+  @Test("Test does not block until end of time limit")
   func doesNotWaitUntilEndOfTimeLimit() async throws {
     var configuration = Configuration()
     configuration.testTimeLimitGranularity = .milliseconds(1)
@@ -177,7 +177,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-    @Test("Cancelled tests can exit early (cancellation checking works)")
+  @Test("Cancelled tests can exit early (cancellation checking works)")
   func cancelledTestExitsEarly() async throws {
     let timeAwaited = await Test.Clock().measure {
       await withTaskGroup { taskGroup in
@@ -196,7 +196,7 @@ struct TimeLimitTraitTests {
     #expect(timeAwaited < .seconds(60))
   }
 
-    @Test("Time limit exceeded event includes its associated Test")
+  @Test("Time limit exceeded event includes its associated Test")
   func timeLimitExceededEventProperties() async throws {
     await confirmation("Issue recorded") { issueRecorded in
       var configuration = Configuration()
@@ -246,7 +246,7 @@ struct TimeLimitTraitTests {
 
 @Suite(.hidden, .timeLimit(.minutes(10)))
 struct TestTypeThatTimesOut {
-    @Test(.hidden, arguments: 0 ..< 10)
+  @Test(.hidden, arguments: 0 ..< 10)
   func f(i: Int) async throws {
     try await Test.Clock.sleep(for: .milliseconds(100))
   }

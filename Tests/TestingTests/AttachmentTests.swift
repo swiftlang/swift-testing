@@ -547,7 +547,7 @@ extension AttachmentTests {
       return image
     }
 
-        @Test func attachCGImage() throws {
+    @Test func attachCGImage() throws {
       let image = try Self.cgImage.get()
       let attachment = Attachment(image, named: "diamond")
       #expect(attachment.attachableValue === image)
@@ -557,7 +557,7 @@ extension AttachmentTests {
       Attachment.record(attachment)
     }
 
-        @Test func attachCGImageDirectly() async throws {
+    @Test func attachCGImageDirectly() async throws {
       await confirmation("Attachment detected") { valueAttached in
         var configuration = Configuration()
         configuration.eventHandler = { event, _ in
@@ -573,7 +573,7 @@ extension AttachmentTests {
       }
     }
 
-        @Test(arguments: [Float(0.0).nextUp, 0.25, 0.5, 0.75, 1.0], [.png as UTType?, .jpeg, .gif, .image, nil])
+    @Test(arguments: [Float(0.0).nextUp, 0.25, 0.5, 0.75, 1.0], [.png as UTType?, .jpeg, .gif, .image, nil])
     func attachCGImage(quality: Float, type: UTType?) throws {
       let image = try Self.cgImage.get()
       let format = type.map { AttachableImageFormat(contentType: $0, encodingQuality: quality) }
@@ -587,7 +587,7 @@ extension AttachmentTests {
       }
     }
 
-        @Test(arguments: [AttachableImageFormat.png, .jpeg, .jpeg(withEncodingQuality: 0.5), .init(contentType: .tiff)])
+    @Test(arguments: [AttachableImageFormat.png, .jpeg, .jpeg(withEncodingQuality: 0.5), .init(contentType: .tiff)])
     func attachCGImage(format: AttachableImageFormat) throws {
       let image = try Self.cgImage.get()
       let attachment = Attachment(image, named: "diamond", as: format)
@@ -600,7 +600,7 @@ extension AttachmentTests {
       }
     }
 
-        @Test func attachCGImageWithCustomUTType() throws {
+    @Test func attachCGImageWithCustomUTType() throws {
       let contentType = try #require(UTType(tag: "derived-from-jpeg", tagClass: .filenameExtension, conformingTo: .jpeg))
       let format = AttachableImageFormat(contentType: contentType)
       let image = try Self.cgImage.get()
@@ -614,7 +614,7 @@ extension AttachmentTests {
       }
     }
 
-        @Test func attachCGImageWithUnsupportedImageType() throws {
+    @Test func attachCGImageWithUnsupportedImageType() throws {
       let contentType = try #require(UTType(tag: "unsupported-image-format", tagClass: .filenameExtension, conformingTo: .image))
       let format = AttachableImageFormat(contentType: contentType)
       let image = try Self.cgImage.get()
@@ -626,7 +626,7 @@ extension AttachmentTests {
     }
 
 #if !SWT_NO_EXIT_TESTS
-        @Test func cannotAttachCGImageWithNonImageType() async {
+    @Test func cannotAttachCGImageWithNonImageType() async {
       await #expect(processExitsWith: .failure) {
         let format = AttachableImageFormat(contentType: .mp3)
         let attachment = Attachment(try Self.cgImage.get(), named: "diamond", as: format)
@@ -636,7 +636,7 @@ extension AttachmentTests {
 #endif
 
 #if canImport(CoreImage) && canImport(_Testing_CoreImage)
-        @Test func attachCIImage() throws {
+    @Test func attachCIImage() throws {
       let image = CIImage(cgImage: try Self.cgImage.get())
       let attachment = Attachment(image, named: "diamond.jpg")
       #expect(attachment.attachableValue === image)
@@ -655,7 +655,7 @@ extension AttachmentTests {
       }
     }
 
-        @Test func attachNSImage() throws {
+    @Test func attachNSImage() throws {
       let image = try Self.nsImage
       let attachment = Attachment(image, named: "diamond.jpg")
       #expect(attachment.attachableValue.size == image.size) // NSImage makes a copy
@@ -664,7 +664,7 @@ extension AttachmentTests {
       }
     }
 
-        @Test func attachNSImageWithCustomRep() throws {
+    @Test func attachNSImageWithCustomRep() throws {
       let image = NSImage(size: NSSize(width: 32.0, height: 32.0), flipped: false) { rect in
         NSColor.red.setFill()
         rect.fill()
@@ -677,7 +677,7 @@ extension AttachmentTests {
       }
     }
 
-        @Test func attachNSImageWithSubclassedNSImage() throws {
+    @Test func attachNSImageWithSubclassedNSImage() throws {
       let image = MyImage(size: NSSize(width: 32.0, height: 32.0))
       image.addRepresentation(NSCustomImageRep(size: image.size, flipped: false) { rect in
         NSColor.green.setFill()
@@ -693,7 +693,7 @@ extension AttachmentTests {
       }
     }
 
-        @Test func attachNSImageWithSubclassedRep() throws {
+    @Test func attachNSImageWithSubclassedRep() throws {
       let image = NSImage(size: NSSize(width: 32.0, height: 32.0))
       image.addRepresentation(MyImageRep<Int>())
 
@@ -708,7 +708,7 @@ extension AttachmentTests {
 #endif
 
 #if canImport(UIKit) && canImport(_Testing_UIKit)
-        @Test func attachUIImage() throws {
+    @Test func attachUIImage() throws {
       let image = UIImage(cgImage: try Self.cgImage.get())
       let attachment = Attachment(image, named: "diamond.jpg")
       #expect(attachment.attachableValue === image)
@@ -857,7 +857,7 @@ extension AttachmentTests {
 #endif
 
 #if (canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)) || (canImport(WinSDK) && canImport(_Testing_WinSDK))
-        @Test func imageFormatFromPathExtension() {
+    @Test func imageFormatFromPathExtension() {
       let format = AttachableImageFormat(pathExtension: "png")
       #expect(format != nil)
       #expect(format == .png)
@@ -866,7 +866,7 @@ extension AttachmentTests {
       #expect(badFormat == nil)
     }
 
-        @Test func imageFormatEquatableConformance() {
+    @Test func imageFormatEquatableConformance() {
       let format1 = AttachableImageFormat.png
       let format2 = AttachableImageFormat.jpeg
 #if canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)
@@ -889,7 +889,7 @@ extension AttachmentTests {
       #expect(format1.hashValue != format3.hashValue)
     }
 
-        @Test func imageFormatStringification() {
+    @Test func imageFormatStringification() {
       let format: AttachableImageFormat = AttachableImageFormat.png
 #if canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)
       #expect(String(describing: format) == UTType.png.localizedDescription!)
@@ -900,7 +900,7 @@ extension AttachmentTests {
 #endif
     }
 
-        @Test func imageFormatStringificationWithQuality() {
+    @Test func imageFormatStringificationWithQuality() {
       let format: AttachableImageFormat = AttachableImageFormat.jpeg(withEncodingQuality: 0.5)
 #if canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)
       #expect(String(describing: format) == "\(UTType.jpeg.localizedDescription!) at 50% quality")

@@ -47,11 +47,11 @@ struct TimeValue: Sendable {
   }
 #endif
 
-    init(_ duration: Duration) {
+  init(_ duration: Duration) {
     self.init(duration.components)
   }
 
-    init(_ instant: SuspendingClock.Instant) {
+  init(_ instant: SuspendingClock.Instant) {
 #if compiler(>=6.3)
     self.init(SuspendingClock().systemEpoch.duration(to: instant))
 #else

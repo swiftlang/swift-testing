@@ -98,7 +98,7 @@ extension Test.Clock.Instant {
   /// The value of this property is the equivalent of `self` on the wall clock.
   /// It is suitable for display to the user, but not for fine timing
   /// calculations.
-    public var durationSince1970: Duration {
+  public var durationSince1970: Duration {
     Duration(wall)
   }
 #endif
@@ -134,7 +134,7 @@ extension Test.Clock {
   /// This function is not part of the public interface of the testing library.
   /// It is primarily used by the testing library's own tests. External clients
   /// can use ``sleep(for:tolerance:)`` or ``sleep(until:tolerance:)`` instead.
-    static func sleep(for duration: Duration) async throws {
+  static func sleep(for duration: Duration) async throws {
 #if !SWT_NO_UNSTRUCTURED_TASKS
     return try await SuspendingClock().sleep(for: duration)
 #elseif !SWT_NO_TIMESPEC
