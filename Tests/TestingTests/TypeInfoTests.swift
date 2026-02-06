@@ -104,20 +104,17 @@ struct TypeInfoTests {
     #expect(typeInfo.fullyQualifiedNameComponents == expectedComponents)
   }
 
-  @available(_mangledTypeNameAPI, *)
   @Test func mangledTypeName() {
     #expect(_mangledTypeName(String.self) == TypeInfo(describing: String.self).mangledName)
     #expect(_mangledTypeName(String.NestedType.self) == TypeInfo(describing: String.NestedType.self).mangledName)
     #expect(_mangledTypeName(SomeEnum.self) == TypeInfo(describing: SomeEnum.self).mangledName)
   }
 
-  @available(_mangledTypeNameAPI, *)
   @Test func isImportedFromC() {
     #expect(!TypeInfo(describing: String.self).isImportedFromC)
     #expect(TypeInfo(describing: SWTTestEnumeration.self).isImportedFromC)
   }
 
-  @available(_mangledTypeNameAPI, *)
   @Test func isSwiftEnumeration() {
     #expect(!TypeInfo(describing: String.self).isSwiftEnumeration)
     #expect(TypeInfo(describing: SomeEnum.self).isSwiftEnumeration)

@@ -629,9 +629,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       return .unfiltered
     }
 
-    guard #available(_regexAPI, *) else {
-      throw _EntryPointError.featureUnavailable("The `\(label)' option is not supported on this OS version.")
-    }
     return try Configuration.TestFilter(membership: membership, matchingAnyOf: regexes)
   }
   filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))

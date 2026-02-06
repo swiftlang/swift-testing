@@ -158,7 +158,6 @@ public struct Configuration: Sendable {
   ///
   /// To determine the actual time limit that applies to an instance of
   /// ``Test`` at runtime, use ``Test/adjustedTimeLimit(configuration:)``.
-  @available(_clockAPI, *)
   public var defaultTestTimeLimit: Duration? {
     get {
       _defaultTestTimeLimit as? Duration
@@ -180,7 +179,6 @@ public struct Configuration: Sendable {
   ///
   /// To determine the actual time limit that applies to an instance of
   /// ``Test`` at runtime, use ``Test/adjustedTimeLimit(configuration:)``.
-  @available(_clockAPI, *)
   public var maximumTestTimeLimit: Duration? {
     get {
       _maximumTestTimeLimit as? Duration
@@ -198,7 +196,6 @@ public struct Configuration: Sendable {
   /// By default, test time limit granularity is limited to intervals of one
   /// minute (60 seconds.) If finer or coarser granularity is required, the
   /// value of this property can be adjusted.
-  @available(_clockAPI, *)
   public var testTimeLimitGranularity: Duration {
     get {
       (_testTimeLimitGranularity as? Duration) ?? .seconds(60)

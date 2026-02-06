@@ -802,15 +802,10 @@ final class RunnerTests: XCTestCase {
 
   @Suite(.hidden) struct AvailableWithDefinedAvailabilityTests {
     @Test(.hidden)
-    @available(_clockAPI, *)
-    func clockAPI() {}
+        func clockAPI() {}
   }
 
   func testAvailableWithDefinedAvailability() async throws {
-    guard #available(_clockAPI, *) else {
-      throw XCTSkip("Test method is unavailable here.")
-    }
-
     let testStarted = expectation(description: "Test started")
     testStarted.expectedFulfillmentCount = 3
     var configuration = Configuration()

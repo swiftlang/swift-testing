@@ -1215,10 +1215,8 @@ public func __checkClosureCall<each T>(
 private func _description(of error: some Error) -> String {
   let errorDescription = "\"\(String(describingForTest: error))\""
   let errorType = type(of: error as Any)
-  if #available(_regexAPI, *) {
-    if errorDescription.contains(String(describing: errorType)) {
-      return errorDescription
-    }
+  if errorDescription.contains(String(describing: errorType)) {
+    return errorDescription
   }
   return "\(errorDescription) of type \(errorType)"
 }

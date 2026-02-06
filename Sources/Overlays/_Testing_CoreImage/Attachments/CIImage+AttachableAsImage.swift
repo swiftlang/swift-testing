@@ -15,7 +15,6 @@ public import _Testing_CoreGraphics
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
-@available(_uttypesAPI, *)
 extension CIImage: AttachableAsImage, AttachableAsCGImage {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
