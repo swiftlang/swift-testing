@@ -465,7 +465,7 @@ extension Test {
     private var _timeLimit: TimeValue?
 
     /// The maximum amount of time a test may run for before timing out.
-        public var timeLimit: Duration? {
+    public var timeLimit: Duration? {
       _timeLimit.map(Duration.init)
     }
 
