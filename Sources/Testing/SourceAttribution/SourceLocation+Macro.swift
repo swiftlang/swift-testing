@@ -12,11 +12,11 @@
 ///
 /// - Returns: The source location at which this macro is applied.
 ///
-/// This macro can be used in place of `#fileID`, `#line`, and `#column` as a
-/// default argument to a function. It expands to an instance of
+/// You can use this macro in place of `#fileID`, `#filePath`, `#line`, and
+/// `#column` as a default argument to a function. It expands to an instance of
 /// ``SourceLocation`` referring to the location of the macro invocation itself
 /// (similar to how `#fileID` expands to the ID of the file containing the
-/// `#fileID` invocation.)
+/// `#fileID` invocation).
 @freestanding(expression) public macro _sourceLocation() -> SourceLocation = #externalMacro(module: "TestingMacros", type: "SourceLocationMacro")
 
 extension SourceLocation {

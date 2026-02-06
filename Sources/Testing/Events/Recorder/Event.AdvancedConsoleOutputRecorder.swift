@@ -610,7 +610,7 @@ extension Event.AdvancedConsoleOutputRecorder {
             }
             
             // 2. Location
-            if let sourceLocation = issue.sourceLocation {
+            if let sourceLocation = issue.sourceLocation.flatMap(SourceLocation.init) {
               output += "\n"
               output += "  Location: \(sourceLocation.fileName):\(sourceLocation.line):\(sourceLocation.column)\n"
             }
@@ -731,7 +731,7 @@ extension Event.AdvancedConsoleOutputRecorder {
           output += "\(issuePrefix)\(issueTreePrefix)Expectation failed: \(conciseDescription)\n"
           
           // Add concise source location
-          if let sourceLocation = issue.sourceLocation {
+          if let sourceLocation = issue.sourceLocation.flatMap(SourceLocation.init) {
             let locationPrefix = issuePrefix + (isLastIssue ? "   " : "\(_treeVertical)  ")
             output += "\(locationPrefix)at \(sourceLocation.fileName):\(sourceLocation.line)\n"
           }
@@ -952,7 +952,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     var fileName = ""
     if let issues = context.testData[testID]?.issues, 
        let firstIssue = issues.first,
-       let sourceLocation = firstIssue.sourceLocation {
+       let sourceLocation = firstIssue.sourceLocation.flatMap(SourceLocation.init) {
       fileName = sourceLocation.fileName
     }
     
