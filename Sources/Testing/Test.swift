@@ -465,8 +465,7 @@ extension Test {
     private var _timeLimit: TimeValue?
 
     /// The maximum amount of time a test may run for before timing out.
-    @available(_clockAPI, *)
-    public var timeLimit: Duration? {
+        public var timeLimit: Duration? {
       _timeLimit.map(Duration.init)
     }
 
@@ -483,9 +482,7 @@ extension Test {
       comments = test.comments
       tags = test.tags
       associatedBugs = test.associatedBugs
-      if #available(_clockAPI, *) {
-        _timeLimit = test.timeLimit.map(TimeValue.init)
-      }
+      _timeLimit = test.timeLimit.map(TimeValue.init)
 
       testCases = test.testCasesState.map { testCasesState in
         if case let .evaluated(testCases) = testCasesState {

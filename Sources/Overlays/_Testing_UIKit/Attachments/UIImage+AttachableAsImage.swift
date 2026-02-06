@@ -20,7 +20,6 @@ private import UIKitCore_Private
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
-@available(_uttypesAPI, *)
 extension UIImage: AttachableAsImage, AttachableAsCGImage {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)

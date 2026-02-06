@@ -55,7 +55,6 @@
 #if SWT_NO_IMAGE_ATTACHMENTS
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
-@available(_uttypesAPI, *)
 public protocol AttachableAsImage {
   /// Encode a representation of this image in a given image format.
   ///
@@ -114,7 +113,6 @@ public protocol AttachableAsImage {
 #if SWT_NO_IMAGE_ATTACHMENTS
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
-@available(_uttypesAPI, *)
 extension AttachableAsImage {
   public func _copyAttachableValue() -> Self {
     self

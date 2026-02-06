@@ -56,11 +56,7 @@ private import _TestingInternals
       // Allow up to 1s for the signal to be delivered. On some platforms,
       // raise() delivers signals fully asynchronously and may not terminate the
       // child process before this closure returns.
-      if #available(_clockAPI, *) {
-        try await Test.Clock.sleep(for: .seconds(1))
-      } else {
-        try await Task.sleep(nanoseconds: 1_000_000_000)
-      }
+      try await Test.Clock.sleep(for: .seconds(1))
     }
     await #expect(processExitsWith: .signal(SIGABRT)) {
       abort()

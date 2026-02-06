@@ -47,13 +47,11 @@ struct TimeValue: Sendable {
   }
 #endif
 
-  @available(_clockAPI, *)
-  init(_ duration: Duration) {
+    init(_ duration: Duration) {
     self.init(duration.components)
   }
 
-  @available(_clockAPI, *)
-  init(_ instant: SuspendingClock.Instant) {
+    init(_ instant: SuspendingClock.Instant) {
 #if compiler(>=6.3)
     self.init(SuspendingClock().systemEpoch.duration(to: instant))
 #else
@@ -104,14 +102,12 @@ extension TimeValue: CustomStringConvertible {
 
 // MARK: -
 
-@available(_clockAPI, *)
 extension Duration {
   init(_ timeValue: TimeValue) {
     self.init(secondsComponent: timeValue.seconds, attosecondsComponent: timeValue.attoseconds)
   }
 }
 
-@available(_clockAPI, *)
 extension SuspendingClock.Instant {
   init(_ timeValue: TimeValue) {
 #if compiler(>=6.3)

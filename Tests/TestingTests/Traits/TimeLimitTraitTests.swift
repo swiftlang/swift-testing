@@ -19,15 +19,13 @@ private import Synchronization
 
 @Suite("TimeLimitTrait Tests", .tags(.traitRelated))
 struct TimeLimitTraitTests {
-  @available(_clockAPI, *)
-  @Test(".timeLimit() factory method")
+    @Test(".timeLimit() factory method")
   func timeLimitTrait() throws {
     let test = Test(.timeLimit(.minutes(2))) {}
     #expect(test.timeLimit == .seconds(60) * 2)
   }
 
-  @available(_clockAPI, *)
-  @Test("adjustedTimeLimit(configuration:) function")
+    @Test("adjustedTimeLimit(configuration:) function")
   func adjustedTimeLimitMethod() throws {
     let oneHour = Duration.seconds(60 * 60)
 
@@ -47,8 +45,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-  @available(_clockAPI, *)
-  @Test("Configuration.maximumTestTimeLimit property")
+    @Test("Configuration.maximumTestTimeLimit property")
   func maximumTimeLimit() throws {
     let tenMinutes = Duration.seconds(60 * 10)
     var configuration = Configuration()
@@ -58,8 +55,7 @@ struct TimeLimitTraitTests {
     #expect(adjustedTimeLimit == tenMinutes)
   }
 
-  @available(_clockAPI, *)
-  @Test("Configuration.defaultTestTimeLimit property")
+    @Test("Configuration.defaultTestTimeLimit property")
   func defaultTimeLimit() throws {
     var configuration = Configuration()
     configuration.defaultTestTimeLimit = .seconds(99)
@@ -68,8 +64,7 @@ struct TimeLimitTraitTests {
     #expect(adjustedTimeLimit == .seconds(120))
   }
 
-  @available(_clockAPI, *)
-  @Test("Configuration.defaultTestTimeLimit property set higher than maximum")
+    @Test("Configuration.defaultTestTimeLimit property set higher than maximum")
   func defaultTimeLimitGreaterThanMaximum() throws {
     var configuration = Configuration()
     configuration.maximumTestTimeLimit = .seconds(130)
@@ -79,8 +74,7 @@ struct TimeLimitTraitTests {
     #expect(adjustedTimeLimit == .seconds(130))
   }
 
-  @available(_clockAPI, *)
-  @Test("Test times out when overrunning .timeLimit() trait")
+    @Test("Test times out when overrunning .timeLimit() trait")
   func testTimesOutDueToTrait() async throws {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
       var configuration = Configuration()
@@ -99,8 +93,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-  @available(_clockAPI, *)
-  @Test("Test times out when overrunning .timeLimit() trait (inherited)")
+    @Test("Test times out when overrunning .timeLimit() trait (inherited)")
   func testTimesOutDueToInheritedTrait() async throws {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
       var configuration = Configuration()
@@ -118,8 +111,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-  @available(_clockAPI, *)
-  @Test("Test times out when overrunning default time limit")
+    @Test("Test times out when overrunning default time limit")
   func testTimesOutDueToDefaultTimeLimit() async throws {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
       var configuration = Configuration()
@@ -139,8 +131,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-  @available(_clockAPI, *)
-  @Test("Test times out when overrunning maximum time limit")
+    @Test("Test times out when overrunning maximum time limit")
   func testTimesOutDueToMaximumTimeLimit() async throws {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
       var configuration = Configuration()
@@ -160,8 +151,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-  @available(_clockAPI, *)
-  @Test("Test does not block until end of time limit")
+    @Test("Test does not block until end of time limit")
   func doesNotWaitUntilEndOfTimeLimit() async throws {
     var configuration = Configuration()
     configuration.testTimeLimitGranularity = .milliseconds(1)
@@ -187,8 +177,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-  @available(_clockAPI, *)
-  @Test("Cancelled tests can exit early (cancellation checking works)")
+    @Test("Cancelled tests can exit early (cancellation checking works)")
   func cancelledTestExitsEarly() async throws {
     let timeAwaited = await Test.Clock().measure {
       await withTaskGroup { taskGroup in
@@ -207,8 +196,7 @@ struct TimeLimitTraitTests {
     #expect(timeAwaited < .seconds(60))
   }
 
-  @available(_clockAPI, *)
-  @Test("Time limit exceeded event includes its associated Test")
+    @Test("Time limit exceeded event includes its associated Test")
   func timeLimitExceededEventProperties() async throws {
     await confirmation("Issue recorded") { issueRecorded in
       var configuration = Configuration()
@@ -256,24 +244,9 @@ struct TimeLimitTraitTests {
 
 // MARK: - Fixtures
 
-private func _timeLimitIfAvailable(minutes: UInt64) -> any SuiteTrait {
-  // @available can't be applied to a suite type, so we can't mark the suite as
-  // available only on newer OSes. In addition, there is a related, known bug
-  // where traits with conditional API availability are not guarded by
-  // `@available` attributes on their associated `@Test` function
-  // (rdar://127811571). That is not directly relevant here but is worth noting
-  // if this trait is ever applied to `@Test` functions in this file.
-  if #available(_clockAPI, *) {
-    .timeLimit(.minutes(minutes))
-  } else {
-    .disabled(".timeLimit() not available")
-  }
-}
-
-@Suite(.hidden, _timeLimitIfAvailable(minutes: 10))
+@Suite(.hidden, .timeLimit(.minutes(10)))
 struct TestTypeThatTimesOut {
-  @available(_clockAPI, *)
-  @Test(.hidden, arguments: 0 ..< 10)
+    @Test(.hidden, arguments: 0 ..< 10)
   func f(i: Int) async throws {
     try await Test.Clock.sleep(for: .milliseconds(100))
   }

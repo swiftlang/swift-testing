@@ -14,8 +14,7 @@ private import _TestingInternals
 
 @Suite("Clock API Tests")
 struct ClockTests {
-  @available(_clockAPI, *)
-  @Test("Clock.Instant basics")
+    @Test("Clock.Instant basics")
   func clockInstant() async throws {
     let instant1 = Test.Clock.Instant.now
     try await Test.Clock.sleep(for: .nanoseconds(50_000_000))
@@ -44,8 +43,7 @@ struct ClockTests {
 #endif
   }
 
-  @available(_clockAPI, *)
-  @Test("Creating a SuspendingClock.Instant from Test.Clock.Instant")
+    @Test("Creating a SuspendingClock.Instant from Test.Clock.Instant")
   func suspendingInstantInitializer() async throws {
     let instant1 = SuspendingClock.Instant(Test.Clock.Instant.now)
     try await Test.Clock.sleep(for: .milliseconds(50))
@@ -54,8 +52,7 @@ struct ClockTests {
     #expect(instant1 < instant2)
   }
 
-  @available(_clockAPI, *)
-  @Test("Clock.sleep(until:tolerance:) method")
+    @Test("Clock.sleep(until:tolerance:) method")
   func sleepUntilTolerance() async throws {
     let instant1 = SuspendingClock.Instant(Test.Clock.Instant.now)
     try await Test.Clock().sleep(until: .now.advanced(by: .milliseconds(50)), tolerance: nil)
@@ -65,8 +62,7 @@ struct ClockTests {
   }
 
 #if !SWT_NO_UTC_CLOCK
-  @available(_clockAPI, *)
-  @Test("Clock.Instant.timeComponentsSince1970 property")
+    @Test("Clock.Instant.timeComponentsSince1970 property")
   func timeComponentsSince1970() async throws {
     let instant1 = Test.Clock.Instant.now.timeComponentsSince1970
     try await Test.Clock.sleep(for: .nanoseconds(50_000_000))
@@ -77,8 +73,7 @@ struct ClockTests {
 #endif
 
 #if !SWT_NO_UTC_CLOCK
-  @available(_clockAPI, *)
-  @Test("Clock.Instant.durationSince1970 property")
+    @Test("Clock.Instant.durationSince1970 property")
   func durationSince1970() async throws {
     let instant1 = Test.Clock.Instant.now.durationSince1970
     try await Test.Clock.sleep(for: .milliseconds(50))
@@ -88,8 +83,7 @@ struct ClockTests {
   }
 #endif
 
-  @available(_clockAPI, *)
-  @Test("Clock.now property")
+    @Test("Clock.now property")
   func clockNowProperty() async throws {
     let instant1 = Test.Clock().now
     try await Test.Clock.sleep(for: .milliseconds(50))
@@ -98,15 +92,13 @@ struct ClockTests {
     #expect(instant1 < instant2)
   }
 
-  @available(_clockAPI, *)
-  @Test("Clock.minimumResolution property")
+    @Test("Clock.minimumResolution property")
   func clockMinimumResolutionProperty() async throws {
     let minimumResolution = Test.Clock().minimumResolution
     #expect(minimumResolution == SuspendingClock().minimumResolution)
   }
 
-  @available(_clockAPI, *)
-  @Test("Clock.Instant.advanced(by:) and .duration(to:) methods")
+    @Test("Clock.Instant.advanced(by:) and .duration(to:) methods")
   func instantAdvancedByAndDurationTo() async throws {
     let offsetNanoseconds = Int64.random(in: -1_000_000_000 ..< 1_000_000_000)
 
@@ -122,8 +114,7 @@ struct ClockTests {
   }
 
 #if canImport(Foundation)
-  @available(_clockAPI, *)
-  @Test("Codable")
+    @Test("Codable")
   func codable() async throws {
     let now = Test.Clock.Instant()
     let instant = now.advanced(by: .nanoseconds(100))
@@ -133,8 +124,7 @@ struct ClockTests {
   }
 #endif
 
-  @available(_clockAPI, *)
-  @Test("Clock.Instant.nanoseconds(until:) method",
+    @Test("Clock.Instant.nanoseconds(until:) method",
     arguments: [
       (Duration.zero, 0),
       (.nanoseconds(1), 1),

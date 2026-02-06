@@ -22,7 +22,6 @@ private import UniformTypeIdentifiers
 ///
 /// This protocol is not part of the public interface of the testing library. It
 /// encapsulates Apple-specific logic for image attachments.
-@available(_uttypesAPI, *)
 package protocol AttachableAsCGImage: AttachableAsImage {
   /// An instance of `CGImage` representing this image.
   ///
@@ -51,11 +50,9 @@ package protocol AttachableAsCGImage: AttachableAsImage {
 }
 
 /// All type identifiers supported by Image I/O.
-@available(_uttypesAPI, *)
 private let _supportedTypeIdentifiers = Set(CGImageDestinationCopyTypeIdentifiers() as? [String] ?? [])
 
 /// All content types supported by Image I/O.
-@available(_uttypesAPI, *)
 private let _supportedContentTypes = {
 #if canImport(UniformTypeIdentifiers_Private)
   UTType._types(identifiers: _supportedTypeIdentifiers).values
@@ -64,7 +61,6 @@ private let _supportedContentTypes = {
 #endif
 }()
 
-@available(_uttypesAPI, *)
 extension AttachableAsCGImage {
   package var attachmentOrientation: CGImagePropertyOrientation {
     .up

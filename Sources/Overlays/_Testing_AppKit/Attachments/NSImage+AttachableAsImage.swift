@@ -36,7 +36,6 @@ extension NSImageRep {
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
-@available(_uttypesAPI, *)
 extension NSImage: AttachableAsImage, AttachableAsCGImage {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)

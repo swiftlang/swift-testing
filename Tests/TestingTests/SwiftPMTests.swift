@@ -104,7 +104,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter argument")
-  @available(_regexAPI, *)
   func filter() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello"])
     let test1 = Test(name: "hello") {}
@@ -116,7 +115,6 @@ struct SwiftPMTests {
   }
 
   @Test("Multiple --filter arguments")
-  @available(_regexAPI, *)
   func multipleFilter() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello", "--filter", "sorry"])
     let test1 = Test(name: "hello") {}
@@ -130,7 +128,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter or --skip argument with bad regex")
-  @available(_regexAPI, *)
   func badArguments() throws {
     #expect(throws: (any Error).self) {
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "("])
@@ -141,7 +138,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter with no matches")
-  @available(_regexAPI, *)
   func filterWithNoMatches() async {
     var args = __CommandLineArguments_v0()
     args.filter = ["NOTHING_MATCHES_THIS_TEST_NAME_HOPEFULLY"]
@@ -151,7 +147,6 @@ struct SwiftPMTests {
   }
 
   @Test("--skip argument")
-  @available(_regexAPI, *)
   func skip() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--skip", "hello"])
     let test1 = Test(name: "hello") {}
@@ -163,7 +158,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter or --skip argument as last argument")
-  @available(_regexAPI, *)
   func filterOrSkipAsLast() async throws {
     _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter"])
     _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
@@ -181,7 +175,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter/--skip arguments and .hidden trait")
-  @available(_regexAPI, *)
   func filterAndSkipAndHidden() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello", "--skip", "hello2"])
     let test1 = Test(name: "hello") {}
@@ -445,7 +438,6 @@ struct SwiftPMTests {
 #endif
 
   @Test("--repetitions argument (alone)")
-  @available(_regexAPI, *)
   func repetitions() throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repetitions", "2468"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
@@ -453,7 +445,6 @@ struct SwiftPMTests {
   }
 
   @Test("--repeat-until pass argument (alone)")
-  @available(_regexAPI, *)
   func repeatUntilPass() throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == .max)
@@ -461,7 +452,6 @@ struct SwiftPMTests {
   }
 
   @Test("--repeat-until fail argument (alone)")
-  @available(_regexAPI, *)
   func repeatUntilFail() throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repeat-until", "fail"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == .max)
@@ -469,7 +459,6 @@ struct SwiftPMTests {
   }
 
   @Test("--repeat-until argument with garbage value (alone)")
-  @available(_regexAPI, *)
   func repeatUntilGarbage() {
     #expect(throws: (any Error).self) {
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--repeat-until", "qwertyuiop"])
@@ -477,7 +466,6 @@ struct SwiftPMTests {
   }
 
   @Test("--repetitions and --repeat-until arguments")
-  @available(_regexAPI, *)
   func repetitionsAndRepeatUntil() throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repetitions", "2468", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
