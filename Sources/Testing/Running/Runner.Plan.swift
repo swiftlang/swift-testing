@@ -326,6 +326,15 @@ extension Runner.Plan {
     // Synthesize suites for nodes in the test graph for which they are missing.
     _recursivelySynthesizeSuites(in: &testGraph)
 
+    // Find any/all global traits and apply them to the root node of the graph
+    // (before recursively applying traits).
+    let globalTraits = [any GlobalTrait].all
+    if !globalTraits.isEmpty {
+      var rootSuite = testGraph.value ?? Test.rootSuite(traits: [])
+      rootSuite.traits += globalTraits
+      testGraph.value = rootSuite
+    }
+
     // Recursively apply all recursive suite traits to children.
     //
     // This must be done _before_ calling `prepare(for:)` on the traits below.

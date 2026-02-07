@@ -307,6 +307,30 @@ public struct Test: Sendable {
     _properties.value.mutationCount
   }
 #endif
+}
+
+extension Test {
+  /// Initialize an instance of this type representing the root suite.
+  static func rootSuite(
+    traits: [any GlobalTrait]
+  ) -> Self {
+    let sourceBounds = __SourceBounds(
+      lowerBoundOnly: SourceLocation(
+        fileID: "__C/<compiler-generated>", // TODO: ???
+        filePath: "<compiler-generated>",
+        line: 1,
+        column: 1
+      )
+    )
+    let properties = _Properties(
+      name: "<compiler-generated>",
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: nil,
+      isSynthesized: true
+    )
+    return Self(_properties: Allocated(properties))
+  }
 
   /// Initialize an instance of this type representing a test suite type.
   init(
