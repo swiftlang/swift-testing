@@ -100,9 +100,6 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
   }
 }
 
-@_spi(Experimental)
-extension ConditionTrait: GlobalTrait {}
-
 // MARK: -
 
 extension Trait where Self == ConditionTrait {

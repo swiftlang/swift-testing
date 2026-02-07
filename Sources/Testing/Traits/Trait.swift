@@ -249,29 +249,6 @@ public protocol SuiteTrait: Trait {
   var isRecursive: Bool { get }
 }
 
-/// A protocol describing a trait that you can add to a test plan using the
-/// ``Plan(_:)`` macro.
-///
-/// The testing library defines a number of traits that you can add to test
-/// suites. You can also define your own traits by creating types that
-/// conform to this protocol, to the ``SuiteTrait`` protocol, or to the
-/// ``TestTrait`` protocol.
-@_spi(Experimental)
-public protocol GlobalTrait: SuiteTrait {}
-
-@_spi(Experimental)
-public func Traits<each T>(
-  _ traits: repeat each T
-) -> [any GlobalTrait] where repeat each T: GlobalTrait {
-  var result = [any GlobalTrait]()
-
-  for trait in repeat each traits {
-    result.append(trait)
-  }
-
-  return result
-}
-
 // MARK: -
 
 extension Trait {
@@ -308,12 +285,5 @@ extension Trait where TestScopeProvider == Never {
 extension SuiteTrait {
   public var isRecursive: Bool {
     false
-  }
-}
-
-@_spi(Experimental)
-extension GlobalTrait {
-  public var isRecursive: Bool {
-    true
   }
 }

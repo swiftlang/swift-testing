@@ -13,36 +13,45 @@
 @_spi(Experimental)
 public struct Plan: Sendable {
   /// Traits to apply to all tests when they are run.
-  public var traits: [any GlobalTrait] = []
+  public var traits: [any Trait] = []
 }
 
 // MARK: - Result building
 
 @_spi(Experimental)
 extension Plan {
+  @_documentation(visibility: private)
   @resultBuilder
   public struct Builder {
-    public static func buildPartialBlock(first: some GlobalTrait) -> Plan {
-      buildPartialBlock(first: [first])
-    }
-
-    public static func buildPartialBlock(accumulated: Plan, next: some GlobalTrait) -> Plan {
-      buildPartialBlock(accumulated: Plan(), next: [next])
-    }
-
-    public static func buildPartialBlock(first: [any GlobalTrait]) -> Plan {
+    public static func buildPartialBlock(first: Global) -> Plan {
       buildPartialBlock(accumulated: Plan(), next: first)
     }
 
-    public static func buildPartialBlock(accumulated: Plan, next: [any GlobalTrait]) -> Plan {
+    public static func buildPartialBlock(accumulated: Plan, next: Global) -> Plan {
       var result = accumulated
-      result.traits += next
+      switch next.kind {
+      case let .trait(trait):
+        result.traits.append(trait)
+      }
       return result
     }
   }
 
   public init(@Builder _ planBuilder: @escaping @Sendable () -> Self) {
     self = planBuilder()
+  }
+}
+
+@_spi(Experimental)
+public struct Global: Sendable {
+  fileprivate enum Kind: Sendable {
+    case trait(any SuiteTrait)
+  }
+
+  fileprivate var kind: Kind
+
+  public init(_ trait: some SuiteTrait) {
+    kind = .trait(trait)
   }
 }
 
