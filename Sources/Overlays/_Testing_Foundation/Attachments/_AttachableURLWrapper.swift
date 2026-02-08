@@ -41,8 +41,19 @@ extension _AttachableURLWrapper: AttachableWrapper {
     try data.withUnsafeBytes(body)
   }
 
-  public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
-    let fileCloned = try url.withUnsafeFileSystemRepresentation { sourcePath in
+  /// Use platform-specific file-cloning API to create a copy-on-write copy of
+  /// the represented file.
+  ///
+  /// - Parameters:
+  ///   - filePath:
+  private func _clone(toFileAtPath filePath: String) throws -> Bool {
+    if isCompressedDirectory {
+      // We don't have a file system reference or file descriptor for the
+      // temporary archive we created.
+      return false
+    }
+
+    return try url.withUnsafeFileSystemRepresentation { sourcePath in
       guard let sourcePath else {
         return false
       }
@@ -76,7 +87,8 @@ extension _AttachableURLWrapper: AttachableWrapper {
           close(dstFD)
         }
 
-        // Attempt to clone the source file.
+        // Attempt to clone the source file. If the operation fails with ENOTSUP
+        // or EOPNOTSUPP, then the file system doesn't support file cloning.
 #if os(Linux)
         let result = ioctl(dstFD, swt_FICLONE(), srcFD)
 #elseif os(FreeBSD)
@@ -86,8 +98,6 @@ extension _AttachableURLWrapper: AttachableWrapper {
         if !fileCloned {
           // Failed to clone, but we already created the file, so we must unlink
           // it so the fallback path works.
-          let errorString = String(cString: strerror(errno))
-          print("FICLONE/COPY_FILE_RANGE_CLONE failed: \(errorString) (\(errno) )")
           _ = unlink(destinationPath)
         }
 #elseif os(Windows)
@@ -98,7 +108,10 @@ extension _AttachableURLWrapper: AttachableWrapper {
       }
     }
 
-    guard fileCloned else {
+  }
+
+  public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
+    guard try _clone(toFileAtPath: filePath) else {
       // Fall back to a byte-by-byte copy.
       return try writeImpl(toFileAtPath: filePath, for: attachment)
     }
