@@ -131,7 +131,7 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 ///
 /// This function is provided because `FICLONE()` is a complex macro and cannot
 /// be imported directly into Swift.
-static int swt_FICLONE(void) {
+static unsigned long swt_FICLONE(void) {
   return FICLONE;
 }
 #endif

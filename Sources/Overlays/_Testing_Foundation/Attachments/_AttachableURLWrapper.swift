@@ -43,11 +43,11 @@ extension _AttachableURLWrapper: AttachableWrapper {
 
   public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
     let fileCloned = try url.withUnsafeFileSystemRepresentation { sourcePath in
-      try filePath.withCString { destinationPath in
-        guard let sourcePath else {
-          return false
-        }
+      guard let sourcePath else {
+        return false
+      }
 
+      return try filePath.withCString { destinationPath in
         var fileCloned = false
 #if SWT_TARGET_OS_APPLE && !SWT_NO_CLONEFILE
         // Attempt to clone the source file.
