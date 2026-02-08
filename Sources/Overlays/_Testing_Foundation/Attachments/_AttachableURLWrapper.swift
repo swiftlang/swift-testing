@@ -42,12 +42,6 @@ extension _AttachableURLWrapper: AttachableWrapper {
   }
 
   public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
-    func throwEEXISTIfNeeded(_ errorCode: CInt) throws {
-      if errorCode == POSIXError.EEXIST.rawValue {
-        throw POSIXError(.EEXIST)
-      }
-    }
-
     var cloned = false
 #if SWT_TARGET_OS_APPLE && !SWT_NO_CLONEFILE
     cloned = try url.withUnsafeFileSystemRepresentation { sourcePath in
@@ -58,7 +52,9 @@ extension _AttachableURLWrapper: AttachableWrapper {
 
         // Attempt to clone the source file.
         guard 0 == clonefile(sourcePath, destinationPath, 0) else {
-          try throwEEXISTIfNeeded(errno)
+          if errno == POSIXError.EEXIST.rawValue {
+            throw POSIXError(.EEXIST)
+          }
           return false
         }
         return true
@@ -81,7 +77,9 @@ extension _AttachableURLWrapper: AttachableWrapper {
         }
         let dstFD = open(destinationPath, O_CREAT | O_EXCL, mode_t(0o666))
         guard dstFD >= 0 else {
-          try throwEEXISTIfNeeded(errno)
+          if errno == POSIXError.EEXIST.rawValue {
+            throw POSIXError(.EEXIST)
+          }
           return false
         }
         defer {
