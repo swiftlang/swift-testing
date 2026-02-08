@@ -80,6 +80,7 @@ public protocol Attachable: ~Copyable {
   /// }
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
 
+#if !SWT_NO_FILE_IO
   /// Write this instance to the given file system path.
   ///
   /// - Parameters:
@@ -101,6 +102,7 @@ public protocol Attachable: ~Copyable {
   /// - Warning: This function is not part of the testing library's public
   ///   interface. It may be removed in a future update.
   borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws
+#endif
 
   /// Generate a preferred name for the given attachment.
   ///
@@ -138,6 +140,7 @@ extension Attachable where Self: ~Copyable {
     nil
   }
 
+#if !SWT_NO_FILE_IO
   /// The shared implementation of `_write(toFileAtPath:for:)` used by
   /// attachable types declared in the testing library.
   ///
@@ -152,6 +155,7 @@ extension Attachable where Self: ~Copyable {
   public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
     try writeImpl(toFileAtPath: filePath, for: attachment)
   }
+#endif
 
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)

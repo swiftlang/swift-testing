@@ -132,7 +132,9 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
   init<A>(_ attachment: Attachment<A>) where A: Attachable & Sendable & ~Copyable {
     _estimatedAttachmentByteCount = { attachment.attachableValue.estimatedAttachmentByteCount }
     _withUnsafeBytes = { try attachment.withUnsafeBytes($0) }
+#if !SWT_NO_FILE_IO
     _writeToFileAtPath = { try attachment.attachableValue._write(toFileAtPath: $0, for: attachment) }
+#endif
     _preferredName = { attachment.attachableValue.preferredName(for: attachment, basedOn: $0) }
   }
 
@@ -156,6 +158,7 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
     return result
   }
 
+#if !SWT_NO_FILE_IO
   /// The implementation of `_write(toFileAtPath:for:)` borrowed from the
   /// original attachment.
   private var _writeToFileAtPath: @Sendable (String) throws -> Void
@@ -163,6 +166,7 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
   public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
     try _writeToFileAtPath(filePath)
   }
+#endif
 
   /// The implementation of ``preferredName(for:basedOn:)`` borrowed from the
   /// original attachment.

@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
+#if canImport(Foundation) && !SWT_NO_FILE_IO
 public import Testing
 public import Foundation
 
@@ -16,7 +16,6 @@ public import Foundation
 private import WinSDK
 #endif
 
-#if !SWT_NO_FILE_IO
 extension Attachment where AttachableValue == _AttachableURLWrapper {
 #if SWT_TARGET_OS_APPLE
   /// An operation queue to use for asynchronously reading data from disk.
@@ -242,5 +241,4 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
   throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "This platform does not support attaching directories to tests."])
 #endif
 }
-#endif
 #endif
