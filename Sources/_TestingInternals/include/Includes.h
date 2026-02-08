@@ -143,7 +143,7 @@
 #include <os/lock.h>
 #endif
 
-#if !SWT_NO_CLONEFILE
+#if !SWT_NO_FILE_CLONING
 #include <sys/clonefile.h>
 #endif
 #endif
