@@ -47,7 +47,7 @@ extension _AttachableURLWrapper: AttachableWrapper {
         return false
       }
 
-      return try filePath.withCString { destinationPath in
+      return try filePath.withCString { destinationPath throws in
         var fileCloned = false
 #if SWT_TARGET_OS_APPLE && !SWT_NO_CLONEFILE
         // Attempt to clone the source file.

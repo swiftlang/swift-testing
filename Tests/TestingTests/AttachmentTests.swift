@@ -285,17 +285,20 @@ struct AttachmentTests {
     try await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment) = event.kind else {
-          return
-        }
-
-        #expect(attachment.preferredName == temporaryFileName)
-        #expect(throws: Never.self) {
-          try attachment.withUnsafeBytes { buffer in
-            #expect(buffer.count == data.count)
+        switch event.kind {
+        case let .issueRecorded(issue):
+          issue.record()
+        case let .valueAttached(attachment) = event.kind:
+          #expect(attachment.preferredName == temporaryFileName)
+          #expect(throws: Never.self) {
+            try attachment.withUnsafeBytes { buffer in
+              #expect(buffer.count == data.count)
+            }
           }
+          valueAttached()
+        default:
+          break
         }
-        valueAttached()
       }
       configuration.attachmentsPath = try temporaryDirectory()
 
@@ -319,20 +322,25 @@ struct AttachmentTests {
     try await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment) = event.kind else {
-          return
-        }
-
-        #expect(attachment.preferredName == "\(temporaryDirectoryName).zip")
-        try! attachment.withUnsafeBytes { buffer in
-          #expect(buffer.count > 32)
-          #expect(buffer[0] == UInt8(ascii: "P"))
-          #expect(buffer[1] == UInt8(ascii: "K"))
-          if #available(_regexAPI, *) {
-            #expect(buffer.contains("loremipsum.txt".utf8))
+        switch event.kind {
+        case let .issueRecorded(issue):
+          issue.record()
+        case let .valueAttached(attachment) = event.kind:
+          #expect(attachment.preferredName == "\(temporaryDirectoryName).zip")
+          #expect(throws: Never.self) {
+            try attachment.withUnsafeBytes { buffer in
+              #expect(buffer.count > 32)
+              #expect(buffer[0] == UInt8(ascii: "P"))
+              #expect(buffer[1] == UInt8(ascii: "K"))
+              if #available(_regexAPI, *) {
+                #expect(buffer.contains("loremipsum.txt".utf8))
+              }
+            }
           }
+          valueAttached()
+        default:
+          break
         }
-        valueAttached()
       }
       configuration.attachmentsPath = try temporaryDirectory()
 
