@@ -288,7 +288,7 @@ struct AttachmentTests {
         switch event.kind {
         case let .issueRecorded(issue):
           issue.record()
-        case let .valueAttached(attachment) = event.kind:
+        case let .valueAttached(attachment):
           #expect(attachment.preferredName == temporaryFileName)
           #expect(throws: Never.self) {
             try attachment.withUnsafeBytes { buffer in
@@ -325,7 +325,7 @@ struct AttachmentTests {
         switch event.kind {
         case let .issueRecorded(issue):
           issue.record()
-        case let .valueAttached(attachment) = event.kind:
+        case let .valueAttached(attachment):
           #expect(attachment.preferredName == "\(temporaryDirectoryName).zip")
           #expect(throws: Never.self) {
             try attachment.withUnsafeBytes { buffer in
