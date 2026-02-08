@@ -86,6 +86,8 @@ extension _AttachableURLWrapper: AttachableWrapper {
         if !fileCloned {
           // Failed to clone, but we already created the file, so we must unlink
           // it so the fallback path works.
+          let errorString = String(cString: strerror(errno))
+          print("FICLONE/COPY_FILE_RANGE_CLONE failed: \(errorString) (\(errno) )")
           _ = unlink(destinationPath)
         }
 #elseif os(Windows)
