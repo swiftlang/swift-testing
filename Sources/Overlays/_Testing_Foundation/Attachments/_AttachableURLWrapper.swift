@@ -65,7 +65,7 @@ extension _AttachableURLWrapper: AttachableWrapper {
         defer {
           close(srcFD)
         }
-        let dstFD = open(destinationPath, O_CREAT | O_EXCL, mode_t(0o666))
+        let dstFD = open(destinationPath, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC, mode_t(0o666))
         guard dstFD >= 0 else {
           if errno == EEXIST {
             throw POSIXError(.EEXIST)
@@ -83,6 +83,11 @@ extension _AttachableURLWrapper: AttachableWrapper {
         let result = copy_file_range(srcFD, nil, dstFD, nil, size_t(SSIZE_MAX), COPY_FILE_RANGE_CLONE)
 #endif
         fileCloned = result != -1
+        if !fileCloned {
+          // Failed to clone, but we already created the file, so we must unlink
+          // it so the fallback path works.
+          _ = unlink(destinationPath)
+        }
 #elseif os(Windows)
         // Block cloning on Windows is only supported by ReFS which is not in
         // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
