@@ -42,12 +42,12 @@ package struct Win32Error: Error, RawRepresentable {
     self.rawValue = rawValue
   }
 
-  var _domain: String {
+  package var _domain: String {
     // SEE: `_NSWindowsErrorDomain` in swift-corelibs-foundation.
     "org.swift.Foundation.WindowsError"
   }
 
-  var _code: Int {
+  package var _code: Int {
     Int(truncatingIfNeeded: rawValue)
   }
 }

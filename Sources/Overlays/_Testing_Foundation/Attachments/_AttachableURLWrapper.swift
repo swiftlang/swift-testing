@@ -40,27 +40,66 @@ extension _AttachableURLWrapper: AttachableWrapper {
   }
 
   public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
+    func throwEEXISTIfNeeded() throws {
+      if errno == POSIXError.EEXIST.rawValue {
+        throw POSIXError(.EEXIST)
+      }
+    }
+
 #if SWT_TARGET_OS_APPLE && !SWT_NO_CLONEFILE
     let cloned = try url.withUnsafeFileSystemRepresentation { sourcePath in
       try filePath.withCString { destinationPath in
-        if let sourcePath {
-          if 0 == clonefile(sourcePath, destinationPath, 0) {
-            return true
-          } else if errno == POSIXError.EEXIST.rawValue {
-            throw POSIXError(.EEXIST)
-          }
+        guard let sourcePath else {
+          return false
         }
-        return false
+
+        // Attempt to clone the source file.
+        guard 0 == clonefile(sourcePath, destinationPath, 0) else {
+          try throwEEXISTIfNeeded()
+          return false
+        }
+        return true
       }
     }
-    if cloned {
-      return
-    }
 #elseif os(Linux) && !SWT_NO_FICLONE
-    // TODO: use ioctl(dst, FICLONE, src)
+    let cloned = try url.withUnsafeFileSystemRepresentation { sourcePath in
+      try filePath.withCString { destinationPath in
+        guard let sourcePath else {
+          return false
+        }
+
+        // Open the source and destination file descriptors.
+        let srcFD = open(sourcePath, O_RDONLY)
+        guard srcFD >= 0 else {
+          return false
+        }
+        defer {
+          close(srcFD)
+        }
+        let dstFD = open(destinationPath, O_CREAT | O_EXCL, mode_t(0o666))
+        guard dstFD >= 0 else {
+          try throwEEXISTIfNeeded()
+          return false
+        }
+        defer {
+          close(dstFD)
+        }
+
+        // Attempt to clone the source file.
+        if -1 == ioctl(dstFD, FICLONE, srcFD) {
+          try throwEEXISTIfNeeded()
+          return false
+        }
+        return true
+      }
+    }
+#else
+    let cloned = false
 #endif
-    // Fall back to a byte-by-byte copy.
-    return try writeImpl(toFileAtPath: filePath, for: attachment)
+    guard Bool(cloned) else {
+      // Fall back to a byte-by-byte copy.
+      return try writeImpl(toFileAtPath: filePath, for: attachment)
+    }
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
