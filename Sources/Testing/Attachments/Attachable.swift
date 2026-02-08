@@ -80,6 +80,28 @@ public protocol Attachable: ~Copyable {
   /// }
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
 
+  /// Write this instance to the given file system path.
+  ///
+  /// - Parameters:
+  ///   - filePath: The path to write to.
+  ///   - attachment: The attachment that is requesting this instance be written
+  ///     (that is, the attachment containing this instance.)
+  ///
+  /// - Throws: Any error that prevented writing this instance to `filePath`.
+  ///   When the testing library calls this function, this function throws an
+  ///   error of type [`POSIXError`](https://developer.apple.com/documentation/foundation/posixerror),
+  ///   and that error's code equals [`EEXIST`](https://developer.apple.com/documentation/foundation/posixerror/eexist),
+  ///   the testing library tries again with a new path.
+  ///
+  /// The testing library uses this function when saving an attachment. The
+  /// default implementation opens `filePath` for writing, calls
+  /// ``withUnsafeBytes(for:_:)``, and writes the resulting buffer to the opened
+  /// file.
+  ///
+  /// - Warning: This function is not part of the testing library's public
+  ///   interface. It may be removed in a future update.
+  borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws
+
   /// Generate a preferred name for the given attachment.
   ///
   /// - Parameters:
@@ -114,6 +136,21 @@ extension Attachable where Self: ~Copyable {
   /// }
   public var estimatedAttachmentByteCount: Int? {
     nil
+  }
+
+  /// The shared implementation of `_write(toFileAtPath:for:)` used by
+  /// attachable types declared in the testing library.
+  ///
+  /// For documentation, see `Attachable/_write(toFileAtPath:for:)`.
+  package borrowing func writeImpl(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
+    try withUnsafeBytes(for: attachment) { buffer in
+      let file = try FileHandle(atPath: filePath, mode: "wxeb")
+      try file.write(buffer.bytes)
+    }
+  }
+
+  public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
+    try writeImpl(toFileAtPath: filePath, for: attachment)
   }
 
   /// @Metadata {

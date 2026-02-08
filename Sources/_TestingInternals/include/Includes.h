@@ -142,6 +142,10 @@
 #if !SWT_NO_OS_UNFAIR_LOCK
 #include <os/lock.h>
 #endif
+
+#if !SWT_NO_CLONEFILE
+#include <sys/clonefile.h>
+#endif
 #endif
 
 #if defined(__FreeBSD__)

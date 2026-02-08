@@ -282,7 +282,7 @@ struct AttachmentTests {
       try? FileManager.default.removeItem(at: temporaryURL)
     }
 
-    await confirmation("Attachment detected") { valueAttached in
+    try await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
         guard case let .valueAttached(attachment) = event.kind else {
@@ -297,6 +297,7 @@ struct AttachmentTests {
         }
         valueAttached()
       }
+      configuration.attachmentsPath = try temporaryDirectory()
 
       await Test {
         let attachment = try await Attachment(contentsOf: temporaryURL)
@@ -315,7 +316,7 @@ struct AttachmentTests {
     let fileData = try #require("Hello world".data(using: .utf8))
     try fileData.write(to: temporaryURL.appendingPathComponent("loremipsum.txt"), options: [.atomic])
 
-    await confirmation("Attachment detected") { valueAttached in
+    try await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
         guard case let .valueAttached(attachment) = event.kind else {
@@ -333,6 +334,7 @@ struct AttachmentTests {
         }
         valueAttached()
       }
+      configuration.attachmentsPath = try temporaryDirectory()
 
       await Test {
         let attachment = try await Attachment(contentsOf: temporaryURL)

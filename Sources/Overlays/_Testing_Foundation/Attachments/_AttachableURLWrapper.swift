@@ -39,6 +39,30 @@ extension _AttachableURLWrapper: AttachableWrapper {
     try data.withUnsafeBytes(body)
   }
 
+  public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
+#if SWT_TARGET_OS_APPLE && !SWT_NO_CLONEFILE
+    let cloned = try url.withUnsafeFileSystemRepresentation { sourcePath in
+      try filePath.withCString { destinationPath in
+        if let sourcePath {
+          if 0 == clonefile(sourcePath, destinationPath, 0) {
+            return true
+          } else if errno == POSIXError.EEXIST.rawValue {
+            throw POSIXError(.EEXIST)
+          }
+        }
+        return false
+      }
+    }
+    if cloned {
+      return
+    }
+#elseif os(Linux) && !SWT_NO_FICLONE
+    // TODO: use ioctl(dst, FICLONE, src)
+#endif
+    // Fall back to a byte-by-byte copy.
+    return try writeImpl(toFileAtPath: filePath, for: attachment)
+  }
+
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     // What extension should we have on the filename so that it has the same
     // type as the original file (or, in the case of a compressed directory, is

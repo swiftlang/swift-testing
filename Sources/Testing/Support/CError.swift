@@ -18,6 +18,14 @@ internal import _TestingInternals
 /// This type is not part of the public interface of the testing library.
 struct CError: Error, RawRepresentable {
   var rawValue: CInt
+
+  var _domain: String {
+    "NSPOSIXErrorDomain"
+  }
+
+  var _code: Int {
+    Int(truncatingIfNeeded: rawValue)
+  }
 }
 
 #if os(Windows)
@@ -32,6 +40,15 @@ package struct Win32Error: Error, RawRepresentable {
 
   package init(rawValue: CUnsignedLong) {
     self.rawValue = rawValue
+  }
+
+  var _domain: String {
+    // SEE: `_NSWindowsErrorDomain` in swift-corelibs-foundation.
+    "org.swift.Foundation.WindowsError"
+  }
+
+  var _code: Int {
+    Int(truncatingIfNeeded: rawValue)
   }
 }
 #endif
