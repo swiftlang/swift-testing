@@ -44,8 +44,8 @@ extension _AttachableURLWrapper: AttachableWrapper {
   }
 
   public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
-    func throwEEXISTIfNeeded() throws {
-      if errno == POSIXError.EEXIST.rawValue {
+    func throwEEXISTIfNeeded(_ errorCode: CInt) throws {
+      if errorCode == POSIXError.EEXIST.rawValue {
         throw POSIXError(.EEXIST)
       }
     }
@@ -60,7 +60,7 @@ extension _AttachableURLWrapper: AttachableWrapper {
 
         // Attempt to clone the source file.
         guard 0 == clonefile(sourcePath, destinationPath, 0) else {
-          try throwEEXISTIfNeeded()
+          try throwEEXISTIfNeeded(errno)
           return false
         }
         return true
@@ -83,7 +83,7 @@ extension _AttachableURLWrapper: AttachableWrapper {
         }
         let dstFD = open(destinationPath, O_CREAT | O_EXCL, mode_t(0o666))
         guard dstFD >= 0 else {
-          try throwEEXISTIfNeeded()
+          try throwEEXISTIfNeeded(errno)
           return false
         }
         defer {
@@ -96,11 +96,7 @@ extension _AttachableURLWrapper: AttachableWrapper {
 #elseif os(FreeBSD)
         let result = copy_file_range(srcFD, nil, dstFD, nil, size_t(SSIZE_MAX), COPY_FILE_RANGE_CLONE)
 #endif
-        if result == -1 {
-          try throwEEXISTIfNeeded()
-          return false
-        }
-        return true
+        return result != -1
       }
     }
 #elseif os(Windows)
