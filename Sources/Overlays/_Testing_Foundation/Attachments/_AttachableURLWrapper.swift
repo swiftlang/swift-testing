@@ -46,8 +46,9 @@ extension _AttachableURLWrapper: AttachableWrapper {
       }
     }
 
+    var cloned = false
 #if SWT_TARGET_OS_APPLE && !SWT_NO_CLONEFILE
-    let cloned = try url.withUnsafeFileSystemRepresentation { sourcePath in
+    cloned = try url.withUnsafeFileSystemRepresentation { sourcePath in
       try filePath.withCString { destinationPath in
         guard let sourcePath else {
           return false
@@ -61,8 +62,8 @@ extension _AttachableURLWrapper: AttachableWrapper {
         return true
       }
     }
-#elseif os(Linux) && !SWT_NO_FICLONE
-    let cloned = try url.withUnsafeFileSystemRepresentation { sourcePath in
+#elseif (os(Linux) && !SWT_NO_FICLONE) || os(FreeBSD)
+    cloned = try url.withUnsafeFileSystemRepresentation { sourcePath in
       try filePath.withCString { destinationPath in
         guard let sourcePath else {
           return false
@@ -86,16 +87,23 @@ extension _AttachableURLWrapper: AttachableWrapper {
         }
 
         // Attempt to clone the source file.
-        if -1 == ioctl(dstFD, FICLONE, srcFD) {
+#if os(Linux)
+        let result = ioctl(dstFD, FICLONE, srcFD)
+#elseif os(FreeBSD)
+        let result = copy_file_range(srcFD, nil, dstFD, nil, size_t(SSIZE_MAX), COPY_FILE_RANGE_CLONE)
+#endif
+        if result == -1 {
           try throwEEXISTIfNeeded()
           return false
         }
         return true
       }
     }
-#else
-    let cloned = false
+#elseif os(Windows)
+    // Block cloning on Windows is only supported by ReFS which is not in wide
+    // use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
 #endif
+
     guard Bool(cloned) else {
       // Fall back to a byte-by-byte copy.
       return try writeImpl(toFileAtPath: filePath, for: attachment)
