@@ -12,7 +12,7 @@
 public import Testing
 public import Foundation
 
-private import _TestingInternals.IncludesOnly
+private import _TestingInternals.StubsOnly
 
 /// A wrapper type representing file system objects and URLs that can be
 /// attached indirectly.
@@ -42,31 +42,21 @@ extension _AttachableURLWrapper: AttachableWrapper {
   }
 
   public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
-    var cloned = false
+    let fileCloned = try url.withUnsafeFileSystemRepresentation { sourcePath in
+      try filePath.withCString { destinationPath in
+        guard let sourcePath else {
+          return false
+        }
+
+        var fileCloned = false
 #if SWT_TARGET_OS_APPLE && !SWT_NO_CLONEFILE
-    cloned = try url.withUnsafeFileSystemRepresentation { sourcePath in
-      try filePath.withCString { destinationPath in
-        guard let sourcePath else {
-          return false
-        }
-
         // Attempt to clone the source file.
-        guard 0 == clonefile(sourcePath, destinationPath, 0) else {
-          if errno == POSIXError.EEXIST.rawValue {
-            throw POSIXError(.EEXIST)
-          }
-          return false
+        if 0 == clonefile(sourcePath, destinationPath, 0) {
+          fileCloned = true
+        } else if errno == EEXIST {
+          throw POSIXError(.EEXIST)
         }
-        return true
-      }
-    }
 #elseif (os(Linux) && !SWT_NO_FICLONE) || os(FreeBSD)
-    cloned = try url.withUnsafeFileSystemRepresentation { sourcePath in
-      try filePath.withCString { destinationPath in
-        guard let sourcePath else {
-          return false
-        }
-
         // Open the source and destination file descriptors.
         let srcFD = open(sourcePath, O_RDONLY)
         guard srcFD >= 0 else {
@@ -77,7 +67,7 @@ extension _AttachableURLWrapper: AttachableWrapper {
         }
         let dstFD = open(destinationPath, O_CREAT | O_EXCL, mode_t(0o666))
         guard dstFD >= 0 else {
-          if errno == POSIXError.EEXIST.rawValue {
+          if errno == EEXIST {
             throw POSIXError(.EEXIST)
           }
           return false
@@ -88,19 +78,20 @@ extension _AttachableURLWrapper: AttachableWrapper {
 
         // Attempt to clone the source file.
 #if os(Linux)
-        let result = ioctl(dstFD, FICLONE, srcFD)
+        let result = ioctl(dstFD, swt_FICLONE(), srcFD)
 #elseif os(FreeBSD)
         let result = copy_file_range(srcFD, nil, dstFD, nil, size_t(SSIZE_MAX), COPY_FILE_RANGE_CLONE)
 #endif
-        return result != -1
+        fileCloned = result != -1
+#elseif os(Windows)
+        // Block cloning on Windows is only supported by ReFS which is not in
+        // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
+#endif
+        return fileCloned
       }
     }
-#elseif os(Windows)
-    // Block cloning on Windows is only supported by ReFS which is not in wide
-    // use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
-#endif
 
-    guard Bool(cloned) else {
+    guard fileCloned else {
       // Fall back to a byte-by-byte copy.
       return try writeImpl(toFileAtPath: filePath, for: attachment)
     }

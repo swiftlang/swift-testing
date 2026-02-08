@@ -126,6 +126,16 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 }
 #endif
 
+#if defined(__linux__)
+/// Get the `FICLONE` `ioctl()` argument.
+///
+/// This function is provided because `FICLONE()` is a complex macro and cannot
+/// be imported directly into Swift.
+static int swt_FICLONE(void) {
+  return FICLONE;
+}
+#endif
+
 #if !defined(__ANDROID__)
 #if __has_include(<signal.h>) && defined(si_pid)
 /// Get the value of the `si_pid` field of a `siginfo_t` structure.
