@@ -11,4 +11,9 @@
 module _TestingInternals {
   umbrella "."
   export *
+
+  explicit module IncludesOnly {
+    header "Includes.h"
+    export *
+  }
 }

@@ -148,6 +148,10 @@
 #endif
 #endif
 
+#if defined(__linux__)
+#include <linux/fs.h>
+#endif
+
 #if defined(__FreeBSD__)
 #include <libutil.h>
 #endif
