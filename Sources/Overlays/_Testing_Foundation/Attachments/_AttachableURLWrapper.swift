@@ -28,6 +28,23 @@ public struct _AttachableURLWrapper: Sendable {
 
   /// Whether or not this instance represents a compressed directory.
   var isCompressedDirectory: Bool
+
+#if !SWT_NO_FILE_CLONING
+  /// A file handle that refers to the original file (or, if a directory, the
+  /// compressed copy thereof).
+  ///
+  /// This file handle is used when cloning the represented file.
+  private var _fileHandle: FileHandle
+#endif
+
+  init(url: URL, copiedToFileAt copyURL: URL? = nil, isCompressedDirectory: Bool) throws {
+    self.url = url
+    self.data = try Data(contentsOf: copyURL ?? url, options: [.mappedIfSafe])
+    self.isCompressedDirectory = isCompressedDirectory
+#if !SWT_NO_FILE_CLONING
+    self._fileHandle = try FileHandle(forReadingFrom: copyURL ?? url)
+#endif
+  }
 }
 
 // MARK: -
@@ -45,69 +62,67 @@ extension _AttachableURLWrapper: AttachableWrapper {
   /// the represented file.
   ///
   /// - Parameters:
-  ///   - filePath:
+  ///   - filePath: The destination path to place the clone at.
+  ///
+  /// - Returns: Whether or not the clone operation succeeded.
+  ///
+  /// - Throws: If a file exists at `filePath`, throws `EEXIST`.
   private func _clone(toFileAtPath filePath: String) throws -> Bool {
-    if isCompressedDirectory {
-      // We don't have a file system reference or file descriptor for the
-      // temporary archive we created.
-      return false
-    }
+#if !SWT_NO_FILE_CLONING
+    return try filePath.withCString { destinationPath throws in
+      var fileCloned = false
 
-    return try url.withUnsafeFileSystemRepresentation { sourcePath in
-      guard let sourcePath else {
-        return false
+      // Get the source file descriptor.
+      let srcFD = _fileHandle.fileDescriptor
+      defer {
+        extendLifetime(_fileHandle)
       }
 
-      return try filePath.withCString { destinationPath throws in
-        var fileCloned = false
-#if SWT_TARGET_OS_APPLE && !SWT_NO_CLONEFILE
-        // Attempt to clone the source file.
-        if 0 == clonefile(sourcePath, destinationPath, 0) {
-          fileCloned = true
-        } else if errno == EEXIST {
+#if SWT_TARGET_OS_APPLE
+      // Attempt to clone the source file.
+      if 0 == fclonefileat(srcFD, AT_FDCWD, destinationPath, 0) {
+        fileCloned = true
+      } else if errno == EEXIST {
+        throw POSIXError(.EEXIST)
+      }
+#elseif os(Linux) || os(FreeBSD)
+      // Open the destination file descriptor.
+      let dstFD = open(destinationPath, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC, mode_t(0o666))
+      guard dstFD >= 0 else {
+        if errno == EEXIST {
           throw POSIXError(.EEXIST)
         }
-#elseif (os(Linux) && !SWT_NO_FICLONE) || os(FreeBSD)
-        // Open the source and destination file descriptors.
-        let srcFD = open(sourcePath, O_RDONLY)
-        guard srcFD >= 0 else {
-          return false
-        }
-        defer {
-          close(srcFD)
-        }
-        let dstFD = open(destinationPath, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC, mode_t(0o666))
-        guard dstFD >= 0 else {
-          if errno == EEXIST {
-            throw POSIXError(.EEXIST)
-          }
-          return false
-        }
-        defer {
-          close(dstFD)
-        }
-
-        // Attempt to clone the source file. If the operation fails with ENOTSUP
-        // or EOPNOTSUPP, then the file system doesn't support file cloning.
-#if os(Linux)
-        let result = ioctl(dstFD, swt_FICLONE(), srcFD)
-#elseif os(FreeBSD)
-        let result = copy_file_range(srcFD, nil, dstFD, nil, size_t(SSIZE_MAX), COPY_FILE_RANGE_CLONE)
-#endif
-        fileCloned = result != -1
-        if !fileCloned {
-          // Failed to clone, but we already created the file, so we must unlink
-          // it so the fallback path works.
-          _ = unlink(destinationPath)
-        }
-#elseif os(Windows)
-        // Block cloning on Windows is only supported by ReFS which is not in
-        // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
-#endif
-        return fileCloned
+        return false
       }
-    }
+      defer {
+        close(dstFD)
+      }
 
+      // Attempt to clone the source file. If the operation fails with ENOTSUP
+      // or EOPNOTSUPP, then the file system doesn't support file cloning.
+#if os(Linux)
+      let result = ioctl(dstFD, swt_FICLONE(), srcFD)
+#elseif os(FreeBSD)
+      let result = copy_file_range(srcFD, nil, dstFD, nil, size_t(SSIZE_MAX), COPY_FILE_RANGE_CLONE)
+#endif
+      fileCloned = result != -1
+      if !fileCloned {
+        // Failed to clone, but we already created the file, so we must unlink
+        // it so the fallback path works.
+        _ = unlink(destinationPath)
+      }
+#elseif os(Windows)
+      // Block cloning on Windows is only supported by ReFS which is not in
+      // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
+#else
+#warning("Platform-specific implementation missing: File cloning unavailable")
+#endif
+      return fileCloned
+    }
+#else
+    // File cloning is not supported on this system.
+    return false
+#endif
   }
 
   public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
