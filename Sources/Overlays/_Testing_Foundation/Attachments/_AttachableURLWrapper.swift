@@ -12,6 +12,10 @@
 public import Testing
 public import Foundation
 
+#if canImport(Glibc)
+private import Glibc
+#endif
+
 /// A wrapper type representing file system objects and URLs that can be
 /// attached indirectly.
 ///
