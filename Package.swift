@@ -267,6 +267,7 @@ let package = Package(
     .target(
       name: "_Testing_Foundation",
       dependencies: [
+        "_TestingInternals",
         "Testing",
       ],
       path: "Sources/Overlays/_Testing_Foundation",
