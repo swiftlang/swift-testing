@@ -48,15 +48,6 @@ struct SectionBounds: Sendable, BitwiseCopyable {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
 // MARK: - Apple implementation
 
-/// Get the Mach header corresponding to the given `dlopen()` handle.
-///
-/// - Parameters:
-///   - handle: The `dlopen()` handle.
-///
-/// - Returns: The corresponding Mach header, or `nil` if none was found.
-@_extern(c)
-private func _dyld_get_dlopen_image_header(_ handle: UnsafeMutableRawPointer) -> UnsafePointer<mach_header>?
-
 /// Get section bounds for the given section from the given Mach header.
 ///
 /// - Parameters:
@@ -106,7 +97,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessColl
 #endif
   }
 
-#if _runtime(_ObjC)
+#if _runtime(_ObjC) && canImport(MachO_Private.dyld)
   let imageNames: [String] = {
     var imageCount = UInt32(0)
     let imageNames = objc_copyImageNames(&imageCount)
