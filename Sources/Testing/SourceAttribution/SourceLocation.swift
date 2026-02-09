@@ -277,7 +277,7 @@ extension SourceLocation {
   /// - Warning: This property is provided temporarily to aid in integrating the
   ///   testing library with existing tools such as Swift Package Manager. It
   ///   will be removed in a future release.
-  @available(swift, deprecated: 100000.0, renamed: "filePath")
+  @available(swift, deprecated: 6.3, renamed: "filePath")
   public var _filePath: String {
     get {
       filePath
