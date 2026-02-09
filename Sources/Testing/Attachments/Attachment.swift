@@ -307,7 +307,7 @@ extension Attachment where AttachableValue: ~Copyable {
       Attachment<Array>.record(bufferCopy, sourceLocation: sourceLocation)
     } catch {
       let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
-      Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record()
+      Issue(kind: .valueAttachmentFailed(error), severity: .warning, comments: [], sourceContext: sourceContext).record()
     }
   }
 
@@ -536,7 +536,7 @@ extension Configuration {
     } catch {
       // Record the error as an issue and suppress the event.
       let sourceContext = SourceContext(backtrace: .current(), sourceLocation: attachment.sourceLocation)
-      Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record(configuration: self)
+      Issue(kind: .valueAttachmentFailed(error), severity: .warning, comments: [], sourceContext: sourceContext).record(configuration: self)
       return false
     }
   }
