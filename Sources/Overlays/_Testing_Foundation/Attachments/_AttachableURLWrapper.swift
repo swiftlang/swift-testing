@@ -54,6 +54,10 @@ extension _AttachableURLWrapper: AttachableWrapper {
     url
   }
 
+  public var estimatedAttachmentByteCount: Int? {
+    data.count
+  }
+
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try data.withUnsafeBytes(body)
   }
@@ -109,7 +113,7 @@ extension _AttachableURLWrapper: AttachableWrapper {
 #elseif os(FreeBSD)
       var result = -1
       if getosreldate() >= 1500000 {
-        result = copy_file_range(srcFD, nil, dstFD, nil, size_t(SSIZE_MAX), swt_COPY_FILE_RANGE_CLONE())
+        result = copy_file_range(srcFD, nil, dstFD, nil, Int(SSIZE_MAX), swt_COPY_FILE_RANGE_CLONE())
       }
 #endif
       fileCloned = result != -1
