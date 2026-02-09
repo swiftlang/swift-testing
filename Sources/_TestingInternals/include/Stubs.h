@@ -129,10 +129,27 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 #if defined(__linux__)
 /// Get the `FICLONE` `ioctl()` argument.
 ///
-/// This function is provided because `FICLONE()` is a complex macro and cannot
-/// be imported directly into Swift.
+/// This function is provided because `FICLONE` is a complex macro and cannot be
+/// imported directly into Swift.
 static unsigned long swt_FICLONE(void) {
   return FICLONE;
+}
+#endif
+
+#if defined(__FreeBSD__)
+/// Get the `COPY_FILE_RANGE_CLONE` `copy_file_range()` flag.
+///
+/// This function is provided because `COPY_FILE_RANGE_CLONE` is not available
+/// prior to FreeBSD 15.0. The caller should check `getosreldate()` before using
+/// this flag.
+static unsigned int swt_COPY_FILE_RANGE_CLONE(void) {
+#if defined(COPY_FILE_RANGE_CLONE)
+  return COPY_FILE_RANGE_CLONE;
+#else
+  // Compiled against an older unistd.h, but presumably running on FreeBSD 15.0
+  // or newer. SEE: https://github.com/freebsd/freebsd-src/blob/main/sys/sys/unistd.h
+  return 0x00800000;
+#endif
 }
 #endif
 

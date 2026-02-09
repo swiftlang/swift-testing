@@ -103,7 +103,10 @@ extension _AttachableURLWrapper: AttachableWrapper {
 #if os(Linux)
       let result = ioctl(dstFD, swt_FICLONE(), srcFD)
 #elseif os(FreeBSD)
-      let result = copy_file_range(srcFD, nil, dstFD, nil, size_t(SSIZE_MAX), COPY_FILE_RANGE_CLONE)
+      var result = -1
+      if getosreldate() >= 1500000 {
+        result = copy_file_range(srcFD, nil, dstFD, nil, size_t(SSIZE_MAX), swt_COPY_FILE_RANGE_CLONE())
+      }
 #endif
       fileCloned = result != -1
       if !fileCloned {

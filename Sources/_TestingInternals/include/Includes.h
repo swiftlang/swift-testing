@@ -63,6 +63,10 @@
 #include <gnu/libc-version.h>
 #endif
 
+#if __has_include(<sys/param.h>)
+#include <sys/param.h>
+#endif
+
 #if __has_include(<sys/resource.h>) && !defined(__wasi__)
 #include <sys/resource.h>
 #endif
