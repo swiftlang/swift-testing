@@ -73,7 +73,11 @@ extension _AttachableURLWrapper: AttachableWrapper {
       var fileCloned = false
 
       // Get the source file descriptor.
+#if os(Windows)
+      let srcHandle = _fileHandle._handle
+#else
       let srcFD = _fileHandle.fileDescriptor
+#endif
       defer {
         extendLifetime(_fileHandle)
       }
@@ -117,6 +121,7 @@ extension _AttachableURLWrapper: AttachableWrapper {
 #elseif os(Windows)
       // Block cloning on Windows is only supported by ReFS which is not in
       // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
+      _ = srcHandle
 #else
 #warning("Platform-specific implementation missing: File cloning unavailable")
 #endif
