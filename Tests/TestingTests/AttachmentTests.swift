@@ -282,21 +282,25 @@ struct AttachmentTests {
       try? FileManager.default.removeItem(at: temporaryURL)
     }
 
-    await confirmation("Attachment detected") { valueAttached in
+    try await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment) = event.kind else {
-          return
-        }
-
-        #expect(attachment.preferredName == temporaryFileName)
-        #expect(throws: Never.self) {
-          try attachment.withUnsafeBytes { buffer in
-            #expect(buffer.count == data.count)
+        switch event.kind {
+        case let .issueRecorded(issue):
+          issue.record()
+        case let .valueAttached(attachment):
+          #expect(attachment.preferredName == temporaryFileName)
+          #expect(throws: Never.self) {
+            try attachment.withUnsafeBytes { buffer in
+              #expect(buffer.count == data.count)
+            }
           }
+          valueAttached()
+        default:
+          break
         }
-        valueAttached()
       }
+      configuration.attachmentsPath = try temporaryDirectory()
 
       await Test {
         let attachment = try await Attachment(contentsOf: temporaryURL)
@@ -315,22 +319,28 @@ struct AttachmentTests {
     let fileData = try #require("Hello world".data(using: .utf8))
     try fileData.write(to: temporaryURL.appendingPathComponent("loremipsum.txt"), options: [.atomic])
 
-    await confirmation("Attachment detected") { valueAttached in
+    try await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment) = event.kind else {
-          return
+        switch event.kind {
+        case let .issueRecorded(issue):
+          issue.record()
+        case let .valueAttached(attachment):
+          #expect(attachment.preferredName == "\(temporaryDirectoryName).zip")
+          #expect(throws: Never.self) {
+            try attachment.withUnsafeBytes { buffer in
+              #expect(buffer.count > 32)
+              #expect(buffer[0] == UInt8(ascii: "P"))
+              #expect(buffer[1] == UInt8(ascii: "K"))
+              #expect(buffer.contains("loremipsum.txt".utf8))
+            }
+          }
+          valueAttached()
+        default:
+          break
         }
-
-        #expect(attachment.preferredName == "\(temporaryDirectoryName).zip")
-        try! attachment.withUnsafeBytes { buffer in
-          #expect(buffer.count > 32)
-          #expect(buffer[0] == UInt8(ascii: "P"))
-          #expect(buffer[1] == UInt8(ascii: "K"))
-          #expect(buffer.contains("loremipsum.txt".utf8))
-        }
-        valueAttached()
       }
+      configuration.attachmentsPath = try temporaryDirectory()
 
       await Test {
         let attachment = try await Attachment(contentsOf: temporaryURL)
