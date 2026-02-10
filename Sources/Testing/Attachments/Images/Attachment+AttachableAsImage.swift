@@ -15,6 +15,7 @@
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
+@available(_uttypesAPI, *) // For DocC
 extension Attachment {
   /// Initialize an instance of this type that encloses the given image.
   ///
@@ -89,6 +90,7 @@ extension Attachment {
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
+@available(_uttypesAPI, *) // For DocC
 extension Attachment where AttachableValue: AttachableWrapper, AttachableValue.Wrapped: AttachableAsImage {
   /// The image format to use when encoding the represented image, if specified.
   ///

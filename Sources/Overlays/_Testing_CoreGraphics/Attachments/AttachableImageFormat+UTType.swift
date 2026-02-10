@@ -14,6 +14,7 @@ public import UniformTypeIdentifiers
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
+@available(_uttypesAPI, *) // For DocC
 extension AttachableImageFormat {
   /// The content type corresponding to this image format.
   ///
@@ -100,6 +101,7 @@ extension AttachableImageFormat {
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
+@available(_uttypesAPI, *) // For DocC
 extension AttachableImageFormat.Kind: CustomStringConvertible, CustomDebugStringConvertible {
   /// The content type corresponding to this image format.
   fileprivate var contentType: UTType {
