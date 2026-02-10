@@ -101,7 +101,6 @@ extension AttachableImageFormat {
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
-@available(_uttypesAPI, *) // For DocC
 extension AttachableImageFormat.Kind: CustomStringConvertible, CustomDebugStringConvertible {
   /// The content type corresponding to this image format.
   fileprivate var contentType: UTType {
