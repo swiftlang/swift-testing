@@ -76,6 +76,7 @@ extension _AttachableURLWrapper: AttachableWrapper {
     try data.withUnsafeBytes(body)
   }
 
+#if !SWT_NO_FILE_CLONING
   /// Use platform-specific file-cloning API to create a copy-on-write copy of
   /// the represented file.
   ///
@@ -86,7 +87,6 @@ extension _AttachableURLWrapper: AttachableWrapper {
   ///
   /// - Throws: If a file exists at `filePath`, throws `EEXIST`.
   private func _clone(toFileAtPath filePath: String) throws -> Bool {
-#if !SWT_NO_FILE_CLONING
     return try filePath.withCString { destinationPath throws in
       var fileCloned = false
 
@@ -120,17 +120,19 @@ extension _AttachableURLWrapper: AttachableWrapper {
         close(dstFD)
       }
 
-      // Attempt to clone the source file. If the operation fails with ENOTSUP
-      // or EOPNOTSUPP, then the file system doesn't support file cloning.
+      // Attempt to clone the source file. If the operation fails with `ENOTSUP`
+      // or `EOPNOTSUPP`, then the file system doesn't support file cloning.
 #if os(Linux)
-      let result = ioctl(dstFD, swt_FICLONE(), srcFD)
+      fileCloned = -1 != ioctl(dstFD, swt_FICLONE(), srcFD)
 #elseif os(FreeBSD)
-      var result = -1
+      var flags = CUnsignedInt(0)
       if getosreldate() >= 1500000 {
-        result = copy_file_range(srcFD, nil, dstFD, nil, Int(SSIZE_MAX), swt_COPY_FILE_RANGE_CLONE())
+        // `COPY_FILE_RANGE_CLONE` was introduced in FreeBSD 15.0, but on 14.3
+        // we can still benefit from an in-kernel copy instead.
+        flags |= swt_COPY_FILE_RANGE_CLONE()
       }
+      fileCloned = -1 != copy_file_range(srcFD, nil, dstFD, nil, Int(SSIZE_MAX), flags)
 #endif
-      fileCloned = result != -1
       if !fileCloned {
         // Failed to clone, but we already created the file, so we must unlink
         // it so the fallback path works.
@@ -145,17 +147,17 @@ extension _AttachableURLWrapper: AttachableWrapper {
 #endif
       return fileCloned
     }
-#else
-    // File cloning is not supported on this system.
-    return false
-#endif
   }
+#endif
 
   public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
-    guard try _clone(toFileAtPath: filePath) else {
-      // Fall back to a byte-by-byte copy.
-      return try writeImpl(toFileAtPath: filePath, for: attachment)
+#if !SWT_NO_FILE_CLONING
+    if try _clone(toFileAtPath: filePath) {
+      return
     }
+#endif
+    // Fall back to a byte-by-byte copy.
+    return try writeImpl(toFileAtPath: filePath, for: attachment)
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
