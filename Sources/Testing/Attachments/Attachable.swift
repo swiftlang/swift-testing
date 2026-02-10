@@ -147,6 +147,9 @@ extension Attachable where Self: ~Copyable {
   /// For documentation, see `Attachable/_write(toFileAtPath:for:)`.
   package borrowing func writeImpl(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
     try withUnsafeBytes(for: attachment) { buffer in
+      // Note "x" in the mode string which indicates that the file should be
+      // created and opened exclusively. The underlying `fopen()` call will thus
+      // fail with `EEXIST` if a file exists at `filePath`.
       let file = try FileHandle(atPath: filePath, mode: "wxeb")
       try file.write(buffer.bytes)
     }

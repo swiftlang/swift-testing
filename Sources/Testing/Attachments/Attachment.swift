@@ -444,8 +444,8 @@ extension Attachment where AttachableValue: ~Copyable {
 
     do {
       // First, attempt to create the file with the exact preferred name. If a
-      // file exists at this path (note "x" in the mode string), an error will
-      // be thrown and we'll try again by adding a suffix.
+      // file exists at this path, an error with code `EEXIST` will be thrown
+      // and we'll try again by adding a suffix.
       let preferredPath = appendPathComponent(preferredName, to: directoryPath)
       try attachableValue._write(toFileAtPath: preferredPath, for: self)
       result = preferredPath

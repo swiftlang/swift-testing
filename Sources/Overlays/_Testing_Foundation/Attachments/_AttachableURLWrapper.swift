@@ -37,7 +37,21 @@ public struct _AttachableURLWrapper: Sendable {
   private var _fileHandle: FileHandle
 #endif
 
+  /// Initialize an instance of this type representing a given URL.
+  ///
+  /// - Parameters:
+  ///   - url: The original URL being used as an attachable value.
+  ///   - copyURL: Optionally, a URL to which `url` was copied.
+  ///   - isCompressedDirectory: Whether or not the file system object at `url`
+  ///     is a directory (if so, `copyURL` must refer to its compressed copy.)
+  ///
+  /// - Throws: Any error that occurs trying to open `url` or `copyURL` for
+  ///   mapping. On platforms that support file cloning, an error may also be
+  ///   thrown if a file descriptor to `url` or `copyURL` cannot be created.
   init(url: URL, copiedToFileAt copyURL: URL? = nil, isCompressedDirectory: Bool) throws {
+    if isCompressedDirectory && copyURL == nil {
+      preconditionFailure("When attaching a directory to a test, the URL to its compressed copy must be supplied. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+    }
     self.url = url
     self.data = try Data(contentsOf: copyURL ?? url, options: [.mappedIfSafe])
     self.isCompressedDirectory = isCompressedDirectory
