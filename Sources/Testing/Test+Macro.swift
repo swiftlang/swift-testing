@@ -67,6 +67,7 @@ public typealias __XCTestCompatibleSelector = Never
 ///
 /// - <doc:OrganizingTests>
 @attached(peer)
+@_documentation(visibility: private)
 public macro Suite(
   _ traits: any SuiteTrait...
 ) = #externalMacro(module: "TestingMacros", type: "SuiteDeclarationMacro")
@@ -89,21 +90,9 @@ public macro Suite(
 /// attribute. Only a type's primary declaration may have the `@Suite` attribute
 /// applied to it.
 ///
-/// @DeprecationSummary {
-///   To set the display name for a test suite, use a raw identifier instead of
-///   passing a string:
-///
-///   ```swift
-///   @Suite struct `Food Truck Tests` {
-///     // ...
-///   }
-///   ```
-/// }
-///
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
-@available(swift, deprecated: 100000.0, message: "")
 @attached(peer) public macro Suite(
   _ displayName: _const String? = nil,
   _ traits: any SuiteTrait...
@@ -127,15 +116,14 @@ extension Test {
 
 // MARK: - @Test
 
-/// Declare a test.
-///
-/// - Parameters:
-///   - traits: Zero or more traits to apply to this test.
+/// This macro declaration is necessary to help the compiler disambiguate
+/// display names from traits, but it does not need to be documented separately.
 ///
 /// ## See Also
 ///
-/// - <doc:DefiningTests>
+/// - ``Test(_:_:)``
 @attached(peer)
+@_documentation(visibility: private)
 public macro Test(
   _ traits: any TestTrait...
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro")
@@ -147,17 +135,6 @@ public macro Test(
 ///     this argument is `nil`, the display name of the test is derived from the
 ///     associated function's name.
 ///   - traits: Zero or more traits to apply to this test.
-///
-/// @DeprecationSummary {
-///   To set the display name for a test function, use a raw identifier instead
-///   of passing a string as the first argument to ``Test(_:_:)``:
-///
-///   ```swift
-///   @Test func `Food truck is running`() {
-///     // ...
-///   }
-///   ```
-/// }
 ///
 /// ## See Also
 ///
@@ -215,27 +192,14 @@ extension [Test.__Parameter] {
 
 // MARK: - @Test(arguments:)
 
-/// Declare a test parameterized over a collection of values.
-///
-/// - Parameters:
-///   - traits: Zero or more traits to apply to this test.
-///   - collection: A collection of values to pass to the associated test
-///     function.
-///
-/// You can prefix the expression you pass to `collection` with `try` or `await`.
-/// The testing library evaluates the expression lazily only if it determines
-/// that the associated test will run. During testing, the testing library calls
-/// the associated test function once for each element in `collection`.
-///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
+/// This macro declaration is necessary to help the compiler disambiguate
+/// display names from traits, but it does not need to be documented separately.
 ///
 /// ## See Also
 ///
-/// - <doc:DefiningTests>
+/// - ``Test(_:arguments:)-35dat``
 @attached(peer)
+@_documentation(visibility: private)
 public macro Test<C>(
   _ traits: any TestTrait...,
   arguments collection: C
@@ -256,21 +220,14 @@ public macro Test<C>(
 /// that the associated test will run. During testing, the testing library calls
 /// the associated test function once for each element in `collection`.
 ///
-/// @DeprecationSummary {
-///   To set the display name for a test function, use a raw identifier instead
-///   of passing a string as the first argument to ``Test(_:_:arguments:)-(_,_,C)``:
-///
-///   ```swift
-///   @Test(arguments: Food.all) func `Food is tasty`(food: Food) {
-///     // ...
-///   }
-///   ```
+/// @Comment {
+///   - Bug: The testing library should support variadic generics.
+///     ([103416861](rdar://103416861))
 /// }
 ///
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-@available(swift, deprecated: 100000.0)
 @attached(peer) public macro Test<C>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
@@ -328,6 +285,7 @@ extension Test {
 ///
 /// - <doc:DefiningTests>
 @attached(peer)
+@_documentation(visibility: private)
 public macro Test<C1, C2>(
   _ traits: any TestTrait...,
   arguments collection1: C1, _ collection2: C2
@@ -349,22 +307,14 @@ public macro Test<C1, C2>(
 /// testing library calls the associated test function once for each pair of
 /// elements in `collection1` and `collection2`.
 ///
-/// @DeprecationSummary {
-///   To set the display name for a test function, use a raw identifier instead
-///   of passing a string as the first argument to ``Test(_:_:arguments:_:)``:
-///
-///   ```swift
-///   @Test(arguments: Food.all, Sauce.all)
-///   func `Food goes with sauce`(food: Food, sauce: Sauce) {
-///     // ...
-///   }
-///   ```
+/// @Comment {
+///   - Bug: The testing library should support variadic generics.
+///     ([103416861](rdar://103416861))
 /// }
 ///
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-@available(swift, deprecated: 100000.0)
 @attached(peer) public macro Test<C1, C2>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
@@ -395,6 +345,7 @@ public macro Test<C1, C2>(
 ///
 /// - <doc:DefiningTests>
 @attached(peer)
+@_documentation(visibility: private)
 public macro Test<C1, C2>(
   _ traits: any TestTrait...,
   arguments zippedCollections: Zip2Sequence<C1, C2>
@@ -416,22 +367,14 @@ public macro Test<C1, C2>(
 /// library calls the associated test function once for each element in
 /// `zippedCollections`.
 ///
-/// @DeprecationSummary {
-///   To set the display name for a test function, use a raw identifier instead
-///   of passing a string as the first argument to ``Test(_:_:arguments:)-(_,_,Zip2Sequence<C1,C2>)``:
-///
-///   ```swift
-///   @Test(arguments: zip(Food.all, Sauce.all))
-///   func `Food goes with sauce`(foodAndSauce: (Food, Sauce)) {
-///     // ...
-///   }
-///   ```
+/// @Comment {
+///   - Bug: The testing library should support variadic generics.
+///     ([103416861](rdar://103416861))
 /// }
 ///
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-@available(swift, deprecated: 100000.0)
 @attached(peer) public macro Test<C1, C2>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
