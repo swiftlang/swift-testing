@@ -39,7 +39,9 @@ array (also defined as in JSON) whose elements all follow rule `<T>`.
 <bool> ::= true | false ; as in JSON
 
 <source-location> ::= {
-  "fileID": <string>, ; the Swift file ID of the file
+  ["fileID": <string>,] ; the Swift file ID of the file if available, as per
+                        ; SE-0274 § "Specification of the #file string format"
+  "filePath": <string>, ; the compile-time path to the file
   "line": <number>,
   "column": <number>,
 }
@@ -49,7 +51,8 @@ array (also defined as in JSON) whose elements all follow rule `<T>`.
   "since1970": <number>, ; floating-point seconds since 1970-01-01 00:00:00 UT
 }
 
-<version> ::= "version": 0 ; will be incremented as the format changes
+<version> ::= "version": <version-number>
+<version-number> ::= 0 | "<version core>" ; as per https://semver.org
 ```
 
 <!--
@@ -230,3 +233,4 @@ sufficient information to display the event in a human-readable format.
 | [ST-0009](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0009-attachments.md#integration-with-supporting-tools) | Added attachments. | 6.2 | `0` |
 | [ST-0013](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0013-issue-severity-warning.md#event-stream) | Added test issue severity. | 6.3 | `"6.3"` |
 | [ST-0016](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0016-test-cancellation.md#integration-with-supporting-tools) | Added test cancellation. | 6.3 | `"6.3"` |
+| [ST-0020](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0020-sourcelocation-filepath.md#detailed-design) | Added `filePath`. | 6.3 | `"6.3"` |
