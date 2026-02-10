@@ -13,6 +13,7 @@ private import _TestingInternals
 /// A type that defines a time limit to apply to a test.
 ///
 /// To add this trait to a test, use ``Trait/timeLimit(_:)-4kzjp``.
+@available(_clockAPI, *) // For DocC
 public struct TimeLimitTrait: TestTrait, SuiteTrait {
   /// A type representing the duration of a time limit applied to a test.
   ///
@@ -51,6 +52,7 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
 
 // MARK: -
 
+@available(_clockAPI, *) // For DocC
 extension Trait where Self == TimeLimitTrait {
   /// Construct a time limit trait that causes a test to time out if it runs for
   /// too long.
@@ -133,6 +135,7 @@ extension Trait where Self == TimeLimitTrait {
   }
 }
 
+@available(_clockAPI, *) // For DocC
 extension TimeLimitTrait.Duration {
   /// Construct a time limit duration given a number of seconds.
   ///
@@ -193,6 +196,7 @@ extension TimeLimitTrait.Duration {
 
 // MARK: -
 
+@available(_clockAPI, *) // For DocC
 extension Test {
   /// The maximum amount of time this test's cases may run for.
   ///
