@@ -132,6 +132,9 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
   init<A>(_ attachment: Attachment<A>) where A: Attachable & Sendable & ~Copyable {
     _estimatedAttachmentByteCount = { attachment.attachableValue.estimatedAttachmentByteCount }
     _withUnsafeBytes = { try attachment.withUnsafeBytes($0) }
+#if !SWT_NO_FILE_IO
+    _writeToFileAtPath = { try attachment.attachableValue._write(toFileAtPath: $0, for: attachment) }
+#endif
     _preferredName = { attachment.attachableValue.preferredName(for: attachment, basedOn: $0) }
   }
 
@@ -154,6 +157,16 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
     }
     return result
   }
+
+#if !SWT_NO_FILE_IO
+  /// The implementation of `_write(toFileAtPath:for:)` borrowed from the
+  /// original attachment.
+  private var _writeToFileAtPath: @Sendable (String) throws -> Void
+
+  public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
+    try _writeToFileAtPath(filePath)
+  }
+#endif
 
   /// The implementation of ``preferredName(for:basedOn:)`` borrowed from the
   /// original attachment.
@@ -429,13 +442,12 @@ extension Attachment where AttachableValue: ~Copyable {
 
     let preferredName = usingPreferredName ? preferredName : Self.defaultPreferredName
 
-    var file: FileHandle?
     do {
       // First, attempt to create the file with the exact preferred name. If a
-      // file exists at this path (note "x" in the mode string), an error will
-      // be thrown and we'll try again by adding a suffix.
+      // file exists at this path, an error with code `EEXIST` will be thrown
+      // and we'll try again by adding a suffix.
       let preferredPath = appendPathComponent(preferredName, to: directoryPath)
-      file = try FileHandle(atPath: preferredPath, mode: "wxeb")
+      try attachableValue._write(toFileAtPath: preferredPath, for: self)
       result = preferredPath
     } catch {
       // Split the extension(s) off the preferred name. The first component in
@@ -451,10 +463,10 @@ extension Attachment where AttachableValue: ~Copyable {
         // Propagate any error *except* EEXIST, which would indicate that the
         // name was already in use (so we should try again with a new suffix.)
         do {
-          file = try FileHandle(atPath: preferredPath, mode: "wxeb")
+          try attachableValue._write(toFileAtPath: preferredPath, for: self)
           result = preferredPath
           break
-        } catch let error as CError where error.rawValue == swt_EEXIST() {
+        } catch where error._code == swt_EEXIST() && error._domain == "NSPOSIXErrorDomain" {
           // Try again with a new suffix.
           continue
         } catch where usingPreferredName {
@@ -462,12 +474,6 @@ extension Attachment where AttachableValue: ~Copyable {
           return try write(toFileInDirectoryAtPath: directoryPath, usingPreferredName: false, appending: suffix())
         }
       }
-    }
-
-    // There should be no code path that leads to this call where the attachable
-    // value is nil.
-    try withUnsafeBytes { buffer in
-      try file!.write(buffer.bytes)
     }
 
     return result
