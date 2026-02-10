@@ -10,6 +10,10 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
+#if canImport(Foundation)
+private import Foundation
+#endif
+
 @Suite("SourceLocation Tests")
 struct SourceLocationTests {
   @Test("SourceLocation.description property")
@@ -64,6 +68,23 @@ struct SourceLocationTests {
     #expect(sourceLocation.moduleName == "A")
     #expect(sourceLocation.fileName == "D.swift")
   }
+
+#if canImport(Foundation)
+  @Test("SourceLocation.fileID property is synthesized if not decoded")
+  func sourceLocationFileIDSynthesizedWhenNeeded() throws {
+#if os(Windows)
+    var json = #"{"filePath": "C:\fake/dir/FileName.swift/", "line": 1, "column": 1}"#
+#else
+    var json = #"{"filePath": "/fake/dir/FileName.swift/", "line": 1, "column": 1}"#
+#endif
+    let esl = try JSON.decode(ABI.EncodedSourceLocation<ABI.v6_3>.self, from: json.utf8.span.bytes)
+    let sourceLocation = try #require(SourceLocation(esl))
+    #expect(SourceLocation.synthesizedModuleName == "__C")
+    #expect(sourceLocation.fileID == "\(SourceLocation.synthesizedModuleName)/FileName.swift")
+    #expect(sourceLocation.moduleName == SourceLocation.synthesizedModuleName)
+    #expect(sourceLocation.fileName == "FileName.swift")
+  }
+#endif
 
   @Test("SourceLocation.line and .column properties")
   func sourceLocationLineAndColumn() {
@@ -130,9 +151,9 @@ struct SourceLocationTests {
     #expect(sourceLocation.filePath == "A")
   }
 
-  @available(swift, deprecated: 100000.0)
+  @available(swift, deprecated: 6.3)
   @Test("SourceLocation._filePath property")
-  func sourceLocation_FilePath() {
+  func sourceLocation_filePath() {
     var sourceLocation = #_sourceLocation
     #expect(sourceLocation._filePath == #filePath)
 
