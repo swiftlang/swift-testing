@@ -1038,7 +1038,7 @@ extension ExitTest {
     lazy var comments: [Comment] = event._comments?.map(Comment.init(rawValue:)) ?? []
     lazy var sourceContext = SourceContext(
       backtrace: nil, // A backtrace from the child process will have the wrong address space.
-      sourceLocation: event._sourceLocation
+      sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)
     )
     lazy var skipInfo = SkipInfo(comment: comments.first, sourceContext: sourceContext)
     if let issue = event.issue {
@@ -1066,7 +1066,7 @@ extension ExitTest {
       }
       issueCopy.record()
     } else if let attachment = event.attachment {
-      Attachment.record(attachment, sourceLocation: event._sourceLocation!)
+      Attachment.record(attachment, sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)!)
     } else if case .testCancelled = event.kind {
       _ = try? Test.cancel(with: skipInfo)
     }

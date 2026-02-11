@@ -71,7 +71,6 @@ public struct SourceLocation: Sendable {
   }
 
   /// The path to the source file.
-  @_spi(Experimental)
   public var filePath: String
 
   /// The line in the source file.
@@ -188,14 +187,61 @@ extension SourceLocation: Codable {
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: _CodingKeys.self)
-    fileID = try container.decode(String.self, forKey: .fileID)
-    line = try container.decode(Int.self, forKey: .line)
-    column = try container.decode(Int.self, forKey: .column)
+    let fileID = try container.decode(String.self, forKey: .fileID)
+    let line = try container.decode(Int.self, forKey: .line)
+    let column = try container.decode(Int.self, forKey: .column)
 
     // For simplicity's sake, we won't be picky about which key contains the
     // file path.
-    filePath = try container.decodeIfPresent(String.self, forKey: .filePath)
+    let filePath = try container.decodeIfPresent(String.self, forKey: .filePath)
       ?? container.decode(String.self, forKey: ._filePath)
+
+    self.init(fileID: fileID, filePath: filePath, line: line, column: column)
+  }
+
+  init(fileIDSynthesizingIfNeeded fileID: String?, filePath: String, line: Int, column: Int) {
+    // Synthesize the file ID if needed.
+    let fileID = fileID ?? Self._synthesizeFileID(fromFilePath: filePath)
+    self.init(fileID: fileID, filePath: filePath, line: line, column: column)
+  }
+
+  /// The name of the ersatz Swift module used for synthesized file IDs.
+  static var synthesizedModuleName: String {
+    "__C"
+  }
+
+  /// Synthesize a file ID from the given file path and module name.
+  ///
+  /// - Parameters:
+  ///   - filePath: The file path.
+  ///   - moduleName: The module name.
+  ///
+  /// - Returns: A file path constructed from `filePath` and `moduleName`.
+  private static func _synthesizeFileID(fromFilePath filePath: String, inModuleNamed moduleName: String = synthesizedModuleName) -> String {
+    let fileName: String? = {
+      var filePath = filePath[...]
+
+#if os(Windows)
+      // On Windows, replace backslashes in the path with slashes. (This is an
+      // admittedly naïve approach, but this function is not a hot path.)
+      do {
+        let characters = filePath.map { $0 == #"\"# ? "/" : $0 }
+        filePath = String(characters)[...]
+      }
+#endif
+
+      // Trim any trailing slashes, then take the substring following the last
+      // (remaining) slash, if any.
+      if let lastNonSlashCharacter = filePath.lastIndex(where: { $0 != "/" }) {
+        filePath = filePath[...lastNonSlashCharacter]
+        if let lastSlashCharacter = filePath.lastIndex(of: "/") {
+          filePath = filePath[lastSlashCharacter...].dropFirst()
+        }
+        return String(filePath)
+      }
+      return nil
+    }()
+    return "\(moduleName)/\(fileName ?? filePath)"
   }
 }
 
@@ -207,7 +253,7 @@ extension SourceLocation {
   /// - Warning: This property is provided temporarily to aid in integrating the
   ///   testing library with existing tools such as Swift Package Manager. It
   ///   will be removed in a future release.
-  @available(swift, deprecated: 100000.0, renamed: "filePath")
+  @available(swift, deprecated: 6.3, renamed: "filePath")
   public var _filePath: String {
     get {
       filePath
