@@ -351,7 +351,7 @@ extension Event {
         // handler instead.
         _ = postToFallbackHandler(in: context)
       } else {
-        for configuration in Configuration.all {
+        for configuration in configurations {
           _post(in: context, configuration: configuration)
         }
       }
