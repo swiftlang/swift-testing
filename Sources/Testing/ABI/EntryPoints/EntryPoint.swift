@@ -425,7 +425,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   if let path = args.argumentValue(forLabel: "--configuration-path") ?? args.argumentValue(forLabel: "--experimental-configuration-path") {
     let file = try FileHandle(forReadingAtPath: path)
     let configurationJSON = try file.readToEnd()
-    result = try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON.span.bytes)
+    result = try configurationJSON.withUnsafeBufferPointer { configurationJSON in
+      try JSON.decode(__CommandLineArguments_v0.self, from: .init(configurationJSON))
+    }
 
     // NOTE: We don't return early or block other arguments here: a caller is
     // allowed to pass a configuration AND e.g. "--verbose" and they'll both be
@@ -706,7 +708,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 func eventHandlerForStreamingEvents(
   withVersionNumber versionNumber: VersionNumber?,
   encodeAsJSONLines: Bool,
-  forwardingTo targetEventHandler: @escaping @Sendable (borrowing RawSpan) -> Void
+  forwardingTo targetEventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
 ) throws -> Event.Handler {
   let versionNumber = versionNumber ?? ABI.CurrentVersion.versionNumber
   guard let abi = ABI.version(forVersionNumber: versionNumber) else {

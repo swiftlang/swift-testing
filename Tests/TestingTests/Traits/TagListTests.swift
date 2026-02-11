@@ -127,7 +127,7 @@ struct TagListTests {
   func tagColorsReadFromDisk() throws {
     let tempDirPath = try temporaryDirectory()
     let jsonPath = appendPathComponent("tag-colors.json", to: tempDirPath)
-    let jsonContent = """
+    var jsonContent = """
     {
     "alpha": "red",
     "beta": "#00CCFF",
@@ -142,7 +142,7 @@ struct TagListTests {
     "encode purple": "purple"
     }
     """
-    do {
+    try jsonContent.withUTF8 { jsonContent in
       let fileHandle = try FileHandle(forWritingAtPath: jsonPath)
       try fileHandle.write(jsonContent)
     }
@@ -173,8 +173,11 @@ struct TagListTests {
 
   @Test("Invalid tag color decoding", arguments: [##""#NOTHEX""##, #""garbageColorName""#])
   func noTagColorsReadFromBadPath(tagColorJSON: String) throws {
-    _ = #expect(throws: (any Error).self) {
-      _ = try JSON.decode(Tag.Color.self, from: tagColorJSON.utf8.span.bytes)
+    var tagColorJSON = tagColorJSON
+    tagColorJSON.withUTF8 { tagColorJSON in
+      _ = #expect(throws: (any Error).self) {
+        _ = try JSON.decode(Tag.Color.self, from: .init(tagColorJSON))
+      }
     }
   }
 #endif
