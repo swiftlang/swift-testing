@@ -151,7 +151,7 @@ extension Attachable where Self: ~Copyable {
       // created and opened exclusively. The underlying `fopen()` call will thus
       // fail with `EEXIST` if a file exists at `filePath`.
       let file = try FileHandle(atPath: filePath, mode: "wxeb")
-      try file.write(buffer.bytes)
+      try file.write(buffer)
     }
   }
 
