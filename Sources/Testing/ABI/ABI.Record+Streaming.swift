@@ -14,7 +14,7 @@ private import Foundation
 extension ABI.Version {
   static func eventHandler(
     encodeAsJSONLines: Bool,
-    forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: borrowing RawSpan) -> Void
+    forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
     // Encode as JSON Lines if requested.
     var eventHandlerCopy = eventHandler
@@ -44,7 +44,7 @@ extension ABI.Version {
 extension ABI.Xcode16 {
   static func eventHandler(
     encodeAsJSONLines: Bool,
-    forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: borrowing RawSpan) -> Void
+    forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
     return { event, context in
       if case .testDiscovered = event.kind {
@@ -63,7 +63,9 @@ extension ABI.Xcode16 {
         eventContext: Event.Context.Snapshot(snapshotting: context)
       )
       try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
-        eventHandler(eventAndContextJSON)
+        eventAndContextJSON.withUnsafeBytes { eventAndContextJSON in
+          eventHandler(eventAndContextJSON)
+        }
       }
     }
   }
