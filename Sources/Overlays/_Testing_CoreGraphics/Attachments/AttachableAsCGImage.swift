@@ -107,7 +107,7 @@ extension AttachableAsCGImage {
     let scaleFactor = attachmentScaleFactor
     let properties: [CFString: Any] = [
       kCGImageDestinationLossyCompressionQuality: CGFloat(imageFormat.encodingQuality),
-      kCGImagePropertyOrientation: orientation,
+      kCGImagePropertyOrientation: orientation.rawValue,
       kCGImagePropertyDPIWidth: 72.0 * scaleFactor,
       kCGImagePropertyDPIHeight: 72.0 * scaleFactor,
     ]
