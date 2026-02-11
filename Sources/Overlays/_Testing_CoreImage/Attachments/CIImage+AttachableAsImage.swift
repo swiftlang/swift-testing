@@ -15,7 +15,7 @@ public import _Testing_CoreGraphics
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
-@available(_uttypesAPI, *)
+@available(_uttypesAPI, *) // For DocC
 extension CIImage: AttachableAsImage, AttachableAsCGImage {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)

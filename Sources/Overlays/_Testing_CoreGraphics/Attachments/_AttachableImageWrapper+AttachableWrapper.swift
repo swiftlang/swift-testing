@@ -16,7 +16,6 @@ private import UniformTypeIdentifiers
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
-@available(_uttypesAPI, *)
 extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: AttachableAsImage {
   /// Get the image format to use when encoding an image, substituting a
   /// concrete type for `UTType.image` in particular.

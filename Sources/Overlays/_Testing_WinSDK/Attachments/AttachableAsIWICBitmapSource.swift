@@ -104,7 +104,7 @@ extension AttachableAsIWICBitmapSource {
   /// used by types that conform to ``AttachableAsIWICBitmapSource``.
   ///
   /// For documentation, see ``AttachableAsImage/withUnsafeBytes(as:_:)``.
-  public func withUnsafeBytesImpl<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBytesImpl<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     // Create an in-memory stream to write the image data to. Note that Windows
     // documentation recommends SHCreateMemStream() instead, but that function
     // does not provide a mechanism to access the underlying memory directly.

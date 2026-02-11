@@ -74,11 +74,7 @@ public struct Backtrace: Sendable {
     withUnsafeTemporaryAllocation(of: UnsafeMutableRawPointer?.self, capacity: addressCount) { addresses in
       var initializedCount = 0
 #if SWT_TARGET_OS_APPLE
-      if #available(_backtraceAsyncAPI, *) {
-        initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
-      } else {
-        initializedCount = .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
-      }
+      initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
 #elseif os(Android)
 #if !SWT_NO_DYNAMIC_LINKING
       if let _backtrace {

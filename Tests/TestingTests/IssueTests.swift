@@ -1517,10 +1517,6 @@ final class IssueTests: XCTestCase {
   }
 
   func testEnumDescription() async throws {
-    guard #available(_mangledTypeNameAPI, *) else {
-      throw XCTSkip("Unavailable")
-    }
-
     enum E: CaseIterable {
       case a
       case b
@@ -1580,10 +1576,6 @@ final class IssueTests: XCTestCase {
   }
 
   func testCEnumDescription() async throws {
-    guard #available(_mangledTypeNameAPI, *) else {
-      throw XCTSkip("Unavailable")
-    }
-
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
