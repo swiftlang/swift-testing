@@ -47,6 +47,8 @@ struct EventHandlingInteropTests {
   /// its own fallback handler.
   @Test func `Post event without config -> fallback handler`() async throws {
     await #expect(processExitsWith: .success) {
+      Configuration.removeAll()
+
       let installer = try #require(Self.installer)
       try #require(
         installer(Self.capturingHandler), "Installation of fallback handler should succeed")

@@ -342,13 +342,18 @@ extension Event {
       if configuration.eventHandlingOptions.shouldHandleEvent(self) {
         configuration.handleEvent(self, in: context)
       }
-    } else if postToFallbackHandler(in: context) {
-      // The fallback event handler handled this event.
     } else {
       // The current task does NOT have an associated configuration. This event
       // will be lost! Post it to every registered event handler to avoid that.
-      for configuration in Configuration.all {
-        _post(in: context, configuration: configuration)
+      let configurations = Configuration.all
+      if configurations.isEmpty {
+        // There are no registered event handlers. Use the fallback event
+        // handler instead.
+        _ = postToFallbackHandler(in: context)
+      } else {
+        for configuration in Configuration.all {
+          _post(in: context, configuration: configuration)
+        }
       }
     }
   }
