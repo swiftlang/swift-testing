@@ -161,6 +161,24 @@ extension Configuration {
     }
   }
 
+#if DEBUG
+  /// Removes all configurations set in the current process.
+  ///
+  /// - Returns: The number of configuration instances that were removed from
+  ///   the current process' internal registry.
+  ///
+  /// - Warning: This function should never be called in the main testing
+  ///   process. Only use it in an exit test when you need a (relatively) clean
+  ///   slate for e.g. XCTest interop.
+  @discardableResult static func removeAll() -> Int {
+    Self._all.withLock { all in
+      let result = all.instances.count
+      all.instances.removeAll(keepingCapacity: false)
+      return result
+    }
+  }
+#endif
+
   /// An atomic counter that tracks the number of "current" configurations that
   /// have set ``EventHandlingOptions/isExpectationCheckedEventEnabled`` to
   /// `true`.
