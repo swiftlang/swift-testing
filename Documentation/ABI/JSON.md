@@ -160,10 +160,21 @@ additional `"testCases"` field describing the individual test cases.
   ["displayName": <string>,] ; the user-supplied custom display name
   "sourceLocation": <source-location>, ; where the test is defined
   "id": <test-id>,
-  "isParameterized": <bool> ; is this a parameterized test function or not?
+  "isParameterized": <bool>, ; is this a parameterized test function or not?
+  ["tags": <array:tag>,] ; the tags associated with this test function
+  ["bugs": <array:bug>,] ; the bugs associated with this test function
+  ["timeLimit": <number>] ; the time limit associated with this test function
 }
 
 <test-id> ::= <string> ; an opaque string representing the test case
+
+<tag> ::= <string> ; a string representation of a tag
+
+<bug> ::= {
+  ["url": <string>,] ; the bug URL
+  ["id": <string>,] ; the bug id
+  ["title": <string>] ; the human readable bug title
+}
 ```
 
 <!--
