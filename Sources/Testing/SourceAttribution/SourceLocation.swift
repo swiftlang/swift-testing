@@ -71,6 +71,10 @@ public struct SourceLocation: Sendable {
   }
 
   /// The path to the source file.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   public var filePath: String
 
   /// The line in the source file.
