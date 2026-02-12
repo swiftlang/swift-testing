@@ -77,6 +77,11 @@ extension _AttachableURLWrapper: AttachableWrapper {
   }
 
 #if !SWT_NO_FILE_CLONING
+#if os(FreeBSD)
+  /// An integer value encoding the currently-running FreeBSD version.
+  private static let _freeBSDVersion = getosreldate()
+#endif
+
   /// Use platform-specific file-cloning API to create a copy-on-write copy of
   /// the represented file.
   ///
@@ -111,7 +116,7 @@ extension _AttachableURLWrapper: AttachableWrapper {
     return -1 != ioctl(dstFD, swt_FICLONE(), srcFD)
 #elseif os(FreeBSD)
     var flags = CUnsignedInt(0)
-    if getosreldate() >= 1500000 {
+    if Self._freeBSDVersion >= 1500000 {
       // `COPY_FILE_RANGE_CLONE` was introduced in FreeBSD 15.0, but on 14.3
       // we can still benefit from an in-kernel copy instead.
       flags |= swt_COPY_FILE_RANGE_CLONE()
