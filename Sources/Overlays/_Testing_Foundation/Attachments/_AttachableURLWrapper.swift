@@ -56,9 +56,7 @@ public struct _AttachableURLWrapper: Sendable {
     self.isCompressedDirectory = isCompressedDirectory
 #if !SWT_NO_FILE_CLONING && !os(Windows)
     if let fileHandle = try? FileHandle(forReadingFrom: copyURL ?? url) {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
       try setFD_CLOEXEC(true, onFileDescriptor: fileHandle.fileDescriptor)
-#endif
       self._fileHandle = fileHandle
     }
 #endif
