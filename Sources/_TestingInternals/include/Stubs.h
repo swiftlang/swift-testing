@@ -127,12 +127,12 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 #endif
 
 #if defined(__linux__)
-/// Get the `FICLONE` `ioctl()` argument.
+/// Call `ioctl(dstFD, FICLONE, srcFD)`.
 ///
 /// This function is provided because `FICLONE` is a complex macro and cannot be
-/// imported directly into Swift.
-static unsigned long swt_FICLONE(void) {
-  return FICLONE;
+/// imported directly into Swift, and because `ioctl()` is a variadic function.
+static int swt_ioctl_FICLONE(int dstFD, int srcFD) {
+  return ioctl(dstFD, FICLONE, srcFD);
 }
 #endif
 

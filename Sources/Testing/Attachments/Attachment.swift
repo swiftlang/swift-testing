@@ -418,7 +418,7 @@ extension Attachable where Self: ~Copyable {
           return false
         }
 #if os(Linux)
-        return -1 != ioctl(dstFD, swt_FICLONE(), srcFD)
+        return -1 != swt_ioctl_FICLONE(dstFD, srcFD)
 #elseif os(FreeBSD)
         var flags = CUnsignedInt(0)
         if Self._freeBSDVersion >= 1500000 {
