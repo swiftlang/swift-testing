@@ -133,7 +133,7 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
     _estimatedAttachmentByteCount = { attachment.attachableValue.estimatedAttachmentByteCount }
     _withUnsafeBytes = { try attachment.withUnsafeBytes($0) }
 #if !SWT_NO_FILE_IO
-    _writeToFileAtPath = { try attachment.attachableValue._write(toFileAtPath: $0, for: attachment) }
+    _writeToFILE = { try attachment.attachableValue._write(toFILE: $0, for: attachment) }
 #endif
     _preferredName = { attachment.attachableValue.preferredName(for: attachment, basedOn: $0) }
   }
@@ -159,12 +159,12 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
   }
 
 #if !SWT_NO_FILE_IO
-  /// The implementation of `_write(toFileAtPath:for:)` borrowed from the
-  /// original attachment.
-  private var _writeToFileAtPath: @Sendable (String) throws -> Void
+  /// The implementation of `_write(toFILE:)` borrowed from the original
+  /// attachment.
+  private var _writeToFILE: @Sendable (OpaquePointer) throws -> Void
 
-  public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
-    try _writeToFileAtPath(filePath)
+  public borrowing func _write(toFILE file: borrowing OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
+    try _writeToFILE(file)
   }
 #endif
 
@@ -447,7 +447,7 @@ extension Attachment where AttachableValue: ~Copyable {
       // file exists at this path, an error with code `EEXIST` will be thrown
       // and we'll try again by adding a suffix.
       let preferredPath = appendPathComponent(preferredName, to: directoryPath)
-      try attachableValue._write(toFileAtPath: preferredPath, for: self)
+      try attachableValue.write(toFileAtPath: preferredPath, for: self)
       result = preferredPath
     } catch {
       // Split the extension(s) off the preferred name. The first component in
@@ -463,7 +463,7 @@ extension Attachment where AttachableValue: ~Copyable {
         // Propagate any error *except* EEXIST, which would indicate that the
         // name was already in use (so we should try again with a new suffix.)
         do {
-          try attachableValue._write(toFileAtPath: preferredPath, for: self)
+          try attachableValue.write(toFileAtPath: preferredPath, for: self)
           result = preferredPath
           break
         } catch where error._code == swt_EEXIST() && error._domain == "NSPOSIXErrorDomain" {

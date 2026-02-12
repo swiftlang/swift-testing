@@ -81,83 +81,57 @@ extension _AttachableURLWrapper: AttachableWrapper {
   /// the represented file.
   ///
   /// - Parameters:
-  ///   - filePath: The destination path to place the clone at.
+  ///   - file: The destination file handle to clone the represented file to.
   ///
   /// - Returns: Whether or not the clone operation succeeded.
-  ///
-  /// - Throws: If a file exists at `filePath`, throws `EEXIST`.
-  private func _clone(toFileAtPath filePath: String) throws -> Bool {
-    return try filePath.withCString { destinationPath throws in
-      var fileCloned = false
+  private func _clone(toFILE file: borrowing OpaquePointer) -> Bool {
+#if !os(Windows)
+    // Get the source file descriptor.
+    let srcFD = _fileHandle.fileDescriptor
+    defer {
+      extendLifetime(_fileHandle)
+    }
 
-      // Get the source file descriptor.
-#if os(Windows)
-      let srcHandle = _fileHandle._handle
-#else
-      let srcFD = _fileHandle.fileDescriptor
+    // Get the destination file descriptor.
+    let dstFD = fileno(SWT_FILEHandle(file))
+    guard dstFD >= 0 else {
+      return false
+    }
 #endif
-      defer {
-        extendLifetime(_fileHandle)
-      }
 
+    // Attempt to clone the source file. If the operation fails with `ENOTSUP`
+    // or `EOPNOTSUPP`, then the file system doesn't support file cloning.
 #if SWT_TARGET_OS_APPLE
-      // Attempt to clone the source file.
-      if 0 == fclonefileat(srcFD, AT_FDCWD, destinationPath, 0) {
-        fileCloned = true
-      } else if errno == EEXIST {
-        throw POSIXError(.EEXIST)
-      }
-#elseif os(Linux) || os(FreeBSD)
-      // Open the destination file descriptor.
-      let dstFD = open(destinationPath, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC, mode_t(0o666))
-      guard dstFD >= 0 else {
-        if errno == EEXIST {
-          throw POSIXError(.EEXIST)
-        }
-        return false
-      }
-      defer {
-        close(dstFD)
-      }
-
-      // Attempt to clone the source file. If the operation fails with `ENOTSUP`
-      // or `EOPNOTSUPP`, then the file system doesn't support file cloning.
-#if os(Linux)
-      fileCloned = -1 != ioctl(dstFD, swt_FICLONE(), srcFD)
+    return 0 == fcopyfile(srcFD, dstFD, nil, copyfile_flags_t(COPYFILE_CLONE_FORCE))
+#elseif os(Linux)
+    return -1 != ioctl(dstFD, swt_FICLONE(), srcFD)
 #elseif os(FreeBSD)
-      var flags = CUnsignedInt(0)
-      if getosreldate() >= 1500000 {
-        // `COPY_FILE_RANGE_CLONE` was introduced in FreeBSD 15.0, but on 14.3
-        // we can still benefit from an in-kernel copy instead.
-        flags |= swt_COPY_FILE_RANGE_CLONE()
-      }
-      fileCloned = -1 != copy_file_range(srcFD, nil, dstFD, nil, Int(SSIZE_MAX), flags)
-#endif
-      if !fileCloned {
-        // Failed to clone, but we already created the file, so we must unlink
-        // it so the fallback path works.
-        _ = unlink(destinationPath)
-      }
+    var flags = CUnsignedInt(0)
+    if getosreldate() >= 1500000 {
+      // `COPY_FILE_RANGE_CLONE` was introduced in FreeBSD 15.0, but on 14.3
+      // we can still benefit from an in-kernel copy instead.
+      flags |= swt_COPY_FILE_RANGE_CLONE()
+    }
+    return -1 != copy_file_range(srcFD, nil, dstFD, nil, Int(SSIZE_MAX), flags)
 #elseif os(Windows)
-      // Block cloning on Windows is only supported by ReFS which is not in
-      // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
-      _ = srcHandle
+    // Block cloning on Windows is only supported by ReFS which is not in
+    // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
+    return false
 #else
 #warning("Platform-specific implementation missing: File cloning unavailable")
+    return false
 #endif
-      return fileCloned
-    }
   }
 #endif
 
-  public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
+  public borrowing func _write(toFILE file: borrowing OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
 #if !SWT_NO_FILE_CLONING
-    if try _clone(toFileAtPath: filePath) {
+    if _clone(toFILE: file) {
       return
     }
 #endif
     // Fall back to a byte-by-byte copy.
-    return try writeImpl(toFileAtPath: filePath, for: attachment)
+    return try writeImpl(toFILE: file, for: attachment)
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {

@@ -148,7 +148,7 @@
 #endif
 
 #if !SWT_NO_FILE_CLONING
-#include <sys/clonefile.h>
+#include <copyfile.h>
 #endif
 #endif
 

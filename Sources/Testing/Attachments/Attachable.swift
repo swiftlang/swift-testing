@@ -81,27 +81,27 @@ public protocol Attachable: ~Copyable {
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
 
 #if !SWT_NO_FILE_IO
-  /// Write this instance to the given file system path.
+  /// Write this instance to the given file handle.
   ///
   /// - Parameters:
-  ///   - filePath: The path to write to.
+  ///   - file: A C file handle (of C type `FILE *`) that is open for reading.
+  ///     Due to technical constraints, this argument is an opaque pointer.
   ///   - attachment: The attachment that is requesting this instance be written
   ///     (that is, the attachment containing this instance.)
   ///
-  /// - Throws: Any error that prevented writing this instance to `filePath`.
-  ///   When the testing library calls this function, this function throws an
-  ///   error of type [`POSIXError`](https://developer.apple.com/documentation/foundation/posixerror),
-  ///   and that error's code equals [`EEXIST`](https://developer.apple.com/documentation/foundation/posixerror/eexist),
-  ///   the testing library tries again with a new path.
+  /// - Throws: Any error that prevented writing this instance to `file`.
   ///
   /// The testing library uses this function when saving an attachment. The
-  /// default implementation opens `filePath` for writing, calls
-  /// ``withUnsafeBytes(for:_:)``, and writes the resulting buffer to the opened
-  /// file.
+  /// default implementation calls ``withUnsafeBytes(for:_:)``, and writes the
+  /// resulting buffer to `file`.
+  ///
+  /// On platforms that implement [`funopen(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/funopen.3.html)
+  /// or [`fopencookie(3)`](https://www.kernel.org/doc/man-pages/online/pages/man3/fopencookie.3.html),
+  /// `fileno(file)` is not guaranteed to return a valid file descriptor.
   ///
   /// - Warning: This function is not part of the testing library's public
   ///   interface. It may be removed in a future update.
-  borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws
+  borrowing func _write(toFILE file: borrowing OpaquePointer, for attachment: borrowing Attachment<Self>) throws
 #endif
 
   /// Generate a preferred name for the given attachment.
@@ -141,22 +141,42 @@ extension Attachable where Self: ~Copyable {
   }
 
 #if !SWT_NO_FILE_IO
-  /// The shared implementation of `_write(toFileAtPath:for:)` used by
-  /// attachable types declared in the testing library.
+  /// Write this instance to the given file system path.
   ///
-  /// For documentation, see `Attachable/_write(toFileAtPath:for:)`.
-  package borrowing func writeImpl(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
-    try withUnsafeBytes(for: attachment) { buffer in
-      // Note "x" in the mode string which indicates that the file should be
-      // created and opened exclusively. The underlying `fopen()` call will thus
-      // fail with `EEXIST` if a file exists at `filePath`.
-      let file = try FileHandle(atPath: filePath, mode: "wxeb")
+  /// - Parameters:
+  ///   - filePath: The path to write to.
+  ///   - attachment: The attachment that is requesting this instance be written
+  ///     (that is, the attachment containing this instance.)
+  ///
+  /// - Throws: Any error that prevented writing this instance to `filePath`.
+  ///
+  /// The testing library uses this function when saving an attachment. The
+  /// default implementation opens `filePath` for writing with exclusive access,
+  /// then passes it to `_write(toFILE:for:)`.
+  borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
+    // Note "x" in the mode string which indicates that the file should be
+    // created and opened exclusively. The underlying `fopen()` call will thus
+    // fail with `EEXIST` if a file exists at `filePath`.
+    let file = try FileHandle(atPath: filePath, mode: "wxeb")
+    try file.withUnsafeCFILEHandle { file in
+      let file = OpaquePointer(UnsafeRawPointer(file)) // platform-agnostic cast
+      try _write(toFILE: file, for: attachment)
+    }
+  }
+
+  /// The shared implementation of `_write(toFILE:for:)` used by attachable
+  /// types declared in the testing library.
+  ///
+  /// For documentation, see `Attachable/_write(toFILE:for:)`.
+  package borrowing func writeImpl(toFILE file: borrowing OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
+    try withUnsafeBytes(for: attachment) { [file = copy file] buffer in
+      let file = FileHandle(unsafeCFILEHandle: SWT_FILEHandle(file), closeWhenDone: false)
       try file.write(buffer)
     }
   }
 
-  public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
-    try writeImpl(toFileAtPath: filePath, for: attachment)
+  public borrowing func _write(toFILE file: borrowing OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
+    try writeImpl(toFILE: file, for: attachment)
   }
 #endif
 
