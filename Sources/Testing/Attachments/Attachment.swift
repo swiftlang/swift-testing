@@ -132,7 +132,7 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
   init<A>(_ attachment: Attachment<A>) where A: Attachable & Sendable & ~Copyable {
     _estimatedAttachmentByteCount = { attachment.attachableValue.estimatedAttachmentByteCount }
     _withUnsafeBytes = { try attachment.withUnsafeBytes($0) }
-#if !SWT_NO_FILE_IO
+#if !SWT_NO_FILE_CLONING
     _fileDescriptorForCloning = attachment.attachableValue._fileDescriptorForCloning
 #endif
     _preferredName = { attachment.attachableValue.preferredName(for: attachment, basedOn: $0) }
@@ -158,7 +158,7 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
     return result
   }
 
-#if !SWT_NO_FILE_IO
+#if !SWT_NO_FILE_CLONING
   public private(set) var _fileDescriptorForCloning: CInt?
 #endif
 
