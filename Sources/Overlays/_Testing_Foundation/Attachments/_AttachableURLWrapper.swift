@@ -93,7 +93,7 @@ extension _AttachableURLWrapper: AttachableWrapper {
     }
 
     // Get the destination file descriptor.
-    let dstFD = fileno(SWT_FILEHandle(file))
+    let dstFD = fileno(SWT_FILEHandle(binding: file))
     guard dstFD >= 0 else {
       return false
     }

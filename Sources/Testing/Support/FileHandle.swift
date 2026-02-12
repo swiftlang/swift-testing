@@ -611,6 +611,21 @@ extension FileHandle {
 #endif
 }
 
+// MARK: - C file handles
+
+extension SWT_FILEHandle {
+  /// Bind an opaque pointer to `FILE` to create a C file handle.
+  ///
+  /// - Parameters:
+  ///   - pointer: The opaque pointer to bind.
+  ///
+  /// This initializer is necessary because the C type corresponding to
+  /// `SWT_FILEHandle` is inconsistent across different platforms.
+  package init(binding pointer: OpaquePointer) {
+    self.init(bitPattern: UInt(bitPattern: pointer))!
+  }
+}
+
 // MARK: - General path utilities
 
 /// Append a path component to a path.

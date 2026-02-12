@@ -170,7 +170,7 @@ extension Attachable where Self: ~Copyable {
   /// For documentation, see `Attachable/_write(toFILE:for:)`.
   package borrowing func writeImpl(toFILE file: borrowing OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
     try withUnsafeBytes(for: attachment) { [file = copy file] buffer in
-      let file = FileHandle(unsafeCFILEHandle: SWT_FILEHandle(file), closeWhenDone: false)
+      let file = FileHandle(unsafeCFILEHandle: SWT_FILEHandle(binding: file), closeWhenDone: false)
       try file.write(buffer)
     }
   }
