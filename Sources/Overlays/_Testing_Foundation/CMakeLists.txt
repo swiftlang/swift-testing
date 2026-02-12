@@ -18,8 +18,6 @@ add_library(_Testing_Foundation
   Events/Clock+Date.swift
   ReexportTesting.swift)
 
-target_link_libraries(_Testing_Foundation PRIVATE
-  _TestingInternals)
 target_link_libraries(_Testing_Foundation PUBLIC
   Testing)
 
