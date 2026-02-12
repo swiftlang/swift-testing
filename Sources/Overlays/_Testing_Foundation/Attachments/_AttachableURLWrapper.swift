@@ -84,7 +84,7 @@ extension _AttachableURLWrapper: AttachableWrapper {
   ///   - file: The destination file handle to clone the represented file to.
   ///
   /// - Returns: Whether or not the clone operation succeeded.
-  private func _clone(toFILE file: borrowing OpaquePointer) -> Bool {
+  private func _clone(toFILE file: OpaquePointer) -> Bool {
 #if !os(Windows)
     // Get the source file descriptor.
     let srcFD = _fileHandle.fileDescriptor
@@ -93,7 +93,11 @@ extension _AttachableURLWrapper: AttachableWrapper {
     }
 
     // Get the destination file descriptor.
-    let dstFD = fileno(SWT_FILEHandle(binding: file))
+    let dstFD = withUnsafePointer(to: file) { file in
+      file.withMemoryRebound(to: SWT_FILEHandle.self, capacity: 1) { file in
+        fileno(file.pointee)
+      }
+    }
     guard dstFD >= 0 else {
       return false
     }
@@ -124,15 +128,14 @@ extension _AttachableURLWrapper: AttachableWrapper {
   }
 #endif
 
-  public borrowing func _write(toFILE file: borrowing OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
 #if !SWT_NO_FILE_CLONING
-    if _clone(toFILE: file) {
-      return
+  public borrowing func _write(toFILE file: OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
+    guard _clone(toFILE: file) else {
+      // Fall back to a byte-by-byte copy.
+      return try data._write(toFILE: file, for: Attachment(data))
     }
-#endif
-    // Fall back to a byte-by-byte copy.
-    return try writeImpl(toFILE: file, for: attachment)
   }
+#endif
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     // What extension should we have on the filename so that it has the same

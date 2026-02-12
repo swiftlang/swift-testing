@@ -163,7 +163,7 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
   /// attachment.
   private var _writeToFILE: @Sendable (OpaquePointer) throws -> Void
 
-  public borrowing func _write(toFILE file: borrowing OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
+  public borrowing func _write(toFILE file: OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
     try _writeToFILE(file)
   }
 #endif

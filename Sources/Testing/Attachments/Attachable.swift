@@ -95,13 +95,9 @@ public protocol Attachable: ~Copyable {
   /// default implementation calls ``withUnsafeBytes(for:_:)``, and writes the
   /// resulting buffer to `file`.
   ///
-  /// On platforms that implement [`funopen(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/funopen.3.html)
-  /// or [`fopencookie(3)`](https://www.kernel.org/doc/man-pages/online/pages/man3/fopencookie.3.html),
-  /// `fileno(file)` is not guaranteed to return a valid file descriptor.
-  ///
   /// - Warning: This function is not part of the testing library's public
   ///   interface. It may be removed in a future update.
-  borrowing func _write(toFILE file: borrowing OpaquePointer, for attachment: borrowing Attachment<Self>) throws
+  borrowing func _write(toFILE file: OpaquePointer, for attachment: borrowing Attachment<Self>) throws
 #endif
 
   /// Generate a preferred name for the given attachment.
@@ -159,24 +155,23 @@ extension Attachable where Self: ~Copyable {
     // fail with `EEXIST` if a file exists at `filePath`.
     let file = try FileHandle(atPath: filePath, mode: "wxeb")
     try file.withUnsafeCFILEHandle { file in
-      let file = OpaquePointer(UnsafeRawPointer(file)) // platform-agnostic cast
-      try _write(toFILE: file, for: attachment)
+      try withUnsafePointer(to: file) { file in
+        try file.withMemoryRebound(to: OpaquePointer.self, capacity: 1) { file in
+          try _write(toFILE: file.pointee, for: attachment)
+        }
+      }
     }
   }
 
-  /// The shared implementation of `_write(toFILE:for:)` used by attachable
-  /// types declared in the testing library.
-  ///
-  /// For documentation, see `Attachable/_write(toFILE:for:)`.
-  package borrowing func writeImpl(toFILE file: borrowing OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
-    try withUnsafeBytes(for: attachment) { [file = copy file] buffer in
-      let file = FileHandle(unsafeCFILEHandle: SWT_FILEHandle(binding: file), closeWhenDone: false)
-      try file.write(buffer)
+  public borrowing func _write(toFILE file: OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
+    try withUnsafeBytes(for: attachment) { buffer in
+      try withUnsafePointer(to: file) { file in
+        try file.withMemoryRebound(to: SWT_FILEHandle.self, capacity: 1) { file in
+          let file = FileHandle(unsafeCFILEHandle: file.pointee, closeWhenDone: false)
+          try file.write(buffer)
+        }
+      }
     }
-  }
-
-  public borrowing func _write(toFILE file: borrowing OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
-    try writeImpl(toFILE: file, for: attachment)
   }
 #endif
 
