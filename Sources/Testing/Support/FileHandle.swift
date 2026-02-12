@@ -10,9 +10,12 @@
 
 internal import _TestingInternals
 
-#if !SWT_NO_PIPES
 #if SWT_NO_FILE_IO
+#if !SWT_NO_PIPES
 #error("Platform-specific misconfiguration: support for (anonymous) pipes requires support for file I/O")
+#endif
+#if !SWT_NO_FILE_CLONING
+#error("Platform-specific misconfiguration: support for file cloning requires support for file I/O")
 #endif
 #endif
 
@@ -697,7 +700,7 @@ func canonicalizePath(_ path: String) -> String? {
 ///   - fd: The file descriptor.
 ///
 /// - Throws: Any error that occurred while setting the flag.
-func setFD_CLOEXEC(_ flag: Bool, onFileDescriptor fd: CInt) throws {
+package func setFD_CLOEXEC(_ flag: Bool, onFileDescriptor fd: CInt) throws {
   switch swt_getfdflags(fd) {
   case -1:
     // An error occurred reading the flags for this file descriptor.

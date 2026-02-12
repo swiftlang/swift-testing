@@ -12,8 +12,6 @@
 public import Testing
 public import Foundation
 
-private import _TestingInternals.StubsOnly
-
 /// A wrapper type representing file system objects and URLs that can be
 /// attached indirectly.
 ///
@@ -29,12 +27,13 @@ public struct _AttachableURLWrapper: Sendable {
   /// Whether or not this instance represents a compressed directory.
   var isCompressedDirectory: Bool
 
-#if !SWT_NO_FILE_CLONING
+#if !SWT_NO_FILE_CLONING && !os(Windows)
   /// A file handle that refers to the original file (or, if a directory, the
   /// compressed copy thereof).
   ///
-  /// This file handle is used when cloning the represented file.
-  private var _fileHandle: FileHandle
+  /// This file handle is used when cloning the represented file. If the value
+  /// of this property is `nil`, cloning won't be available for said file.
+  private var _fileHandle: FileHandle?
 #endif
 
   /// Initialize an instance of this type representing a given URL.
@@ -55,8 +54,13 @@ public struct _AttachableURLWrapper: Sendable {
     self.url = url
     self.data = try Data(contentsOf: copyURL ?? url, options: [.mappedIfSafe])
     self.isCompressedDirectory = isCompressedDirectory
-#if !SWT_NO_FILE_CLONING
-    self._fileHandle = try FileHandle(forReadingFrom: copyURL ?? url)
+#if !SWT_NO_FILE_CLONING && !os(Windows)
+    if let fileHandle = try? FileHandle(forReadingFrom: copyURL ?? url) {
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+      try setFD_CLOEXEC(true, onFileDescriptor: fileHandle.fileDescriptor)
+#endif
+      self._fileHandle = fileHandle
+    }
 #endif
   }
 }
@@ -76,69 +80,9 @@ extension _AttachableURLWrapper: AttachableWrapper {
     try data.withUnsafeBytes(body)
   }
 
-#if !SWT_NO_FILE_CLONING
-#if os(FreeBSD)
-  /// An integer value encoding the currently-running FreeBSD version.
-  private static let _freeBSDVersion = getosreldate()
-#endif
-
-  /// Use platform-specific file-cloning API to create a copy-on-write copy of
-  /// the represented file.
-  ///
-  /// - Parameters:
-  ///   - file: The destination file handle to clone the represented file to.
-  ///
-  /// - Returns: Whether or not the clone operation succeeded.
-  private func _clone(toFILE file: OpaquePointer) -> Bool {
-#if !os(Windows)
-    // Get the source file descriptor.
-    let srcFD = _fileHandle.fileDescriptor
-    defer {
-      extendLifetime(_fileHandle)
-    }
-
-    // Get the destination file descriptor.
-    let dstFD = withUnsafePointer(to: file) { file in
-      file.withMemoryRebound(to: SWT_FILEHandle.self, capacity: 1) { file in
-        fileno(file.pointee)
-      }
-    }
-    guard dstFD >= 0 else {
-      return false
-    }
-#endif
-
-    // Attempt to clone the source file. If the operation fails with `ENOTSUP`
-    // or `EOPNOTSUPP`, then the file system doesn't support file cloning.
-#if SWT_TARGET_OS_APPLE
-    return 0 == fcopyfile(srcFD, dstFD, nil, copyfile_flags_t(COPYFILE_CLONE_FORCE))
-#elseif os(Linux)
-    return -1 != ioctl(dstFD, swt_FICLONE(), srcFD)
-#elseif os(FreeBSD)
-    var flags = CUnsignedInt(0)
-    if Self._freeBSDVersion >= 1500000 {
-      // `COPY_FILE_RANGE_CLONE` was introduced in FreeBSD 15.0, but on 14.3
-      // we can still benefit from an in-kernel copy instead.
-      flags |= swt_COPY_FILE_RANGE_CLONE()
-    }
-    return -1 != copy_file_range(srcFD, nil, dstFD, nil, Int(SSIZE_MAX), flags)
-#elseif os(Windows)
-    // Block cloning on Windows is only supported by ReFS which is not in
-    // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
-    return false
-#else
-#warning("Platform-specific implementation missing: File cloning unavailable")
-    return false
-#endif
-  }
-#endif
-
-#if !SWT_NO_FILE_CLONING
-  public borrowing func _write(toFILE file: OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
-    guard _clone(toFILE: file) else {
-      // Fall back to a byte-by-byte copy.
-      return try data._write(toFILE: file, for: Attachment(data))
-    }
+#if !SWT_NO_FILE_CLONING && !os(Windows)
+  public var _fileDescriptorForCloning: CInt? {
+    _fileHandle?.fileDescriptor
   }
 #endif
 

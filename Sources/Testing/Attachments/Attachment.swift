@@ -133,7 +133,7 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
     _estimatedAttachmentByteCount = { attachment.attachableValue.estimatedAttachmentByteCount }
     _withUnsafeBytes = { try attachment.withUnsafeBytes($0) }
 #if !SWT_NO_FILE_IO
-    _writeToFILE = { try attachment.attachableValue._write(toFILE: $0, for: attachment) }
+    _fileDescriptorForCloning = attachment.attachableValue._fileDescriptorForCloning
 #endif
     _preferredName = { attachment.attachableValue.preferredName(for: attachment, basedOn: $0) }
   }
@@ -159,13 +159,7 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
   }
 
 #if !SWT_NO_FILE_IO
-  /// The implementation of `_write(toFILE:)` borrowed from the original
-  /// attachment.
-  private var _writeToFILE: @Sendable (OpaquePointer) throws -> Void
-
-  public borrowing func _write(toFILE file: OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
-    try _writeToFILE(file)
-  }
+  public private(set) var _fileDescriptorForCloning: CInt?
 #endif
 
   /// The implementation of ``preferredName(for:basedOn:)`` borrowed from the
@@ -383,6 +377,76 @@ extension Attachment where AttachableValue: ~Copyable {
 
 #if !SWT_NO_FILE_IO
 // MARK: - Writing
+
+extension Attachable where Self: ~Copyable {
+  /// Write this instance to the given file system path.
+  ///
+  /// - Parameters:
+  ///   - filePath: The path to write to.
+  ///   - attachment: The attachment that is requesting this instance be written
+  ///     (that is, the attachment containing this instance.)
+  ///
+  /// - Throws: Any error that prevented writing this instance to `filePath`.
+  ///
+  /// The testing library uses this function when saving an attachment. The
+  /// default implementation opens `filePath` for writing with exclusive access,
+  /// then passes it to `_write(toFILE:for:)`.
+  borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
+#if !SWT_NO_FILE_CLONING && SWT_TARGET_OS_APPLE
+    // fclonefileat() on Darwin takes a file path, so we need to call it before
+    // we create a `FileHandle` below.
+    if let srcFD = _fileDescriptorForCloning {
+      if 0 == fclonefileat(srcFD, AT_FDCWD, filePath, 0) {
+        return
+      } else if case let errorCode = swt_errno(), errorCode == swt_EEXIST() {
+        throw CError(rawValue: errorCode)
+      }
+    }
+#endif
+
+    // Note "x" in the mode string which indicates that the file should be
+    // created and opened exclusively. The underlying `fopen()` call will thus
+    // fail with `EEXIST` if a file exists at `filePath`.
+    let file = try FileHandle(atPath: filePath, mode: "wxeb")
+
+#if !SWT_NO_FILE_CLONING && !SWT_TARGET_OS_APPLE
+    // Attempt to clone the source file. If the operation fails with `ENOTSUP`
+    // or `EOPNOTSUPP`, then the file system doesn't support file cloning.
+    func clone(to file: borrowing FileHandle) -> Bool {
+      return file.withUnsafePOSIXFileDescriptor { dstFD in
+        guard let dstFD, let srcFD = _fileDescriptorForCloning else {
+          return false
+        }
+#if os(Linux)
+        return -1 != ioctl(dstFD, swt_FICLONE(), srcFD)
+#elseif os(FreeBSD)
+        var flags = CUnsignedInt(0)
+        if Self._freeBSDVersion >= 1500000 {
+          // `COPY_FILE_RANGE_CLONE` was introduced in FreeBSD 15.0, but on 14.3
+          // we can still benefit from an in-kernel copy instead.
+          flags |= swt_COPY_FILE_RANGE_CLONE()
+        }
+        return -1 != copy_file_range(srcFD, nil, dstFD, nil, Int(SSIZE_MAX), flags)
+#elseif os(Windows)
+        // Block cloning on Windows is only supported by ReFS which is not in
+        // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
+        return false
+#else
+#warning("Platform-specific implementation missing: File cloning unavailable")
+        return false
+#endif
+      }
+    }
+    if clone(to: file) {
+      return
+    }
+#endif
+
+    try withUnsafeBytes(for: attachment) { buffer in
+      try file.write(buffer)
+    }
+  }
+}
 
 extension Attachment where AttachableValue: ~Copyable {
   /// Write the attachment's contents to a file in the specified directory.

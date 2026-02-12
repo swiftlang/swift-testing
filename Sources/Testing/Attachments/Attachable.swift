@@ -80,24 +80,22 @@ public protocol Attachable: ~Copyable {
   /// }
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
 
-#if !SWT_NO_FILE_IO
-  /// Write this instance to the given file handle.
+#if !SWT_NO_FILE_CLONING
+  /// A C file descriptor, owned by this instance, representing the original
+  /// file this value was created from.
   ///
-  /// - Parameters:
-  ///   - file: A C file handle (of C type `FILE *`) that is open for reading.
-  ///     Due to technical constraints, this argument is an opaque pointer.
-  ///   - attachment: The attachment that is requesting this instance be written
-  ///     (that is, the attachment containing this instance.)
+  /// The testing library uses this property when saving an attachment on
+  /// platforms that support file cloning. If the value of this property is not
+  /// `nil`, the testing library attempts to clone the corresponding file.
+  /// If the operation fails (or if the value of this property is `nil`), the
+  /// testing library falls back to calling ``withUnsafeBytes(for:_:)`` and
+  /// copying bytes from the buffer to the destination file.
   ///
-  /// - Throws: Any error that prevented writing this instance to `file`.
+  /// The default implementation of this property has a value of `nil`.
   ///
-  /// The testing library uses this function when saving an attachment. The
-  /// default implementation calls ``withUnsafeBytes(for:_:)``, and writes the
-  /// resulting buffer to `file`.
-  ///
-  /// - Warning: This function is not part of the testing library's public
+  /// - Warning: This property is not part of the testing library's public
   ///   interface. It may be removed in a future update.
-  borrowing func _write(toFILE file: OpaquePointer, for attachment: borrowing Attachment<Self>) throws
+  var _fileDescriptorForCloning: CInt? { borrowing get }
 #endif
 
   /// Generate a preferred name for the given attachment.
@@ -123,6 +121,11 @@ public protocol Attachable: ~Copyable {
 
 // MARK: - Default implementations
 
+#if os(FreeBSD)
+/// An integer value encoding the currently-running FreeBSD version.
+private let _freeBSDVersion = getosreldate()
+#endif
+
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
@@ -136,42 +139,9 @@ extension Attachable where Self: ~Copyable {
     nil
   }
 
-#if !SWT_NO_FILE_IO
-  /// Write this instance to the given file system path.
-  ///
-  /// - Parameters:
-  ///   - filePath: The path to write to.
-  ///   - attachment: The attachment that is requesting this instance be written
-  ///     (that is, the attachment containing this instance.)
-  ///
-  /// - Throws: Any error that prevented writing this instance to `filePath`.
-  ///
-  /// The testing library uses this function when saving an attachment. The
-  /// default implementation opens `filePath` for writing with exclusive access,
-  /// then passes it to `_write(toFILE:for:)`.
-  borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
-    // Note "x" in the mode string which indicates that the file should be
-    // created and opened exclusively. The underlying `fopen()` call will thus
-    // fail with `EEXIST` if a file exists at `filePath`.
-    let file = try FileHandle(atPath: filePath, mode: "wxeb")
-    try file.withUnsafeCFILEHandle { file in
-      try withUnsafePointer(to: file) { file in
-        try file.withMemoryRebound(to: OpaquePointer.self, capacity: 1) { file in
-          try _write(toFILE: file.pointee, for: attachment)
-        }
-      }
-    }
-  }
-
-  public borrowing func _write(toFILE file: OpaquePointer, for attachment: borrowing Attachment<Self>) throws {
-    try withUnsafeBytes(for: attachment) { buffer in
-      try withUnsafePointer(to: file) { file in
-        try file.withMemoryRebound(to: SWT_FILEHandle.self, capacity: 1) { file in
-          let file = FileHandle(unsafeCFILEHandle: file.pointee, closeWhenDone: false)
-          try file.write(buffer)
-        }
-      }
-    }
+#if !SWT_NO_FILE_CLONING
+  public var _fileDescriptorForCloning: CInt? {
+    nil
   }
 #endif
 
