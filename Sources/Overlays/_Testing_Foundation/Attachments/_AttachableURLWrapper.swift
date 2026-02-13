@@ -154,6 +154,7 @@ extension _AttachableURLWrapper: FileClonable {
       // so the fallback path works.
       _ = unlink(filePath)
     }
+    return fileCloned
 #elseif os(Windows)
     // TODO: Windows implementation
     // Block cloning on Windows is only supported by ReFS which is not in
