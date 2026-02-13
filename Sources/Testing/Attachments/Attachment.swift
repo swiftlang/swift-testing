@@ -137,6 +137,9 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
     _estimatedAttachmentByteCount = { attachment.attachableValue.estimatedAttachmentByteCount }
     _withUnsafeBytes = { try attachment.withUnsafeBytes($0) }
     _preferredName = { attachment.attachableValue.preferredName(for: attachment, basedOn: $0) }
+#if !SWT_NO_FILE_CLONING
+    _clone = { attachment.attachableValue.clone(toFileAtPath: $0, for: attachment) }
+#endif
   }
 
   /// The implementation of ``estimatedAttachmentByteCount`` borrowed from the
@@ -166,7 +169,21 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     _preferredName(suggestedName)
   }
+
+#if !SWT_NO_FILE_CLONING
+  /// The implementation of ``clone(toFileAtPath:)`` borrowed from the original
+  /// attachment.
+  private var _clone: @Sendable (String) -> Bool
+
+  package func clone(toFileAtPath filePath: String) -> Bool {
+    _clone(filePath)
+  }
+#endif
 }
+
+#if !SWT_NO_FILE_CLONING
+extension AnyAttachable: FileClonable {}
+#endif
 
 // MARK: - Describing an attachment
 
@@ -376,6 +393,25 @@ extension Attachment where AttachableValue: ~Copyable {
 // MARK: - Writing
 
 extension Attachable where Self: ~Copyable {
+#if !SWT_NO_FILE_CLONING
+  /// Clone the file this instance represents to the given file path if it
+  /// conforms to ``FileClonable``.
+  ///
+  /// - Parameters:
+  ///   - filePath: The path to clone this instance to.
+  ///
+  /// - Returns: Whether or not the file was successfully cloned.
+  ///
+  /// See ``FileClonable`` for more information.
+  fileprivate func clone(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) -> Bool {
+    if #available(_castingWithNonCopyableGenerics, *),
+       let self = makeExistential(self) as? any FileClonable {
+      return self.clone(toFileAtPath: filePath)
+    }
+    return false
+  }
+#endif
+
   /// Write this instance to the given file system path.
   ///
   /// - Parameters:
@@ -390,9 +426,7 @@ extension Attachable where Self: ~Copyable {
   /// then passes it to `_write(toFILE:for:)`.
   borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
 #if !SWT_NO_FILE_CLONING
-    if #available(_castingWithNonCopyableGenerics, *),
-       let self = makeExistential(self) as? any FileClonable,
-       self.clone(toFileAtPath: filePath) {
+    if clone(toFileAtPath: filePath, for: attachment) {
       return
     }
 #endif

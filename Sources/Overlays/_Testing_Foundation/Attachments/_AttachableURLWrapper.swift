@@ -116,6 +116,11 @@ extension _AttachableURLWrapper: AttachableWrapper {
 
 #if !SWT_NO_FILE_CLONING
 extension _AttachableURLWrapper: FileClonable {
+#if os(FreeBSD)
+  /// An integer encoding the FreeBSD version number.
+  private static let _freeBSDVersion = getosreldate()
+#endif
+
   public borrowing func clone(toFileAtPath filePath: String) -> Bool {
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
     guard let srcFD = _fileHandle?.fileDescriptor else {
@@ -134,7 +139,7 @@ extension _AttachableURLWrapper: FileClonable {
       close(dstFD)
     }
 #if os(Linux)
-    return -1 != ioctl(dstFD, swt_FICLONE(), srcFD)
+    let fileCloned = -1 != ioctl(dstFD, swt_FICLONE(), srcFD)
 #elseif os(FreeBSD)
     var flags = CUnsignedInt(0)
     if Self._freeBSDVersion >= 1500000 {
@@ -142,8 +147,14 @@ extension _AttachableURLWrapper: FileClonable {
       // we can still benefit from an in-kernel copy instead.
       flags |= swt_COPY_FILE_RANGE_CLONE()
     }
-    return -1 != copy_file_range(srcFD, nil, dstFD, nil, Int(SSIZE_MAX), flags)
+    let fileCloned = -1 != copy_file_range(srcFD, nil, dstFD, nil, Int(SSIZE_MAX), flags)
 #endif
+    if !fileCloned {
+      // Failed to clone, but we already created the file, so we must unlink it
+      // so the fallback path works.
+      _ = unlink(filePath)
+    }
+    return fileCloned
 #elseif os(Windows)
     // TODO: Windows implementation
     // Block cloning on Windows is only supported by ReFS which is not in
