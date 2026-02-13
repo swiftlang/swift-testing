@@ -631,9 +631,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       return .unfiltered
     }
 
-    guard #available(_regexAPI, *) else {
-      throw _EntryPointError.featureUnavailable("The `\(label)' option is not supported on this OS version.")
-    }
     return try Configuration.TestFilter(membership: membership, matchingAnyOf: regexes)
   }
   filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))
@@ -675,6 +672,11 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
   // Warning issues (experimental).
   switch args.eventStreamVersionNumber {
+#if !SWT_NO_SNAPSHOT_TYPES
+  case .some(ABI.Xcode16.versionNumber):
+    // Xcode 26 and later support warning severity, so leave it enabled.
+    break
+#endif
   case .some(..<ABI.v6_3.versionNumber):
     // If the event stream version was explicitly specified to a value < 6.3,
     // disable the warning issue event to maintain legacy behavior.

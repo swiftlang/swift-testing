@@ -320,9 +320,6 @@ extension TypeInfo {
   /// could not determine the mangled name of the represented type, the value of
   /// this property is `nil`.
   var mangledName: String? {
-    guard #available(_mangledTypeNameAPI, *) else {
-      return nil
-    }
     switch _kind {
     case let .type(type):
       return _mangledTypeName(type)

@@ -432,7 +432,6 @@ extension JSON {
 #endif
 }
 
-@available(_clockAPI, *)
 extension Trait where Self == TimeLimitTrait {
   /// Construct a time limit trait that causes a test to time out if it runs for
   /// too long.

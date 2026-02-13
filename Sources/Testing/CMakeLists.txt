@@ -21,6 +21,7 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedInstant.swift
   ABI/Encoded/ABI.EncodedIssue.swift
   ABI/Encoded/ABI.EncodedMessage.swift
+  ABI/Encoded/ABI.EncodedSourceLocation.swift
   ABI/Encoded/ABI.EncodedTest.swift
   Attachments/Images/AttachableAsImage.swift
   Attachments/Images/_AttachableImageWrapper.swift
@@ -143,7 +144,8 @@ if(NOT BUILD_SHARED_LIBS)
   # libraries.
   target_compile_options(Testing PRIVATE
     "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestDiscovery"
-    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals")
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals"
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInterop")
 endif()
 add_dependencies(Testing
   TestingMacros)

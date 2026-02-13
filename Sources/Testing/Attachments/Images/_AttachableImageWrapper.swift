@@ -13,7 +13,6 @@
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
-@available(_uttypesAPI, *)
 public final class _AttachableImageWrapper<Image>: Sendable where Image: AttachableAsImage {
   /// The underlying image.
   public nonisolated(unsafe) let wrappedValue: Image

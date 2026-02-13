@@ -47,6 +47,8 @@ struct EventHandlingInteropTests {
   /// its own fallback handler.
   @Test func `Post event without config -> fallback handler`() async throws {
     await #expect(processExitsWith: .success) {
+      Configuration.removeAll()
+
       let installer = try #require(Self.installer)
       try #require(
         installer(Self.capturingHandler), "Installation of fallback handler should succeed")
@@ -61,7 +63,7 @@ struct EventHandlingInteropTests {
       try Self.handlerContents.withLock {
         let contents = try #require(
           $0, "Fallback should have been called with non nil contents")
-        #expect(contents.version == "6.3")
+        #expect(contents.version == "\(ABI.CurrentVersion.versionNumber)")
         #expect(contents.record?.contains("A system failure occurred") ?? false)
       }
     }
