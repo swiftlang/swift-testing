@@ -390,14 +390,9 @@ extension Attachable where Self: ~Copyable {
   /// then passes it to `_write(toFILE:for:)`.
   borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
 #if !SWT_NO_FILE_CLONING
-    var clonableSelf: (any FileClonable)?
-    if #available(_castingWithNonCopyableGenerics, *) {
-      clonableSelf = makeExistential(self) as? any FileClonable
-    }
-
-    // fclonefileat() on Darwin takes a file path, so we need to call it before
-    // we create a `FileHandle` below.
-    if let clonableSelf, clonableSelf.clone(toFileAtPath: filePath) {
+    if #available(_castingWithNonCopyableGenerics, *),
+       let self = makeExistential(self) as? any FileClonable,
+       self.clone(toFileAtPath: filePath) {
       return
     }
 #endif
