@@ -661,8 +661,9 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     }
 
     guard !regexes.isEmpty else {
-      // Return early with just the tag filter, even though the `reduce` logic
-      // below can handle this case, in order to avoid the `#available` guard.
+      // Return early with just the tag filter, otherwise we try to match
+      // against an empty array of regular expressions which is _not_
+      // equivalent to `.unfiltered`.
       return [tagFilter]
     }
 
