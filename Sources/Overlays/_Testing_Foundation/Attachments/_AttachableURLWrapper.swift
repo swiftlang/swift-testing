@@ -116,6 +116,11 @@ extension _AttachableURLWrapper: AttachableWrapper {
 
 #if !SWT_NO_FILE_CLONING
 extension _AttachableURLWrapper: FileClonable {
+#if os(FreeBSD)
+  /// An integer encoding the FreeBSD version number.
+  private static let _freeBSDVersion = getosreldate()
+#endif
+
   public borrowing func clone(toFileAtPath filePath: String) -> Bool {
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
     guard let srcFD = _fileHandle?.fileDescriptor else {
