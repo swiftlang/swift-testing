@@ -126,7 +126,7 @@ extension _AttachableURLWrapper: FileClonable {
     return 0 == fclonefileat(srcFD, AT_FDCWD, filePath, 0)
 #elseif os(Linux) || os(FreeBSD)
     // Open the destination file for exclusive writing.
-    let dstFD = open(filePath, O_CREAT | O_EXCL | O_CLOEXEC, mode_t(0o666))
+    let dstFD = open(filePath, O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, mode_t(0o666))
     guard dstFD >= 0 else {
       return false
     }
