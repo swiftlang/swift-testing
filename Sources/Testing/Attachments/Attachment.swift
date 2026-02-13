@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if !SWT_NO_FILE_CLONING
+private import _TestingInternals.StubsOnly
+#endif
+
 /// A type describing values that can be attached to the output of a test run
 /// and inspected later by the user.
 ///
@@ -132,9 +136,6 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
   init<A>(_ attachment: Attachment<A>) where A: Attachable & Sendable & ~Copyable {
     _estimatedAttachmentByteCount = { attachment.attachableValue.estimatedAttachmentByteCount }
     _withUnsafeBytes = { try attachment.withUnsafeBytes($0) }
-#if !SWT_NO_FILE_IO
-    _writeToFileAtPath = { try attachment.attachableValue._write(toFileAtPath: $0, for: attachment) }
-#endif
     _preferredName = { attachment.attachableValue.preferredName(for: attachment, basedOn: $0) }
   }
 
@@ -157,16 +158,6 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
     }
     return result
   }
-
-#if !SWT_NO_FILE_IO
-  /// The implementation of `_write(toFileAtPath:for:)` borrowed from the
-  /// original attachment.
-  private var _writeToFileAtPath: @Sendable (String) throws -> Void
-
-  public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
-    try _writeToFileAtPath(filePath)
-  }
-#endif
 
   /// The implementation of ``preferredName(for:basedOn:)`` borrowed from the
   /// original attachment.
@@ -384,6 +375,38 @@ extension Attachment where AttachableValue: ~Copyable {
 #if !SWT_NO_FILE_IO
 // MARK: - Writing
 
+extension Attachable where Self: ~Copyable {
+  /// Write this instance to the given file system path.
+  ///
+  /// - Parameters:
+  ///   - filePath: The path to write to.
+  ///   - attachment: The attachment that is requesting this instance be written
+  ///     (that is, the attachment containing this instance.)
+  ///
+  /// - Throws: Any error that prevented writing this instance to `filePath`.
+  ///
+  /// The testing library uses this function when saving an attachment. The
+  /// default implementation opens `filePath` for writing with exclusive access,
+  /// then passes it to `_write(toFILE:for:)`.
+  borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
+#if !SWT_NO_FILE_CLONING
+    if #available(_castingWithNonCopyableGenerics, *),
+       let self = makeExistential(self) as? any FileClonable,
+       self.clone(toFileAtPath: filePath) {
+      return
+    }
+#endif
+
+    try withUnsafeBytes(for: attachment) { buffer in
+      // Note "x" in the mode string which indicates that the file should be
+      // created and opened exclusively. The underlying `fopen()` call will thus
+      // fail with `EEXIST` if a file exists at `filePath`.
+      let file = try FileHandle(atPath: filePath, mode: "wxeb")
+      try file.write(buffer)
+    }
+  }
+}
+
 extension Attachment where AttachableValue: ~Copyable {
   /// Write the attachment's contents to a file in the specified directory.
   ///
@@ -447,7 +470,7 @@ extension Attachment where AttachableValue: ~Copyable {
       // file exists at this path, an error with code `EEXIST` will be thrown
       // and we'll try again by adding a suffix.
       let preferredPath = appendPathComponent(preferredName, to: directoryPath)
-      try attachableValue._write(toFileAtPath: preferredPath, for: self)
+      try attachableValue.write(toFileAtPath: preferredPath, for: self)
       result = preferredPath
     } catch {
       // Split the extension(s) off the preferred name. The first component in
@@ -463,7 +486,7 @@ extension Attachment where AttachableValue: ~Copyable {
         // Propagate any error *except* EEXIST, which would indicate that the
         // name was already in use (so we should try again with a new suffix.)
         do {
-          try attachableValue._write(toFileAtPath: preferredPath, for: self)
+          try attachableValue.write(toFileAtPath: preferredPath, for: self)
           result = preferredPath
           break
         } catch where error._code == swt_EEXIST() && error._domain == "NSPOSIXErrorDomain" {

@@ -80,30 +80,6 @@ public protocol Attachable: ~Copyable {
   /// }
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
 
-#if !SWT_NO_FILE_IO
-  /// Write this instance to the given file system path.
-  ///
-  /// - Parameters:
-  ///   - filePath: The path to write to.
-  ///   - attachment: The attachment that is requesting this instance be written
-  ///     (that is, the attachment containing this instance.)
-  ///
-  /// - Throws: Any error that prevented writing this instance to `filePath`.
-  ///   When the testing library calls this function, this function throws an
-  ///   error of type [`POSIXError`](https://developer.apple.com/documentation/foundation/posixerror),
-  ///   and that error's code equals [`EEXIST`](https://developer.apple.com/documentation/foundation/posixerror/eexist),
-  ///   the testing library tries again with a new path.
-  ///
-  /// The testing library uses this function when saving an attachment. The
-  /// default implementation opens `filePath` for writing, calls
-  /// ``withUnsafeBytes(for:_:)``, and writes the resulting buffer to the opened
-  /// file.
-  ///
-  /// - Warning: This function is not part of the testing library's public
-  ///   interface. It may be removed in a future update.
-  borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws
-#endif
-
   /// Generate a preferred name for the given attachment.
   ///
   /// - Parameters:
@@ -125,6 +101,31 @@ public protocol Attachable: ~Copyable {
   borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String
 }
 
+// MARK: - FileClonable
+
+#if !SWT_NO_FILE_CLONING
+/// A protocol describing a type whose instances represent files and can be
+/// cloned (on platforms that support file cloning).
+///
+/// This protocol is not part of the public interface of the testing library. We
+/// may wish to promote it to API in the future if there is a need for it, but
+/// our Foundation overlay probably covers the real-world use cases.
+package protocol FileClonable {
+  /// Clone the file this instance represents to the given file path.
+  ///
+  /// - Parameters:
+  ///   - filePath: The path to clone this instance to.
+  ///
+  /// - Returns: Whether or not the file was successfully cloned.
+  ///
+  /// The implementation must not attempt to write to `filePath` if it already
+  /// exists. The testing library cannot check if a file exists at `filePath`
+  /// before calling this function (a race condition would be present if it did
+  /// attempt to check first).
+  borrowing func clone(toFileAtPath filePath: String) -> Bool
+}
+#endif
+
 // MARK: - Default implementations
 
 /// @Metadata {
@@ -139,26 +140,6 @@ extension Attachable where Self: ~Copyable {
   public var estimatedAttachmentByteCount: Int? {
     nil
   }
-
-#if !SWT_NO_FILE_IO
-  /// The shared implementation of `_write(toFileAtPath:for:)` used by
-  /// attachable types declared in the testing library.
-  ///
-  /// For documentation, see `Attachable/_write(toFileAtPath:for:)`.
-  package borrowing func writeImpl(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
-    try withUnsafeBytes(for: attachment) { buffer in
-      // Note "x" in the mode string which indicates that the file should be
-      // created and opened exclusively. The underlying `fopen()` call will thus
-      // fail with `EEXIST` if a file exists at `filePath`.
-      let file = try FileHandle(atPath: filePath, mode: "wxeb")
-      try file.write(buffer)
-    }
-  }
-
-  public borrowing func _write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
-    try writeImpl(toFileAtPath: filePath, for: attachment)
-  }
-#endif
 
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
