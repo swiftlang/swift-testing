@@ -202,6 +202,31 @@ struct AttachmentTests {
   }
 #endif
 
+  @Test func cloneAttachment() async throws {
+    struct MyFileClonable: Attachable, FileClonable {
+      var withUnsafeBytesCalled: Confirmation
+
+      func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+        withUnsafeBytesCalled()
+        return try Array<UInt8>().withUnsafeBytes(body)
+      }
+
+      var cloneCalled: Confirmation
+
+      func clone(toFileAtPath filePath: String) -> Bool {
+        cloneCalled()
+        return true // don't actually write anything
+      }
+    }
+
+    try await confirmation("withUnsafeBytes(for:_:) called", expectedCount: 0) { withUnsafeBytesCalled in
+      try await confirmation("clone(toFileAtPath:) called") { cloneCalled in
+        let attachableValue = MyFileClonable(withUnsafeBytesCalled: withUnsafeBytesCalled, cloneCalled: cloneCalled)
+        _ = try Attachment(attachableValue).write(toFileInDirectoryAtPath: "/not/real/directory/")
+      }
+    }
+  }
+
   @Test func attachValue() async {
     await confirmation("Attachment detected", expectedCount: 2) { valueAttached in
       var configuration = Configuration()
