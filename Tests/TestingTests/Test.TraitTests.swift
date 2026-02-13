@@ -19,16 +19,17 @@ private struct TestOnlyTrait: TestTrait {}
 /// A trait that applies to both
 private struct TestAndSuiteTrait: SuiteTrait, TestTrait {}
 
-/// A stub test suite.
-@Suite
-private struct DemoTestSuite {}
-
 @Suite("Test.Trait Tests")
 struct Test_TraitTests {
   @Test("Setting traits on a suite filters out non-suite traits", .tags(.traitRelated))
   func filterTraitsOnSuites() async throws {
     let mixedTraits: [any Trait] = [SuiteOnlyTrait(), TestOnlyTrait(), TestAndSuiteTrait()]
-    var suite = try #require(await test(for: DemoTestSuite.self))
+    var suite = Test(
+      displayName: "Fake Suite",
+      traits: [],
+      sourceLocation: #_sourceLocation,
+      containingTypeInfo: TypeInfo(describing: Void.self),
+    )
 
     // Setting the traits property should filter out non-suite traits
     suite.traits = mixedTraits
