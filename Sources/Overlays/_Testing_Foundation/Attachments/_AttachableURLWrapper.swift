@@ -134,7 +134,7 @@ extension _AttachableURLWrapper: FileClonable {
       close(dstFD)
     }
 #if os(Linux)
-    return -1 != swt_ioctl_FICLONE(dstFD, srcFD)
+    return -1 != ioctl(dstFD, swt_FICLONE(), srcFD)
 #elseif os(FreeBSD)
     var flags = CUnsignedInt(0)
     if Self._freeBSDVersion >= 1500000 {
