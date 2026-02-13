@@ -137,7 +137,9 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
     _estimatedAttachmentByteCount = { attachment.attachableValue.estimatedAttachmentByteCount }
     _withUnsafeBytes = { try attachment.withUnsafeBytes($0) }
     _preferredName = { attachment.attachableValue.preferredName(for: attachment, basedOn: $0) }
+#if !SWT_NO_FILE_CLONING
     _clone = { attachment.attachableValue.clone(toFileAtPath: $0, for: attachment) }
+#endif
   }
 
   /// The implementation of ``estimatedAttachmentByteCount`` borrowed from the
@@ -169,6 +171,8 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
   }
 
 #if !SWT_NO_FILE_CLONING
+  /// The implementation of ``clone(toFileAtPath:)`` borrowed from the original
+  /// attachment.
   private var _clone: @Sendable (String) -> Bool
 
   package func clone(toFileAtPath filePath: String) -> Bool {
