@@ -31,7 +31,7 @@ public struct _AttachableURLWrapper: Sendable {
   /// Whether or not this instance represents a compressed directory.
   var isCompressedDirectory: Bool
 
-#if !SWT_NO_FILE_CLONING && !os(Windows)
+#if !SWT_NO_FILE_CLONING
   /// A file handle that refers to the original file (or, if a directory, the
   /// compressed copy thereof).
   ///
@@ -58,7 +58,10 @@ public struct _AttachableURLWrapper: Sendable {
     self.url = url
     self.data = try Data(contentsOf: copyURL ?? url, options: [.mappedIfSafe])
     self.isCompressedDirectory = isCompressedDirectory
-#if !SWT_NO_FILE_CLONING && !os(Windows)
+#if !SWT_NO_FILE_CLONING
+#if os(Windows)
+    self._fileHandle = try? FileHandle(forReadingFrom: copyURL ?? url)
+#else
     self._fileHandle = (copyURL ?? url).withUnsafeFileSystemRepresentation { path in
       guard let path else {
         return nil
@@ -69,6 +72,7 @@ public struct _AttachableURLWrapper: Sendable {
       }
       return FileHandle(fileDescriptor: fd, closeOnDealloc: true)
     }
+#endif
 #endif
   }
 }
@@ -156,10 +160,55 @@ extension _AttachableURLWrapper: FileClonable {
     }
     return fileCloned
 #elseif os(Windows)
-    // TODO: Windows implementation
-    // Block cloning on Windows is only supported by ReFS which is not in
+    // NOTE: Block cloning on Windows is only supported by ReFS which is not in
     // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
-    return false
+    return filePath.withCString(encodedAs: UTF16.self) { filePath in
+      guard let srcHandle = _fileHandle?._handle,
+            let dstHandle = CreateFileW(filePath, GENERIC_READ, FILE_SHARE_DELETE, nil, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nil) else {
+        return false
+      }
+      defer {
+        CloseHandle(dstHandle)
+      }
+
+      func duplicateExtents() -> Bool {
+        // Resize the file to be large enough to contain the cloned bytes.
+        var eofInfo = FILE_END_OF_FILE_INFO()
+        eofInfo.EndOfFile.QuadPart = LONGLONG(data.count)
+        let fileResized = SetFileInformationByHandle(
+          dstHandle,
+          FileEndOfFileInfo,
+          &eofInfo,
+          MemoryLayout.stride(ofValue: eofInfo)
+        )
+        guard fileResized else {
+          return false
+        }
+
+        // Perform the actual duplication operation.
+        var extents = DUPLICATE_EXTENTS_DATA()
+        extents.FileHandle = srcHandle
+        extents.ByteCount.QuadPart = LONGLONG(data.count)
+        var ignored = DWORD(0)
+        return DeviceIoControl(
+          dstHandle,
+          FSCTL_DUPLICATE_EXTENTS_TO_FILE,
+          &extents,
+          MemoryLayout.stride(ofValue: extents),
+          nil,
+          0,
+          &ignored,
+          nil
+        )
+      }
+
+      let fileCloned = duplicateExtents()
+      if !fileCloned {
+        // As with Linux/FreeBSD above, remove the file we just created.
+        DeleteFileW(filePath)
+      }
+      return fileCloned
+    }
 #else
 #warning("Platform-specific implementation missing: File cloning unavailable")
     return false
