@@ -80,24 +80,6 @@ public protocol Attachable: ~Copyable {
   /// }
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
 
-#if !SWT_NO_FILE_CLONING
-  /// A C file descriptor, owned by this instance, representing the original
-  /// file this value was created from.
-  ///
-  /// The testing library uses this property when saving an attachment on
-  /// platforms that support file cloning. If the value of this property is not
-  /// `nil`, the testing library attempts to clone the corresponding file.
-  /// If the operation fails (or if the value of this property is `nil`), the
-  /// testing library falls back to calling ``withUnsafeBytes(for:_:)`` and
-  /// copying bytes from the buffer to the destination file.
-  ///
-  /// The default implementation of this property has a value of `nil`.
-  ///
-  /// - Warning: This property is not part of the testing library's public
-  ///   interface. It may be removed in a future update.
-  var _fileDescriptorForCloning: CInt? { borrowing get }
-#endif
-
   /// Generate a preferred name for the given attachment.
   ///
   /// - Parameters:
@@ -119,12 +101,32 @@ public protocol Attachable: ~Copyable {
   borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String
 }
 
-// MARK: - Default implementations
+// MARK: - FileClonable
 
-#if os(FreeBSD)
-/// An integer value encoding the currently-running FreeBSD version.
-private let _freeBSDVersion = getosreldate()
+#if !SWT_NO_FILE_CLONING
+/// A protocol describing a type whose instances represent files and can be
+/// cloned (on platforms that support file cloning).
+///
+/// This protocol is not part of the public interface of the testing library. We
+/// may wish to promote it to API in the future if there is a need for it, but
+/// our Foundation overlay probably covers the real-world use cases.
+package protocol FileClonable {
+  /// Clone the file this instance represents to the given file path.
+  ///
+  /// - Parameters:
+  ///   - filePath: The path to clone this instance to.
+  ///
+  /// - Returns: Whether or not the file was successfully cloned.
+  ///
+  /// The implementation must not attempt to write to `filePath` if it already
+  /// exists. The testing library cannot check if a file exists at `filePath`
+  /// before calling this function (a race condition would be present if it did
+  /// attempt to check first).
+  borrowing func clone(toFileAtPath filePath: String) -> Bool
+}
 #endif
+
+// MARK: - Default implementations
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
@@ -138,12 +140,6 @@ extension Attachable where Self: ~Copyable {
   public var estimatedAttachmentByteCount: Int? {
     nil
   }
-
-#if !SWT_NO_FILE_CLONING
-  public var _fileDescriptorForCloning: CInt? {
-    nil
-  }
-#endif
 
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)

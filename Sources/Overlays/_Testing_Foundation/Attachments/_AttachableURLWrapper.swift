@@ -12,6 +12,10 @@
 public import Testing
 public import Foundation
 
+#if !SWT_NO_FILE_CLONING
+private import _TestingInternals.StubsOnly
+#endif
+
 /// A wrapper type representing file system objects and URLs that can be
 /// attached indirectly.
 ///
@@ -55,9 +59,15 @@ public struct _AttachableURLWrapper: Sendable {
     self.data = try Data(contentsOf: copyURL ?? url, options: [.mappedIfSafe])
     self.isCompressedDirectory = isCompressedDirectory
 #if !SWT_NO_FILE_CLONING && !os(Windows)
-    if let fileHandle = try? FileHandle(forReadingFrom: copyURL ?? url) {
-      try setFD_CLOEXEC(true, onFileDescriptor: fileHandle.fileDescriptor)
-      self._fileHandle = fileHandle
+    self._fileHandle = (copyURL ?? url).withUnsafeFileSystemRepresentation { path in
+      guard let path else {
+        return nil
+      }
+      let fd = open(path, O_RDONLY | O_CLOEXEC)
+      guard fd >= 0 else {
+        return nil
+      }
+      return FileHandle(fileDescriptor: fd, closeOnDealloc: true)
     }
 #endif
   }
@@ -77,12 +87,6 @@ extension _AttachableURLWrapper: AttachableWrapper {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try data.withUnsafeBytes(body)
   }
-
-#if !SWT_NO_FILE_CLONING && !os(Windows)
-  public var _fileDescriptorForCloning: CInt? {
-    _fileHandle?.fileDescriptor
-  }
-#endif
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     // What extension should we have on the filename so that it has the same
@@ -109,4 +113,47 @@ extension _AttachableURLWrapper: AttachableWrapper {
     return suggestedName
   }
 }
+
+#if !SWT_NO_FILE_CLONING
+extension _AttachableURLWrapper: FileClonable {
+  public borrowing func clone(toFileAtPath filePath: String) -> Bool {
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+    guard let srcFD = _fileHandle?.fileDescriptor else {
+      return false
+    }
+#endif
+#if SWT_TARGET_OS_APPLE
+    return 0 == fclonefileat(srcFD, AT_FDCWD, filePath, 0)
+#elseif os(Linux) || os(FreeBSD)
+    // Open the destination file for exclusive writing.
+    let dstFD = open(filePath, O_CREAT | O_EXCL | O_CLOEXEC, mode_t(0o666))
+    guard dstFD >= 0 else {
+      return false
+    }
+    defer {
+      close(dstFD)
+    }
+#if os(Linux)
+    return -1 != swt_ioctl_FICLONE(dstFD, srcFD)
+#elseif os(FreeBSD)
+    var flags = CUnsignedInt(0)
+    if Self._freeBSDVersion >= 1500000 {
+      // `COPY_FILE_RANGE_CLONE` was introduced in FreeBSD 15.0, but on 14.3
+      // we can still benefit from an in-kernel copy instead.
+      flags |= swt_COPY_FILE_RANGE_CLONE()
+    }
+    return -1 != copy_file_range(srcFD, nil, dstFD, nil, Int(SSIZE_MAX), flags)
+#endif
+#elseif os(Windows)
+    // TODO: Windows implementation
+    // Block cloning on Windows is only supported by ReFS which is not in
+    // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
+    return false
+#else
+#warning("Platform-specific implementation missing: File cloning unavailable")
+    return false
+#endif
+  }
+}
+#endif
 #endif

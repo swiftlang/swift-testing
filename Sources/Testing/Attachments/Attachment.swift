@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if !SWT_NO_FILE_CLONING
+private import _TestingInternals.StubsOnly
+#endif
+
 /// A type describing values that can be attached to the output of a test run
 /// and inspected later by the user.
 ///
@@ -132,9 +136,6 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
   init<A>(_ attachment: Attachment<A>) where A: Attachable & Sendable & ~Copyable {
     _estimatedAttachmentByteCount = { attachment.attachableValue.estimatedAttachmentByteCount }
     _withUnsafeBytes = { try attachment.withUnsafeBytes($0) }
-#if !SWT_NO_FILE_CLONING
-    _fileDescriptorForCloning = attachment.attachableValue._fileDescriptorForCloning
-#endif
     _preferredName = { attachment.attachableValue.preferredName(for: attachment, basedOn: $0) }
   }
 
@@ -157,10 +158,6 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
     }
     return result
   }
-
-#if !SWT_NO_FILE_CLONING
-  public private(set) var _fileDescriptorForCloning: CInt?
-#endif
 
   /// The implementation of ``preferredName(for:basedOn:)`` borrowed from the
   /// original attachment.
@@ -392,57 +389,24 @@ extension Attachable where Self: ~Copyable {
   /// default implementation opens `filePath` for writing with exclusive access,
   /// then passes it to `_write(toFILE:for:)`.
   borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
-#if !SWT_NO_FILE_CLONING && SWT_TARGET_OS_APPLE
+#if !SWT_NO_FILE_CLONING
+    var clonableSelf: (any FileClonable)?
+    if #available(_castingWithNonCopyableGenerics, *) {
+      clonableSelf = makeExistential(self) as? any FileClonable
+    }
+
     // fclonefileat() on Darwin takes a file path, so we need to call it before
     // we create a `FileHandle` below.
-    if let srcFD = _fileDescriptorForCloning {
-      if 0 == fclonefileat(srcFD, AT_FDCWD, filePath, 0) {
-        return
-      } else if case let errorCode = swt_errno(), errorCode == swt_EEXIST() {
-        throw CError(rawValue: errorCode)
-      }
-    }
-#endif
-
-    // Note "x" in the mode string which indicates that the file should be
-    // created and opened exclusively. The underlying `fopen()` call will thus
-    // fail with `EEXIST` if a file exists at `filePath`.
-    let file = try FileHandle(atPath: filePath, mode: "wxeb")
-
-#if !SWT_NO_FILE_CLONING && !SWT_TARGET_OS_APPLE
-    // Attempt to clone the source file. If the operation fails with `ENOTSUP`
-    // or `EOPNOTSUPP`, then the file system doesn't support file cloning.
-    func clone(to file: borrowing FileHandle) -> Bool {
-      return file.withUnsafePOSIXFileDescriptor { dstFD in
-        guard let dstFD, let srcFD = _fileDescriptorForCloning else {
-          return false
-        }
-#if os(Linux)
-        return -1 != swt_ioctl_FICLONE(dstFD, srcFD)
-#elseif os(FreeBSD)
-        var flags = CUnsignedInt(0)
-        if Self._freeBSDVersion >= 1500000 {
-          // `COPY_FILE_RANGE_CLONE` was introduced in FreeBSD 15.0, but on 14.3
-          // we can still benefit from an in-kernel copy instead.
-          flags |= swt_COPY_FILE_RANGE_CLONE()
-        }
-        return -1 != copy_file_range(srcFD, nil, dstFD, nil, Int(SSIZE_MAX), flags)
-#elseif os(Windows)
-        // Block cloning on Windows is only supported by ReFS which is not in
-        // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
-        return false
-#else
-#warning("Platform-specific implementation missing: File cloning unavailable")
-        return false
-#endif
-      }
-    }
-    if clone(to: file) {
+    if let clonableSelf, clonableSelf.clone(toFileAtPath: filePath) {
       return
     }
 #endif
 
     try withUnsafeBytes(for: attachment) { buffer in
+      // Note "x" in the mode string which indicates that the file should be
+      // created and opened exclusively. The underlying `fopen()` call will thus
+      // fail with `EEXIST` if a file exists at `filePath`.
+      let file = try FileHandle(atPath: filePath, mode: "wxeb")
       try file.write(buffer)
     }
   }
