@@ -689,7 +689,7 @@ func canonicalizePath(_ path: String) -> String? {
 #endif
 }
 
-#if !os(Windows)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
 /// Set the given file descriptor's `FD_CLOEXEC` flag.
 ///
 /// - Parameters:
