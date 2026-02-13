@@ -98,7 +98,6 @@ struct EventRecorderTests {
   }
 
   @Test("Verbose output")
-  @available(_regexAPI, *)
   func verboseOutput() async throws {
     let stream = Stream()
 
@@ -159,7 +158,6 @@ struct EventRecorderTests {
   }
 
 #if !os(Windows)
-  @available(_regexAPI, *)
   @Test(
     "Titles of messages ('Test' vs. 'Suite') are determined correctly",
     arguments: [
@@ -196,7 +194,6 @@ struct EventRecorderTests {
     )
   }
   
-  @available(_regexAPI, *)
   @Test(
     "Log the total number of test cases in parameterized tests at the end of the test run",
     arguments: [
@@ -232,7 +229,6 @@ struct EventRecorderTests {
     )
   }
 
-  @available(_regexAPI, *)
   @Test(
     "Issue counts are summed correctly on test end",
     arguments: [
@@ -296,7 +292,6 @@ struct EventRecorderTests {
     }.run(configuration: configuration)
   }
 
-  @available(_regexAPI, *)
   @Test("Issue counts are omitted on a successful test")
   func issueCountOmittedForPassingTest() async throws {
     let stream = Stream()
@@ -319,7 +314,6 @@ struct EventRecorderTests {
   }
 
 #if !os(Windows)
-  @available(_regexAPI, *)
   @Test("Issue counts are summed correctly on run end")
   func issueCountSummingAtRunEnd() async throws {
     let stream = Stream()
@@ -381,7 +375,6 @@ struct EventRecorderTests {
   }
 
   @Test("Issue counts are summed correctly on run end for a test with only warning issues")
-  @available(_regexAPI, *)
   func warningIssueCountSummingAtRunEnd() async throws {
     let stream = Stream()
 

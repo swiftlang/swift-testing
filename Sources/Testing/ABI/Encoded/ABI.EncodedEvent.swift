@@ -96,7 +96,7 @@ extension ABI {
     ///
     /// - Warning: Source locations at this level of the JSON schema are not yet
     ///   part of said JSON schema.
-    var _sourceLocation: SourceLocation?
+    var _sourceLocation: EncodedSourceLocation<V>?
 
     init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
       switch event.kind {
@@ -142,14 +142,14 @@ extension ABI {
         switch event.kind {
         case let .issueRecorded(recordedIssue):
           _comments = recordedIssue.comments.map(\.rawValue)
-          _sourceLocation = recordedIssue.sourceLocation
+          _sourceLocation = recordedIssue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         case let .valueAttached(attachment):
-          _sourceLocation = attachment.sourceLocation
+          _sourceLocation = EncodedSourceLocation<V>(encoding: attachment.sourceLocation)
         case let .testCaseCancelled(skipInfo),
           let .testSkipped(skipInfo),
           let .testCancelled(skipInfo):
           _comments = Array(skipInfo.comment).map(\.rawValue)
-          _sourceLocation = skipInfo.sourceLocation
+          _sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         default:
           break
         }

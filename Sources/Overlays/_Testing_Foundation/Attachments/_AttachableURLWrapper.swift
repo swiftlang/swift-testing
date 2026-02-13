@@ -8,9 +8,13 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
+#if canImport(Foundation) && !SWT_NO_FILE_IO
 public import Testing
 public import Foundation
+
+#if !SWT_NO_FILE_CLONING
+private import _TestingInternals.StubsOnly
+#endif
 
 /// A wrapper type representing file system objects and URLs that can be
 /// attached indirectly.
@@ -26,6 +30,47 @@ public struct _AttachableURLWrapper: Sendable {
 
   /// Whether or not this instance represents a compressed directory.
   var isCompressedDirectory: Bool
+
+#if !SWT_NO_FILE_CLONING && !os(Windows)
+  /// A file handle that refers to the original file (or, if a directory, the
+  /// compressed copy thereof).
+  ///
+  /// This file handle is used when cloning the represented file. If the value
+  /// of this property is `nil`, cloning won't be available for said file.
+  private var _fileHandle: FileHandle?
+#endif
+
+  /// Initialize an instance of this type representing a given URL.
+  ///
+  /// - Parameters:
+  ///   - url: The original URL being used as an attachable value.
+  ///   - copyURL: Optionally, a URL to which `url` was copied.
+  ///   - isCompressedDirectory: Whether or not the file system object at `url`
+  ///     is a directory (if so, `copyURL` must refer to its compressed copy.)
+  ///
+  /// - Throws: Any error that occurs trying to open `url` or `copyURL` for
+  ///   mapping. On platforms that support file cloning, an error may also be
+  ///   thrown if a file descriptor to `url` or `copyURL` cannot be created.
+  init(url: URL, copiedToFileAt copyURL: URL? = nil, isCompressedDirectory: Bool) throws {
+    if isCompressedDirectory && copyURL == nil {
+      preconditionFailure("When attaching a directory to a test, the URL to its compressed copy must be supplied. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+    }
+    self.url = url
+    self.data = try Data(contentsOf: copyURL ?? url, options: [.mappedIfSafe])
+    self.isCompressedDirectory = isCompressedDirectory
+#if !SWT_NO_FILE_CLONING && !os(Windows)
+    self._fileHandle = (copyURL ?? url).withUnsafeFileSystemRepresentation { path in
+      guard let path else {
+        return nil
+      }
+      let fd = open(path, O_RDONLY | O_CLOEXEC)
+      guard fd >= 0 else {
+        return nil
+      }
+      return FileHandle(fileDescriptor: fd, closeOnDealloc: true)
+    }
+#endif
+  }
 }
 
 // MARK: -
@@ -33,6 +78,10 @@ public struct _AttachableURLWrapper: Sendable {
 extension _AttachableURLWrapper: AttachableWrapper {
   public var wrappedValue: URL {
     url
+  }
+
+  public var estimatedAttachmentByteCount: Int? {
+    data.count
   }
 
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
@@ -64,4 +113,58 @@ extension _AttachableURLWrapper: AttachableWrapper {
     return suggestedName
   }
 }
+
+#if !SWT_NO_FILE_CLONING
+extension _AttachableURLWrapper: FileClonable {
+#if os(FreeBSD)
+  /// An integer encoding the FreeBSD version number.
+  private static let _freeBSDVersion = getosreldate()
+#endif
+
+  public borrowing func clone(toFileAtPath filePath: String) -> Bool {
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+    guard let srcFD = _fileHandle?.fileDescriptor else {
+      return false
+    }
+#endif
+#if SWT_TARGET_OS_APPLE
+    return 0 == fclonefileat(srcFD, AT_FDCWD, filePath, 0)
+#elseif os(Linux) || os(FreeBSD)
+    // Open the destination file for exclusive writing.
+    let dstFD = open(filePath, O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, mode_t(0o666))
+    guard dstFD >= 0 else {
+      return false
+    }
+    defer {
+      close(dstFD)
+    }
+#if os(Linux)
+    let fileCloned = -1 != ioctl(dstFD, swt_FICLONE(), srcFD)
+#elseif os(FreeBSD)
+    var flags = CUnsignedInt(0)
+    if Self._freeBSDVersion >= 1500000 {
+      // `COPY_FILE_RANGE_CLONE` was introduced in FreeBSD 15.0, but on 14.3
+      // we can still benefit from an in-kernel copy instead.
+      flags |= swt_COPY_FILE_RANGE_CLONE()
+    }
+    let fileCloned = -1 != copy_file_range(srcFD, nil, dstFD, nil, Int(SSIZE_MAX), flags)
+#endif
+    if !fileCloned {
+      // Failed to clone, but we already created the file, so we must unlink it
+      // so the fallback path works.
+      _ = unlink(filePath)
+    }
+    return fileCloned
+#elseif os(Windows)
+    // TODO: Windows implementation
+    // Block cloning on Windows is only supported by ReFS which is not in
+    // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
+    return false
+#else
+#warning("Platform-specific implementation missing: File cloning unavailable")
+    return false
+#endif
+  }
+}
+#endif
 #endif

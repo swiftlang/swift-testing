@@ -425,7 +425,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   if let path = args.argumentValue(forLabel: "--configuration-path") ?? args.argumentValue(forLabel: "--experimental-configuration-path") {
     let file = try FileHandle(forReadingAtPath: path)
     let configurationJSON = try file.readToEnd()
-    result = try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON.span.bytes)
+    result = try configurationJSON.withUnsafeBufferPointer { configurationJSON in
+      try JSON.decode(__CommandLineArguments_v0.self, from: .init(configurationJSON))
+    }
 
     // NOTE: We don't return early or block other arguments here: a caller is
     // allowed to pass a configuration AND e.g. "--verbose" and they'll both be
@@ -629,9 +631,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       return .unfiltered
     }
 
-    guard #available(_regexAPI, *) else {
-      throw _EntryPointError.featureUnavailable("The `\(label)' option is not supported on this OS version.")
-    }
     return try Configuration.TestFilter(membership: membership, matchingAnyOf: regexes)
   }
   filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))
@@ -673,6 +672,11 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
   // Warning issues (experimental).
   switch args.eventStreamVersionNumber {
+#if !SWT_NO_SNAPSHOT_TYPES
+  case .some(ABI.Xcode16.versionNumber):
+    // Xcode 26 and later support warning severity, so leave it enabled.
+    break
+#endif
   case .some(..<ABI.v6_3.versionNumber):
     // If the event stream version was explicitly specified to a value < 6.3,
     // disable the warning issue event to maintain legacy behavior.
@@ -704,7 +708,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 func eventHandlerForStreamingEvents(
   withVersionNumber versionNumber: VersionNumber?,
   encodeAsJSONLines: Bool,
-  forwardingTo targetEventHandler: @escaping @Sendable (borrowing RawSpan) -> Void
+  forwardingTo targetEventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
 ) throws -> Event.Handler {
   let versionNumber = versionNumber ?? ABI.CurrentVersion.versionNumber
   guard let abi = ABI.version(forVersionNumber: versionNumber) else {

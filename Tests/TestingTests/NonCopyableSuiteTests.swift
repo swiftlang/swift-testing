@@ -25,7 +25,6 @@ struct NonCopyableTests: ~Copyable & ~Escapable {
     #expect(lhs.hashValue == rhs.hashValue)
   }
 
-  @available(_mangledTypeNameAPI, *)
   @Test borrowing func mangledTypeName() {
     #expect(TypeInfo(describing: Self.self).mangledName != nil)
   }

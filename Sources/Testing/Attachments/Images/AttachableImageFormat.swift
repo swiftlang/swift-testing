@@ -33,7 +33,7 @@
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
-@available(_uttypesAPI, *)
+@available(_uttypesAPI, *) // For DocC
 public struct AttachableImageFormat: Sendable {
   /// An enumeration describing the various kinds of image format that can be
   /// used with an attachment.
@@ -86,14 +86,13 @@ public struct AttachableImageFormat: Sendable {
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
-@available(_uttypesAPI, *)
+@available(_uttypesAPI, *) // For DocC
 extension AttachableImageFormat: Equatable, Hashable {}
 
 #if SWT_NO_IMAGE_ATTACHMENTS
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
-@available(_uttypesAPI, *)
 extension AttachableImageFormat.Kind: Equatable, Hashable {
   public static func ==(lhs: Self, rhs: Self) -> Bool {
     switch (lhs, rhs) {
@@ -130,7 +129,7 @@ extension AttachableImageFormat.Kind: Equatable, Hashable {
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
-@available(_uttypesAPI, *)
+@available(_uttypesAPI, *) // For DocC
 extension AttachableImageFormat: CustomStringConvertible, CustomDebugStringConvertible {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
@@ -161,7 +160,7 @@ extension AttachableImageFormat: CustomStringConvertible, CustomDebugStringConve
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
-@available(_uttypesAPI, *)
+@available(_uttypesAPI, *) // For DocC
 extension AttachableImageFormat {
   /// The PNG image format.
   ///
