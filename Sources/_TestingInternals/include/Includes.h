@@ -141,6 +141,9 @@
 
 #if !SWT_NO_DYNAMIC_LINKING
 #include <mach-o/dyld.h>
+#if __has_include(<mach-o/dyld_priv.h>)
+#include <mach-o/dyld_priv.h>
+#endif
 #endif
 
 #if !SWT_NO_OS_UNFAIR_LOCK
