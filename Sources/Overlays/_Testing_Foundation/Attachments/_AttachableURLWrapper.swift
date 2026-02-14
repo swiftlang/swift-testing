@@ -179,7 +179,7 @@ extension _AttachableURLWrapper: FileClonable {
           dstHandle,
           FileEndOfFileInfo,
           &eofInfo,
-          MemoryLayout.stride(ofValue: eofInfo)
+          DWORD(MemoryLayout.stride(ofValue: eofInfo))
         )
         guard fileResized else {
           return false
@@ -194,7 +194,7 @@ extension _AttachableURLWrapper: FileClonable {
           dstHandle,
           FSCTL_DUPLICATE_EXTENTS_TO_FILE,
           &extents,
-          MemoryLayout.stride(ofValue: extents),
+          DWORD(MemoryLayout.stride(ofValue: extents)),
           nil,
           0,
           &ignored,
