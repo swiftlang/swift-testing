@@ -164,7 +164,7 @@ extension _AttachableURLWrapper: FileClonable {
     // wide use at this time. SEE: https://learn.microsoft.com/en-us/windows/win32/fileio/block-cloning
     return filePath.withCString(encodedAs: UTF16.self) { filePath in
       guard let srcHandle = _fileHandle?._handle,
-            let dstHandle = CreateFileW(filePath, GENERIC_READ, FILE_SHARE_DELETE, nil, CREATE_ALWAYS, DWORD(FILE_ATTRIBUTE_NORMAL), nil) else {
+            let dstHandle = CreateFileW(filePath, GENERIC_READ, DWORD(FILE_SHARE_DELETE), nil, DWORD(CREATE_ALWAYS), DWORD(FILE_ATTRIBUTE_NORMAL), nil) else {
         return false
       }
       defer {
