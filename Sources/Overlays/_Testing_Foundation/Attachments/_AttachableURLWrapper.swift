@@ -171,7 +171,7 @@ extension _AttachableURLWrapper: FileClonable {
         CloseHandle(dstHandle)
       }
 
-      func duplicateExtents() -> Bool {
+      let fileCloned = {
         // Resize the file to be large enough to contain the cloned bytes.
         var eofInfo = FILE_END_OF_FILE_INFO()
         eofInfo.EndOfFile.QuadPart = LONGLONG(data.count)
@@ -200,10 +200,10 @@ extension _AttachableURLWrapper: FileClonable {
           &ignored,
           nil
         )
-      }
+      }()
 
-      let fileCloned = duplicateExtents()
       if !fileCloned {
+        fatalError("\(Win32Error(rawValue: GetLastError()))")
         // As with Linux/FreeBSD above, remove the file we just created.
         DeleteFileW(filePath)
       }
