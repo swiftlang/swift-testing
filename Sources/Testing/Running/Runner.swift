@@ -82,6 +82,9 @@ extension Runner {
   private struct _Context: Sendable {
     /// A serializer used to reduce parallelism among test cases.
     var testCaseSerializer: Serializer?
+
+    /// Which iteration of the test plan is being executed.
+    var iteration: Int
   }
 
   /// Apply the custom scope for any test scope providers of the traits
@@ -227,10 +230,10 @@ extension Runner {
       // Determine what kind of event to send for this step based on its action.
       switch step.action {
       case .run:
-        Event.post(.testStarted, for: (step.test, nil), configuration: configuration)
+        Event.post(.testStarted, for: (step.test, nil), iteration: context.iteration, configuration: configuration)
         shouldSendTestEnded = true
       case let .skip(skipInfo):
-        Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: configuration)
+        Event.post(.testSkipped(skipInfo), for: (step.test, nil), iteration: context.iteration, configuration: configuration)
         shouldSendTestEnded = false
       case let .recordIssue(issue):
         // Scope posting the issue recorded event such that issue handling
@@ -254,7 +257,7 @@ extension Runner {
     defer {
       if let step = stepGraph.value {
         if shouldSendTestEnded {
-          Event.post(.testEnded, for: (step.test, nil), configuration: configuration)
+          Event.post(.testEnded, for: (step.test, nil), iteration: context.iteration, configuration: configuration)
         }
         Event.post(.planStepEnded(step), for: (step.test, nil), configuration: configuration)
       }
@@ -404,9 +407,9 @@ extension Runner {
   private static func _runTestCase(_ testCase: Test.Case, within step: Plan.Step, context: _Context) async {
     let configuration = _configuration
 
-    Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
+    Event.post(.testCaseStarted, for: (step.test, testCase), iteration: context.iteration, configuration: configuration)
     defer {
-      Event.post(.testCaseEnded, for: (step.test, testCase), configuration: configuration)
+      Event.post(.testCaseEnded, for: (step.test, testCase), iteration: context.iteration, configuration: configuration)
     }
 
     await Test.Case.withCurrent(testCase) {
@@ -466,7 +469,7 @@ extension Runner {
     // accidentally depend on e.g. the `configuration` property rather than the
     // current configuration.
     let context: _Context = {
-      var context = _Context()
+      var context = _Context(iteration: 0)
 
       let maximumParallelizationWidth = runner.configuration.maximumParallelizationWidth
       if maximumParallelizationWidth > 1 && maximumParallelizationWidth < .max {
@@ -504,7 +507,9 @@ extension Runner {
             taskAction = "running iteration #\(iterationIndex + 1)"
           }
           _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: taskAction)) {
-            try? await _runStep(atRootOf: runner.plan.stepGraph, context: context)
+            var iterationContext = context
+            iterationContext.iteration = iterationIndex
+            try? await _runStep(atRootOf: runner.plan.stepGraph, context: iterationContext)
           }
           await taskGroup.waitForAll()
         }

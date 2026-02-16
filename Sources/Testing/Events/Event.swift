@@ -237,6 +237,7 @@ public struct Event: Sendable {
   static func post(
     _ kind: Kind,
     for testAndTestCase: (Test?, Test.Case?) = currentTestAndTestCase(),
+    iteration: Int? = nil,
     instant: Test.Clock.Instant = .now,
     configuration: Configuration? = nil
   ) {
@@ -260,7 +261,7 @@ public struct Event: Sendable {
       }
     }
     let event = Event(kind, testID: test?.id, testCaseID: testCase?.id, instant: instant)
-    let context = Event.Context(test: test, testCase: testCase, configuration: nil)
+    let context = Event.Context(test: test, testCase: testCase, configuration: nil, iteration: iteration)
     event._post(in: context, configuration: configuration)
   }
 }
@@ -303,6 +304,12 @@ extension Event {
     /// ``Configuration/eventHandler`` property of this instance is cleared.
     public var configuration: Configuration?
 
+    /// The iteration of the current test and test case.
+    ///
+    /// This value is not guaranteed to be provided for all events, but if this
+    /// is provided, the `test` will be non-`nil`.
+    public var iteration: Int?
+
     /// Initialize a new instance of this type.
     ///
     /// - Parameters:
@@ -310,10 +317,18 @@ extension Event {
     ///     if any.
     ///   - testCase: The test case for which this instance's associated event
     ///     occurred, if any.
-    init(test: Test?, testCase: Test.Case?, configuration: Configuration?) {
+    ///   - configuration: The ``Configuration`` of the current test run.
+    ///   - iteration: The iteration of the associated test and case, if any.
+    init(
+      test: Test?,
+      testCase: Test.Case?,
+      configuration: Configuration?,
+      iteration: Int?
+    ) {
       self.test = test
       self.testCase = testCase
       self.configuration = configuration
+      self.iteration = iteration
     }
   }
 

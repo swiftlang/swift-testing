@@ -67,7 +67,7 @@ struct EventTests {
 
   @Test("Event.Contexts's Codable Conformances")
   func codable() async throws {
-    let eventContext = Event.Context(test: .current, testCase: .current, configuration: .current)
+    let eventContext = Event.Context(test: .current, testCase: .current, configuration: .current, iteration: nil)
     let snapshot = Event.Context.Snapshot(snapshotting: eventContext)
 
     let decoded = try JSON.encodeAndDecode(snapshot)

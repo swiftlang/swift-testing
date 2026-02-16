@@ -1,0 +1,106 @@
+//
+// This source file is part of the Swift.org open source project
+//
+// Copyright (c) 2026 Apple Inc. and the Swift project authors
+// Licensed under Apache License v2.0 with Runtime Library Exception
+//
+// See https://swift.org/LICENSE.txt for license information
+// See https://swift.org/CONTRIBUTORS.txt for Swift project authors
+//
+
+@testable @_spi(ForToolsIntegrationOnly) import Testing
+
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+import Synchronization
+#endif
+
+@Suite("Event Iteration Tests")
+struct EventIterationTests {
+  /// Helper to verify that events of a given kind include iteration values
+  private func verifyIterations(
+    for eventKinds: [Event.Kind],
+    repetitionPolicy: Configuration.RepetitionPolicy,
+    expectedIterations: Int,
+    testBody: @escaping @Sendable (Int) -> Void,
+    location: SourceLocation = #_sourceLocation
+  ) async {
+    let recordedIterationIndex = Mutex<Int>(0)
+
+    await confirmation("Events received", expectedCount: expectedIterations * eventKinds.count, sourceLocation: location) { eventReceived in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, context in
+        if eventKinds.contains(where: { Self.matchesKind($0, event.kind) }) {
+          if let iteration = context.iteration {
+            recordedIterationIndex.withLock { $0 = iteration }
+          }
+          eventReceived()
+        }
+      }
+      configuration.repetitionPolicy = repetitionPolicy
+
+      await Test {
+        testBody(recordedIterationIndex.rawValue)
+      }.run(configuration: configuration)
+
+      // Verify all expected iterations were recorded
+      let iterations = recordedIterationIndex.rawValue
+      #expect(iterations == expectedIterations - 1, sourceLocation: location)
+    }
+  }
+
+  private static func matchesKind(_ expected: Event.Kind, _ actual: Event.Kind) -> Bool {
+    switch (expected, actual) {
+    case (.testStarted, .testStarted),
+         (.testEnded, .testEnded),
+         (.testCaseStarted, .testCaseStarted),
+         (.testCaseEnded, .testCaseEnded):
+      return true
+    default:
+      return false
+    }
+  }
+
+  @Test("testStarted and testEnded events include iteration in context")
+  func testEventsIncludeIteration() async {
+    await verifyIterations(
+      for: [.testStarted, .testEnded],
+      repetitionPolicy: .once,
+      expectedIterations: 1
+    ) { _ in
+      // Do nothing, just pass
+    }
+  }
+
+  @Test("testCaseStarted and testCaseEnded events include iteration in context")
+  func testCaseEventsIncludeIteration() async {
+    await verifyIterations(
+      for: [.testCaseStarted, .testCaseEnded],
+      repetitionPolicy: .repeating(maximumIterationCount: 5),
+      expectedIterations: 5
+    ) { _ in
+      // Do nothing, just pass
+    }
+  }
+
+  @Test("Events include valid iteration for different repetition policies",
+        arguments: [
+          (Configuration.RepetitionPolicy.once, 1),
+          (.repeating(maximumIterationCount: 3), 3),
+          (.repeating(.whileIssueRecorded, maximumIterationCount: 5), 3),
+        ]
+  )
+  func eventsWithRepetitionPolicy(
+    policy: Configuration.RepetitionPolicy,
+    expectedIterations: Int
+  ) async {
+    await verifyIterations(
+      for: [.testCaseStarted, .testCaseEnded],
+      repetitionPolicy: policy,
+      expectedIterations: expectedIterations
+    ) { index in
+      if index < 2 {
+        Issue.record("Failure")
+      }
+    }
+  }
+}
