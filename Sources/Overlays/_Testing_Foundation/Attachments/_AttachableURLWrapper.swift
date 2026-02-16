@@ -192,7 +192,7 @@ extension _AttachableURLWrapper: FileClonable {
         var ignored = DWORD(0)
         return DeviceIoControl(
           dstHandle,
-          FSCTL_DUPLICATE_EXTENTS_TO_FILE,
+          swt_FSCTL_DUPLICATE_EXTENTS_TO_FILE(),
           &extents,
           DWORD(MemoryLayout.stride(ofValue: extents)),
           nil,
