@@ -171,6 +171,7 @@ extension _AttachableURLWrapper: FileClonable {
         CloseHandle(dstHandle)
       }
 
+      SetLastError(ERROR_SUCCESS)
       let fileCloned = {
         // Resize the file to be large enough to contain the cloned bytes.
         var eofInfo = FILE_END_OF_FILE_INFO()
@@ -203,7 +204,7 @@ extension _AttachableURLWrapper: FileClonable {
       }()
 
       if !fileCloned {
-        fatalError("\(Win32Error(rawValue: GetLastError()))")
+        Issue.record("ERROR REPORTED WHILE CLONING: \(Win32Error(rawValue: GetLastError()))")
         // As with Linux/FreeBSD above, remove the file we just created.
         DeleteFileW(filePath)
       }
