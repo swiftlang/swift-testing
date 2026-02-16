@@ -29,7 +29,7 @@ struct EventIterationTests {
     await confirmation("Events received", expectedCount: expectedIterations * eventKinds.count, sourceLocation: location) { eventReceived in
       var configuration = Configuration()
       configuration.eventHandler = { event, context in
-        if eventKinds.contains(where: { Self.matchesKind($0, event.kind) }) {
+        if eventKinds.contains(where: { Self.matchesTestLifetimeEventKind($0, event.kind) }) {
           if let iteration = context.iteration {
             recordedIterationIndex.withLock { $0 = iteration }
           }
@@ -44,11 +44,11 @@ struct EventIterationTests {
 
       // Verify all expected iterations were recorded
       let iterations = recordedIterationIndex.rawValue
-      #expect(iterations == expectedIterations - 1, sourceLocation: location)
+      #expect(iterations == expectedIterations - 1, "Final observed iteration index did not match expected number of iterations", sourceLocation: location)
     }
   }
 
-  private static func matchesKind(_ expected: Event.Kind, _ actual: Event.Kind) -> Bool {
+  private static func matchesTestLifetimeEventKind(_ expected: Event.Kind, _ actual: Event.Kind) -> Bool {
     switch (expected, actual) {
     case (.testStarted, .testStarted),
          (.testEnded, .testEnded),
@@ -60,8 +60,8 @@ struct EventIterationTests {
     }
   }
 
-  @Test("testStarted and testEnded events include iteration in context")
-  func testEventsIncludeIteration() async {
+  @Test
+  func `testStarted and testEnded events include iteration in context`() async {
     await verifyIterations(
       for: [.testStarted, .testEnded],
       repetitionPolicy: .once,
@@ -71,8 +71,8 @@ struct EventIterationTests {
     }
   }
 
-  @Test("testCaseStarted and testCaseEnded events include iteration in context")
-  func testCaseEventsIncludeIteration() async {
+  @Test
+  func `testCaseStarted and testCaseEnded events include iteration in context`() async {
     await verifyIterations(
       for: [.testCaseStarted, .testCaseEnded],
       repetitionPolicy: .repeating(maximumIterationCount: 5),
@@ -82,14 +82,12 @@ struct EventIterationTests {
     }
   }
 
-  @Test("Events include valid iteration for different repetition policies",
-        arguments: [
-          (Configuration.RepetitionPolicy.once, 1),
-          (.repeating(maximumIterationCount: 3), 3),
-          (.repeating(.whileIssueRecorded, maximumIterationCount: 5), 3),
-        ]
-  )
-  func eventsWithRepetitionPolicy(
+  @Test(arguments: [
+    (Configuration.RepetitionPolicy.once, 1),
+    (.repeating(maximumIterationCount: 3), 3),
+    (.repeating(.whileIssueRecorded, maximumIterationCount: 5), 3),
+  ])
+  func `event iteration is correct for different repetition policies`(
     policy: Configuration.RepetitionPolicy,
     expectedIterations: Int
   ) async {

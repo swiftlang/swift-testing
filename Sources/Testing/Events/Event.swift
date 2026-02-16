@@ -305,6 +305,7 @@ extension Event {
     public var configuration: Configuration?
 
     /// The iteration of the current test and test case.
+    /// The first iteration has an index of `0`.
     ///
     /// This value is not guaranteed to be provided for all events, but if this
     /// is provided, the `test` will be non-`nil`.
@@ -325,6 +326,8 @@ extension Event {
       configuration: Configuration?,
       iteration: Int?
     ) {
+      // Ensure that if `iteration` is specified, the test is also specified.
+      precondition(iteration == nil || (iteration != nil && test != nil))
       self.test = test
       self.testCase = testCase
       self.configuration = configuration
