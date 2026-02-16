@@ -171,7 +171,7 @@ extension _AttachableURLWrapper: FileClonable {
         CloseHandle(dstHandle)
       }
 
-      SetLastError(ERROR_SUCCESS)
+      SetLastError(DWORD(ERROR_SUCCESS))
       let fileCloned = {
         // Resize the file to be large enough to contain the cloned bytes.
         var eofInfo = FILE_END_OF_FILE_INFO()
