@@ -15,6 +15,10 @@ private import _TestingInternals
 private import Synchronization
 #endif
 
+#if SWT_TARGET_OS_APPLE && !SWT_NO_MACH_PORTS && canImport(CrashReporterSupport)
+private import CrashReporterSupport // NOTE: depends on Core Foundation!
+#endif
+
 #if !SWT_NO_EXIT_TESTS
 #if SWT_NO_FILE_IO
 #error("Platform-specific misconfiguration: support for exit tests requires support for file I/O")
@@ -206,6 +210,9 @@ extension ExitTest {
       EXCEPTION_DEFAULT,
       THREAD_STATE_NONE
     )
+#if canImport(CrashReporterSupport)
+    _ = CRDisableCrashReporting()
+#endif
 #elseif os(Linux)
     // On Linux, disable the generation of core files. They may or may not be
     // disabled by default; if they are enabled, they significantly slow down
