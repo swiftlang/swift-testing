@@ -19,11 +19,13 @@ private import UIKitCore_Private
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
 @available(_uttypesAPI, *) // For DocC
 extension UIImage: AttachableAsImage, AttachableAsCGImage {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   package var attachableCGImage: CGImage {
     get throws {

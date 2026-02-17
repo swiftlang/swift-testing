@@ -28,6 +28,7 @@
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
 #if SWT_NO_IMAGE_ATTACHMENTS
 @_unavailableInEmbedded
@@ -68,6 +69,7 @@ public struct AttachableImageFormat: Sendable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public private(set) var encodingQuality: Float = 1.0
 
@@ -81,6 +83,7 @@ public struct AttachableImageFormat: Sendable {
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
 #if SWT_NO_IMAGE_ATTACHMENTS
 @_unavailableInEmbedded
@@ -124,6 +127,7 @@ extension AttachableImageFormat.Kind: Equatable, Hashable {
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
 #if SWT_NO_IMAGE_ATTACHMENTS
 @_unavailableInEmbedded
@@ -133,6 +137,7 @@ extension AttachableImageFormat.Kind: Equatable, Hashable {
 extension AttachableImageFormat: CustomStringConvertible, CustomDebugStringConvertible {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var description: String {
     let kindDescription = String(describing: kind)
@@ -144,6 +149,7 @@ extension AttachableImageFormat: CustomStringConvertible, CustomDebugStringConve
 
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var debugDescription: String {
     let kindDescription = String(reflecting: kind)
@@ -155,6 +161,7 @@ extension AttachableImageFormat: CustomStringConvertible, CustomDebugStringConve
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
 #if SWT_NO_IMAGE_ATTACHMENTS
 @_unavailableInEmbedded
@@ -166,6 +173,7 @@ extension AttachableImageFormat {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public static var png: Self {
     Self(kind: .png, encodingQuality: 1.0)
@@ -175,6 +183,7 @@ extension AttachableImageFormat {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public static var jpeg: Self {
     Self(kind: .jpeg, encodingQuality: 1.0)
@@ -193,6 +202,7 @@ extension AttachableImageFormat {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public static func jpeg(withEncodingQuality encodingQuality: Float) -> Self {
     Self(kind: .jpeg, encodingQuality: encodingQuality)

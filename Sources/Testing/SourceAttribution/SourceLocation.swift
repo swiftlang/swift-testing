@@ -74,6 +74,7 @@ public struct SourceLocation: Sendable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var filePath: String
 
