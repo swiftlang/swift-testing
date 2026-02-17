@@ -183,6 +183,7 @@ extension _AttachableURLWrapper: FileClonable {
           DWORD(MemoryLayout.stride(ofValue: eofInfo))
         )
         guard fileResized else {
+          Issue.record("ERROR REPORTED WHILE RESIZING: \(Win32Error(rawValue: GetLastError()))")
           return false
         }
 
@@ -191,7 +192,7 @@ extension _AttachableURLWrapper: FileClonable {
         extents.FileHandle = srcHandle
         extents.ByteCount.QuadPart = LONGLONG(data.count)
         var ignored = DWORD(0)
-        return DeviceIoControl(
+        let fileCloned = DeviceIoControl(
           dstHandle,
           swt_FSCTL_DUPLICATE_EXTENTS_TO_FILE(),
           &extents,
@@ -201,10 +202,13 @@ extension _AttachableURLWrapper: FileClonable {
           &ignored,
           nil
         )
+        if !fileCloned {
+          Issue.record("ERROR REPORTED WHILE CLONING: \(Win32Error(rawValue: GetLastError()))")
+        }
+        return fileCloned
       }()
 
       if !fileCloned {
-        Issue.record("ERROR REPORTED WHILE CLONING: \(Win32Error(rawValue: GetLastError()))")
         // As with Linux/FreeBSD above, remove the file we just created.
         DeleteFileW(filePath)
       }
