@@ -24,7 +24,7 @@ public struct SourceLocation: Sendable {
   public var fileID: String {
     willSet {
       precondition(!newValue.isEmpty, "SourceLocation.fileID must not be empty (was \(newValue))")
-      precondition(newValue.contains("/"), "SourceLocation.fileID must be a well-formed file ID (was \(newValue))")
+      precondition(newValue.utf8.contains(UInt8(ascii: "/")), "SourceLocation.fileID must be a well-formed file ID (was \(newValue))")
     }
   }
 
