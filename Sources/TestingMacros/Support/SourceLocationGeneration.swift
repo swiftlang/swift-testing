@@ -37,5 +37,5 @@ func createSourceLocationExpr(of expr: some SyntaxProtocol, context: some MacroE
     return "Testing.SourceLocation.__here()"
   }
 
-  return "Testing.SourceLocation(fileID: \(fileIDSourceLoc.file), filePath: \(filePathSourceLoc.file), line: \(fileIDSourceLoc.line), column: \(fileIDSourceLoc.column))"
+  return "Testing.SourceLocation(__uncheckedFileID: \(fileIDSourceLoc.file), filePath: \(filePathSourceLoc.file), line: \(fileIDSourceLoc.line), column: \(fileIDSourceLoc.column))"
 }

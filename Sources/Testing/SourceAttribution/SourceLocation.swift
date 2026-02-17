@@ -24,7 +24,7 @@ public struct SourceLocation: Sendable {
   public var fileID: String {
     willSet {
       precondition(!newValue.isEmpty, "SourceLocation.fileID must not be empty (was \(newValue))")
-      precondition(newValue.contains("/"), "SourceLocation.fileID must be a well-formed file ID (was \(newValue))")
+      precondition(newValue.utf8.contains(UInt8(ascii: "/")), "SourceLocation.fileID must be a well-formed file ID (was \(newValue))")
     }
   }
 
@@ -113,14 +113,11 @@ public struct SourceLocation: Sendable {
   /// - Precondition: `column` must be greater than `0`.
   public init(fileID: String, filePath: String, line: Int, column: Int) {
     precondition(!fileID.isEmpty, "SourceLocation.fileID must not be empty (was \(fileID))")
-    precondition(fileID.contains("/"), "SourceLocation.fileID must be a well-formed file ID (was \(fileID))")
+    precondition(fileID.utf8.contains(UInt8(ascii: "/")), "SourceLocation.fileID must be a well-formed file ID (was \(fileID))")
     precondition(line > 0, "SourceLocation.line must be greater than 0 (was \(line))")
     precondition(column > 0, "SourceLocation.column must be greater than 0 (was \(column))")
 
-    self.fileID = fileID
-    self.filePath = filePath
-    self.line = line
-    self.column = column
+    self.init(__uncheckedFileID: fileID, filePath: filePath, line: line, column: column)
   }
 }
 
