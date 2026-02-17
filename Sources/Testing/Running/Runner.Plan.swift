@@ -193,6 +193,26 @@ extension Runner.Plan {
     synthesizeSuites(in: &graph, sourceLocation: &sourceLocation)
   }
 
+  /// Given an array of tests, synthesize any containing suites that are not
+  /// already represented in that array.
+  ///
+  /// - Parameters:
+  ///   - tests: The test functions and test suites that have already been
+  ///     generated.
+  ///
+  /// - Returns: A superset of `tests` that also includes synthesized instances
+  ///   of ``Test`` representing any test suites not already present in `tests`
+  ///   that can be inferred from the contents of that collection.
+  static func synthesizeSuites(for tests: [Test]) -> [Test] {
+    var testGraph = Graph<String, Test?>()
+    for test in tests {
+      let idComponents = test.id.keyPathRepresentation
+      testGraph.insertValue(test, at: idComponents)
+    }
+    _recursivelySynthesizeSuites(in: &testGraph)
+    return testGraph.compactMap { $0.value }
+  }
+
   /// The basic "run" action.
   private static let _runAction = Action.run(options: .init())
 
