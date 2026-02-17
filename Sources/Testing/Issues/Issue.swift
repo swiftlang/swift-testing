@@ -87,6 +87,7 @@ public struct Issue: Sendable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public enum Severity: Sendable {
     /// The severity level for an issue which should be noted but is not
@@ -97,6 +98,7 @@ public struct Issue: Sendable {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
+    ///   @Available(Xcode, introduced: 26.4)
     /// }
     case warning
 
@@ -107,6 +109,7 @@ public struct Issue: Sendable {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
+    ///   @Available(Xcode, introduced: 26.4)
     /// }
     case error
   }
@@ -115,6 +118,7 @@ public struct Issue: Sendable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var severity: Severity
   
@@ -131,6 +135,7 @@ public struct Issue: Sendable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var isFailure: Bool {
     return !self.isKnown && self.severity >= .error
@@ -344,6 +349,7 @@ extension Issue {
     /// 
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
+    ///   @Available(Xcode, introduced: 26.4)
     /// }
     public var severity: Severity
 

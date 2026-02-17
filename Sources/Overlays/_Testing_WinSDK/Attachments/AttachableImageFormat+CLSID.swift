@@ -13,6 +13,7 @@ public import WinSDK
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
 extension AttachableImageFormat {
   private static let _encoderPathExtensionsByCLSID = Result {
@@ -194,6 +195,7 @@ extension AttachableImageFormat {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var encoderCLSID: CLSID {
     kind.encoderCLSID
@@ -219,6 +221,7 @@ extension AttachableImageFormat {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public init(encoderCLSID: CLSID, encodingQuality: Float = 1.0) {
     let encoderCLSID = CLSID.Wrapper(encoderCLSID)
@@ -255,6 +258,7 @@ extension AttachableImageFormat {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public init?(pathExtension: String, encodingQuality: Float = 1.0) {
     let pathExtension = pathExtension.drop { $0 == "." }

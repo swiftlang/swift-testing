@@ -13,11 +13,13 @@ public import CoreGraphics
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
 @available(_uttypesAPI, *)
 extension CGImage: AttachableAsImage, AttachableAsCGImage {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   package var attachableCGImage: CGImage {
     self
