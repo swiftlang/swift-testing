@@ -166,7 +166,7 @@ extension _AttachableURLWrapper: FileClonable {
       guard let srcHandle = _fileHandle?._handle,
             let dstHandle = CreateFileW(
               filePath,
-              DWORD(GENERIC_READ | GENERIC_WRITE),
+              DWORD(GENERIC_READ) | DWORD(GENERIC_WRITE),
               DWORD(FILE_SHARE_DELETE),
               nil,
               DWORD(CREATE_ALWAYS),
