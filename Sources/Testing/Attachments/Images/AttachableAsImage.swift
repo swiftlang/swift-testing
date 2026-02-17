@@ -51,6 +51,7 @@
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
 #if SWT_NO_IMAGE_ATTACHMENTS
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
@@ -75,6 +76,7 @@ public protocol AttachableAsImage {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   borrowing func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
 

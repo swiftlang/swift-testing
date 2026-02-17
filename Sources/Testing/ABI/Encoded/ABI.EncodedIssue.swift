@@ -30,6 +30,7 @@ extension ABI {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
+    ///   @Available(Xcode, introduced: 26.4)
     /// }
     var severity: Severity?
 
@@ -39,6 +40,7 @@ extension ABI {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
+    ///   @Available(Xcode, introduced: 26.4)
     /// }
     var isFailure: Bool?
 

@@ -90,6 +90,7 @@ extension Issue {
   /// 
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   @discardableResult public static func record(
     _ comment: Comment? = nil,
