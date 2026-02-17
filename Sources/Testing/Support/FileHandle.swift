@@ -514,10 +514,12 @@ extension FileHandle {
 #if SWT_TARGET_OS_APPLE
     // pipe2() is not implemented on Darwin. BUG: rdar://138426570
     return simulatePipe2Call(fds)
-#elseif os(Linux) && !SWT_NO_DYNAMIC_LINKING
+#elseif os(Linux)
+#if !SWT_NO_DYNAMIC_LINKING
     if let _pipe2 {
       return _pipe2(fds, O_CLOEXEC)
     }
+#endif
     return simulatePipe2Call(fds)
 #elseif os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
     // These platforms implement pipe2() without constraints.
