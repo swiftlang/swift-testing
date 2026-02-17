@@ -521,7 +521,7 @@ extension FileHandle {
     }
 #endif
     return simulatePipe2Call(fds)
-#elseif os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#elseif os(FreeBSD) || os(OpenBSD) || os(Android)
     // These platforms implement pipe2() without constraints.
     return pipe2(fds, O_CLOEXEC)
 #else
