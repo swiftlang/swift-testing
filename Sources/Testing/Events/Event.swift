@@ -229,6 +229,7 @@ public struct Event: Sendable {
   ///   - testAndTestCase: The test and test case for which the event occurred,
   ///     if any. The default value of this argument is ``Test/current`` and
   ///     ``Test/Case/current``.
+  ///   - iteration: The current iteration of this test and test case being executed.
   ///   - instant: The instant at which the event occurred. The default value
   ///     of this argument is `.now`.
   ///   - configuration: The configuration whose event handler should handle
@@ -261,7 +262,7 @@ public struct Event: Sendable {
       }
     }
     let event = Event(kind, testID: test?.id, testCaseID: testCase?.id, instant: instant)
-    let context = Event.Context(test: test, testCase: testCase, configuration: nil, iteration: iteration)
+    let context = Event.Context(test: test, testCase: testCase, iteration: iteration, configuration: nil)
     event._post(in: context, configuration: configuration)
   }
 }
@@ -297,19 +298,19 @@ extension Event {
     /// functions), the value of this property is `nil`.
     public var testCase: Test.Case?
 
-    /// The configuration handling the corresponding event, if any.
-    ///
-    /// The value of this property is a copy of the configuration that owns the
-    /// currently-running event handler; to avoid reference cycles, the
-    /// ``Configuration/eventHandler`` property of this instance is cleared.
-    public var configuration: Configuration?
-
     /// The iteration of the current test and test case.
     /// The first iteration has an index of `0`.
     ///
     /// This value is not guaranteed to be provided for all events, but if this
     /// is provided, the `test` will be non-`nil`.
     public var iteration: Int?
+
+    /// The configuration handling the corresponding event, if any.
+    ///
+    /// The value of this property is a copy of the configuration that owns the
+    /// currently-running event handler; to avoid reference cycles, the
+    /// ``Configuration/eventHandler`` property of this instance is cleared.
+    public var configuration: Configuration?
 
     /// Initialize a new instance of this type.
     ///
@@ -318,20 +319,20 @@ extension Event {
     ///     if any.
     ///   - testCase: The test case for which this instance's associated event
     ///     occurred, if any.
-    ///   - configuration: The ``Configuration`` of the current test run.
     ///   - iteration: The iteration of the associated test and case, if any.
+    ///   - configuration: The ``Configuration`` of the current test run.
     init(
       test: Test?,
       testCase: Test.Case?,
-      configuration: Configuration?,
-      iteration: Int?
+      iteration: Int?,
+      configuration: Configuration?
     ) {
       // Ensure that if `iteration` is specified, the test is also specified.
       precondition(iteration == nil || (iteration != nil && test != nil))
       self.test = test
       self.testCase = testCase
-      self.configuration = configuration
       self.iteration = iteration
+      self.configuration = configuration
     }
   }
 
@@ -626,6 +627,11 @@ extension Event.Context {
     /// functions), the value of this property is `nil`.
     public var testCase: Test.Case.Snapshot?
 
+    /// A snapshot of the test iteration when the associated ``Event``
+    /// occurred, if any. This value is determined by the `repetitionPolicy`
+    /// applied to the test plan.
+    public var iteration: Int?
+
     /// Initialize a new instance of this type.
     ///
     /// - Parameters:
@@ -633,6 +639,7 @@ extension Event.Context {
     public init(snapshotting context: borrowing Event.Context) {
       test = context.test.map { Test.Snapshot(snapshotting: $0) }
       testCase = context.testCase.map { Test.Case.Snapshot(snapshotting: $0) }
+      iteration = context.iteration
     }
   }
 }
