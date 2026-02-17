@@ -202,6 +202,7 @@ struct AttachmentTests {
   }
 #endif
 
+#if !SWT_NO_FILE_CLONING
   @Test func cloneAttachment() async throws {
     struct MyFileClonable: Attachable, FileClonable {
       var withUnsafeBytesCalled: Confirmation
@@ -226,6 +227,7 @@ struct AttachmentTests {
       }
     }
   }
+#endif
 
   @Test func attachValue() async {
     await confirmation("Attachment detected", expectedCount: 2) { valueAttached in
