@@ -15,7 +15,7 @@ private import _TestingInternals
 private import Synchronization
 #endif
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_MACH_PORTS && canImport(CrashReporterSupport)
+#if SWT_TARGET_OS_APPLE && canImport(CrashReporterSupport)
 private import CrashReporterSupport // NOTE: depends on Core Foundation!
 #endif
 
@@ -195,7 +195,8 @@ extension ExitTest {
   /// Disable crash reporting, crash logging, or core dumps for the current
   /// process.
   private static func _disableCrashReporting() {
-#if SWT_TARGET_OS_APPLE && !SWT_NO_MACH_PORTS
+#if SWT_TARGET_OS_APPLE
+#if !SWT_NO_MACH_PORTS
     // We don't need to create a crash log (a "corpse notification") for an exit
     // test. In the future, we might want to investigate actually setting up a
     // listener port in the parent process and tracking interesting exceptions
@@ -210,6 +211,7 @@ extension ExitTest {
       EXCEPTION_DEFAULT,
       THREAD_STATE_NONE
     )
+#endif
 #if canImport(CrashReporterSupport)
     _ = CRDisableCrashReporting()
 #endif
