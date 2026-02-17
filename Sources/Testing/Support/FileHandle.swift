@@ -519,11 +519,8 @@ extension FileHandle {
       return _pipe2(fds, O_CLOEXEC)
     }
     return simulatePipe2Call(fds)
-#elseif os(FreeBSD) || os(OpenBSD) || os(WASI)
+#elseif os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
     // These platforms implement pipe2() without constraints.
-    return pipe2(fds, O_CLOEXEC)
-#elseif os(Android)
-    // Android guards pipe2() with a __USE_GNU check.
     return pipe2(fds, O_CLOEXEC)
 #else
 #warning("Platform-specific implementation missing: cannot call pipe2()")
