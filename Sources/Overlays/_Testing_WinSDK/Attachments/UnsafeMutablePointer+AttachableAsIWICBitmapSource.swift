@@ -13,6 +13,7 @@ package import WinSDK
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
 extension UnsafeMutablePointer: AttachableAsImage, AttachableAsIWICBitmapSource where Pointee: _AttachableByAddressAsIWICBitmapSource {
   package func copyAttachableIWICBitmapSource(using factory: UnsafeMutablePointer<IWICImagingFactory>) throws -> UnsafeMutablePointer<IWICBitmapSource> {
