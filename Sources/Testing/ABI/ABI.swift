@@ -67,6 +67,11 @@ extension ABI {
     forVersionNumber versionNumber: VersionNumber,
     givenSwiftCompilerVersion swiftCompilerVersion: @autoclosure () -> VersionNumber = swiftCompilerVersion
   ) -> (any Version.Type)? {
+    if versionNumber == ABI.ExperimentalVersion.versionNumber {
+      // The experimental ABI version is higher than any real ABI version.
+      return ABI.ExperimentalVersion.self
+    }
+
     if versionNumber > ABI.HighestVersion.versionNumber {
       // If the caller requested an ABI version higher than the current Swift
       // compiler version and it's not an ABI version we've explicitly defined,
