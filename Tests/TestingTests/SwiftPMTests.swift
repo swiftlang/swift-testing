@@ -525,6 +525,22 @@ struct SwiftPMTests {
     #expect(testIDs.allSatisfy { $0.contains(".swift:") })
   }
 
+  @Test("list subcommand includes synthesized tests")
+  func listIncludesSynthesizedTests() async throws {
+    var args = __CommandLineArguments_v0()
+    args.verbosity = .min
+    args.listTests = true
+    await confirmation("At least one suite was synthesized", expectedCount: 1...) { suiteSynthesized in
+      _ = await entryPoint(passing: args) { event, eventContext in
+        if case .testDiscovered = event.kind,
+           let test = eventContext.test,
+           test.isSynthesized {
+          suiteSynthesized()
+        }
+      }
+    }
+  }
+
   @Test(
     "--verbose, --very-verbose, and --quiet arguments",
     arguments: [
