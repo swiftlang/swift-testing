@@ -95,7 +95,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
     // The set of matching tests (or, in the case of `swift test list`, the set
     // of all tests.)
-    let tests: [Test]
+    var tests: [Test]
 
     if args.listTests ?? false {
       tests = await Array(Test.all)
@@ -110,6 +110,10 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 #endif
         }
       }
+
+      // Synthesize any missing suites. Note we write to stdout before this
+      // step because we don't emit suites to stdout anyway.
+      tests = Runner.Plan.synthesizeSuites(for: tests)
 
       // Post an event for every discovered test. These events are turned into
       // JSON objects if JSON output is enabled.

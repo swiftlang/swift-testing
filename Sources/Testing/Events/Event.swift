@@ -256,7 +256,7 @@ public struct Event: Sendable {
       // which set of inputs triggered the issue).
       test = Test(containing: issueSourceLocation)
       if let test, !test.isParameterized {
-        testCase = test.testCases?.first { _ in true }
+        testCase = test.uncheckedTestCases?.first { _ in true }
       }
     }
     let event = Event(kind, testID: test?.id, testCaseID: testCase?.id, instant: instant)
