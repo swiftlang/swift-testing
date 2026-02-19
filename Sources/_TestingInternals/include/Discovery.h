@@ -16,20 +16,6 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
-#if defined(__ELF__) && defined(__swift__)
-#pragma mark - ELF image enumeration
-
-/// A function exported by the Swift runtime that enumerates all metadata
-/// sections loaded into the current process.
-///
-/// This function is needed on ELF-based platforms because they do not preserve
-/// section information that we can discover at runtime.
-SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
-  bool (* body)(const void *sections, void *context),
-  void *context
-);
-#endif
-
 #pragma mark - Legacy test discovery
 
 /// The size, in bytes, of a Swift type metadata record.
