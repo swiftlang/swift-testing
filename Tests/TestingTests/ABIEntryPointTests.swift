@@ -171,6 +171,19 @@ struct ABIEntryPointTests {
     }
     #expect(versions == versions.shuffled().sorted())
   }
+
+#if !SWT_NO_FILE_IO
+  @Test func experimentalVersionIsAccepted() {
+    #expect(throws: Never.self) {
+      try withTemporaryPath { path in
+        var args = __CommandLineArguments_v0()
+        args.eventStreamVersionNumber = ABI.ExperimentalVersion.versionNumber
+        args.eventStreamOutputPath = path
+        _ = try configurationForEntryPoint(from: args)
+      }
+    }
+  }
+#endif
 }
 
 #if !SWT_NO_DYNAMIC_LINKING
