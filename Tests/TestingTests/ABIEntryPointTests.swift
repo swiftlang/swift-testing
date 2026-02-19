@@ -177,7 +177,7 @@ struct ABIEntryPointTests {
     #expect(throws: Never.self) {
       try withTemporaryPath { path in
         var args = __CommandLineArguments_v0()
-        args.eventStreamSchemaVersion = "99.0"
+        args.eventStreamVersionNumber = ABI.ExperimentalVersion.versionNumber
         args.eventStreamOutputPath = path
         _ = try configurationForEntryPoint(from: args)
       }
