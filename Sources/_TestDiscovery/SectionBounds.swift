@@ -216,6 +216,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 
   withUnsafeMutablePointer(to: &context) { context in
     _enumerateAllMetadataSections({ sections, context in
+      let context = context.assumingMemoryBound(to: Context.self)
       guard context.pointee.kind != .testContent || sections.pointee.version >= 4 else {
         // This structure is too old to contain the swift5_tests field.
         return true
