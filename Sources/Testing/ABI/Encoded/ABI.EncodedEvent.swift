@@ -29,10 +29,10 @@ extension ABI {
       case issueRecorded
       case valueAttached
       case testCaseEnded
-      case testCaseCancelled = "_testCaseCancelled"
+      case testCaseCancelled
       case testEnded
       case testSkipped
-      case testCancelled = "_testCancelled"
+      case testCancelled
       case runEnded
     }
 

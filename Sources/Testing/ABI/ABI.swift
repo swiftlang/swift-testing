@@ -43,11 +43,7 @@ extension ABI {
   }
 
   /// The current supported ABI version (ignoring any experimental versions.)
-  typealias CurrentVersion = v6_4
-
-  /// The highest defined and supported ABI version (including any experimental
-  /// versions.)
-  typealias HighestVersion = v6_4
+  public typealias CurrentVersion = v6_4
 
 #if !hasFeature(Embedded)
   /// Get the type representing a given ABI version.
@@ -72,7 +68,7 @@ extension ABI {
       return ABI.ExperimentalVersion.self
     }
 
-    if versionNumber > ABI.HighestVersion.versionNumber {
+    if versionNumber > ABI.CurrentVersion.versionNumber {
       // If the caller requested an ABI version higher than the current Swift
       // compiler version and it's not an ABI version we've explicitly defined,
       // then we assume we don't know what they're talking about and return nil.
@@ -178,9 +174,8 @@ extension ABI {
   /// A namespace and type for ABI version 6.4 symbols.
   ///
   /// @Metadata {
-  ///   @Available(Swift, introduced: 6.4).
+  ///   @Available(Swift, introduced: 6.4)
   /// }
-  @_spi(Experimental)
   public enum v6_4: Sendable, Version {
     static var versionNumber: VersionNumber {
       VersionNumber(6, 4)
