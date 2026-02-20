@@ -116,6 +116,9 @@ extension ExitStatus: CustomStringConvertible {
   public var description: String {
     switch self {
     case let .exitCode(exitCode):
+      if let name = swt_getExitCodeName(exitCode).flatMap(String.init(validatingCString:)) {
+        return ".exitCode(\(name) → \(exitCode))"
+      }
       return ".exitCode(\(exitCode))"
     case let .signal(signal):
       var signalName: String?
