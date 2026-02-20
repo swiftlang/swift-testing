@@ -29,6 +29,8 @@ public struct __Expression: Sendable {
   /// captured.
   ///
   /// This type is not part of the public interface of the testing library.
+  /// Although it only has one case, removing it causes Xcode&nbsp;16 to fail to
+  /// decode events of kind `issueRecorded`.
   enum Kind: Sendable {
     /// The expression represents a single, complete syntax node.
     ///
