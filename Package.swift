@@ -269,6 +269,7 @@ let package = Package(
       dependencies: [
         "_TestingInternals",
         "Testing",
+        "_TestingInternals",
       ],
       path: "Sources/Overlays/_Testing_Foundation",
       exclude: ["CMakeLists.txt"],

@@ -216,7 +216,7 @@ extension ExitTest.Condition {
   ///
   /// Two exit test conditions can be compared; if either instance is equal to
   /// ``failure``, it will compare equal to any instance except ``success``.
-  func isApproximatelyEqual(to exitStatus: ExitStatus) -> Bool {
+  package func isApproximatelyEqual(to exitStatus: ExitStatus) -> Bool {
     // Strictly speaking, the C standard treats 0 as a successful exit code and
     // potentially distinct from EXIT_SUCCESS. To my knowledge, no modern
     // operating system defines EXIT_SUCCESS to any value other than 0, so the
