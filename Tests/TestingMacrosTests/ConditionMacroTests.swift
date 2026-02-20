@@ -83,13 +83,13 @@ struct ConditionMacroTests {
       ##"#expect(a, sourceLocation: someValue)"##:
         ##"Testing.__checkValue(a, expression: .__fromSyntaxNode("a"), comments: [], isRequired: false, sourceLocation: someValue).__expected()"##,
       ##"#expect(a.isB)"##:
-        ##"Testing.__checkPropertyAccess(a.self, getting: { $0.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a"), .__fromSyntaxNode("isB")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkPropertyAccess(a.self, getting: { $0.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a"), "isB"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(a???.isB)"##:
-        ##"Testing.__checkPropertyAccess(a.self, getting: { $0???.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a"), .__fromSyntaxNode("isB")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkPropertyAccess(a.self, getting: { $0???.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a"), "isB"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(a?.b.isB)"##:
-        ##"Testing.__checkPropertyAccess(a?.b.self, getting: { $0?.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a?.b"), .__fromSyntaxNode("isB")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkPropertyAccess(a?.b.self, getting: { $0?.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a?.b"), "isB"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(a?.b().isB)"##:
-        ##"Testing.__checkPropertyAccess(a?.b().self, getting: { $0?.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a?.b()"), .__fromSyntaxNode("isB")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkPropertyAccess(a?.b().self, getting: { $0?.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a?.b()"), "isB"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(isolation: somewhere) {}"##:
         ##"Testing.__checkClosureCall(performing: {}, expression: .__fromSyntaxNode("{}"), comments: [], isRequired: false, isolation: somewhere, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
     ]
@@ -163,13 +163,13 @@ struct ConditionMacroTests {
       ##"#require(a, sourceLocation: someValue)"##:
         ##"Testing.__checkValue(a, expression: .__fromSyntaxNode("a"), comments: [], isRequired: true, sourceLocation: someValue).__required()"##,
       ##"#require(a.isB)"##:
-        ##"Testing.__checkPropertyAccess(a.self, getting: { $0.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a"), .__fromSyntaxNode("isB")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkPropertyAccess(a.self, getting: { $0.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a"), "isB"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(a???.isB)"##:
-        ##"Testing.__checkPropertyAccess(a.self, getting: { $0???.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a"), .__fromSyntaxNode("isB")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkPropertyAccess(a.self, getting: { $0???.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a"), "isB"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(a?.b.isB)"##:
-        ##"Testing.__checkPropertyAccess(a?.b.self, getting: { $0?.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a?.b"), .__fromSyntaxNode("isB")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkPropertyAccess(a?.b.self, getting: { $0?.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a?.b"), "isB"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(a?.b().isB)"##:
-        ##"Testing.__checkPropertyAccess(a?.b().self, getting: { $0?.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a?.b()"), .__fromSyntaxNode("isB")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkPropertyAccess(a?.b().self, getting: { $0?.isB }, expression: .__fromPropertyAccess(.__fromSyntaxNode("a?.b()"), "isB"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(isolation: somewhere) {}"##:
         ##"Testing.__checkClosureCall(performing: {}, expression: .__fromSyntaxNode("{}"), comments: [], isRequired: true, isolation: somewhere, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
     ]
@@ -183,7 +183,7 @@ struct ConditionMacroTests {
   @Test("Unwrapping #require() macro",
     arguments: [
       ##"#require(Optional<Int>.none)"##:
-        ##"Testing.__checkPropertyAccess(Optional<Int>.self, getting: { $0.none }, expression: .__fromPropertyAccess(.__fromSyntaxNode("Optional<Int>"), .__fromSyntaxNode("none")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkPropertyAccess(Optional<Int>.self, getting: { $0.none }, expression: .__fromPropertyAccess(.__fromSyntaxNode("Optional<Int>"), "none"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(nil ?? 123)"##:
         ##"Testing.__checkBinaryOperation(nil, { $0 ?? $1() }, 123, expression: .__fromBinaryOperation(.__fromSyntaxNode("nil"), "??", .__fromSyntaxNode("123")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(123 ?? nil)"##:
