@@ -508,7 +508,8 @@ extension Runner {
           }
           _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: taskAction)) {
             var iterationContext = context
-            iterationContext.iteration = iterationIndex
+            // `iteration` is one-indexed, so offset that here.
+            iterationContext.iteration = iterationIndex + 1
             try? await _runStep(atRootOf: runner.plan.stepGraph, context: iterationContext)
           }
           await taskGroup.waitForAll()

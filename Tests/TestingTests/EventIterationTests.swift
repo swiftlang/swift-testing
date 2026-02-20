@@ -24,14 +24,14 @@ struct EventIterationTests {
     testBody: @escaping @Sendable (Int) -> Void,
     location: SourceLocation = #_sourceLocation
   ) async {
-    let recordedIterationIndex = Mutex<Int>(0)
+    let recordedIteration = Mutex<Int>(0)
 
     await confirmation("Events received", expectedCount: expectedIterations * eventKinds.count, sourceLocation: location) { eventReceived in
       var configuration = Configuration()
       configuration.eventHandler = { event, context in
         if eventKinds.contains(where: { Self.matchesTestLifetimeEventKind($0, event.kind) }) {
           if let iteration = context.iteration {
-            recordedIterationIndex.withLock { $0 = iteration }
+            recordedIteration.withLock { $0 = iteration }
           }
           eventReceived()
         }
@@ -39,12 +39,12 @@ struct EventIterationTests {
       configuration.repetitionPolicy = repetitionPolicy
 
       await Test {
-        testBody(recordedIterationIndex.rawValue)
+        testBody(recordedIteration.rawValue)
       }.run(configuration: configuration)
 
       // Verify all expected iterations were recorded
-      let iterations = recordedIterationIndex.rawValue
-      #expect(iterations == expectedIterations - 1, "Final observed iteration index did not match expected number of iterations", sourceLocation: location)
+      let iteration = recordedIteration.rawValue
+      #expect(iteration == expectedIterations, "Final observed iteration did not match expected number of iterations", sourceLocation: location)
     }
   }
 
@@ -95,8 +95,8 @@ struct EventIterationTests {
       for: [.testCaseStarted, .testCaseEnded],
       repetitionPolicy: policy,
       expectedIterations: expectedIterations
-    ) { index in
-      if index < 2 {
+    ) { iteration in
+      if iteration < 3 {
         Issue.record("Failure")
       }
     }

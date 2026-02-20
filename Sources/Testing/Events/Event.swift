@@ -299,7 +299,7 @@ extension Event {
     public var testCase: Test.Case?
 
     /// The iteration of the current test and test case.
-    /// The first iteration has an index of `0`.
+    /// This value is one-indexed; the first iteration is `1`.
     ///
     /// This value is not guaranteed to be provided for all events, but if this
     /// is provided, the `test` will be non-`nil`.

@@ -100,7 +100,7 @@ extension ABI {
 
     /// The iteration of the `testID` being executed.
     ///
-    /// Currently, this value is identical to the value provided via the most recent `iterationStarted` event.
+    /// This value is one-indexed; the first iteration is `1`.
     ///
     /// - Warning: Iteration indices are not yet part of the JSON schema.
     var _iteration: Int?
