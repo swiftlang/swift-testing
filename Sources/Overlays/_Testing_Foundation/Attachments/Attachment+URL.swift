@@ -116,32 +116,39 @@ private let _archiverName = "tar.exe"
 /// folder of the current system, which is not always located in `"C:\Windows."`
 ///
 /// If the path cannot be determined, the value of this property is `nil`.
-private let _archiverPath: String? = {
+private let _archiverPath: ContiguousArray<CWideChar>? = {
   let bufferCount = GetSystemDirectoryW(nil, 0)
   guard bufferCount > 0 else {
     return nil
   }
 
-  return withUnsafeTemporaryAllocation(of: CWideChar.self, capacity: Int(bufferCount)) { buffer -> String? in
+  let result = ContiguousArray<CWideChar>(unsafeUninitializedCapacity: Int(bufferCount)) { buffer, initializedCount in
     let bufferCount = GetSystemDirectoryW(buffer.baseAddress!, UINT(buffer.count))
     guard bufferCount > 0 && bufferCount < buffer.count else {
-      return nil
+      return
     }
 
-    return _archiverName.withCString(encodedAs: UTF16.self) { archiverName -> String? in
+    _archiverName.withCString(encodedAs: UTF16.self) { archiverName in
       var result: UnsafeMutablePointer<CWideChar>?
 
       let flags = ULONG(PATHCCH_ALLOW_LONG_PATHS.rawValue)
       guard S_OK == PathAllocCombine(buffer.baseAddress!, archiverName, flags, &result) else {
-        return nil
+        return
       }
       defer {
         LocalFree(result)
       }
 
-      return result.flatMap { String.decodeCString($0, as: UTF16.self)?.result }
+      if let result {
+        initializedCount = wcslen(result) + 1
+        buffer.initialize(from: result, count: initializedCount)
+      }
     }
   }
+  if result.isEmpty {
+    return nil
+  }
+  return result
 }()
 #endif
 
@@ -181,7 +188,7 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
   // tool is an optional install, so we check if it's present before trying to
   // execute it.
 #if os(Linux) || os(OpenBSD)
-  let archiverPath = "/bin/sh"
+  let archiverPath = "/bin/sh".utf8CString
 #if os(Linux)
   let trueArchiverPath = "/usr/bin/zip"
 #else
@@ -195,7 +202,7 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
   }
 #endif
 #elseif SWT_TARGET_OS_APPLE || os(FreeBSD)
-  let archiverPath = "/usr/bin/tar"
+  let archiverPath = "/usr/bin/tar".utf8CString
 #elseif os(Windows)
   guard let archiverPath = _archiverPath else {
     throw CocoaError(.fileWriteUnknown, userInfo: [
@@ -204,7 +211,7 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
   }
 #else
 #warning("Platform-specific implementation missing: tar or zip tool unavailable")
-  let archiverPath = ""
+  let archiverPath = "".utf8CString
   throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "This platform does not support attaching directories to tests."])
 #endif
 

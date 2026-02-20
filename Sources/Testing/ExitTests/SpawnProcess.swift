@@ -26,6 +26,14 @@ typealias ProcessID = HANDLE
 typealias ProcessID = Never
 #endif
 
+/// A type representing a C string suitable for use as the executable path in a
+/// call to `spawnExecutable(atPath:...)`.
+#if os(Windows)
+package typealias CExecutablePath = ContiguousArray<CWideChar>
+#else
+package typealias CExecutablePath = ContiguousArray<CChar>
+#endif
+
 #if os(Linux) && !SWT_NO_DYNAMIC_LINKING
 /// Close file descriptors above a given value when spawing a new process.
 ///
@@ -63,7 +71,7 @@ private let _posix_spawn_file_actions_addclosefrom_np = symbol(named: "posix_spa
 ///
 /// - Throws: Any error that prevented the process from spawning.
 func spawnExecutable(
-  atPath executablePath: String,
+  atPath executablePath: CExecutablePath,
   arguments: [String],
   environment: [String: String],
   standardInput: borrowing FileHandle? = nil,
@@ -207,7 +215,10 @@ func spawnExecutable(
       // the flags mask!
       _ = posix_spawnattr_setflags(attrs, flags)
 
-      var argv: [UnsafeMutablePointer<CChar>?] = [strdup(executablePath)]
+      var argv: [UnsafeMutablePointer<CChar>?] = executablePath.withUnsafeBufferPointer { executablePath in
+        let executablePath = executablePath.baseAddress!
+        return [strdup(executablePath)]
+      }
       argv += arguments.lazy.map { strdup($0) }
       argv.append(nil)
       defer {
@@ -225,7 +236,7 @@ func spawnExecutable(
       }
 
       var pid = pid_t()
-      let processSpawned = posix_spawn(&pid, executablePath, fileActions, attrs, argv, environ)
+      let processSpawned = posix_spawn(&pid, argv[0], fileActions, attrs, argv, environ)
       guard 0 == processSpawned else {
         throw CError(rawValue: processSpawned)
       }
@@ -464,7 +475,7 @@ private func _escapeCommandLine(_ arguments: [String]) -> String {
 /// it to terminate. It is primarily for use by other targets in this package
 /// such as its cross-import overlays.
 package func spawnExecutableAtPathAndWait(
-  _ executablePath: String,
+  _ executablePath: CExecutablePath,
   arguments: [String] = [],
   environment: [String: String] = [:]
 ) async throws -> ExitStatus {

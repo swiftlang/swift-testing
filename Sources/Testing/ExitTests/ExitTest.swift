@@ -804,7 +804,16 @@ extension ExitTest {
     // or unsetenv(), so we need to recompute the child environment each time.
     // The executable and XCTest bundle paths should not change over time, so we
     // can precompute them.
-    let childProcessExecutablePath = Swift.Result { try CommandLine.executablePath }
+    let childProcessExecutablePath = Swift.Result {
+      guard let result = CommandLine._executablePathCString else {
+#if os(Windows)
+        throw Win32Error(rawValue: GetLastError())
+#else
+        throw CError(rawValue: swt_errno())
+#endif
+      }
+      return result
+    }
 
     // Construct appropriate arguments for the child process. Generally these
     // arguments are going to be whatever's necessary to respawn the current
@@ -821,7 +830,8 @@ extension ExitTest {
       // it, then we can spawn a child process of it.
       var isHostedByXCTest = false
       if let executablePath = try? childProcessExecutablePath.get() {
-        executablePath.withCString { childProcessExecutablePath in
+        executablePath.withUnsafeBufferPointer { childProcessExecutablePath in
+          let childProcessExecutablePath = childProcessExecutablePath.baseAddress!
           withUnsafeTemporaryAllocation(of: CChar.self, capacity: strlen(childProcessExecutablePath) + 1) { baseName in
             if nil != basename_r(childProcessExecutablePath, baseName.baseAddress!) {
               isHostedByXCTest = 0 == strcmp(baseName.baseAddress!, "xctest")
