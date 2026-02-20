@@ -65,11 +65,11 @@ the test when the code doesn't satisfy a requirement, use
 ### Checking that errors are thrown
 
 - <doc:testing-for-errors-in-swift-code>
-- ``expect(throws:_:sourceLocation:performing:)-1hfms``
-- ``expect(throws:_:sourceLocation:performing:)-7du1h``
+- ``expect(throws:_:sourceLocation:performing:)-7p3ic``
+- ``expect(throws:_:sourceLocation:performing:)-3y3oo``
 - ``expect(_:sourceLocation:performing:throws:)``
-- ``require(throws:_:sourceLocation:performing:)-7n34r``
-- ``require(throws:_:sourceLocation:performing:)-4djuw``
+- ``require(throws:_:sourceLocation:performing:)-1zgzw``
+- ``require(throws:_:sourceLocation:performing:)-5qhyv``
 - ``require(_:sourceLocation:performing:throws:)``
 
 ### Checking how processes exit
