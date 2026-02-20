@@ -491,10 +491,10 @@ struct EventRecorderTests {
     let stream = Stream()
 
     let eventRecorder = Event.JUnitXMLRecorder(writingUsing: stream.write)
-    eventRecorder.record(Event(.runStarted, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, configuration: nil))
+    eventRecorder.record(Event(.runStarted, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil))
     let test = Test {}
-    eventRecorder.record(Event(.testSkipped(.init(sourceContext: .init())), testID: test.id, testCaseID: nil), in: Event.Context(test: test, testCase: nil, configuration: nil))
-    eventRecorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, configuration: nil))
+    eventRecorder.record(Event(.testSkipped(.init(sourceContext: .init())), testID: test.id, testCaseID: nil), in: Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil))
+    eventRecorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil))
 
     let xmlString = stream.buffer.rawValue
     #expect(xmlString.hasPrefix("<?xml"))
@@ -510,7 +510,7 @@ struct EventRecorderTests {
   func humanReadableRecorderCountsIssuesWithoutTests() {
     let issue = Issue(kind: .unconditional)
     let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
-    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
+    let context = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
 
     let recorder = Event.HumanReadableOutputRecorder()
     let messages = recorder.record(event, in: context)
@@ -524,7 +524,7 @@ struct EventRecorderTests {
   @Test("JUnitXMLRecorder counts issues without associated tests")
   func junitRecorderCountsIssuesWithoutTests() async throws {
     let issue = Issue(kind: .unconditional)
-    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
+    let context = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
 
     await confirmation { wroteTestSuite in
       let recorder = Event.JUnitXMLRecorder { string in
@@ -541,7 +541,7 @@ struct EventRecorderTests {
   @Test("JUnitXMLRecorder ignores warning issues")
   func junitRecorderIgnoresWarningIssues() async throws {
     let issue = Issue(kind: .unconditional, severity: .warning)
-    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
+    let context = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
 
     await confirmation { wroteTestSuite in
       let recorder = Event.JUnitXMLRecorder { string in

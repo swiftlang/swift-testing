@@ -98,6 +98,13 @@ extension ABI {
     ///   part of said JSON schema.
     var _sourceLocation: EncodedSourceLocation<V>?
 
+    /// The iteration of the `testID` being executed.
+    ///
+    /// This value is one-indexed; the first iteration is `1`.
+    ///
+    /// - Warning: Iteration indices are not yet part of the JSON schema.
+    var _iteration: Int?
+
     init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
       switch event.kind {
       case .runStarted:
@@ -145,6 +152,8 @@ extension ABI {
           _sourceLocation = recordedIssue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         case let .valueAttached(attachment):
           _sourceLocation = EncodedSourceLocation<V>(encoding: attachment.sourceLocation)
+        case .testCaseStarted, .testCaseEnded, .testStarted, .testEnded:
+          _iteration = eventContext.iteration
         case let .testCaseCancelled(skipInfo),
           let .testSkipped(skipInfo),
           let .testCancelled(skipInfo):

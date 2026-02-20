@@ -218,7 +218,7 @@ struct SwiftPMTests {
     }
     do {
       let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--xunit-output", temporaryFilePath])
-      let eventContext = Event.Context(test: nil, testCase: nil, configuration: nil)
+      let eventContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
       configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
@@ -396,12 +396,12 @@ struct SwiftPMTests {
         .timeLimit(Swift.Duration.seconds(testTimeLimit + 10)),
         arguments: expectedArgs as [String]
       ) {_ in}
-      let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
+      let eventContext = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
 
       configuration.handleEvent(Event(.testDiscovered, testID: test.id, testCaseID: nil), in: eventContext)
       configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       do {
-        let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
+        let eventContext = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
         configuration.handleEvent(Event(.testStarted, testID: test.id, testCaseID: nil), in: eventContext)
         configuration.handleEvent(Event(.testEnded, testID: test.id, testCaseID: nil), in: eventContext)
       }
