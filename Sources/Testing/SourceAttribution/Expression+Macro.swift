@@ -20,7 +20,7 @@ extension __Expression {
   /// - Warning: This function is used to implement the `@Test`, `@Suite`,
   ///   `#expect()` and `#require()` macros. Do not call it directly.
   public static func __fromSyntaxNode(_ syntaxNode: String) -> Self {
-    Self(sourceCode: syntaxNode)
+    Self(kind: .generic(syntaxNode))
   }
 
   /// Create an instance of this type representing a string literal.
@@ -35,7 +35,7 @@ extension __Expression {
   /// - Warning: This function is used to implement the `@Test`, `@Suite`,
   ///   `#expect()` and `#require()` macros. Do not call it directly.
   public static func __fromStringLiteral(_ sourceCode: String, _ stringValue: String) -> Self {
-    Self(sourceCode: sourceCode)
+    Self(kind: .generic(sourceCode))
   }
 
   /// Create an instance of this type representing a binary operation.
@@ -51,7 +51,7 @@ extension __Expression {
   ///   `#expect()` and `#require()` macros. Do not call it directly.
   public static func __fromBinaryOperation(_ lhs: Self, _ op: String, _ rhs: Self) -> Self {
     return Self(
-      sourceCode: "\(lhs) \(op) \(rhs)",
+      kind: .generic("\(lhs) \(op) \(rhs)"),
       subexpressions: [lhs, rhs]
     )
   }
@@ -85,7 +85,7 @@ extension __Expression {
     sourceCode = "\(sourceCode)(\(argumentsSourceCode))"
 
     return Self(
-      sourceCode: sourceCode,
+      kind: .generic(sourceCode),
       subexpressions: Array(value) + arguments.map(\.value)
     )
   }
@@ -103,7 +103,7 @@ extension __Expression {
   ///   `#expect()` and `#require()` macros. Do not call it directly.
   public static func __fromPropertyAccess(_ value: Self, _ keyPath: Self) -> Self {
     Self(
-      sourceCode: "\(value.sourceCode).\(keyPath.sourceCode)",
+      kind: .generic("\(value.sourceCode).\(keyPath.sourceCode)"),
       subexpressions: [value, keyPath]
     )
   }
@@ -128,7 +128,7 @@ extension __Expression {
       "!\(expression.sourceCode)"
     }
     return Self(
-      sourceCode: sourceCode,
+      kind: .generic(sourceCode),
       isNegated: true,
       subexpressions: [expression]
     )

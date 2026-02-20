@@ -25,9 +25,36 @@
 /// - Warning: This type is used to implement the `#expect()` macro. Do not use
 ///   it directly. Tools can use the SPI ``Expression`` typealias if needed.
 public struct __Expression: Sendable {
+  /// An enumeration describing the various kinds of expression that can be
+  /// captured.
+  ///
+  /// This type is not part of the public interface of the testing library.
+  enum Kind: Sendable {
+    /// The expression represents a single, complete syntax node.
+    ///
+    /// - Parameters:
+    ///   - sourceCode: The source code of the represented expression.
+    case generic(_ sourceCode: String)
+  }
+
+  /// The kind of syntax node represented by this instance.
+  ///
+  /// This property is not part of the public interface of the testing library.
+  /// Use `String(describing:)` to access the source code represented by an
+  /// instance of this type.
+  var kind: Kind
+
+  /// Whether or not this instance represents a negated expression (`!foo`).
+  var isNegated = false
+
   /// The source code of the original captured expression.
   @_spi(ForToolsIntegrationOnly)
-  public internal(set) var sourceCode: String
+  public var sourceCode: String {
+    switch kind {
+    case let .generic(sourceCode):
+      return sourceCode
+    }
+  }
 
   /// A type which represents an evaluated value, which may include textual
   /// descriptions, type information, substructure, and other information.
@@ -215,9 +242,6 @@ public struct __Expression: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public var runtimeValue: Value?
 
-  /// Whether or not this instance represents a negated expression (`!foo`).
-  var isNegated = false
-
   /// Capture the runtime value corresponding to this instance.
   ///
   /// - Parameters:
@@ -340,6 +364,7 @@ public struct __Expression: Sendable {
 // MARK: - Codable
 
 extension __Expression: Codable {}
+extension __Expression.Kind: Codable {}
 extension __Expression.Value: Codable {}
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
@@ -356,7 +381,7 @@ extension __Expression: CustomStringConvertible, CustomDebugStringConvertible {
   /// This initializer does not attempt to parse `sourceCode`.
   @_spi(ForToolsIntegrationOnly)
   public init(_ sourceCode: String) {
-    self.init(sourceCode: sourceCode)
+    self.init(kind: .generic(sourceCode))
   }
 
   public var description: String {
@@ -364,7 +389,7 @@ extension __Expression: CustomStringConvertible, CustomDebugStringConvertible {
   }
 
   public var debugDescription: String {
-    sourceCode
+    String(reflecting: kind)
   }
 }
 
