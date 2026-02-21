@@ -113,16 +113,12 @@ private let _sigabbrev_np = symbol(named: "sigabbrev_np").map {
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 extension ExitStatus: CustomStringConvertible {
-  public var description: String {
+  /// The name of the exit code or signal, if known.
+  var name: String? {
     switch self {
     case let .exitCode(exitCode):
-      if let name = swt_getExitCodeName(exitCode).flatMap(String.init(validatingCString:)) {
-        return ".exitCode(\(name) → \(exitCode))"
-      }
-      return ".exitCode(\(exitCode))"
+      swt_getExitCodeName(exitCode).flatMap(String.init(validatingCString:))
     case let .signal(signal):
-      var signalName: String?
-
 #if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Android)
 #if !SWT_NO_SYS_SIGNAME
       // These platforms define sys_signame with a size, which is imported
@@ -130,24 +126,50 @@ extension ExitStatus: CustomStringConvertible {
       withUnsafeBytes(of: sys_signame) { sys_signame in
         sys_signame.withMemoryRebound(to: UnsafePointer<CChar>.self) { sys_signame in
           if signal > 0 && signal < sys_signame.count {
-            signalName = String(validatingCString: sys_signame[Int(signal)])?.uppercased()
+            return String(validatingCString: sys_signame[Int(signal)])
+              .map { "SIG\($0.uppercased())" }
           }
+          return nil
         }
       }
 #endif
 #elseif os(Linux)
 #if !SWT_NO_DYNAMIC_LINKING
-      signalName = _sigabbrev_np?(signal).flatMap(String.init(validatingCString:))
+      _sigabbrev_np?(signal)
+        .flatMap(String.init(validatingCString:))
+        .map { "SIG\($0)" }
 #endif
 #elseif os(Windows) || os(WASI)
       // These platforms do not have API to get the programmatic name of a
       // signal constant.
+      return nil
 #else
 #warning("Platform-specific implementation missing: signal names unavailable")
+      return nil
 #endif
+    }
+  }
 
-      if let signalName {
-        return ".signal(SIG\(signalName) → \(signal))"
+  /// The represented exit code or signal.
+  var code: CInt {
+    switch self {
+    case let .exitCode(exitCode):
+      exitCode
+    case let .signal(signal):
+      signal
+    }
+  }
+
+  public var description: String {
+    switch self {
+    case let .exitCode(exitCode):
+      if let name {
+        return ".exitCode(\(name))"
+      }
+      return ".exitCode(\(exitCode))"
+    case let .signal(signal):
+      if let name {
+        return ".signal(\(name))"
       }
       return ".signal(\(signal))"
     }

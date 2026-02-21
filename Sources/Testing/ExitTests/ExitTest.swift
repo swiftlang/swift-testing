@@ -527,11 +527,29 @@ func callExitTest(
   }
 
   // Plumb the exit test's result through the general expectation machinery.
-  let expression = __Expression(String(describingForTest: expectedExitCondition))
+  var expression = expression
+  if let expectedExitStatus = expectedExitCondition.exitStatus,
+     let expectedExitStatusName = expectedExitStatus.name {
+    expression.subexpressions.append(
+      __Expression(
+        expectedExitStatusName,
+        runtimeValue: __Expression.Value(describing: expectedExitStatus.code)
+      )
+    )
+  }
+  if let statusName = result.exitStatus.name {
+    expression.subexpressions.append(
+      __Expression(
+        statusName,
+        runtimeValue: __Expression.Value(describing: result.exitStatus.code)
+      )
+    )
+  }
   return __checkValue(
     expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
     expression: expression,
     expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(result.exitStatus),
+    mismatchedExitConditionDescription: #"expected exit status "\#(expectedExitCondition)", but "\#(result.exitStatus)" was reported instead"#,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation

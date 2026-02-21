@@ -53,6 +53,14 @@ extension ExitTest {
 
     /// The kind of condition.
     private var _kind: _Kind
+
+    /// The represented exit status, if a specific one exists.
+    var exitStatus: ExitStatus? {
+      if case let .exitStatus(exitStatus) = _kind {
+        return exitStatus
+      }
+      return nil
+    }
   }
 }
 
