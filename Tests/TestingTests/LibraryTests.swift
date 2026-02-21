@@ -15,6 +15,15 @@ private import _TestingInternals
 private import Foundation // for JSONSerialization
 
 struct `Library tests` {
+  @Test func `Find all libraries`() throws {
+    let libraries = Array(Library.all)
+    #expect(libraries.count > 0)
+    #expect(libraries.map(\.name).contains("Swift Testing"))
+#if DEBUG
+    print(libraries.map(\.name))
+#endif
+  }
+
   @Test func `Find Swift Testing library`() throws {
     let library = try #require(Library(withHint: "SwIfTtEsTiNg"))
     #expect(library.name == "Swift Testing")
@@ -57,7 +66,6 @@ extension Library {
         "kind": "function",
         "name": "mock_test_1",
         "sourceLocation": [
-          "fileID": "__C/mock_file.pascal",
           "filePath": "/tmp/mock_file.pascal",
           "_filePath": "/tmp/mock_file.pascal",
           "line": 1,
@@ -82,7 +90,6 @@ extension Library {
         "issue": [
           "isKnown": false,
           "sourceLocation": [
-            "fileID": "__C/mock_file.pascal",
             "filePath": "/tmp/mock_file.pascal",
             "_filePath": "/tmp/mock_file.pascal",
             "line": 20,
