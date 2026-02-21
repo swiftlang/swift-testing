@@ -10,6 +10,10 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+import Synchronization
+#endif
+
 @Suite("TestScoping-conforming Trait Tests", .tags(.traitRelated))
 struct TestScopingTraitTests {
   @Test("Execute code before and after a non-parameterized test.")
@@ -64,38 +68,38 @@ struct TestScopingTraitTests {
   struct ExecutionControl {
     @Test("Trait applied directly to function is executed once")
     func traitAppliedToFunction() async {
-      let counter = Locked(rawValue: 0)
+      let counter = Allocated(Mutex(0))
       await DefaultExecutionTrait.$counter.withValue(counter) {
         await Test(DefaultExecutionTrait()) {}.run()
       }
-      #expect(counter.rawValue == 1)
+      #expect(counter.value.rawValue == 1)
     }
 
     @Test("Non-recursive suite trait with default scope provider implementation")
     func nonRecursiveSuiteTrait() async {
-      let counter = Locked(rawValue: 0)
+      let counter = Allocated(Mutex(0))
       await DefaultExecutionTrait.$counter.withValue(counter) {
         await runTest(for: SuiteWithNonRecursiveDefaultExecutionTrait.self)
       }
-      #expect(counter.rawValue == 1)
+      #expect(counter.value.rawValue == 1)
     }
 
     @Test("Recursive suite trait with default scope provider implementation")
     func recursiveSuiteTrait() async {
-      let counter = Locked(rawValue: 0)
+      let counter = Allocated(Mutex(0))
       await DefaultExecutionTrait.$counter.withValue(counter) {
         await runTest(for: SuiteWithRecursiveDefaultExecutionTrait.self)
       }
-      #expect(counter.rawValue == 1)
+      #expect(counter.value.rawValue == 1)
     }
 
     @Test("Recursive, all-inclusive suite trait")
     func recursiveAllInclusiveSuiteTrait() async {
-      let counter = Locked(rawValue: 0)
+      let counter = Allocated(Mutex(0))
       await AllInclusiveExecutionTrait.$counter.withValue(counter) {
         await runTest(for: SuiteWithAllInclusiveExecutionTrait.self)
       }
-      #expect(counter.rawValue == 3)
+      #expect(counter.value.rawValue == 3)
     }
   }
 }
@@ -123,7 +127,7 @@ private struct CustomThrowingErrorTrait: TestTrait, TestScoping {
 }
 
 struct DoSomethingBeforeAndAfterTrait: SuiteTrait, TestTrait, TestScoping {
-  static let state = Locked(rawValue: 0)
+  static let state = Mutex(0)
 
   func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
     #expect(Self.state.increment() == 1)
@@ -141,11 +145,11 @@ struct TestsWithCustomTraitWithStrongOrdering {
 }
 
 private struct DefaultExecutionTrait: SuiteTrait, TestTrait, TestScoping {
-  @TaskLocal static var counter: Locked<Int>?
+  @TaskLocal static var counter: Allocated<Mutex<Int>>?
   var isRecursive: Bool = false
 
   func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
-    Self.counter!.increment()
+    Self.counter!.value.increment()
     try await function()
   }
 }
@@ -161,7 +165,7 @@ private struct SuiteWithRecursiveDefaultExecutionTrait {
 }
 
 private struct AllInclusiveExecutionTrait: SuiteTrait, TestTrait, TestScoping {
-  @TaskLocal static var counter: Locked<Int>?
+  @TaskLocal static var counter: Allocated<Mutex<Int>>?
 
   var isRecursive: Bool {
     true
@@ -173,7 +177,7 @@ private struct AllInclusiveExecutionTrait: SuiteTrait, TestTrait, TestScoping {
   }
 
   func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
-    Self.counter!.increment()
+    Self.counter!.value.increment()
     try await function()
   }
 }

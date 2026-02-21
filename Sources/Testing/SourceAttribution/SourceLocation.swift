@@ -24,7 +24,7 @@ public struct SourceLocation: Sendable {
   public var fileID: String {
     willSet {
       precondition(!newValue.isEmpty, "SourceLocation.fileID must not be empty (was \(newValue))")
-      precondition(newValue.contains("/"), "SourceLocation.fileID must be a well-formed file ID (was \(newValue))")
+      precondition(newValue.utf8.contains(UInt8(ascii: "/")), "SourceLocation.fileID must be a well-formed file ID (was \(newValue))")
     }
   }
 
@@ -71,7 +71,11 @@ public struct SourceLocation: Sendable {
   }
 
   /// The path to the source file.
-  @_spi(Experimental)
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
+  /// }
   public var filePath: String
 
   /// The line in the source file.
@@ -110,14 +114,11 @@ public struct SourceLocation: Sendable {
   /// - Precondition: `column` must be greater than `0`.
   public init(fileID: String, filePath: String, line: Int, column: Int) {
     precondition(!fileID.isEmpty, "SourceLocation.fileID must not be empty (was \(fileID))")
-    precondition(fileID.contains("/"), "SourceLocation.fileID must be a well-formed file ID (was \(fileID))")
+    precondition(fileID.utf8.contains(UInt8(ascii: "/")), "SourceLocation.fileID must be a well-formed file ID (was \(fileID))")
     precondition(line > 0, "SourceLocation.line must be greater than 0 (was \(line))")
     precondition(column > 0, "SourceLocation.column must be greater than 0 (was \(column))")
 
-    self.fileID = fileID
-    self.filePath = filePath
-    self.line = line
-    self.column = column
+    self.init(__uncheckedFileID: fileID, filePath: filePath, line: line, column: column)
   }
 }
 
@@ -135,18 +136,42 @@ extension SourceLocation: Equatable, Hashable, Comparable {
   }
 
   public static func <(lhs: Self, rhs: Self) -> Bool {
+    return Self.compare(lhs, rhs) < 0
+  }
+
+  public static func <=(lhs: Self, rhs: Self) -> Bool {
+    return Self.compare(lhs, rhs) <= 0
+  }
+
+  public static func >(lhs: Self, rhs: Self) -> Bool {
+    return Self.compare(lhs, rhs) > 0
+  }
+
+  public static func >=(lhs: Self, rhs: Self) -> Bool {
+    return Self.compare(lhs, rhs) >= 0
+  }
+
+  /// Get the relative ordering of two source locations.
+  ///
+  /// - Parameters:
+  ///   - lhs: The first instance to compare.
+  ///   - rhs: The second instance to compare.
+  ///
+  /// - Returns: If `lhs` sorts before `rhs`, a negative number. If `lhs` sorts
+  ///   after `rhs`, a positive number. If they sort equal, `0`.
+  static func compare(_ lhs: SourceLocation, _ rhs: SourceLocation) -> Int {
     // Tests are sorted in the order in which they appear in source, with file
     // IDs sorted alphabetically in the neutral locale.
-    if lhs.fileID < rhs.fileID {
-      return true
-    } else if lhs.fileID == rhs.fileID {
-      if lhs.line < rhs.line {
-        return true
-      } else if lhs.line == rhs.line {
-        return lhs.column < rhs.column
-      }
+    if lhs.fileID != rhs.fileID {
+      return lhs.fileID < rhs.fileID ? -1 : 1
     }
-    return false
+    if lhs.line != rhs.line {
+      return lhs.line - rhs.line
+    }
+    if lhs.column != rhs.column {
+      return lhs.column - rhs.column
+    }
+    return 0
   }
 }
 
@@ -188,14 +213,61 @@ extension SourceLocation: Codable {
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: _CodingKeys.self)
-    fileID = try container.decode(String.self, forKey: .fileID)
-    line = try container.decode(Int.self, forKey: .line)
-    column = try container.decode(Int.self, forKey: .column)
+    let fileID = try container.decode(String.self, forKey: .fileID)
+    let line = try container.decode(Int.self, forKey: .line)
+    let column = try container.decode(Int.self, forKey: .column)
 
     // For simplicity's sake, we won't be picky about which key contains the
     // file path.
-    filePath = try container.decodeIfPresent(String.self, forKey: .filePath)
+    let filePath = try container.decodeIfPresent(String.self, forKey: .filePath)
       ?? container.decode(String.self, forKey: ._filePath)
+
+    self.init(fileID: fileID, filePath: filePath, line: line, column: column)
+  }
+
+  init(fileIDSynthesizingIfNeeded fileID: String?, filePath: String, line: Int, column: Int) {
+    // Synthesize the file ID if needed.
+    let fileID = fileID ?? Self._synthesizeFileID(fromFilePath: filePath)
+    self.init(fileID: fileID, filePath: filePath, line: line, column: column)
+  }
+
+  /// The name of the ersatz Swift module used for synthesized file IDs.
+  static var synthesizedModuleName: String {
+    "__C"
+  }
+
+  /// Synthesize a file ID from the given file path and module name.
+  ///
+  /// - Parameters:
+  ///   - filePath: The file path.
+  ///   - moduleName: The module name.
+  ///
+  /// - Returns: A file path constructed from `filePath` and `moduleName`.
+  private static func _synthesizeFileID(fromFilePath filePath: String, inModuleNamed moduleName: String = synthesizedModuleName) -> String {
+    let fileName: String? = {
+      var filePath = filePath[...]
+
+#if os(Windows)
+      // On Windows, replace backslashes in the path with slashes. (This is an
+      // admittedly naïve approach, but this function is not a hot path.)
+      do {
+        let characters = filePath.map { $0 == #"\"# ? "/" : $0 }
+        filePath = String(characters)[...]
+      }
+#endif
+
+      // Trim any trailing slashes, then take the substring following the last
+      // (remaining) slash, if any.
+      if let lastNonSlashCharacter = filePath.lastIndex(where: { $0 != "/" }) {
+        filePath = filePath[...lastNonSlashCharacter]
+        if let lastSlashCharacter = filePath.lastIndex(of: "/") {
+          filePath = filePath[lastSlashCharacter...].dropFirst()
+        }
+        return String(filePath)
+      }
+      return nil
+    }()
+    return "\(moduleName)/\(fileName ?? filePath)"
   }
 }
 
@@ -207,7 +279,7 @@ extension SourceLocation {
   /// - Warning: This property is provided temporarily to aid in integrating the
   ///   testing library with existing tools such as Swift Package Manager. It
   ///   will be removed in a future release.
-  @available(swift, deprecated: 100000.0, renamed: "filePath")
+  @available(swift, deprecated: 6.3, renamed: "filePath")
   public var _filePath: String {
     get {
       filePath

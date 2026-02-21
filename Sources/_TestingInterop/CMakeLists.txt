@@ -6,6 +6,7 @@
 # See http://swift.org/LICENSE.txt for license information
 # See http://swift.org/CONTRIBUTORS.txt for Swift project authors
 
+include(ModuleABIName)
 add_library(_TestingInterop
   FallbackEventHandler.swift)
 
@@ -22,3 +23,5 @@ target_compile_options(_TestingInterop PRIVATE
   -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_TestingInterop,Swift_MODULE_DIRECTORY>/_TestingInterop.swiftinterface)
 
 _swift_testing_install_target(_TestingInterop)
+
+set_property(GLOBAL APPEND PROPERTY SwiftTesting_EXPORTS _TestingInterop)

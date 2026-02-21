@@ -106,7 +106,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter argument")
-  @available(_regexAPI, *)
   func filter() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello"])
     let test1 = Test(name: "hello") {}
@@ -118,7 +117,6 @@ struct SwiftPMTests {
   }
 
   @Test("Multiple --filter arguments")
-  @available(_regexAPI, *)
   func multipleFilter() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello", "--filter", "sorry"])
     let test1 = Test(name: "hello") {}
@@ -132,7 +130,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter or --skip argument with bad regex")
-  @available(_regexAPI, *)
   func badArguments() throws {
     #expect(throws: (any Error).self) {
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "("])
@@ -143,7 +140,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter with no matches")
-  @available(_regexAPI, *)
   func filterWithNoMatches() async {
     var args = __CommandLineArguments_v0()
     args.filter = ["NOTHING_MATCHES_THIS_TEST_NAME_HOPEFULLY"]
@@ -153,7 +149,6 @@ struct SwiftPMTests {
   }
 
   @Test("--skip argument")
-  @available(_regexAPI, *)
   func skip() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--skip", "hello"])
     let test1 = Test(name: "hello") {}
@@ -165,7 +160,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter or --skip argument as last argument")
-  @available(_regexAPI, *)
   func filterOrSkipAsLast() async throws {
     _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter"])
     _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
@@ -183,7 +177,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter/--skip arguments and .hidden trait")
-  @available(_regexAPI, *)
   func filterAndSkipAndHidden() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello", "--skip", "hello2"])
     let test1 = Test(name: "hello") {}
@@ -225,7 +218,7 @@ struct SwiftPMTests {
     }
     do {
       let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--xunit-output", temporaryFilePath])
-      let eventContext = Event.Context(test: nil, testCase: nil, configuration: nil)
+      let eventContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
       configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
@@ -325,6 +318,16 @@ struct SwiftPMTests {
     #expect(versionTypeInfo == nil)
   }
 
+#if !SWT_NO_SNAPSHOT_TYPES
+  @Test("Severity field included in Issue.Snapshot")
+  func issueSnapshotIncludesSeverity() async throws {
+    let configuration = try configurationForEntryPoint(
+      withArguments: ["PATH", "--event-stream-version", "-1"]
+    )
+    #expect(configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled)
+  }
+#endif
+
   @Test("Severity and isFailure fields included in version 6.3")
   func validateEventStreamContents() async throws {
     let tempDirPath = try temporaryDirectory()
@@ -364,6 +367,8 @@ struct SwiftPMTests {
           ("--event-stream-output-path", "--event-stream-version", ABI.v0.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v0.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_3.versionNumber),
+          ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_4.versionNumber),
+          ("--event-stream-output-path", "--event-stream-version", ABI.v6_4.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.ExperimentalVersion.versionNumber),
         ])
   func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: VersionNumber) async throws {
@@ -379,10 +384,20 @@ struct SwiftPMTests {
     defer {
       _ = remove(temporaryFilePath)
     }
+    let testTimeLimit = 3
+    let expectedArgs = ["argument1", "argument2"]
     do {
       let configuration = try configurationForEntryPoint(withArguments: ["PATH", outputArgumentName, temporaryFilePath, versionArgumentName, "\(version.versionNumber)"])
-      let test = Test(.tags(.blue)) {}
-      let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
+      let test = Test(
+        .tags(.blue),
+        .bug("https://my.defect.com/1234"),
+        .bug("other defect"),
+        .timeLimit(Swift.Duration.seconds(testTimeLimit + 100)),
+        .timeLimit(Swift.Duration.seconds(testTimeLimit)),
+        .timeLimit(Swift.Duration.seconds(testTimeLimit + 10)),
+        arguments: expectedArgs as [String]
+      ) {_ in}
+      let eventContext = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
 
       if V.includesExperimentalFields {
         configuration.handleEvent(Event(.libraryDiscovered(.swiftTesting), testID: test.id, testCaseID: nil), in: eventContext)
@@ -390,7 +405,7 @@ struct SwiftPMTests {
       configuration.handleEvent(Event(.testDiscovered, testID: test.id, testCaseID: nil), in: eventContext)
       configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       do {
-        let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
+        let eventContext = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
         configuration.handleEvent(Event(.testStarted, testID: test.id, testCaseID: nil), in: eventContext)
         configuration.handleEvent(Event(.testEnded, testID: test.id, testCaseID: nil), in: eventContext)
       }
@@ -408,10 +423,26 @@ struct SwiftPMTests {
     #expect(testRecords.count == 1)
     for testRecord in testRecords {
       if version.includesExperimentalFields {
+        let actualTestCases = testRecord._testCases
+        let testCases = try #require(actualTestCases)
+        #expect(testCases.count == expectedArgs.count)
         #expect(testRecord._tags != nil)
       } else {
-        #expect(testRecord._tags == nil)
+        #expect(testRecord._testCases == nil)
       }
+
+      if version.versionNumber >= ABI.v6_4.versionNumber {
+        let testTags = try #require(testRecord.tags)
+        #expect(testTags.count >= 1)
+        for tag in testTags {
+          #expect(!tag.starts(with: "."))
+        }
+        let bugs = try #require(testRecord.bugs)
+        #expect(bugs.count == 2)
+        let timeLimit = try #require(testRecord.timeLimit)
+        #expect(timeLimit == Double(testTimeLimit))
+      }
+
     }
     let eventRecords = decodedRecords.compactMap { record in
       if case let .event(event) = record.kind {
@@ -441,7 +472,6 @@ struct SwiftPMTests {
 #endif
 
   @Test("--repetitions argument (alone)")
-  @available(_regexAPI, *)
   func repetitions() throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repetitions", "2468"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
@@ -449,7 +479,6 @@ struct SwiftPMTests {
   }
 
   @Test("--repeat-until pass argument (alone)")
-  @available(_regexAPI, *)
   func repeatUntilPass() throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == .max)
@@ -457,7 +486,6 @@ struct SwiftPMTests {
   }
 
   @Test("--repeat-until fail argument (alone)")
-  @available(_regexAPI, *)
   func repeatUntilFail() throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repeat-until", "fail"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == .max)
@@ -465,7 +493,6 @@ struct SwiftPMTests {
   }
 
   @Test("--repeat-until argument with garbage value (alone)")
-  @available(_regexAPI, *)
   func repeatUntilGarbage() {
     #expect(throws: (any Error).self) {
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--repeat-until", "qwertyuiop"])
@@ -473,7 +500,6 @@ struct SwiftPMTests {
   }
 
   @Test("--repetitions and --repeat-until arguments")
-  @available(_regexAPI, *)
   func repetitionsAndRepeatUntil() throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repetitions", "2468", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
@@ -501,6 +527,22 @@ struct SwiftPMTests {
     let currentTestID = String(describing: try #require(Test.current?.id))
     #expect(testIDs.contains(currentTestID))
     #expect(testIDs.allSatisfy { $0.contains(".swift:") })
+  }
+
+  @Test("list subcommand includes synthesized tests")
+  func listIncludesSynthesizedTests() async throws {
+    var args = __CommandLineArguments_v0()
+    args.verbosity = .min
+    args.listTests = true
+    await confirmation("At least one suite was synthesized", expectedCount: 1...) { suiteSynthesized in
+      _ = await entryPoint(passing: args) { event, eventContext in
+        if case .testDiscovered = event.kind,
+           let test = eventContext.test,
+           test.isSynthesized {
+          suiteSynthesized()
+        }
+      }
+    }
   }
 
   @Test(

@@ -6,6 +6,7 @@
 # See https://swift.org/LICENSE.txt for license information
 # See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
+include(ModuleABIName)
 add_library(_Testing_Foundation
   Attachments/_AttachableURLWrapper.swift
   Attachments/EncodingFormat.swift
@@ -17,6 +18,8 @@ add_library(_Testing_Foundation
   Events/Clock+Date.swift
   ReexportTesting.swift)
 
+target_link_libraries(_Testing_Foundation PRIVATE
+  _TestingInternals)
 target_link_libraries(_Testing_Foundation PUBLIC
   Testing)
 

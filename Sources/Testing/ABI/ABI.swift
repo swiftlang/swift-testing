@@ -43,11 +43,7 @@ extension ABI {
   }
 
   /// The current supported ABI version (ignoring any experimental versions.)
-  typealias CurrentVersion = v6_3
-
-  /// The highest defined and supported ABI version (including any experimental
-  /// versions.)
-  typealias HighestVersion = v6_3
+  public typealias CurrentVersion = v6_4
 
 #if !hasFeature(Embedded)
   /// Get the type representing a given ABI version.
@@ -67,13 +63,12 @@ extension ABI {
     forVersionNumber versionNumber: VersionNumber,
     givenSwiftCompilerVersion swiftCompilerVersion: @autoclosure () -> VersionNumber = swiftCompilerVersion
   ) -> (any Version.Type)? {
-    // Special-case the experimental ABI version number (which is intentionally
-    // higher than any Swift release's version number).
-    if versionNumber == ExperimentalVersion.versionNumber {
-      return ExperimentalVersion.self
+    if versionNumber >= ABI.ExperimentalVersion.versionNumber {
+      // The experimental ABI version is higher than any real ABI version.
+      return ABI.ExperimentalVersion.self
     }
 
-    if versionNumber > ABI.HighestVersion.versionNumber {
+    if versionNumber > ABI.CurrentVersion.versionNumber {
       // If the caller requested an ABI version higher than the current Swift
       // compiler version and it's not an ABI version we've explicitly defined,
       // then we assume we don't know what they're talking about and return nil.
@@ -91,6 +86,8 @@ extension ABI {
     }
 
     return switch versionNumber {
+    case ABI.v6_4.versionNumber...:
+      ABI.v6_4.self
     case ABI.v6_3.versionNumber...:
       ABI.v6_3.self
     case ABI.v0.versionNumber...:
@@ -166,11 +163,22 @@ extension ABI {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
-  @_spi(Experimental)
   public enum v6_3: Sendable, Version {
     static var versionNumber: VersionNumber {
       VersionNumber(6, 3)
+    }
+  }
+
+  /// A namespace and type for ABI version 6.4 symbols.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.4)
+  /// }
+  public enum v6_4: Sendable, Version {
+    static var versionNumber: VersionNumber {
+      VersionNumber(6, 4)
     }
   }
 

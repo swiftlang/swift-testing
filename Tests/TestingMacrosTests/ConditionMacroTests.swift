@@ -438,8 +438,26 @@ struct ConditionMacroTests {
 
   @Test("#expect(processExitsWith:) diagnostics",
     arguments: [
+      "struct S<T> { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic structure 'S'",
+      "extension S where T: U { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+      "extension [T] { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+      "extension [T:U] { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+      "extension T? { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+      "extension T! { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+      "extension [1 of T] { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
       "func f<T>() { #expectExitTest(processExitsWith: x) {} }":
         "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic function 'f()'",
+      "func f() where T: U { #expectExitTest(processExitsWith: x) {} }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic function 'f()'",
+      "func f(_: some T) { #expectExitTest(processExitsWith: x) {} }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic function 'f(_:)'",
     ]
   )
   func exitTestDiagnostics(input: String, expectedMessage: String) throws {

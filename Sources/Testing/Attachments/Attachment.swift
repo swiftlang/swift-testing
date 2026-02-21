@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if !SWT_NO_FILE_CLONING
+private import _TestingInternals.StubsOnly
+#endif
+
 /// A type describing values that can be attached to the output of a test run
 /// and inspected later by the user.
 ///
@@ -24,22 +28,8 @@ private import _TestingInternals
 ///   @Available(Xcode, introduced: 26.0)
 /// }
 public struct Attachment<AttachableValue> where AttachableValue: Attachable & ~Copyable {
-  /// A class that stores an attachment's (potentially move-only) attachable
-  /// value.
-  ///
-  /// We use a class to store the attachable value so that ``Attachment`` can
-  /// conform to `Copyable` even if `AttachableValue` doesn't.
-  fileprivate final class Storage {
-    /// Storage for ``Attachment/attachableValue-7dyjv``.
-    let attachableValue: AttachableValue
-
-    init(_ attachableValue: consuming AttachableValue) {
-      self.attachableValue = attachableValue
-    }
-  }
-
   /// Storage for ``attachableValue-7dyjv``.
-  private var _storage: Storage
+  private var _storage: Allocated<AttachableValue>
 
   /// The path to which the this attachment was saved, if any.
   ///
@@ -95,8 +85,7 @@ public struct Attachment<AttachableValue> where AttachableValue: Attachable & ~C
   public internal(set) var sourceLocation: SourceLocation
 }
 
-extension Attachment: Sendable where AttachableValue: Sendable {}
-extension Attachment.Storage: Sendable where AttachableValue: Sendable {}
+extension Attachment: Sendable where AttachableValue: Sendable & ~Copyable {}
 
 // MARK: - Initializing an attachment
 
@@ -119,7 +108,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
-    self._storage = Storage(attachableValue)
+    self._storage = Allocated(attachableValue)
     self._preferredName = preferredName
     self.sourceLocation = sourceLocation
   }
@@ -148,6 +137,9 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
     _estimatedAttachmentByteCount = { attachment.attachableValue.estimatedAttachmentByteCount }
     _withUnsafeBytes = { try attachment.withUnsafeBytes($0) }
     _preferredName = { attachment.attachableValue.preferredName(for: attachment, basedOn: $0) }
+#if !SWT_NO_FILE_CLONING
+    _clone = { attachment.attachableValue.clone(toFileAtPath: $0, for: attachment) }
+#endif
   }
 
   /// The implementation of ``estimatedAttachmentByteCount`` borrowed from the
@@ -177,7 +169,21 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     _preferredName(suggestedName)
   }
+
+#if !SWT_NO_FILE_CLONING
+  /// The implementation of ``clone(toFileAtPath:)`` borrowed from the original
+  /// attachment.
+  private var _clone: @Sendable (String) -> Bool
+
+  package func clone(toFileAtPath filePath: String) -> Bool {
+    _clone(filePath)
+  }
+#endif
 }
+
+#if !SWT_NO_FILE_CLONING
+extension AnyAttachable: FileClonable {}
+#endif
 
 // MARK: - Describing an attachment
 
@@ -188,7 +194,7 @@ extension Attachment: CustomStringConvertible where AttachableValue: ~Copyable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public var description: String {
-    if #available(_castingWithNonCopyableGenerics, *), let attachableValue = boxCopyableValue(attachableValue) {
+    if #available(_castingWithNonCopyableGenerics, *), let attachableValue = makeExistential(attachableValue) {
       return #""\#(preferredName)": \#(String(describingForTest: attachableValue))"#
     }
     let typeInfo = TypeInfo(describing: AttachableValue.self)
@@ -207,7 +213,7 @@ extension Attachment where AttachableValue: ~Copyable {
   /// }
   @_disfavoredOverload public var attachableValue: AttachableValue {
     _read {
-      yield _storage.attachableValue
+      yield _storage.value
     }
   }
 }
@@ -322,7 +328,7 @@ extension Attachment where AttachableValue: ~Copyable {
       Attachment<Array>.record(bufferCopy, sourceLocation: sourceLocation)
     } catch {
       let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
-      Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record()
+      Issue(kind: .valueAttachmentFailed(error), severity: .warning, comments: [], sourceContext: sourceContext).record()
     }
   }
 
@@ -386,6 +392,55 @@ extension Attachment where AttachableValue: ~Copyable {
 #if !SWT_NO_FILE_IO
 // MARK: - Writing
 
+extension Attachable where Self: ~Copyable {
+#if !SWT_NO_FILE_CLONING
+  /// Clone the file this instance represents to the given file path if it
+  /// conforms to ``FileClonable``.
+  ///
+  /// - Parameters:
+  ///   - filePath: The path to clone this instance to.
+  ///
+  /// - Returns: Whether or not the file was successfully cloned.
+  ///
+  /// See ``FileClonable`` for more information.
+  fileprivate func clone(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) -> Bool {
+    if #available(_castingWithNonCopyableGenerics, *),
+       let self = makeExistential(self) as? any FileClonable {
+      return self.clone(toFileAtPath: filePath)
+    }
+    return false
+  }
+#endif
+
+  /// Write this instance to the given file system path.
+  ///
+  /// - Parameters:
+  ///   - filePath: The path to write to.
+  ///   - attachment: The attachment that is requesting this instance be written
+  ///     (that is, the attachment containing this instance.)
+  ///
+  /// - Throws: Any error that prevented writing this instance to `filePath`.
+  ///
+  /// The testing library uses this function when saving an attachment. The
+  /// default implementation opens `filePath` for writing with exclusive access,
+  /// then passes it to `_write(toFILE:for:)`.
+  borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
+#if !SWT_NO_FILE_CLONING
+    if clone(toFileAtPath: filePath, for: attachment) {
+      return
+    }
+#endif
+
+    try withUnsafeBytes(for: attachment) { buffer in
+      // Note "x" in the mode string which indicates that the file should be
+      // created and opened exclusively. The underlying `fopen()` call will thus
+      // fail with `EEXIST` if a file exists at `filePath`.
+      let file = try FileHandle(atPath: filePath, mode: "wxeb")
+      try file.write(buffer)
+    }
+  }
+}
+
 extension Attachment where AttachableValue: ~Copyable {
   /// Write the attachment's contents to a file in the specified directory.
   ///
@@ -444,13 +499,12 @@ extension Attachment where AttachableValue: ~Copyable {
 
     let preferredName = usingPreferredName ? preferredName : Self.defaultPreferredName
 
-    var file: FileHandle?
     do {
       // First, attempt to create the file with the exact preferred name. If a
-      // file exists at this path (note "x" in the mode string), an error will
-      // be thrown and we'll try again by adding a suffix.
+      // file exists at this path, an error with code `EEXIST` will be thrown
+      // and we'll try again by adding a suffix.
       let preferredPath = appendPathComponent(preferredName, to: directoryPath)
-      file = try FileHandle(atPath: preferredPath, mode: "wxeb")
+      try attachableValue.write(toFileAtPath: preferredPath, for: self)
       result = preferredPath
     } catch {
       // Split the extension(s) off the preferred name. The first component in
@@ -466,10 +520,10 @@ extension Attachment where AttachableValue: ~Copyable {
         // Propagate any error *except* EEXIST, which would indicate that the
         // name was already in use (so we should try again with a new suffix.)
         do {
-          file = try FileHandle(atPath: preferredPath, mode: "wxeb")
+          try attachableValue.write(toFileAtPath: preferredPath, for: self)
           result = preferredPath
           break
-        } catch let error as CError where error.rawValue == swt_EEXIST() {
+        } catch where error._code == swt_EEXIST() && error._domain == "NSPOSIXErrorDomain" {
           // Try again with a new suffix.
           continue
         } catch where usingPreferredName {
@@ -477,12 +531,6 @@ extension Attachment where AttachableValue: ~Copyable {
           return try write(toFileInDirectoryAtPath: directoryPath, usingPreferredName: false, appending: suffix())
         }
       }
-    }
-
-    // There should be no code path that leads to this call where the attachable
-    // value is nil.
-    try withUnsafeBytes { buffer in
-      try file!.write(buffer)
     }
 
     return result
@@ -551,7 +599,7 @@ extension Configuration {
     } catch {
       // Record the error as an issue and suppress the event.
       let sourceContext = SourceContext(backtrace: .current(), sourceLocation: attachment.sourceLocation)
-      Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record(configuration: self)
+      Issue(kind: .valueAttachmentFailed(error), severity: .warning, comments: [], sourceContext: sourceContext).record(configuration: self)
       return false
     }
   }

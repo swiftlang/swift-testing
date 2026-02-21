@@ -18,6 +18,13 @@ import XCTest
 import Foundation
 #endif
 
+/// The ABI name of the testing library's main module.
+///
+/// This can be different than the target name ("Testing") whenever the module
+/// ABI name is customized at build time, as it is in certain deployment
+/// contexts.
+let testingModuleABIName = TypeInfo(describing: Test.self).fullyQualifiedNameComponents.first!
+
 extension Tag {
   /// A tag indicating that a test is related to a trait.
   @Tag static var traitRelated: Self
@@ -162,11 +169,13 @@ extension Test {
   init(
     _ traits: any TestTrait...,
     sourceLocation: SourceLocation = #_sourceLocation,
+    sourceBounds: __SourceBounds? = nil,
     name: String = #function,
     testFunction: @escaping @Sendable () async throws -> Void
   ) {
+    let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: [])
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: [])
   }
 
   /// Initialize an instance of this type with a function or closure to call,
@@ -191,12 +200,14 @@ extension Test {
       Parameter(index: 0, firstName: "x", type: C.Element.self),
     ],
     sourceLocation: SourceLocation = #_sourceLocation,
+    sourceBounds: __SourceBounds? = nil,
     column: Int = #column,
     name: String = #function,
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) where C: Collection & Sendable, C.Element: Sendable {
+    let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
   init<C>(
@@ -206,14 +217,16 @@ extension Test {
       Parameter(index: 0, firstName: "x", type: C.Element.self),
     ],
     sourceLocation: SourceLocation = #_sourceLocation,
+    sourceBounds: __SourceBounds? = nil,
     column: Int = #column,
     name: String = #function,
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) where C: Collection & Sendable, C.Element: Sendable {
+    let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = { @Sendable in
       Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction)
     }
-    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Initialize an instance of this type with a function or closure to call,
@@ -240,11 +253,13 @@ extension Test {
       Parameter(index: 1, firstName: "y", type: C2.Element.self),
     ],
     sourceLocation: SourceLocation = #_sourceLocation,
+    sourceBounds: __SourceBounds? = nil,
     name: String = #function,
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+    let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: collection1, collection2, parameters: parameters, testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Initialize an instance of this type with a function or closure to call,
@@ -266,11 +281,13 @@ extension Test {
       Parameter(index: 1, firstName: "y", type: C2.Element.self),
     ],
     sourceLocation: SourceLocation = #_sourceLocation,
+    sourceBounds: __SourceBounds? = nil,
     name: String = #function,
     testFunction: @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+    let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: zippedCollections, parameters: parameters, testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 }
 
@@ -415,7 +432,6 @@ extension JSON {
 #endif
 }
 
-@available(_clockAPI, *)
 extension Trait where Self == TimeLimitTrait {
   /// Construct a time limit trait that causes a test to time out if it runs for
   /// too long.

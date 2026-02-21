@@ -29,70 +29,14 @@ public struct __Expression: Sendable {
   /// captured.
   ///
   /// This type is not part of the public interface of the testing library.
+  /// Although it only has one case, removing it causes Xcode&nbsp;16 to fail to
+  /// decode events of kind `issueRecorded`.
   enum Kind: Sendable {
     /// The expression represents a single, complete syntax node.
     ///
     /// - Parameters:
     ///   - sourceCode: The source code of the represented expression.
     case generic(_ sourceCode: String)
-
-    /// The expression represents a string literal expression.
-    ///
-    /// - Parameters:
-    ///   - sourceCode: The source code of the represented expression. Note that
-    ///     this string is not the _value_ of the string literal, but the string
-    ///     literal itself (including leading and trailing quote marks and
-    ///     extended punctuation.)
-    ///   - stringValue: The value of the string literal.
-    case stringLiteral(sourceCode: String, stringValue: String)
-
-    /// The expression represents a binary operation.
-    ///
-    /// - Parameters:
-    ///   - lhs: The left-hand operand.
-    ///   - operator: The operator.
-    ///   - rhs: The right-hand operand.
-    indirect case binaryOperation(lhs: __Expression, `operator`: String, rhs: __Expression)
-
-    /// A type representing an argument to a function call, used by the
-    /// `__Expression.Kind.functionCall` case.
-    ///
-    /// This type is not part of the public interface of the testing library.
-    struct FunctionCallArgument: Sendable {
-      /// The label, if present, of the argument.
-      var label: String?
-
-      /// The value, as an expression, of the argument.
-      var value: __Expression
-    }
-
-    /// The expression represents a function call.
-    ///
-    /// - Parameters:
-    ///   - value: The value on which the function was called, if any.
-    ///   - functionName: The name of the function that was called.
-    ///   - arguments: The arguments passed to the function.
-    indirect case functionCall(value: __Expression?, functionName: String, arguments: [FunctionCallArgument])
-
-    /// The expression represents a property access.
-    ///
-    /// - Parameters:
-    ///   - value: The value whose property was accessed.
-    ///   - keyPath: The key path, relative to `value`, that was accessed, not
-    ///     including a leading backslash or period.
-    indirect case propertyAccess(value: __Expression, keyPath: __Expression)
-
-    /// The expression negates another expression.
-    ///
-    /// - Parameters:
-    ///   - expression: The expression that was negated.
-    ///   - isParenthetical: Whether or not `expression` was enclosed in
-    ///     parentheses (and the `!` operator was outside it.) This argument
-    ///     affects how this expression is represented as a string.
-    ///
-    /// Unlike other cases in this enumeration, this case affects the runtime
-    /// behavior of the `__check()` family of functions.
-    indirect case negation(_ expression: __Expression, isParenthetical: Bool)
   }
 
   /// The kind of syntax node represented by this instance.
@@ -102,34 +46,15 @@ public struct __Expression: Sendable {
   /// instance of this type.
   var kind: Kind
 
+  /// Whether or not this instance represents a negated expression (`!foo`).
+  var isNegated = false
+
   /// The source code of the original captured expression.
   @_spi(ForToolsIntegrationOnly)
   public var sourceCode: String {
     switch kind {
-    case let .generic(sourceCode), let .stringLiteral(sourceCode, _):
+    case let .generic(sourceCode):
       return sourceCode
-    case let .binaryOperation(lhs, op, rhs):
-      return "\(lhs) \(op) \(rhs)"
-    case let .functionCall(value, functionName, arguments):
-      let argumentList = arguments.lazy
-        .map { argument in
-          if let argumentLabel = argument.label {
-            return "\(argumentLabel): \(argument.value.sourceCode)"
-          }
-          return argument.value.sourceCode
-        }.joined(separator: ", ")
-      if let value {
-        return "\(value.sourceCode).\(functionName)(\(argumentList))"
-      }
-      return "\(functionName)(\(argumentList))"
-    case let .propertyAccess(value, keyPath):
-      return "\(value.sourceCode).\(keyPath.sourceCode)"
-    case let .negation(expression, isParenthetical):
-      var sourceCode = expression.sourceCode
-      if isParenthetical {
-        sourceCode = "(\(sourceCode))"
-      }
-      return "!\(sourceCode)"
     }
   }
 
@@ -319,20 +244,41 @@ public struct __Expression: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public var runtimeValue: Value?
 
-  /// Copy this instance and capture the runtime value corresponding to it.
+  /// Capture the runtime value corresponding to this instance.
   ///
   /// - Parameters:
   ///   - value: The captured runtime value.
-  ///
-  /// - Returns: A copy of `self` with information about the specified runtime
-  ///   value captured for future use.
-  func capturingRuntimeValue(_ value: (some Any)?) -> Self {
-    var result = self
-    result.runtimeValue = value.flatMap(Value.init(reflecting:))
-    if case let .negation(subexpression, isParenthetical) = kind, let value = value as? Bool {
-      result.kind = .negation(subexpression.capturingRuntimeValue(!value), isParenthetical: isParenthetical)
+  private mutating func _captureRuntimeValue(_ value: (some Any)?) {
+    runtimeValue = value.flatMap(Value.init(reflecting:))
+    if isNegated, let value = value as? Bool {
+      subexpressions[0]._captureRuntimeValue(!value)
     }
-    return result
+  }
+
+  /// Capture the runtime values corresponding to this instance and its
+  /// subexpressions.
+  ///
+  /// - Parameters:
+  ///   - firstValue: The first captured runtime value.
+  ///   - additionalValues: Any additional captured runtime values after the
+  ///     first.
+  private mutating func _captureRuntimeValues<each T>(_ firstValue: (some Any)?, _ additionalValues: repeat (each T)?) {
+    if isNegated {
+      // A negated expression has an additional level of indirection between it
+      // and any additional values.
+      subexpressions[0]._captureRuntimeValues(nil as Any? /* discarded */, repeat each additionalValues)
+    } else {
+      var i = subexpressions.startIndex
+      let endIndex = subexpressions.endIndex
+      for value in repeat each additionalValues {
+        guard i < endIndex else {
+          break
+        }
+        defer { i = subexpressions.index(after: i) }
+        subexpressions[i]._captureRuntimeValue(value)
+      }
+    }
+    _captureRuntimeValue(firstValue)
   }
 
   /// Copy this instance and capture the runtime values corresponding to its
@@ -350,40 +296,7 @@ public struct __Expression: Sendable {
   /// this function is equivalent to ``capturingRuntimeValue(_:)``.
   func capturingRuntimeValues<each T>(_ firstValue: (some Any)?, _ additionalValues: repeat (each T)?) -> Self {
     var result = self
-
-    // Convert the variadic generic argument list to an array.
-    var additionalValuesArray = [Any?]()
-    repeat additionalValuesArray.append(each additionalValues)
-
-    switch kind {
-    case .generic, .stringLiteral:
-      result = capturingRuntimeValue(firstValue)
-    case let .binaryOperation(lhsExpr, op, rhsExpr):
-      result.kind = .binaryOperation(
-        lhs: lhsExpr.capturingRuntimeValues(firstValue),
-        operator: op,
-        rhs: rhsExpr.capturingRuntimeValues(additionalValuesArray.first ?? nil)
-      )
-    case let .functionCall(value, functionName, arguments):
-      result.kind = .functionCall(
-        value: value?.capturingRuntimeValues(firstValue),
-        functionName: functionName,
-        arguments: zip(arguments, additionalValuesArray).map { argument, value in
-          .init(label: argument.label, value: argument.value.capturingRuntimeValues(value))
-        }
-      )
-    case let .propertyAccess(value, keyPath):
-      result.kind = .propertyAccess(
-        value: value.capturingRuntimeValues(firstValue),
-        keyPath: keyPath.capturingRuntimeValues(additionalValuesArray.first ?? nil)
-      )
-    case let .negation(expression, isParenthetical):
-      result.kind = .negation(
-        expression.capturingRuntimeValues(firstValue, repeat each additionalValues),
-        isParenthetical: isParenthetical
-      )
-    }
-
+    result._captureRuntimeValues(firstValue, repeat each additionalValues)
     return result
   }
 
@@ -393,161 +306,60 @@ public struct __Expression: Sendable {
   /// - Returns: A string describing this instance.
   @_spi(ForToolsIntegrationOnly)
   public func expandedDescription() -> String {
-    _expandedDescription(in: _ExpandedDescriptionContext())
-  }
-
-  /// Get an expanded description of this instance that contains the source
-  /// code and runtime value (or values) it represents.
-  ///
-  /// - Returns: A string describing this instance.
-  ///
-  /// This function produces a more detailed description than
-  /// ``expandedDescription()``, similar to how `String(reflecting:)` produces
-  /// a more detailed description than `String(describing:)`.
-  func expandedDebugDescription() -> String {
-    var context = _ExpandedDescriptionContext()
-    context.includeTypeNames = true
-    context.includeParenthesesIfNeeded = false
-    return _expandedDescription(in: context)
-  }
-
-  /// A structure describing the state tracked while calling
-  /// `_expandedDescription(in:)`.
-  private struct _ExpandedDescriptionContext {
-    /// The depth of recursion at which the function is being called.
-    var depth = 0
-
-    /// Whether or not to include type names in output.
-    var includeTypeNames = false
-
-    /// Whether or not to enclose the resulting string in parentheses (as needed
-    /// depending on what information the resulting string contains.)
-    var includeParenthesesIfNeeded = true
+    expandedDescription(verbose: false)
   }
 
   /// Get an expanded description of this instance that contains the source
   /// code and runtime value (or values) it represents.
   ///
   /// - Parameters:
-  ///   - context: The context for this call.
+  ///   - verbose: Whether or not to include more verbose output.
   ///
   /// - Returns: A string describing this instance.
   ///
-  /// This function provides the implementation of ``expandedDescription()`` and
-  /// ``expandedDebugDescription()``.
-  private func _expandedDescription(in context: _ExpandedDescriptionContext) -> String {
-    // Create a (default) context value to pass to recursive calls for
-    // subexpressions.
-    var childContext = context
-    do {
-      // Bump the depth so that recursive calls track the next depth level.
-      childContext.depth += 1
+  /// This function provides the implementation of ``expandedDescription()``
+  /// with additional options used by ``Event/HumanReadableOutputRecorder``.
+  func expandedDescription(verbose: Bool) -> String {
+    var result = sourceCode
 
-      // Subexpressions do not automatically disable parentheses if the parent
-      // does; they must opt in.
-      childContext.includeParenthesesIfNeeded = true
+    if verbose, let qualifiedName = runtimeValue?.typeInfo.fullyQualifiedName {
+      result = "\(result): \(qualifiedName)"
     }
 
-    var result = ""
-    switch kind {
-    case let .generic(sourceCode), let .stringLiteral(sourceCode, _):
-      result = if context.includeTypeNames, let qualifiedName = runtimeValue?.typeInfo.fullyQualifiedName {
-        "\(sourceCode): \(qualifiedName)"
-      } else {
-        sourceCode
-      }
-    case let .binaryOperation(lhsExpr, op, rhsExpr):
-      result = "\(lhsExpr._expandedDescription(in: childContext)) \(op) \(rhsExpr._expandedDescription(in: childContext))"
-    case let .functionCall(value, functionName, arguments):
-      var argumentContext = childContext
-      argumentContext.includeParenthesesIfNeeded = (arguments.count > 1)
-      let argumentList = arguments.lazy
-        .map { argument in
-          (argument.label, argument.value._expandedDescription(in: argumentContext))
-        }.map { label, value in
-          if let label {
-            return "\(label): \(value)"
-          }
-          return value
-        }.joined(separator: ", ")
-      result = if let value {
-        "\(value._expandedDescription(in: childContext)).\(functionName)(\(argumentList))"
-      } else {
-        "\(functionName)(\(argumentList))"
-      }
-    case let .propertyAccess(value, keyPath):
-      var keyPathContext = childContext
-      keyPathContext.includeParenthesesIfNeeded = false
-      result = "\(value._expandedDescription(in: childContext)).\(keyPath._expandedDescription(in: keyPathContext))"
-    case let .negation(expression, isParenthetical):
-      childContext.includeParenthesesIfNeeded = !isParenthetical
-      var expandedDescription = expression._expandedDescription(in: childContext)
-      if isParenthetical {
-        expandedDescription = "(\(expandedDescription))"
-      }
-      result = "!\(expandedDescription)"
-    }
-
-    // If this expression is at the root of the expression graph...
-    if context.depth == 0 {
-      if runtimeValue == nil {
-        // ... and has no value, don't bother reporting the placeholder string
-        // for it...
-        return result
-      } else if let runtimeValue, runtimeValue.typeInfo.describes(Bool.self) {
-        // ... or if it is a boolean value, also don't bother (because it can be
-        // inferred from context.)
-        return result
-      }
-    }
-
-    let runtimeValueDescription = runtimeValue.map(String.init(describing:)) ?? "<not evaluated>"
-    result = if runtimeValueDescription == "(Function)" {
+    if let runtimeValue {
+      let runtimeValueDescription = String(describingForTest: runtimeValue)
       // Hack: don't print string representations of function calls.
-      result
-    } else if runtimeValueDescription == result {
-      result
-    } else if context.includeParenthesesIfNeeded && context.depth > 0 {
-      "(\(result) → \(runtimeValueDescription))"
+      if runtimeValueDescription != "(Function)" && runtimeValueDescription != result {
+        result = "\(result) → \(runtimeValueDescription)"
+      }
     } else {
-      "\(result) → \(runtimeValueDescription)"
+      result = "\(result) → <not evaluated>"
     }
+
 
     return result
   }
 
   /// The set of parsed and captured subexpressions contained in this instance.
   @_spi(ForToolsIntegrationOnly)
-  public var subexpressions: [Self] {
-    switch kind {
-    case .generic, .stringLiteral:
-      []
-    case let .binaryOperation(lhs, _, rhs):
-      [lhs, rhs]
-    case let .functionCall(value, _, arguments):
-      if let value {
-        CollectionOfOne(value) + arguments.lazy.map(\.value)
-      } else {
-        arguments.lazy.map(\.value)
-      }
-    case let .propertyAccess(value: value, keyPath: keyPath):
-      [value, keyPath]
-    case let .negation(expression, _):
-      [expression]
-    }
-  }
+  public internal(set) var subexpressions = [Self]()
 
-  /// The string value associated with this instance if it represents a string
-  /// literal.
+  /// A description of the difference between the operands in this expression,
+  /// if that difference could be determined.
   ///
-  /// If this instance represents an expression other than a string literal, the
-  /// value of this property is `nil`.
+  /// The value of this property is set for the binary operators `==` and `!=`
+  /// when used to compare collections.
+  ///
+  /// If the containing expectation passed, the value of this property is `nil`
+  /// because the difference is only computed when necessary to assist with
+  /// diagnosing test failures.
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+  public internal(set) var differenceDescription: String?
+
   @_spi(ForToolsIntegrationOnly)
+  @available(*, deprecated, message: "The value of this property is always nil.")
   public var stringLiteralValue: String? {
-    if case let .stringLiteral(_, stringValue) = kind {
-      return stringValue
-    }
-    return nil
+    nil
   }
 }
 
@@ -555,7 +367,6 @@ public struct __Expression: Sendable {
 
 extension __Expression: Codable {}
 extension __Expression.Kind: Codable {}
-extension __Expression.Kind.FunctionCallArgument: Codable {}
 extension __Expression.Value: Codable {}
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible

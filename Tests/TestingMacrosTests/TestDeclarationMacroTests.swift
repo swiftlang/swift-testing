@@ -80,15 +80,31 @@ struct TestDeclarationMacroTests {
       "@_unavailableFromAsync @Suite actor A {}":
         "Attribute 'Suite' cannot be applied to this actor because it has been marked '@_unavailableFromAsync'",
 
-      // XCTestCase
+      // XCTest/XCTestCase/XCTestSuite
+      "@Suite final class C: XCTest {}":
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
       "@Suite final class C: XCTestCase {}":
-        "Attribute 'Suite' cannot be applied to a subclass of 'XCTestCase'",
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "@Suite final class C: XCTestSuite {}":
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "@Suite final class C: XCTest.XCTest {}":
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
       "@Suite final class C: XCTest.XCTestCase {}":
-        "Attribute 'Suite' cannot be applied to a subclass of 'XCTestCase'",
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "@Suite final class C: XCTest.XCTestSuite {}":
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "final class C: XCTest { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within class 'C' because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
       "final class C: XCTestCase { @Test func f() {} }":
-        "Attribute 'Test' cannot be applied to a function within class 'C'",
+        "Attribute 'Test' cannot be applied to a function within class 'C' because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "final class C: XCTestSuite { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within class 'C' because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "final class C: XCTest.XCTest { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within class 'C' because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
       "final class C: XCTest.XCTestCase { @Test func f() {} }":
-        "Attribute 'Test' cannot be applied to a function within class 'C'",
+        "Attribute 'Test' cannot be applied to a function within class 'C' because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
+      "final class C: XCTest.XCTestSuite { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within class 'C' because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
 
       // Unsupported inheritance
       "@Suite protocol P {}":
@@ -127,6 +143,14 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to this function because it has been marked '@available(*, noasync)'",
       "@available(*, noasync) struct S { @Suite struct S {} }":
         "Attribute 'Suite' cannot be applied to this structure because it has been marked '@available(*, noasync)'",
+      "extension S<T> { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type 'S<T>'",
+      "extension S<T> { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'S<T>'",
+      "extension S<T>.U { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type 'S<T>.U'",
+      "extension S<T>.U { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'S<T>.U'",
       "extension [T] { @Test func f() {} }":
         "Attribute 'Test' cannot be applied to a function within a generic extension to type '[T]'",
       "extension [T] { @Suite struct S {} }":
@@ -143,12 +167,18 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function within a generic extension to type 'T!'",
       "extension T! { @Suite struct S {} }":
         "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'T!'",
-      "struct S: ~Escapable { @Test func f() {} }":
-        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
-      "struct S: ~Swift.Escapable { @Test func f() {} }":
-        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
-      "struct S: ~(Escapable) { @Test func f() {} }":
-        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
+      "extension [1 of T] { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type '[1 of T]'",
+      "extension [1 of T] { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type '[1 of T]'",
+      "extension (some T).S { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type '(some T).S'",
+      "extension (some T).S { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type '(some T).S'",
+      "extension (any T).S { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type '(any T).S'",
+      "extension (any T).S { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type '(any T).S'",
     ]
   )
   func apiMisuseErrors(input: String, expectedMessage: String) throws {
@@ -440,10 +470,10 @@ struct TestDeclarationMacroTests {
       ("@Test @available(*, noasync) func f() {}", nil, "__requiringTry"),
       ("@Test @_unavailableFromAsync func f() {}", nil, "__requiringTry"),
       ("@Test(arguments: []) func f(f: () -> String) {}", "(() -> String).self", nil),
-      ("struct S {\n\t@Test func testF() {} }", nil, "__invokeXCTestCaseMethod"),
-      ("struct S {\n\t@Test func testF() throws {} }", nil, "__invokeXCTestCaseMethod"),
-      ("struct S {\n\t@Test func testF() async {} }", nil, "__invokeXCTestCaseMethod"),
-      ("struct S {\n\t@Test func testF() async throws {} }", nil, "__invokeXCTestCaseMethod"),
+      ("class S {\n\t@Test func testF() {} }", nil, "__invokeXCTestMethod"),
+      ("class S {\n\t@Test func testF() throws {} }", nil, "__invokeXCTestMethod"),
+      ("class S {\n\t@Test func testF() async {} }", nil, "__invokeXCTestMethod"),
+      ("class S {\n\t@Test func testF() async throws {} }", nil, "__invokeXCTestMethod"),
       (
         """
         struct S {
@@ -472,10 +502,11 @@ struct TestDeclarationMacroTests {
   func differentFunctionTypes(input: String, expectedTypeName: String?, otherCode: String?) throws {
     let (output, _) = try parse(input)
 
-#if hasFeature(SymbolLinkageMarkers)
-    #expect(output.contains("@_section"))
-#endif
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
+#if compiler(>=6.3)
+    #expect(output.contains("@section"))
+    #expect(!output.contains("__TestContentRecordContainer"))
+#else
+    #expect(!output.contains("@section"))
     #expect(output.contains("__TestContentRecordContainer"))
 #endif
     if let expectedTypeName {
@@ -484,14 +515,6 @@ struct TestDeclarationMacroTests {
     if let otherCode {
       #expect(output.contains(otherCode))
     }
-  }
-
-  @Test("Self. in @Test attribute is removed")
-  func removeSelfKeyword() throws {
-    let (output, _) = try parse("@Test(arguments: Self.nested.uniqueArgsName, NoTouching.thisOne) func f() {}")
-    #expect(output.contains("nested.uniqueArgsName"))
-    #expect(!output.contains("Self.nested.uniqueArgsName"))
-    #expect(output.contains("NoTouching.thisOne"))
   }
 
   @Test("Display name is preserved",

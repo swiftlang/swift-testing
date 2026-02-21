@@ -14,10 +14,13 @@ public import _Testing_CoreGraphics
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
+@available(_uttypesAPI, *) // For DocC
 extension CIImage: AttachableAsImage, AttachableAsCGImage {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   package var attachableCGImage: CGImage {
     get throws {
@@ -26,6 +29,10 @@ extension CIImage: AttachableAsImage, AttachableAsCGImage {
       }
       return result
     }
+  }
+
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytesImpl(as: imageFormat, body)
   }
 
   public func _copyAttachableValue() -> Self {

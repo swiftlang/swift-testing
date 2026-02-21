@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type describing the environment of the current process.
 ///
 /// This type can be used to access the current process' environment variables.
@@ -23,7 +27,7 @@ package enum Environment {
   /// platform-specific implementation details. Callers should not read from
   /// this dictionary directly; use ``variable(named:)`` or ``flag(named:)``
   /// instead.
-  static let simulatedEnvironment = Locked<[String: String]>()
+  static let simulatedEnvironment = Mutex<[String: String]>()
 #endif
 
   /// Split a string containing an environment variable's name and value into
@@ -188,7 +192,7 @@ package enum Environment {
               return nil
             case let errorCode:
               let error = Win32Error(rawValue: errorCode)
-              fatalError("Unexpected error when getting environment variable '\(name)': \(error) (\(errorCode))")
+              fatalError("Unexpected error when getting environment variable '\(name)': \(String(describingForTest: error)) (\(errorCode))")
             }
           } else if count > buffer.count {
             // Try again with the larger count.

@@ -13,10 +13,6 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
-#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
-#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand @Test")
-#endif
-
 /// A type describing the expansion of the `@Test` attribute macro.
 ///
 /// This type is used to implement the `@Test` attribute macro. Do not use it
@@ -27,14 +23,15 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     providingPeersOf declaration: some DeclSyntaxProtocol,
     in context: some MacroExpansionContext
   ) throws -> [DeclSyntax] {
-    guard _diagnoseIssues(with: declaration, testAttribute: node, in: context) else {
+    var inheritsFromXCTestClass: Bool?
+    guard _diagnoseIssues(with: declaration, testAttribute: node, inheritsFromXCTestClass: &inheritsFromXCTestClass, in: context) else {
       return []
     }
 
     let functionDecl = declaration.cast(FunctionDeclSyntax.self)
     let typeName = context.typeOfLexicalContext
 
-    return _createTestDecls(for: functionDecl, on: typeName, testAttribute: node, in: context)
+    return _createTestDecls(for: functionDecl, on: typeName, testAttribute: node, inheritsFromXCTestClass: inheritsFromXCTestClass, in: context)
   }
 
   public static var formatMode: FormatMode {
@@ -46,6 +43,8 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
   /// - Parameters:
   ///   - declaration: The function declaration to diagnose.
   ///   - testAttribute: The `@Test` attribute applied to `declaration`.
+  ///   - inheritsFromXCTestClass: On return, whether or not the type containing
+  ///     `declaration` (if any) is known to inherit from `XCTest.XCTest`.
   ///   - context: The macro context in which the expression is being parsed.
   ///
   /// - Returns: Whether or not macro expansion should continue (i.e. stopping
@@ -53,12 +52,16 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
   private static func _diagnoseIssues(
     with declaration: some DeclSyntaxProtocol,
     testAttribute: AttributeSyntax,
+    inheritsFromXCTestClass: inout Bool?,
     in context: some MacroExpansionContext
   ) -> Bool {
     var diagnostics = [DiagnosticMessage]()
     defer {
       context.diagnose(diagnostics)
     }
+
+    // Default to "we don't know".
+    inheritsFromXCTestClass = nil
 
     // The @Test attribute is only supported on function declarations.
     guard let function = declaration.as(FunctionDeclSyntax.self), !function.isOperator else {
@@ -70,14 +73,16 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     let lexicalContext = context.lexicalContext
     diagnostics += diagnoseIssuesWithLexicalContext(lexicalContext, containing: declaration, attribute: testAttribute)
 
-    // Suites inheriting from XCTestCase are not supported. We are a bit
+    // Suites inheriting from XCTest.XCTest are not supported. We are a bit
     // conservative here in this check and only check the immediate context.
     // Presumably, if there's an intermediate lexical context that is *not* a
     // type declaration, then it must be a function or closure (disallowed
     // elsewhere) and thus the test function is not a member of any type.
-    if let containingTypeDecl = lexicalContext.first?.asProtocol((any DeclGroupSyntax).self),
-       containingTypeDecl.inherits(fromTypeNamed: "XCTestCase", inModuleNamed: "XCTest") {
-      diagnostics.append(.containingNodeUnsupported(containingTypeDecl, whenUsing: testAttribute, on: declaration))
+    if let containingTypeDecl = lexicalContext.first?.asProtocol((any DeclGroupSyntax).self) {
+      inheritsFromXCTestClass = declarationInheritsFromXCTestClass(containingTypeDecl)
+      if inheritsFromXCTestClass == true {
+        diagnostics.append(.containingNodeUnsupported(containingTypeDecl, whenUsing: testAttribute, on: declaration))
+      }
     }
 
     // Only one @Test attribute is supported.
@@ -122,21 +127,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         if parameter.type.isSome {
           diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: parameter, on: function))
         }
-      }
-    }
-
-    // Disallow non-escapable types as suites. In order to support them, the
-    // compiler team needs to finish implementing the lifetime dependency
-    // feature so that `init()`, ``__requiringTry()`, and `__requiringAwait()`
-    // can be correctly expressed.
-    if let containingType = lexicalContext.first?.asProtocol((any DeclGroupSyntax).self),
-       let inheritedTypes = containingType.inheritanceClause?.inheritedTypes {
-      let escapableNonConformances = inheritedTypes
-        .map(\.type)
-        .compactMap { $0.as(SuppressedTypeSyntax.self) }
-        .filter { $0.type.isNamed("Escapable", inModuleNamed: "Swift") }
-      for escapableNonConformance in escapableNonConformances {
-        diagnostics.append(.containingNodeUnsupported(containingType, whenUsing: testAttribute, on: function, withSuppressedConformanceToEscapable: escapableNonConformance))
       }
     }
 
@@ -291,7 +281,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
           let sourceLocationExpr = createSourceLocationExpr(of: functionDecl.name, context: context)
 
           thunkBody = """
-          if try await Testing.__invokeXCTestCaseMethod(\(selectorExpr), onInstanceOf: \(typeName).self, sourceLocation: \(sourceLocationExpr)) {
+          if try await Testing.__invokeXCTestMethod(\(selectorExpr), onInstanceOf: \(typeName).self, sourceLocation: \(sourceLocationExpr)) {
             return
           }
           \(thunkBody)
@@ -368,6 +358,8 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
   ///   - typeName: The name of the type of which `functionDecl` is a member, if
   ///     any.
   ///   - testAttribute: The `@Test` attribute applied to `declaration`.
+  ///   - inheritsFromXCTestClass: Whether or not the type containing
+  ///     `functionDecl` (if any) is known to inherit from `XCTest.XCTest`.
   ///   - context: The macro context in which the expression is being parsed.
   ///
   /// - Returns: An array of declarations providing runtime information about
@@ -376,6 +368,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     for functionDecl: FunctionDeclSyntax,
     on typeName: TypeSyntax?,
     testAttribute: AttributeSyntax,
+    inheritsFromXCTestClass: Bool?,
     in context: some MacroExpansionContext
   ) -> [DeclSyntax] {
     var result = [DeclSyntax]()
@@ -401,7 +394,8 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // Generate a selector expression compatible with XCTest.
     var selectorExpr: ExprSyntax?
-    if let selector = functionDecl.xcTestCompatibleSelector {
+    if inheritsFromXCTestClass != false, // definitely does or maybe does
+       let selector = functionDecl.xcTestCompatibleSelector {
       let selectorLiteral = String(selector.tokens(viewMode: .fixedUp).lazy.flatMap(\.textWithoutBackticks))
       selectorExpr = "Testing.__xcTestCompatibleSelector(\(literal: selectorLiteral))"
     }
@@ -472,35 +466,30 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       """
     )
 
-    let accessorName = context.makeUniqueName(thunking: functionDecl, withPrefix: "accessor")
-    result.append(
-      """
-      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-      private \(staticKeyword(for: typeName)) nonisolated let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _, _ in
-        Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
-      }
-      """
-    )
-
     let testContentRecordName = context.makeUniqueName(thunking: functionDecl, withPrefix: "testContentRecord")
     result.append(
       makeTestContentRecordDecl(
         named: testContentRecordName,
         in: typeName,
         ofKind: .testDeclaration,
-        accessingWith: accessorName,
-        context: attributeInfo.testContentRecordFlags
+        accessingWith: """
+        { outValue, type, _, _ in
+          Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
+        }
+        """,
+        context: attributeInfo.testContentRecordFlags,
+        in: context
       )
     )
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
+#if compiler(<6.3)
     // Emit a type that contains a reference to the test content record.
     let enumName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟡$")
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       enum \(enumName): Testing.__TestContentRecordContainer {
-        nonisolated static var __testContentRecord: Testing.__TestContentRecord {
+        nonisolated static var __testContentRecord: Testing.__TestContentRecord6_2 {
           unsafe \(testContentRecordName)
         }
       }

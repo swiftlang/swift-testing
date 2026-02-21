@@ -85,7 +85,7 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   public private(set) nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
   /// A type defining storage for the underlying test content record.
-  private enum _RecordStorage {
+  private enum _RecordStorage: BitwiseCopyable {
     /// The test content record is stored by address.
     case atAddress(UnsafePointer<_TestContentRecord>)
 
@@ -244,7 +244,7 @@ extension DiscoverableAsTestContent {
     return SectionBounds.all(.testContent).lazy.flatMap { sb in
       sb.buffer.withMemoryRebound(to: _TestContentRecord.self) { records in
         (0 ..< records.count).lazy
-          .map { (records.baseAddress! + $0) as UnsafePointer<_TestContentRecord> }
+          .map { records.baseAddress! + $0 }
           .filter { $0.pointee.kind == kind }
           .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, recordAddress: $0) }
       }

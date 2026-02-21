@@ -30,6 +30,7 @@ extension ABI {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
+    ///   @Available(Xcode, introduced: 26.4)
     /// }
     var severity: Severity?
 
@@ -39,6 +40,7 @@ extension ABI {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
+    ///   @Available(Xcode, introduced: 26.4)
     /// }
     var isFailure: Bool?
 
@@ -46,7 +48,7 @@ extension ABI {
     var isKnown: Bool
 
     /// The location in source where this issue occurred, if available.
-    var sourceLocation: SourceLocation?
+    var sourceLocation: EncodedSourceLocation<V>?
 
     /// The backtrace where this issue occurred, if available.
     ///
@@ -58,10 +60,15 @@ extension ABI {
     /// - Warning: Errors are not yet part of the JSON schema.
     var _error: EncodedError<V>?
 
+    /// The expectation associated with this issue, if applicable.
+    ///
+    /// - Warning: Expectations are not yet part of the JSON schema.
+    var _expectation: EncodedExpectation<V>?
+
     init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
       // >= v0
       isKnown = issue.isKnown
-      sourceLocation = issue.sourceLocation
+      sourceLocation = issue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
 
       // >= v6.3
       if V.versionNumber >= ABI.v6_3.versionNumber {
@@ -79,6 +86,9 @@ extension ABI {
         }
         if let error = issue.error {
           _error = EncodedError(encoding: error, in: eventContext)
+        }
+        if case let .expectationFailed(expectation) = issue.kind {
+          _expectation = EncodedExpectation(encoding: expectation, in: eventContext)
         }
       }
     }

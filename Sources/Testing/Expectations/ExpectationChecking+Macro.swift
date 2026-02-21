@@ -75,9 +75,9 @@ public func __checkValue(
   var condition = condition
   do {
     var expression: __Expression? = expression
-    while case let .negation(subexpression, _) = expression?.kind {
+    while expression?.isNegated == true {
       defer {
-        expression = subexpression
+        expression = expression?.subexpressions.first
       }
       condition = !condition
     }
@@ -87,8 +87,8 @@ public func __checkValue(
   var expression = expression
   if !condition, let expressionWithCapturedRuntimeValues = expressionWithCapturedRuntimeValues() {
     expression = expressionWithCapturedRuntimeValues
-    if expression.runtimeValue == nil, case .negation = expression.kind {
-      expression = expression.capturingRuntimeValue(condition)
+    if expression.runtimeValue == nil, expression.isNegated {
+      expression = expression.capturingRuntimeValues(condition)
     }
   }
 
@@ -178,7 +178,7 @@ private func _callBinaryOperator<T, U, R>(
   return __checkValue(
     condition,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, rhs),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(condition, lhs, rhs),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -210,7 +210,7 @@ public func __checkFunctionCall<T, each U>(
   return __checkValue(
     condition,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, repeat each arguments),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(condition, lhs, repeat each arguments),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -238,7 +238,7 @@ public func __checkFunctionCall<T, Arg0>(
   return __checkValue(
     condition,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(condition, lhs, argument0),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -265,7 +265,7 @@ public func __checkFunctionCall<T, Arg0, Arg1>(
   return __checkValue(
     condition,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0, argument1),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(condition, lhs, argument0, argument1),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -292,7 +292,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2>(
   return __checkValue(
     condition,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0, argument1, argument2),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(condition, lhs, argument0, argument1, argument2),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -319,7 +319,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2, Arg3>(
   return __checkValue(
     condition,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0, argument1, argument2, argument3),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(condition, lhs, argument0, argument1, argument2, argument3),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -349,7 +349,7 @@ public func __checkInoutFunctionCall<T, /*each*/ U>(
   return __checkValue(
     condition,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, /*repeat each*/ arguments),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(condition, lhs, /*repeat each*/ arguments),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -380,7 +380,7 @@ public func __checkFunctionCall<T, each U, R>(
   return __checkValue(
     optionalValue,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, repeat each arguments),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(optionalValue, lhs, repeat each arguments),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -408,7 +408,7 @@ public func __checkFunctionCall<T, Arg0, R>(
   return __checkValue(
     optionalValue,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(optionalValue, lhs, argument0),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -435,7 +435,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, R>(
   return __checkValue(
     optionalValue,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0, argument1),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(optionalValue, lhs, argument0, argument1),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -462,7 +462,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2, R>(
   return __checkValue(
     optionalValue,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0, argument1, argument2),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(optionalValue, lhs, argument0, argument1, argument2),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -489,7 +489,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2, Arg3, R>(
   return __checkValue(
     optionalValue,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0, argument1, argument2, argument3),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(optionalValue, lhs, argument0, argument1, argument2, argument3),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -520,7 +520,7 @@ public func __checkInoutFunctionCall<T, /*each*/ U, R>(
   return __checkValue(
     optionalValue,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, /*repeat each*/ arguments),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(optionalValue, lhs, /*repeat each*/ arguments),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -551,7 +551,7 @@ public func __checkPropertyAccess<T>(
   return __checkValue(
     condition,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, condition),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(condition, lhs, condition),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -581,7 +581,7 @@ public func __checkPropertyAccess<T, U>(
   return __checkValue(
     optionalValue,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, optionalValue as U??),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(optionalValue, lhs, optionalValue as U??),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -628,7 +628,7 @@ public func __checkPropertyAccess<T, U>(
   return __checkValue(
     condition,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, rhs),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(condition, lhs, rhs),
     difference: difference(),
     comments: comments(),
     isRequired: isRequired,
@@ -656,7 +656,7 @@ public func __checkBinaryOperation(
   return __checkValue(
     condition,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, rhs),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(condition, lhs, rhs),
     difference: nil,
     comments: comments(),
     isRequired: isRequired,
@@ -684,7 +684,7 @@ public func __checkBinaryOperation<T, U>(
   return __checkValue(
     condition,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, rhs),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(condition, lhs, rhs),
     difference: nil,
     comments: comments(),
     isRequired: isRequired,
@@ -707,10 +707,11 @@ public func __checkCast<V, T>(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
+  let condition = value is T
   return __checkValue(
-    value is T,
+    condition,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(value, type(of: value as Any)),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(condition, value, type(of: value as Any)),
     difference: nil,
     comments: comments(),
     isRequired: isRequired,
@@ -749,7 +750,7 @@ public func __checkValue<T>(
   __checkValue(
     optionalValue != nil,
     expression: expression,
-    expressionWithCapturedRuntimeValues: (expressionWithCapturedRuntimeValues() ?? expression).capturingRuntimeValue(optionalValue as T??),
+    expressionWithCapturedRuntimeValues: (expressionWithCapturedRuntimeValues() ?? expression).capturingRuntimeValues(optionalValue as T??),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -783,7 +784,7 @@ public func __checkValue<T>(
   return __checkValue(
     optionalValue,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs as T??, rhs as T??),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(optionalValue, lhs as T??, rhs as T??),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -812,7 +813,7 @@ public func __checkCast<V, T>(
   return __checkValue(
     optionalValue != nil,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(value, type(of: value as Any)),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(optionalValue, value, type(of: value as Any)),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -1210,15 +1211,13 @@ public func __checkClosureCall<each T>(
 /// - Parameters:
 ///   - error: The error to describe.
 ///
-/// - Returns: A string equivalent to `String(describing: error)` with
+/// - Returns: A string equivalent to `String(describingForTest: error)` with
 ///   information about its type added if not already present.
 private func _description(of error: some Error) -> String {
-  let errorDescription = "\"\(error)\""
+  let errorDescription = "\"\(String(describingForTest: error))\""
   let errorType = type(of: error as Any)
-  if #available(_regexAPI, *) {
-    if errorDescription.contains(String(describing: errorType)) {
-      return errorDescription
-    }
+  if errorDescription.contains(String(describing: errorType)) {
+    return errorDescription
   }
   return "\(errorDescription) of type \(errorType)"
 }

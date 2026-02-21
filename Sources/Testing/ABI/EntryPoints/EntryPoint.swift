@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// The common implementation of the entry point functions in this package.
 ///
 /// - Parameters:
@@ -26,7 +30,7 @@ private import _TestingInternals
 /// ``ABI/v0/entryPoint-swift.type.property`` to get a reference to an
 /// ABI-stable version of this function.
 func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
-  let exitCode = Locked(rawValue: EXIT_SUCCESS)
+  let exitCode = Mutex(EXIT_SUCCESS)
 
   do {
 #if !SWT_NO_EXIT_TESTS
@@ -120,6 +124,10 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
         }
       }
 
+      // Synthesize any missing suites. Note we write to stdout before this
+      // step because we don't emit suites to stdout anyway.
+      tests = Runner.Plan.synthesizeSuites(for: tests)
+
       // Post an event for every discovered test. These events are turned into
       // JSON objects if JSON output is enabled.
       for test in tests {
@@ -167,7 +175,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     }
   } catch {
 #if !SWT_NO_FILE_IO
-    try? FileHandle.stderr.write("\(error)\n")
+    try? FileHandle.stderr.write("\(String(describingForTest: error))\n")
 #endif
 
     exitCode.withLock { exitCode in
@@ -605,21 +613,13 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   var configuration = Configuration()
 
   // Parallelization (on by default)
-  if let parallel = args.parallel, !parallel {
+  if let parallel = args.parallel {
     configuration.isParallelizationEnabled = parallel
-  } else {
-    var maximumParallelizationWidth = args.experimentalMaximumParallelizationWidth
-    if maximumParallelizationWidth == nil && Test.current == nil {
-      // Don't check the environment variable when a current test is set (which
-      // presumably means we're running our own unit tests).
-      maximumParallelizationWidth = Environment.variable(named: "SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH").flatMap(Int.init)
+  } else if let maximumParallelizationWidth = args.experimentalMaximumParallelizationWidth {
+    if maximumParallelizationWidth < 1 {
+      throw _EntryPointError.invalidArgument("--experimental-maximum-parallelization-width", value: String(describing: maximumParallelizationWidth))
     }
-    if let maximumParallelizationWidth {
-      if maximumParallelizationWidth < 1 {
-        throw _EntryPointError.invalidArgument("--experimental-maximum-parallelization-width", value: String(describing: maximumParallelizationWidth))
-      }
-      configuration.maximumParallelizationWidth = maximumParallelizationWidth
-    }
+    configuration.maximumParallelizationWidth = maximumParallelizationWidth
   }
 
   // Whether or not to symbolicate backtraces in the event stream.
@@ -687,9 +687,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       return .unfiltered
     }
 
-    guard #available(_regexAPI, *) else {
-      throw _EntryPointError.featureUnavailable("The `\(label)' option is not supported on this OS version.")
-    }
     return try Configuration.TestFilter(membership: membership, matchingAnyOf: regexes)
   }
   filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))
@@ -731,6 +728,11 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
   // Warning issues (experimental).
   switch args.eventStreamVersionNumber {
+#if !SWT_NO_SNAPSHOT_TYPES
+  case .some(ABI.Xcode16.versionNumber):
+    // Xcode 26 and later support warning severity, so leave it enabled.
+    break
+#endif
   case .some(..<ABI.v6_3.versionNumber):
     // If the event stream version was explicitly specified to a value < 6.3,
     // disable the warning issue event to maintain legacy behavior.

@@ -67,9 +67,20 @@ extension ABI {
     /// The human-readable, unformatted text associated with this message.
     var text: String
 
+    /// How much to indent this message when presenting it.
+    ///
+    /// - Warning: This property is not yet part of the JSON schema.
+    var _indentation: Int?
+
     init(encoding message: borrowing Event.HumanReadableOutputRecorder.Message) {
       symbol = Symbol(encoding: message.symbol ?? .default)
       text = message.conciseStringValue ?? message.stringValue
+
+      if V.includesExperimentalFields {
+        if message.indentation > 0 {
+          _indentation = message.indentation
+        }
+      }
     }
   }
 }

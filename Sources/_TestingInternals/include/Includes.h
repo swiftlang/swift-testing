@@ -63,6 +63,10 @@
 #include <gnu/libc-version.h>
 #endif
 
+#if __has_include(<sys/param.h>)
+#include <sys/param.h>
+#endif
+
 #if __has_include(<sys/resource.h>) && !defined(__wasi__)
 #include <sys/resource.h>
 #endif
@@ -142,6 +146,14 @@
 #if !SWT_NO_OS_UNFAIR_LOCK
 #include <os/lock.h>
 #endif
+
+#if !SWT_NO_FILE_CLONING
+#include <sys/clonefile.h>
+#endif
+#endif
+
+#if defined(__linux__)
+#include <linux/fs.h>
 #endif
 
 #if defined(__FreeBSD__)
