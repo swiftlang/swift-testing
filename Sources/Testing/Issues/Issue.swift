@@ -292,7 +292,7 @@ extension Issue.Kind: CustomStringConvertible {
       } else if let mismatchedExitConditionDescription = expectation.mismatchedExitConditionDescription {
         "Expectation failed: \(mismatchedExitConditionDescription)"
       } else {
-        "Expectation failed: \(expectation.evaluatedExpression.expandedDescription())"
+        "Expectation failed: \(expectation.evaluatedExpression.sourceCode)"
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
       if let expected = expected as? any _RangeExpressionOverIntValues {
@@ -632,7 +632,7 @@ extension Issue.Kind.Snapshot: CustomStringConvertible {
       if let mismatchedErrorDescription = expectation.mismatchedErrorDescription {
         "Expectation failed: \(mismatchedErrorDescription)"
       } else {
-        "Expectation failed: \(expectation.evaluatedExpression.expandedDescription())"
+        "Expectation failed: \(expectation.evaluatedExpression.sourceCode)"
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
       "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(expected.counting("time"))"
