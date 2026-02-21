@@ -142,8 +142,8 @@ extension Library {
 
   static let mock = Self(
     rawValue: (
-      name: StaticString("Mock Testing Library").constUTF8CString,
-      canonicalHint: StaticString("mock").constUTF8CString,
+      displayName: StaticString("Mock Testing Library").constUTF8CString,
+      name: StaticString("mock").constUTF8CString,
       entryPoint: _mockRecordEntryPoint,
       reserved: (0, 0, 0, 0, 0)
     )
