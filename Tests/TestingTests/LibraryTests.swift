@@ -25,14 +25,14 @@ struct `Library tests` {
   }
 
   @Test func `Find Swift Testing library`() throws {
-    let library = try #require(Library(withHint: "SwIfTtEsTiNg"))
-    #expect(library.name == "Swift Testing")
-    #expect(library.canonicalHint == "swift-testing")
+    let library = try #require(Library(named: "SwIfTtEsTiNg"))
+    #expect(library.displayName == "Swift Testing")
+    #expect(library.name == "swift-testing")
   }
 
   @Test func `Run mock library`() async throws {
     try await confirmation("(Mock) issue recorded") { issueRecorded in
-      let library = try #require(Library(withHint: "mock"))
+      let library = try #require(Library(named: "mock"))
 
       var args = __CommandLineArguments_v0()
       args.eventStreamVersionNumber = ABI.v0.versionNumber

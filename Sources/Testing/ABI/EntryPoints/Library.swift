@@ -25,18 +25,17 @@ internal import _TestingInternals
   ///
   /// For example, the value of this property for an instance of this type that
   /// represents the Swift Testing library is `"Swift Testing"`.
-  public var name: String {
-    String(validatingCString: rawValue.name) ?? ""
+  public var displayName: String {
+    String(validatingCString: rawValue.displayName) ?? ""
   }
 
-  /// The canonical form of the "hint" to run the testing library's tests at
-  /// runtime.
+  /// The name of this testing library.
   ///
   /// For example, the value of this property for an instance of this type that
   /// represents the Swift Testing library is `"swift-testing"`.
   @_spi(ForToolsIntegrationOnly)
-  public var canonicalHint: String {
-    String(validatingCString: rawValue.canonicalHint) ?? ""
+  public var name: String {
+    String(validatingCString: rawValue.name) ?? ""
   }
 
 #if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
@@ -178,8 +177,8 @@ extension Library {
   /// A type that provides the C-compatible in-memory layout of the ``Library``
   /// Swift type.
   @usableFromInline typealias Record = (
+    displayName: UnsafePointer<CChar>,
     name: UnsafePointer<CChar>,
-    canonicalHint: UnsafePointer<CChar>,
     entryPoint: EntryPoint,
     reserved: (UInt, UInt, UInt, UInt, UInt)
   )
@@ -197,7 +196,10 @@ extension Library: _DiscoverableAsTestContent {
     "main"
   }
 
-  fileprivate typealias TestContentAccessorHint = UnsafePointer<CChar>
+  fileprivate typealias TestContentAccessorHint = (
+    name: UnsafePointer<CChar>,
+    reserved: UInt
+  )
 }
 
 @_spi(Experimental)
@@ -211,17 +213,22 @@ extension Library {
   }()
 
   /// Create an instance of this type representing the testing library with the
-  /// given hint.
+  /// given name.
   ///
   /// - Parameters:
-  /// 	- hint: The hint to match against such as `"swift-testing"`.
+  /// 	- name: The name to match against such as `"swift-testing"`. Whether or
+  ///     not the library's display name is accepted is library-specific.
   ///
   /// If no matching testing library is found, this initializer returns `nil`.
   @_spi(ForToolsIntegrationOnly)
-  public init?(withHint hint: String) {
+  public init?(named name: String) {
     Self._validateMemoryLayout
-    let result = hint.withCString { hint in
-      Library.allTestContentRecords().lazy
+    let result = name.withCString { name in
+      let hint = TestContentAccessorHint(
+        name: name,
+        reserved: 0
+      )
+      return Library.allTestContentRecords().lazy
         .compactMap { $0.load(withHint: hint) }
         .first
     }
@@ -248,8 +255,8 @@ extension Library {
   /// is compatible with the ``Library`` ABI.
   private static let _libraryRecordEntryPoint: Library.EntryPoint = { configurationJSON, configurationJSONByteCount, _, context, recordJSONHandler, completionHandler in
 #if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
-    // Capture appropriate state from the arguments to forward into the canonical
-    // entry point function.
+    // Capture appropriate state from the arguments to forward into the
+    // canonical entry point function.
     let contextBitPattern = UInt(bitPattern: context)
     let configurationJSON = UnsafeRawBufferPointer(start: configurationJSON, count: configurationJSONByteCount)
     var args: __CommandLineArguments_v0
@@ -300,8 +307,8 @@ extension Library {
   public static let swiftTesting: Self = {
     Self(
       rawValue: (
-        name: StaticString("Swift Testing").constUTF8CString,
-        canonicalHint: StaticString("swift-testing").constUTF8CString,
+        displayName: StaticString("Swift Testing").constUTF8CString,
+        name: StaticString("swift-testing").constUTF8CString,
         entryPoint: _libraryRecordEntryPoint,
         reserved: (0, 0, 0, 0, 0)
       )
@@ -324,15 +331,16 @@ private func _libraryRecordAccessor(_ outValue: UnsafeMutableRawPointer, _ type:
 #endif
 
   // Check if the name of the testing library the caller wants is equivalent to
-  // "Swift Testing", ignoring case and punctuation. (If the caller did not
-  // specify a library name, the caller wants records for all libraries.)
+  // "Swift Testing", ignoring case and punctuation. The `hint` argument is a
+  // structure whose first field is the name of the library as a UTF-8 C string.
+  // If the caller passed `nil` for `hint`, it wants records for all libraries.
   //
-  // Other libraries may opt to compare their hint values differently or accept
+  // Other libraries may opt to compare their names differently or accept
   // multiple different strings/patterns.
-  let hint = hint.map { $0.load(as: UnsafePointer<CChar>.self) }
+  let hint = hint.map { $0.load(as: Library.TestContentAccessorHint.self) }
   if let hint {
-    guard let hint = String(validatingCString: hint),
-          String(hint.filter(\.isLetter)).lowercased() == "swifttesting" else {
+    guard let name = String(validatingCString: hint.name),
+          String(name.filter(\.isLetter)).lowercased() == "swifttesting" else {
       return false
     }
   }

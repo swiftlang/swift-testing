@@ -20,16 +20,15 @@ extension ABI {
   ///
   /// - Warning: Testing libraries are not yet part of the JSON schema.
   struct EncodedLibrary<V>: Sendable where V: ABI.Version {
-    /// The human-readable name of the library.
+    /// The human-readable name of this library.
+    var displayName: String
+
+    /// The name of this testing library.
     var name: String
 
-    /// The canonical form of the "hint" to run the testing library's tests at
-    /// runtime.
-    var canonicalHint: String
-
     init(encoding library: borrowing Library) {
+      displayName = library.displayName
       name = library.name
-      canonicalHint = library.canonicalHint
     }
   }
 }

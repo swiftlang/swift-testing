@@ -47,8 +47,8 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // Swift Testing. (If they requested Swift Testing, we're already here so
     // there's no real need to recurse).
     if args.experimentalListLibraries != true,
-       let library = args.testingLibrary.flatMap(Library.init(withHint:)),
-       library.canonicalHint != "swift-testing" {
+       let library = args.testingLibrary.flatMap(Library.init(named:)),
+       library.name != "swift-testing" {
       return await library.callEntryPoint(passing: args)
     }
 #endif
@@ -143,7 +143,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       if args.verbosity > .min {
         for library in libraries {
           // Print the test ID to stdout (classical CLI behavior.)
-          let libraryDescription = "\(library.name) (swift test --experimental-testing-library \(library.canonicalHint))"
+          let libraryDescription = "\(library.displayName) (swift test --experimental-testing-library \(library.name))"
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
           try? FileHandle.stdout.write("\(libraryDescription)\n")
 #else
