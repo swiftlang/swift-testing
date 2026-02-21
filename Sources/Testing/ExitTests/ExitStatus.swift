@@ -115,15 +115,17 @@ private let _sigabbrev_np = symbol(named: "sigabbrev_np").map {
 extension ExitStatus: CustomStringConvertible {
   /// The name of the exit code or signal, if known.
   var name: String? {
+    var result: String?
+
     switch self {
     case let .exitCode(exitCode):
-      swt_getExitCodeName(exitCode).flatMap(String.init(validatingCString:))
+      result = swt_getExitCodeName(exitCode).flatMap(String.init(validatingCString:))
     case let .signal(signal):
 #if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Android)
 #if !SWT_NO_SYS_SIGNAME
       // These platforms define sys_signame with a size, which is imported
       // into Swift as a tuple.
-      withUnsafeBytes(of: sys_signame) { sys_signame in
+      result = withUnsafeBytes(of: sys_signame) { sys_signame in
         sys_signame.withMemoryRebound(to: UnsafePointer<CChar>.self) { sys_signame in
           if signal > 0 && signal < sys_signame.count {
             return String(validatingCString: sys_signame[Int(signal)])
@@ -135,19 +137,19 @@ extension ExitStatus: CustomStringConvertible {
 #endif
 #elseif os(Linux)
 #if !SWT_NO_DYNAMIC_LINKING
-      _sigabbrev_np?(signal)
+      result = _sigabbrev_np?(signal)
         .flatMap(String.init(validatingCString:))
         .map { "SIG\($0)" }
 #endif
 #elseif os(Windows) || os(WASI)
       // These platforms do not have API to get the programmatic name of a
       // signal constant.
-      return nil
 #else
 #warning("Platform-specific implementation missing: signal names unavailable")
-      return nil
 #endif
     }
+
+    return result
   }
 
   /// The represented exit code or signal.
