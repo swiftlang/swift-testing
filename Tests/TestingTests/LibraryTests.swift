@@ -18,10 +18,7 @@ struct `Library tests` {
   @Test func `Find all libraries`() throws {
     let libraries = Array(Library.all)
     #expect(libraries.count > 0)
-    #expect(libraries.map(\.name).contains("Swift Testing"))
-#if DEBUG
-    print(libraries.map(\.name))
-#endif
+    #expect(libraries.map(\.displayName).contains("Swift Testing"))
   }
 
   @Test func `Find Swift Testing library`() throws {
