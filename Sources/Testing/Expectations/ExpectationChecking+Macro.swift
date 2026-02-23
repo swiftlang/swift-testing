@@ -511,7 +511,7 @@ public func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     caughtError = error
-    expectationContext.runtimeValues[.root] = { Expression.Value(reflecting: error) }
+    expectationContext.captureValue(error, identifiedBy: .root)
     let secondError = Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try errorMatcher(error)
     }
@@ -562,7 +562,7 @@ public nonisolated(nonsending) func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     caughtError = error
-    expectationContext.runtimeValues[.root] = { Expression.Value(reflecting: error) }
+    expectationContext.captureValue(error, identifiedBy: .root)
     let secondError = await Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try await errorMatcher(error)
     }

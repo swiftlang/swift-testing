@@ -39,22 +39,28 @@ public final class __ExpectationContext<Output> where Output: ~Copyable {
   /// will have runtime values: notably, if an operand to a short-circuiting
   /// binary operator like `&&` is not evaluated, the corresponding expression
   /// will not be assigned a runtime value.
-  var runtimeValues: [__ExpressionID: () -> Expression.Value?]
+  ///
+  /// This property is non-optional because the evaluation of an expectation
+  /// always produces at least one element.
+  var runtimeValues: [(__ExpressionID, () -> Expression.Value?)]
 
   /// Computed differences between the operands or arguments of expressions.
   ///
   /// The values in this dictionary are gathered at runtime as subexpressions
   /// are evaluated, much like ``runtimeValues``.
-  var differences: [__ExpressionID: () -> CollectionDifference<Any>?]
+  ///
+  /// This value is optional because, in the common case, an expectation does
+  /// not produce a difference.
+  var differences: [(__ExpressionID, () -> CollectionDifference<Any>?)]?
 
   init(
-    sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String> = [:],
-    runtimeValues: [__ExpressionID: () -> Expression.Value?] = [:],
-    differences: [__ExpressionID: () -> CollectionDifference<Any>?] = [:]
+    sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
+    runtimeValues: KeyValuePairs<__ExpressionID, () -> Expression.Value?>? = nil,
+    differences: KeyValuePairs<__ExpressionID, () -> CollectionDifference<Any>?>? = nil
   ) {
     _sourceCode = sourceCode
-    self.runtimeValues = runtimeValues
-    self.differences = differences
+    self.runtimeValues = runtimeValues.map(Array.init) ?? []
+    self.differences = differences.map(Array.init)
   }
 
   /// Collapse the given expression graph into one or more expressions with
@@ -122,12 +128,14 @@ public final class __ExpectationContext<Output> where Output: ~Copyable {
         }
       }
 
-      for (id, difference) in differences {
-        let keyPath = id.keyPathRepresentation
-        if var expression = expressionGraph[keyPath], let difference = difference() {
-          let differenceDescription = Self._description(of: difference)
-          expression.differenceDescription = differenceDescription
-          expressionGraph[keyPath] = expression
+      if let differences {
+        for (id, difference) in differences {
+          let keyPath = id.keyPathRepresentation
+          if var expression = expressionGraph[keyPath], let difference = difference() {
+            let differenceDescription = Self._description(of: difference)
+            expression.differenceDescription = differenceDescription
+            expressionGraph[keyPath] = expression
+          }
         }
       }
     }
@@ -159,6 +167,19 @@ extension __ExpectationContext: Sendable where Output: ~Copyable {}
 // MARK: - Expression capturing
 
 extension __ExpectationContext where Output: ~Copyable {
+  /// Capture information about a value, encapsulated in an instance of
+  /// ``Expression/Value``, for use if the expectation currently being evaluated
+  /// fails.
+  ///
+  /// - Parameters:
+  ///   - runtimeValue: The value to pass through. This value is lazily
+  ///     evaluated on expectation failure only.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  func captureValue(_ runtimeValue: @escaping @autoclosure () -> Expression.Value?, identifiedBy id: __ExpressionID) {
+    runtimeValues.append((id, runtimeValue))
+  }
+
   /// Capture information about a value for use if the expectation currently
   /// being evaluated fails.
   ///
@@ -167,15 +188,13 @@ extension __ExpectationContext where Output: ~Copyable {
   ///   - id: A value that uniquely identifies the represented expression in the
   ///     context of the expectation currently being evaluated.
   ///
-  /// - Returns: `value`, verbatim.
-  ///
   /// This function helps subscript overloads disambiguate themselves and avoid
   /// accidental recursion.
-  func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
+  func captureValue<T>(_ value: borrowing T, identifiedBy id: __ExpressionID) where T: ~Copyable & ~Escapable {
     if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
-      runtimeValues[id] = { Expression.Value(reflecting: value) }
+      captureValue(Expression.Value(reflecting: value), identifiedBy: id)
     } else {
-      runtimeValues[id] = { Expression.Value(failingToReflectInstanceOf: T.self) }
+      captureValue(Expression.Value(failingToReflectInstanceOf: T.self), identifiedBy: id)
     }
   }
 
@@ -193,7 +212,7 @@ extension __ExpectationContext where Output: ~Copyable {
   ///   `#require()` macros. Do not call it directly.
   @_lifetime(borrow value)
   public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T where T: ~Escapable {
-    captureValue(value, id)
+    captureValue(value, identifiedBy: id)
     return copy value
   }
 
@@ -208,7 +227,7 @@ extension __ExpectationContext where Output: ~Copyable {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   public func __inoutAfter<T>(_ value: inout T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
-    captureValue(value, id)
+    captureValue(value, identifiedBy: id)
   }
 }
 
@@ -253,12 +272,13 @@ extension __ExpectationContext where Output: ~Copyable {
   /// compile-time pressure on the type checker that we don't want.
   func captureDifferences<T, U>(_ lhs: T, _ rhs: U, _ opID: __ExpressionID) {
 #if !hasFeature(Embedded) // no existentials
+    var difference: (() -> CollectionDifference<Any>?)?
     if let lhs = lhs as? any StringProtocol {
       func open<V>(_ lhs: V, _ rhs: U) where V: StringProtocol {
         guard let rhs = rhs as? V else {
           return
         }
-        differences[opID] = {
+        difference = {
           // Compare strings by line, not by character.
           let lhsLines = String(lhs).split(whereSeparator: \.isNewline)
           let rhsLines = String(rhs).split(whereSeparator: \.isNewline)
@@ -290,7 +310,7 @@ extension __ExpectationContext where Output: ~Copyable {
               let elementType = V.Element.self as? any Equatable.Type else {
           return
         }
-        differences[opID] = {
+        difference = {
           func open<E>(_: E.Type) -> CollectionDifference<Any> where E: Equatable {
             let lhs: some BidirectionalCollection<E> = lhs.lazy.map { $0 as! E }
             let rhs: some BidirectionalCollection<E> = rhs.lazy.map { $0 as! E }
@@ -300,6 +320,14 @@ extension __ExpectationContext where Output: ~Copyable {
         }
       }
       open(lhs, rhs)
+    }
+
+    if let difference {
+      if differences == nil {
+        differences = [(opID, difference)]
+      } else {
+        differences?.append((opID, difference))
+      }
     }
 #endif
   }
@@ -329,11 +357,11 @@ extension __ExpectationContext where Output: ~Copyable {
     _ rhs: borrowing U,
     _ rhsID: __ExpressionID
   ) throws(E) -> Bool where T: ~Copyable, U: ~Copyable {
-    captureValue(lhs, lhsID)
-    captureValue(rhs, rhsID)
+    captureValue(lhs, identifiedBy: lhsID)
+    captureValue(rhs, identifiedBy: rhsID)
 
     let result = try op(lhs, rhs)
-    captureValue(result, opID)
+    captureValue(result, identifiedBy: opID)
 
     if !result,
        #available(_castingWithNonCopyableGenerics, *),
@@ -370,12 +398,12 @@ extension __ExpectationContext where Output: ~Copyable {
   public func __as<T, U>(_ value: borrowing T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
     let value = copy value
 
-    captureValue(value, valueID)
+    captureValue(value, identifiedBy: valueID)
     let result = value as? U
 
     if result == nil {
       let correctType = Swift.type(of: value as Any)
-      captureValue(correctType, typeID)
+      captureValue(correctType, identifiedBy: typeID)
     }
 
     return result
