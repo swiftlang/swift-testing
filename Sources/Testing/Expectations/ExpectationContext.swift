@@ -50,7 +50,7 @@ public final class __ExpectationContext<Output> where Output: ~Copyable {
   /// are evaluated, much like ``runtimeValues``.
   ///
   /// This value is optional because, in the common case, an expectation does
-  /// not produce a difference.
+  /// not produce a difference value.
   var differences: [(__ExpressionID, () -> CollectionDifference<Any>?)]?
 
   init(
@@ -272,13 +272,16 @@ extension __ExpectationContext where Output: ~Copyable {
   /// compile-time pressure on the type checker that we don't want.
   func captureDifferences<T, U>(_ lhs: T, _ rhs: U, _ opID: __ExpressionID) {
 #if !hasFeature(Embedded) // no existentials
-    var difference: (() -> CollectionDifference<Any>?)?
-    if let lhs = lhs as? any StringProtocol {
-      func open<V>(_ lhs: V, _ rhs: U) where V: StringProtocol {
-        guard let rhs = rhs as? V else {
-          return
-        }
-        difference = {
+    guard let lhs = lhs as? any BidirectionalCollection else {
+      return
+    }
+
+    func difference() -> CollectionDifference<Any>? {
+      if let lhs = lhs as? any StringProtocol {
+        func open<V>(_ lhs: V, _ rhs: U) -> CollectionDifference<Any>? where V: StringProtocol {
+          guard let rhs = rhs as? V else {
+            return nil
+          }
           // Compare strings by line, not by character.
           let lhsLines = String(lhs).split(whereSeparator: \.isNewline)
           let rhsLines = String(rhs).split(whereSeparator: \.isNewline)
@@ -298,19 +301,18 @@ extension __ExpectationContext where Output: ~Copyable {
 
           return CollectionDifference<Any>(diff)
         }
-      }
-      open(lhs, rhs)
-    } else if lhs is any RangeExpression {
-      // Do _not_ perform a diffing operation on `lhs` and `rhs`. Range
-      // expressions are not usefully diffable the way other kinds of
-      // collections are. SEE: https://github.com/swiftlang/swift-testing/issues/639
-    } else if let lhs = lhs as? any BidirectionalCollection {
-      func open<V>(_ lhs: V, _ rhs: U) where V: BidirectionalCollection {
-        guard let rhs = rhs as? V,
-              let elementType = V.Element.self as? any Equatable.Type else {
-          return
-        }
-        difference = {
+        return open(lhs, rhs)
+      } else if lhs is any RangeExpression {
+        // Do _not_ perform a diffing operation on `lhs` and `rhs`. Range
+        // expressions are not usefully diffable the way other kinds of
+        // collections are. SEE: https://github.com/swiftlang/swift-testing/issues/639
+        return nil
+      } else {
+        func open<V>(_ lhs: V, _ rhs: U) -> CollectionDifference<Any>? where V: BidirectionalCollection {
+          guard let rhs = rhs as? V,
+                let elementType = V.Element.self as? any Equatable.Type else {
+            return nil
+          }
           func open<E>(_: E.Type) -> CollectionDifference<Any> where E: Equatable {
             let lhs: some BidirectionalCollection<E> = lhs.lazy.map { $0 as! E }
             let rhs: some BidirectionalCollection<E> = rhs.lazy.map { $0 as! E }
@@ -318,16 +320,14 @@ extension __ExpectationContext where Output: ~Copyable {
           }
           return open(elementType)
         }
+        return open(lhs, rhs)
       }
-      open(lhs, rhs)
     }
 
-    if let difference {
-      if differences == nil {
-        differences = [(opID, difference)]
-      } else {
-        differences?.append((opID, difference))
-      }
+    if differences == nil {
+      differences = [(opID, difference)]
+    } else {
+      differences?.append((opID, difference))
     }
 #endif
   }
