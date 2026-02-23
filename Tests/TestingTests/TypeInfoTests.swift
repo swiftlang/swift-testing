@@ -122,7 +122,8 @@ struct TypeInfoTests {
 
   @Test func typeOfMoveOnlyValueIsInferred() {
     let value = MoveOnlyType()
-    #expect(TypeInfo(describingTypeOf: value).unqualifiedName == "MoveOnlyType")
+    let unqualifiedName = TypeInfo(describingTypeOf: value).unqualifiedName
+    #expect(unqualifiedName == "MoveOnlyType")
   }
 }
 

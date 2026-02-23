@@ -22,6 +22,7 @@ struct TestingMacrosMain: CompilerPlugin {
       TestDeclarationMacro.self,
       ExpectMacro.self,
       RequireMacro.self,
+      UnwrapMacro.self,
       AmbiguousRequireMacro.self,
       NonOptionalRequireMacro.self,
       ExpectThrowsMacro.self,

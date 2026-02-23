@@ -976,7 +976,14 @@ struct MySendableAttachable: Attachable, Sendable {
   var string: String
 
   func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+#if !SWT_FIXED_132334935
+    let attachment = copy attachment
+#endif
+#if SWT_FIXED_163656720
     #expect(attachment.attachableValue.string == string)
+#else
+    #expect(attachment.attachableValue.string == self.string)
+#endif
     var string = string
     return try string.withUTF8 { buffer in
       try body(.init(buffer))

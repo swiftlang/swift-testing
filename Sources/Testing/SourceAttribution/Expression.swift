@@ -48,18 +48,13 @@ public struct __Expression: Sendable {
 
   init(
     _ sourceCode: String,
-    isNegated: Bool = false,
     runtimeValue: Value? = nil,
     subexpressions: [Self] = []
   ) {
     self.kind = .generic(sourceCode)
-    self.isNegated = isNegated
     self.runtimeValue = runtimeValue
     self._subexpressions = subexpressions
   }
-
-  /// Whether or not this instance represents a negated expression (`!foo`).
-  var isNegated = false
 
   /// The source code of the original captured expression.
   @_spi(ForToolsIntegrationOnly)
@@ -247,6 +242,20 @@ public struct __Expression: Sendable {
         self.children = children
       }
     }
+
+    /// Initialize an instance of this type representing a value of the
+    /// specified type that could not be captured (due to e.g. not conforming to
+    /// `Copyable`.)
+    ///
+    /// - Parameters:
+    ///   - type: The type of the uncaptured value.
+    init?<T>(failingToReflectInstanceOf type: T.Type) where T: ~Copyable & ~Escapable {
+      let typeInfo = TypeInfo(describing: type)
+      self.description = "<instance of '\(typeInfo.unqualifiedName)'>"
+      self.debugDescription = "<instance of '\(typeInfo.fullyQualifiedName)'>"
+      self.typeInfo = typeInfo
+      self.isCollection = false
+    }
   }
 
   /// A representation of the runtime value of this expression.
@@ -255,62 +264,6 @@ public struct __Expression: Sendable {
   /// of this property is `nil`.
   @_spi(ForToolsIntegrationOnly)
   public var runtimeValue: Value?
-
-  /// Capture the runtime value corresponding to this instance.
-  ///
-  /// - Parameters:
-  ///   - value: The captured runtime value.
-  private mutating func _captureRuntimeValue(_ value: (some Any)?) {
-    runtimeValue = value.flatMap(Value.init(reflecting:))
-    if isNegated, let value = value as? Bool {
-      subexpressions[0]._captureRuntimeValue(!value)
-    }
-  }
-
-  /// Capture the runtime values corresponding to this instance and its
-  /// subexpressions.
-  ///
-  /// - Parameters:
-  ///   - firstValue: The first captured runtime value.
-  ///   - additionalValues: Any additional captured runtime values after the
-  ///     first.
-  private mutating func _captureRuntimeValues<each T>(_ firstValue: (some Any)?, _ additionalValues: repeat (each T)?) {
-    if isNegated {
-      // A negated expression has an additional level of indirection between it
-      // and any additional values.
-      subexpressions[0]._captureRuntimeValues(nil as Any? /* discarded */, repeat each additionalValues)
-    } else {
-      var i = subexpressions.startIndex
-      let endIndex = subexpressions.endIndex
-      for value in repeat each additionalValues {
-        guard i < endIndex else {
-          break
-        }
-        defer { i = subexpressions.index(after: i) }
-        subexpressions[i]._captureRuntimeValue(value)
-      }
-    }
-    _captureRuntimeValue(firstValue)
-  }
-
-  /// Copy this instance and capture the runtime values corresponding to its
-  /// subexpressions.
-  ///
-  /// - Parameters:
-  ///   - firstValue: The first captured runtime value.
-  ///   - additionalValues: Any additional captured runtime values after the
-  ///     first.
-  ///
-  /// - Returns: A copy of `self` with information about the specified runtime
-  ///   values captured for future use.
-  ///
-  /// If the ``kind`` of `self` is ``Kind/generic`` or ``Kind/stringLiteral``,
-  /// this function is equivalent to ``capturingRuntimeValue(_:)``.
-  func capturingRuntimeValues<each T>(_ firstValue: (some Any)?, _ additionalValues: repeat (each T)?) -> Self {
-    var result = self
-    result._captureRuntimeValues(firstValue, repeat each additionalValues)
-    return result
-  }
 
   /// Get an expanded description of this instance that contains the source
   /// code and runtime value (or values) it represents.
@@ -418,7 +371,7 @@ extension __Expression: CustomStringConvertible, CustomDebugStringConvertible {
   /// This initializer does not attempt to parse `sourceCode`.
   @_spi(ForToolsIntegrationOnly)
   public init(_ sourceCode: String) {
-    self.init(sourceCode, isNegated: false)
+    self.init(sourceCode, subexpressions: [])
   }
 
   public var description: String {
