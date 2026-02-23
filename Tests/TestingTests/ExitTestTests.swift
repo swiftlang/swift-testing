@@ -14,11 +14,13 @@ private import _TestingInternals
 #if !SWT_NO_EXIT_TESTS
 @Suite("Exit test tests") struct ExitTestTests {
   @Test("Exit code names are reported (where supported)") func exitCodeName() {
-    #expect(String(describing: ExitStatus.exitCode(EXIT_SUCCESS)) == ".exitCode(EXIT_SUCCESS → \(EXIT_SUCCESS))")
-    #expect(String(describing: ExitStatus.exitCode(EXIT_FAILURE)) == ".exitCode(EXIT_FAILURE → \(EXIT_FAILURE))")
+    #expect(String(describing: ExitStatus.exitCode(EXIT_SUCCESS)) == ".exitCode(EXIT_SUCCESS)")
+    #expect(String(describing: ExitStatus.exitCode(EXIT_FAILURE)) == ".exitCode(EXIT_FAILURE)")
 
     if let EX_IOERR = swt_EX_IOERR()?.pointee {
-      #expect(String(describing: ExitStatus.exitCode(EX_IOERR)) == ".exitCode(EX_IOERR → \(EX_IOERR))")
+      let exitStatus = ExitStatus.exitCode(EX_IOERR)
+      #expect(exitStatus.code == EX_IOERR)
+      #expect(String(describing: exitStatus) == ".exitCode(EX_IOERR)")
     }
     #expect(String(describing: ExitStatus.exitCode(12345)) == ".exitCode(12345)")
   }
@@ -34,8 +36,9 @@ private import _TestingInternals
 #endif
 
     let exitStatus = ExitStatus.signal(SIGABRT)
+    #expect(exitStatus.code == SIGABRT)
     if Bool(hasSignalNames) {
-      #expect(String(describing: exitStatus) == ".signal(SIGABRT → \(SIGABRT))")
+      #expect(String(describing: exitStatus) == ".signal(SIGABRT)")
     } else {
       #expect(String(describing: exitStatus) == ".signal(\(SIGABRT))")
     }

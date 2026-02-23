@@ -38,8 +38,9 @@ extension ABI {
       sourceCode = expression.sourceCode
       runtimeValue = expression.runtimeValue.map(String.init(describingForTest:))
       runtimeTypeName = expression.runtimeValue.map(\.typeInfo.fullyQualifiedName)
-      if !expression.subexpressions.isEmpty {
-        children = expression.subexpressions.map { [eventContext = copy eventContext] subexpression in
+      let subexpressions = expression.subexpressions
+      if !subexpressions.isEmpty {
+        children = subexpressions.map { [eventContext = copy eventContext] subexpression in
           Self(encoding: subexpression, in: eventContext)
         }
       }
