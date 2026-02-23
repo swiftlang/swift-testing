@@ -272,10 +272,6 @@ extension __ExpectationContext where Output: ~Copyable {
   /// compile-time pressure on the type checker that we don't want.
   func captureDifferences<T, U>(_ lhs: T, _ rhs: U, _ opID: __ExpressionID) {
 #if !hasFeature(Embedded) // no existentials
-    guard let lhs = lhs as? any BidirectionalCollection else {
-      return
-    }
-
     func difference() -> CollectionDifference<Any>? {
       if let lhs = lhs as? any StringProtocol {
         func open<V>(_ lhs: V, _ rhs: U) -> CollectionDifference<Any>? where V: StringProtocol {
@@ -306,8 +302,7 @@ extension __ExpectationContext where Output: ~Copyable {
         // Do _not_ perform a diffing operation on `lhs` and `rhs`. Range
         // expressions are not usefully diffable the way other kinds of
         // collections are. SEE: https://github.com/swiftlang/swift-testing/issues/639
-        return nil
-      } else {
+      } else if let lhs = lhs as? any BidirectionalCollection {
         func open<V>(_ lhs: V, _ rhs: U) -> CollectionDifference<Any>? where V: BidirectionalCollection {
           guard let rhs = rhs as? V,
                 let elementType = V.Element.self as? any Equatable.Type else {
@@ -322,6 +317,7 @@ extension __ExpectationContext where Output: ~Copyable {
         }
         return open(lhs, rhs)
       }
+      return nil
     }
 
     if differences == nil {
@@ -363,8 +359,7 @@ extension __ExpectationContext where Output: ~Copyable {
     let result = try op(lhs, rhs)
     captureValue(result, identifiedBy: opID)
 
-    if !result,
-       #available(_castingWithNonCopyableGenerics, *),
+    if #available(_castingWithNonCopyableGenerics, *),
        let lhs = makeExistential(lhs),
        let rhs = makeExistential(rhs) {
       captureDifferences(lhs, rhs, opID)
