@@ -52,7 +52,7 @@ extension ABI {
     ///
     /// The value of this property is `nil` unless the value of the
     /// ``kind-swift.property`` property is ``Kind-swift.enum/valueAttached``.
-    var attachment: EncodedAttachment<V>?
+    public var attachment: EncodedAttachment<V>?
 
     /// Human-readable messages associated with this event that can be presented
     /// to the user.
@@ -121,7 +121,7 @@ extension ABI {
         issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
       case let .valueAttached(attachment):
         kind = .valueAttached
-        self.attachment = EncodedAttachment(encoding: attachment, in: eventContext)
+        self.attachment = EncodedAttachment(encoding: attachment)
       case .testCaseEnded:
         if eventContext.test?.isParameterized == false {
           return nil

@@ -181,6 +181,17 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
 #endif
 }
 
+extension Attachment<AnyAttachable> {
+  init(_ attachment: Attachment<some Attachable & Sendable & ~Copyable>) {
+    self.init(
+      AnyAttachable(copy attachment),
+      named: attachment._preferredName,
+      sourceLocation: attachment.sourceLocation
+    )
+    fileSystemPath = attachment.fileSystemPath
+  }
+}
+
 #if !SWT_NO_FILE_CLONING
 extension AnyAttachable: FileClonable {}
 #endif
@@ -264,12 +275,7 @@ extension Attachment where AttachableValue: Sendable & ~Copyable {
   /// }
   @_documentation(visibility: private)
   public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
-    var attachmentCopy = Attachment<AnyAttachable>(
-      AnyAttachable(copy attachment),
-      named: attachment._preferredName,
-      sourceLocation: sourceLocation
-    )
-    attachmentCopy.fileSystemPath = attachment.fileSystemPath
+    let attachmentCopy = Attachment<AnyAttachable>(attachment)
     Event.post(.valueAttached(attachmentCopy))
   }
 

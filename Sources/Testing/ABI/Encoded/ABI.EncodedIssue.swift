@@ -85,7 +85,7 @@ extension ABI {
           _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
         }
         if let error = issue.error {
-          _error = EncodedError(encoding: error, in: eventContext)
+          _error = EncodedError(encoding: error)
         }
         if case let .expectationFailed(expectation) = issue.kind {
           _expectation = EncodedExpectation(encoding: expectation, in: eventContext)
