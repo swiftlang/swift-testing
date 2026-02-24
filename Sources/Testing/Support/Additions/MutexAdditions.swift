@@ -40,32 +40,48 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
   private typealias _Lock = pthread_mutex_t
 #endif
 
+  /// Storage for both the lock and value.
+  private nonisolated(unsafe) let _baseAddress: UnsafeMutableRawPointer
+
+  /// The offset of `_lockAddress` from `_baseAddress`.
+  private static var _lockOffset: Int {
+    let p = UnsafeRawPointer(bitPattern: MemoryLayout<Value>.stride)!
+    return Int(bitPattern: p.alignedUp(for: _Lock.self))
+  }
+
   /// Storage for the underlying lock.
-  private nonisolated(unsafe) let _lockAddress: UnsafeMutablePointer<_Lock>
+  private var _lockAddress: UnsafeMutablePointer<_Lock> {
+    (_baseAddress + Self._lockOffset).assumingMemoryBound(to: _Lock.self)
+  }
 
   /// Storage for the value this instance guards.
-  private nonisolated(unsafe) let _valueAddress: UnsafeMutablePointer<Value>
+  private var _valueAddress: UnsafeMutablePointer<Value> {
+    _baseAddress.assumingMemoryBound(to: Value.self)
+  }
 
-  public init(_ initialValue: consuming sending Value) {
-    _lockAddress = .allocate(capacity: 1)
+
+  init(_ initialValue: consuming sending Value) {
+    _baseAddress = .allocate(
+      byteCount: Self._lockOffset + MemoryLayout<_Lock>.stride,
+      alignment: max(MemoryLayout<Value>.alignment, MemoryLayout<_Lock>.alignment)
+    )
+
 #if !SWT_NO_OS_UNFAIR_LOCK
     _lockAddress.initialize(to: .init())
 #else
     _ = pthread_mutex_init(_lockAddress, nil)
 #endif
-    _valueAddress = .allocate(capacity: 1)
     _valueAddress.initialize(to: initialValue)
   }
 
   deinit {
     _valueAddress.deinitialize(count: 1)
-    _valueAddress.deallocate()
 #if !SWT_NO_OS_UNFAIR_LOCK
     _lockAddress.deinitialize(count: 1)
 #else
     _ = pthread_mutex_destroy(_lockAddress)
 #endif
-    _lockAddress.deallocate()
+    _baseAddress.deallocate()
   }
 
   /// Acquire the lock.
