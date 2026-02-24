@@ -21,7 +21,6 @@ extension ABI {
   /// You can use this type and its conformance to [`Codable`](https://developer.apple.com/documentation/swift/codable),
   /// when integrating the testing library with development tools. It is not
   /// part of the testing library's public interface.
-  @_spi(ForToolsIntegrationOnly)
   public struct VersionNumber: Sendable {
     /// The integer type used to store a component.
     ///
