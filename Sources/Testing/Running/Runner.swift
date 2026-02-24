@@ -227,10 +227,10 @@ extension Runner {
       // Determine what kind of event to send for this step based on its action.
       switch step.action {
       case .run:
-        Event.post(.testStarted, for: (step.test, nil), iteration: context.iteration, configuration: configuration)
+        Event.post(.testStarted, for: (step.test, nil), iteration: 1, configuration: configuration)
         shouldSendTestEnded = true
       case let .skip(skipInfo):
-        Event.post(.testSkipped(skipInfo), for: (step.test, nil), iteration: context.iteration, configuration: configuration)
+        Event.post(.testSkipped(skipInfo), for: (step.test, nil), iteration: 1, configuration: configuration)
         shouldSendTestEnded = false
       case let .recordIssue(issue):
         // Scope posting the issue recorded event such that issue handling
@@ -254,7 +254,7 @@ extension Runner {
     defer {
       if let step = stepGraph.value {
         if shouldSendTestEnded {
-          Event.post(.testEnded, for: (step.test, nil), iteration: context.iteration, configuration: configuration)
+          Event.post(.testEnded, for: (step.test, nil), iteration: 1, configuration: configuration)
         }
         Event.post(.planStepEnded(step), for: (step.test, nil), configuration: configuration)
       }

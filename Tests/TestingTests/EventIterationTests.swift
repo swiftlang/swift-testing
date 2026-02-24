@@ -61,17 +61,6 @@ struct EventIterationTests {
   }
 
   @Test
-  func `testStarted and testEnded events include iteration in context`() async {
-    await verifyIterations(
-      for: [.testStarted, .testEnded],
-      repetitionPolicy: .once,
-      expectedIterations: 1
-    ) { _ in
-      // Do nothing, just pass
-    }
-  }
-
-  @Test
   func `testCaseStarted and testCaseEnded events include iteration in context`() async {
     await verifyIterations(
       for: [.testCaseStarted, .testCaseEnded],

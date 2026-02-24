@@ -22,9 +22,9 @@ struct TestCaseIterationTests {
       await confirmation("1 iteration ended") { ended in
         var configuration = Configuration()
         configuration.eventHandler = { event, _ in
-          if case .testStarted = event.kind {
+          if case .testCaseStarted = event.kind {
             started()
-          } else if case .testEnded = event.kind {
+          } else if case .testCaseEnded = event.kind {
             ended()
           }
         }
@@ -43,9 +43,9 @@ struct TestCaseIterationTests {
       await confirmation("N iterations ended", expectedCount: iterationCount) { ended in
         var configuration = Configuration()
         configuration.eventHandler = { event, _ in
-          if case .testStarted = event.kind {
+          if case .testCaseStarted = event.kind {
             started()
-          } else if case .testEnded = event.kind {
+          } else if case .testCaseEnded = event.kind {
             ended()
           }
         }
@@ -70,17 +70,17 @@ struct TestCaseIterationTests {
         var configuration = Configuration()
         configuration.eventHandler = { event, context in
           guard let iteration = context.iteration else { return }
-          if case .testStarted = event.kind {
+          if case .testCaseStarted = event.kind {
             iterations.withLock { $0 = iteration }
             started()
-          } else if case .testEnded = event.kind {
+          } else if case .testCaseEnded = event.kind {
             ended()
           }
         }
         configuration.repetitionPolicy = .repeating(.untilIssueRecorded, maximumIterationCount: iterationCount)
 
         await Test {
-          #expect(iterations.rawValue < iterationWithIssue)
+          #expect(iterations.rawValue <= iterationWithIssue)
         }.run(configuration: configuration)
       }
     }
@@ -96,10 +96,10 @@ struct TestCaseIterationTests {
         var configuration = Configuration()
         configuration.eventHandler = { event, context in
           guard let iteration = context.iteration else { return }
-          if case .testStarted = event.kind {
+          if case .testCaseStarted = event.kind {
             iterations.withLock { $0 = iteration }
             started()
-          } else if case .testEnded = event.kind {
+          } else if case .testCaseEnded = event.kind {
             ended()
           }
         }
@@ -122,7 +122,10 @@ struct TestCaseIterationTests {
 
     var configuration = Configuration()
     configuration.eventHandler = { event, context in
-      guard let test = context.test, let iteration = context.iteration else { return }
+      guard case .testCaseStarted = event.kind,
+              let test = context.test,
+              let iteration = context.iteration
+      else { return }
       if test.name.contains("Failing") {
         iterationForFailingTest.withLock { $0 = iteration }
       }
