@@ -25,7 +25,6 @@ extension ABI {
       case `default`
       case skip
       case pass
-      case passWithWarnings = "_passWithWarnings"
       case passWithKnownIssue
       case fail
       case difference
@@ -45,8 +44,6 @@ extension ABI {
           } else {
             .pass
           }
-        case .passWithWarnings:
-          .passWithWarnings
         case .fail:
           .fail
         case .difference:
