@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -12,12 +12,12 @@ extension ABI {
   /// A type implementing the JSON encoding of records for the ABI entry point
   /// and event stream output.
   ///
-  /// This type is not part of the public interface of the testing library. It
-  /// assists in converting values to JSON; clients that consume this JSON are
-  /// expected to write their own decoders.
-  struct Record<V>: Sendable where V: ABI.Version {
+  /// You can use this type and its conformance to [`Codable`](https://developer.apple.com/documentation/swift/codable),
+  /// when integrating the testing library with development tools. It is not
+  /// part of the testing library's public interface.
+  public struct Record<V>: Sendable where V: ABI.Version {
     /// An enumeration describing the various kinds of record.
-    enum Kind: Sendable {
+    public enum Kind: Sendable {
       /// A test record.
       case test(EncodedTest<V>)
 
@@ -26,22 +26,35 @@ extension ABI {
     }
 
     /// The kind of record.
-    var kind: Kind
+    public internal(set) var kind: Kind
 
-    init(encoding test: borrowing Test) {
-      kind = .test(EncodedTest(encoding: test))
+    public init(encoding test: EncodedTest<V>) {
+      kind = .test(test)
     }
 
-    init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
-      guard let event = EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) else {
-        return nil
-      }
-      if !V.includesExperimentalFields && event.kind.rawValue.first == "_" {
-        // Don't encode experimental event kinds.
-        return nil
-      }
+    public init(encoding event: EncodedEvent<V>) {
       kind = .event(event)
     }
+  }
+}
+
+// MARK: -
+
+extension ABI.Record {
+  init(encoding test: borrowing Test) {
+    let test = ABI.EncodedTest<V>(encoding: test)
+    self.init(encoding: test)
+  }
+
+  init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
+    guard let event = ABI.EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) else {
+      return nil
+    }
+    if !V.includesExperimentalFields && event.kind.rawValue.first == "_" {
+      // Don't encode experimental event kinds.
+      return nil
+    }
+    self.init(encoding: event)
   }
 }
 
@@ -54,7 +67,7 @@ extension ABI.Record: Codable {
     case payload
   }
 
-  func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(V.versionNumber, forKey: .version)
     switch kind {
@@ -67,7 +80,7 @@ extension ABI.Record: Codable {
     }
   }
 
-  init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
 
     func validateVersionNumber(_ versionNumber: VersionNumber) throws {
