@@ -28,12 +28,12 @@ extension ABI {
     /// The kind of record.
     public internal(set) var kind: Kind
 
-    public init(encoding test: EncodedTest<V>) {
-      kind = .test(test)
+    public init(encoding test: borrowing EncodedTest<V>) {
+      kind = .test(copy test)
     }
 
-    public init(encoding event: EncodedEvent<V>) {
-      kind = .event(event)
+    public init(encoding event: borrowing EncodedEvent<V>) {
+      kind = .event(copy event)
     }
   }
 }
