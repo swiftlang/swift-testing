@@ -123,7 +123,9 @@ extension ABI.EncodedAttachment: Codable {
         try bytes.withUnsafeBytes(encodeBytes)
       }
     case let .error(error):
-      try container.encode(error, forKey: .error)
+      if V.includesExperimentalFields {
+        try container.encode(error, forKey: .error)
+      }
     }
     if V.includesExperimentalFields {
       try container.encodeIfPresent(_preferredName, forKey: .preferredName)
@@ -150,11 +152,11 @@ extension ABI.EncodedAttachment: Codable {
         if let bytes = try container.decodeIfPresent([UInt8].self, forKey: .bytes) {
           return .inMemory(bytes)
         }
-      }
 
-      // Finally, look for an error caught during encoding.
-      if let error = try container.decodeIfPresent(ABI.EncodedError<V>.self, forKey: .error) {
-        return .error(error)
+        // Finally, look for an error caught during encoding.
+        if let error = try container.decodeIfPresent(ABI.EncodedError<V>.self, forKey: .error) {
+          return .error(error)
+        }
       }
 
       // Couldn't find anything to decode.
