@@ -292,46 +292,13 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       thunkBody = "_ = \(forwardCall("\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))"
     }
 
-    // If this function is synchronous, is not explicitly nonisolated, and is
-    // not explicitly isolated to some actor, it should run in the configured
-    // default isolation context. If the suite type is an actor, this will cause
-    // a hop off the actor followed by an immediate hop back on, but otherwise
-    // should be harmless. Note that we do not support specifying an `isolated`
-    // parameter on a test function at this time.
-    //
-    // We use a second, inner thunk function here instead of just adding the
-    // isolation parameter to the "real" thunk because adding it there prevents
-    // correct tuple desugaring of the "real" arguments to the thunk.
-    if functionDecl.signature.effectSpecifiers?.asyncSpecifier == nil && !isMainActorIsolated && !functionDecl.isNonisolated {
-      // Get a unique name for this secondary thunk. We don't need it to be
-      // uniqued against functionDecl because it's interior to the "real" thunk,
-      // so its name can't conflict with any other names visible in this scope.
-      let isolationThunkName = context.makeUniqueName("")
-
-      // Insert a (defaulted) isolated argument. If we emit a closure (or inner
-      // function) that captured the arguments to the "real" thunk, the compiler
-      // has trouble reasoning about the lifetime of arguments to that closure
-      // especially if those arguments are borrowed or consumed, which results
-      // in hard-to-avoid compile-time errors. Fortunately, forwarding the full
-      // argument list is straightforward.
-      let thunkParamsExprCopy = FunctionParameterClauseSyntax {
-        for thunkParam in thunkParamsExpr.parameters {
-          thunkParam
-        }
-        FunctionParameterSyntax(
-          firstName: .wildcardToken(),
-          type: "isolated (any _Concurrency.Actor)?" as TypeSyntax,
-          defaultValue: InitializerClauseSyntax(value: "Testing.__defaultSynchronousIsolationContext" as ExprSyntax)
-        )
-      }
-
-      thunkBody = """
-      @Sendable func \(isolationThunkName)\(thunkParamsExprCopy) async throws {
-        \(thunkBody)
-      }
-      try await \(isolationThunkName)\(forwardedParamsExpr)
-      """
-    }
+    // Forward the nonisolated keyword from the original function. If none is
+    // present, use `nonisolated(nonsending)` by default.
+    let existingNonisolatedKeyword = functionDecl.modifiers.first { $0.name.tokenKind == .keyword(.nonisolated) }
+    let nonisolatedKeyword = existingNonisolatedKeyword?.trimmed ?? DeclModifierSyntax(
+      name: .keyword(.nonisolated),
+      detail: DeclModifierDetailSyntax(detail: .keyword(.nonsending))
+    )
 
     // Add availability guards if needed.
     thunkBody = createSyntaxNode(
@@ -343,7 +310,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     let thunkName = context.makeUniqueName(thunking: functionDecl)
     let thunkDecl: DeclSyntax = """
     @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
-    @Sendable private \(staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
+    @Sendable private \(nonisolatedKeyword) \(staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
       \(thunkBody)
     }
     """
@@ -434,7 +401,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       result.append(
         """
         @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-        private \(staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> Testing.Test {
+        private nonisolated(nonsending) \(staticKeyword(for: typeName)) func \(unavailableTestName)() async -> Testing.Test {
           .__function(
             named: \(literal: functionDecl.completeName.trimmedDescription),
             in: \(typeNameExpr),
@@ -459,8 +426,8 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     let generatorName = context.makeUniqueName(thunking: functionDecl, withPrefix: "generator")
     result.append(
       """
-      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-      @Sendable private \(staticKeyword(for: typeName)) func \(generatorName)() async -> Testing.Test {
+      @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
+      @Sendable private nonisolated(nonsending) \(staticKeyword(for: typeName)) func \(generatorName)() async -> Testing.Test {
         \(raw: testsBody)
       }
       """
@@ -489,7 +456,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       enum \(enumName): Testing.__TestContentRecordContainer {
-        nonisolated static var __testContentRecord: Testing.__TestContentRecord6_2 {
+        nonisolated(nonsending) static var __testContentRecord: Testing.__TestContentRecord6_2 {
           unsafe \(testContentRecordName)
         }
       }
