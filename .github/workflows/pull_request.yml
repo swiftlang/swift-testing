@@ -12,12 +12,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  listXcodes:
+  "List Available Xcode versions":
     runs-on: [self-hosted, macos]
     steps:
       - name: List available Xcode versions
         run: |
-            ls /Applications/Xcode*.app
+            find /Applications -name 'Xcode*.app' -maxdepth 1
   tests:
     name: Test
     uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.7
