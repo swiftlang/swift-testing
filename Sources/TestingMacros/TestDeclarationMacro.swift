@@ -456,7 +456,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       enum \(enumName): Testing.__TestContentRecordContainer {
-        nonisolated(nonsending) static var __testContentRecord: Testing.__TestContentRecord6_2 {
+        nonisolated static var __testContentRecord: Testing.__TestContentRecord6_2 {
           unsafe \(testContentRecordName)
         }
       }
