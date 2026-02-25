@@ -12,7 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  "List Available Xcode versions":
+  list-xcodes:
+    name: List available Xcode versions
     runs-on: [self-hosted, macos]
     steps:
       - name: List available Xcode versions
