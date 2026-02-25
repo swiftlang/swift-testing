@@ -207,6 +207,45 @@ static int swt_setfdflags(int fd, int flags) {
 }
 #endif
 
+/// Get the name of the given exit code if one is available.
+///
+/// - Parameters:
+///   - exitCode: An exit code.
+///
+/// - Returns: The name of `exitCode` if it is a known constant such as
+///   `EXIT_FAILURE` or if a name for it is defined in `<sysexits.h>` and that
+///   header is present at compile time. If no name is available for `exitCode`,
+///   returns `NULL`.
+///
+/// - Note: The set of exit codes in `<sysexits.h>` is _de facto_ standardized
+///   on platforms that include that header.
+static const char *_Nullable swt_getExitCodeName(int exitCode) {
+#define SWT_EXIT_CODE(NAME) NAME: return #NAME
+  switch (exitCode) {
+    case SWT_EXIT_CODE(EXIT_SUCCESS);
+    case SWT_EXIT_CODE(EXIT_FAILURE);
+#if __has_include(<sysexits.h>)
+    case SWT_EXIT_CODE(EX_USAGE);
+    case SWT_EXIT_CODE(EX_DATAERR);
+    case SWT_EXIT_CODE(EX_NOINPUT);
+    case SWT_EXIT_CODE(EX_NOUSER);
+    case SWT_EXIT_CODE(EX_NOHOST);
+    case SWT_EXIT_CODE(EX_UNAVAILABLE);
+    case SWT_EXIT_CODE(EX_SOFTWARE);
+    case SWT_EXIT_CODE(EX_OSERR);
+    case SWT_EXIT_CODE(EX_OSFILE);
+    case SWT_EXIT_CODE(EX_CANTCREAT);
+    case SWT_EXIT_CODE(EX_IOERR);
+    case SWT_EXIT_CODE(EX_TEMPFAIL);
+    case SWT_EXIT_CODE(EX_PROTOCOL);
+    case SWT_EXIT_CODE(EX_NOPERM);
+    case SWT_EXIT_CODE(EX_CONFIG);
+#endif
+    default: return 0;
+  }
+#undef SWT_SYSEXIT_CODE
+};
+
 #if !SWT_NO_INTEROP
 
 /// A type describing a fallback event handler that testing API can invoke as an

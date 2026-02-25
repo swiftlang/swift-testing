@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024–2025 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -16,10 +16,14 @@ public enum ABI: Sendable {}
 
 extension ABI {
   /// A protocol describing the types that represent different ABI versions.
-  protocol Version: Sendable {
+  public protocol Version: Sendable {
     /// The numeric representation of this ABI version.
     static var versionNumber: VersionNumber { get }
+  }
 
+  /// A protocol that extends the public ``ABI/Version`` protocol with
+  /// internal-only requirements.
+  protocol _Version: Version {
 #if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
     /// Create an event handler that encodes events as JSON and forwards them to
     /// an ABI-friendly event handler.
@@ -43,13 +47,21 @@ extension ABI {
   }
 
   /// The current supported ABI version (ignoring any experimental versions.)
-  typealias CurrentVersion = v6_4
-
-  /// The highest defined and supported ABI version (including any experimental
-  /// versions.)
-  typealias HighestVersion = v6_4
+  public typealias CurrentVersion = v6_4
 
 #if !hasFeature(Embedded)
+  /// Get the type representing a given ABI version.
+  ///
+  /// - Parameters:
+  ///   - versionNumber: The ABI version number for which a concrete type is
+  ///     needed.
+  ///
+  /// - Returns: A type conforming to ``ABI/Version`` that represents the given
+  ///   ABI version, or `nil` if no such type exists.
+  public static func version(forVersionNumber versionNumber: VersionNumber) -> (any Version.Type)? {
+    _version(forVersionNumber: versionNumber)
+  }
+
   /// Get the type representing a given ABI version.
   ///
   /// - Parameters:
@@ -63,11 +75,16 @@ extension ABI {
   ///
   /// - Returns: A type conforming to ``ABI/Version`` that represents the given
   ///   ABI version, or `nil` if no such type exists.
-  static func version(
+  static func _version(
     forVersionNumber versionNumber: VersionNumber,
     givenSwiftCompilerVersion swiftCompilerVersion: @autoclosure () -> VersionNumber = swiftCompilerVersion
-  ) -> (any Version.Type)? {
-    if versionNumber > ABI.HighestVersion.versionNumber {
+  ) -> (any _Version.Type)? {
+    if versionNumber >= ABI.ExperimentalVersion.versionNumber {
+      // The experimental ABI version is higher than any real ABI version.
+      return ABI.ExperimentalVersion.self
+    }
+
+    if versionNumber > ABI.CurrentVersion.versionNumber {
       // If the caller requested an ABI version higher than the current Swift
       // compiler version and it's not an ABI version we've explicitly defined,
       // then we assume we don't know what they're talking about and return nil.
@@ -103,6 +120,8 @@ extension ABI {
   }
 #endif
 }
+
+// MARK: - Experimental fields
 
 /// The value of the environment variable flag which enables experimental event
 /// stream fields, if any.
@@ -144,7 +163,7 @@ extension ABI {
   /// A namespace and version type for Xcode&nbsp;16 compatibility.
   ///
   /// - Warning: This type will be removed in a future update.
-  enum Xcode16: Sendable, Version {
+  enum Xcode16: Sendable, Version, _Version {
     static var versionNumber: VersionNumber {
       VersionNumber(-1, 0)
     }
@@ -152,8 +171,8 @@ extension ABI {
 #endif
 
   /// A namespace and type for ABI version 0 symbols.
-  public enum v0: Sendable, Version {
-    static var versionNumber: VersionNumber {
+  public enum v0: Sendable, Version, _Version {
+    public static var versionNumber: VersionNumber {
       VersionNumber(0, 0)
     }
   }
@@ -164,8 +183,8 @@ extension ABI {
   ///   @Available(Swift, introduced: 6.3)
   ///   @Available(Xcode, introduced: 26.4)
   /// }
-  public enum v6_3: Sendable, Version {
-    static var versionNumber: VersionNumber {
+  public enum v6_3: Sendable, Version, _Version {
+    public static var versionNumber: VersionNumber {
       VersionNumber(6, 3)
     }
   }
@@ -173,25 +192,20 @@ extension ABI {
   /// A namespace and type for ABI version 6.4 symbols.
   ///
   /// @Metadata {
-  ///   @Available(Swift, introduced: 6.4).
+  ///   @Available(Swift, introduced: 6.4)
   /// }
-  @_spi(Experimental)
-  public enum v6_4: Sendable, Version {
-    static var versionNumber: VersionNumber {
+  public enum v6_4: Sendable, Version, _Version {
+    public static var versionNumber: VersionNumber {
       VersionNumber(6, 4)
     }
   }
 
   /// A namespace and type representing the ABI version whose symbols are
   /// considered experimental.
-  enum ExperimentalVersion: Sendable, Version {
-    static var versionNumber: VersionNumber {
+  @_spi(Experimental)
+  public enum ExperimentalVersion: Sendable, Version, _Version {
+    public static var versionNumber: VersionNumber {
       VersionNumber(99, 0)
     }
   }
 }
-
-/// A namespace for ABI version 0 symbols.
-@_spi(ForToolsIntegrationOnly)
-@available(*, deprecated, renamed: "ABI.v0")
-public typealias ABIv0 = ABI.v0

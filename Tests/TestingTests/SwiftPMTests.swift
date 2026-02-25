@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -218,7 +218,7 @@ struct SwiftPMTests {
     }
     do {
       let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--xunit-output", temporaryFilePath])
-      let eventContext = Event.Context(test: nil, testCase: nil, configuration: nil)
+      let eventContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
       configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
@@ -298,7 +298,7 @@ struct SwiftPMTests {
     let currentVersionNumber = ABI.CurrentVersion.versionNumber
     var newerVersionNumber = currentVersionNumber
     newerVersionNumber.patchComponent += 1
-    let version = try #require(ABI.version(forVersionNumber: newerVersionNumber, givenSwiftCompilerVersion: newerVersionNumber))
+    let version = try #require(ABI._version(forVersionNumber: newerVersionNumber, givenSwiftCompilerVersion: newerVersionNumber))
     #expect(version.versionNumber == currentVersionNumber)
   }
 
@@ -396,12 +396,12 @@ struct SwiftPMTests {
         .timeLimit(Swift.Duration.seconds(testTimeLimit + 10)),
         arguments: expectedArgs as [String]
       ) {_ in}
-      let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
+      let eventContext = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
 
       configuration.handleEvent(Event(.testDiscovered, testID: test.id, testCaseID: nil), in: eventContext)
       configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       do {
-        let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
+        let eventContext = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
         configuration.handleEvent(Event(.testStarted, testID: test.id, testCaseID: nil), in: eventContext)
         configuration.handleEvent(Event(.testEnded, testID: test.id, testCaseID: nil), in: eventContext)
       }
@@ -463,6 +463,15 @@ struct SwiftPMTests {
     #expect(throws: (any Error).self) {
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--event-stream-version", "xyz-invalid"])
     }
+  }
+
+  @Test("Can extract the ABI version from record JSON")
+  func getVersionFromRecordJSON() throws {
+    var json = #"{ "kind": "test", "version": "1.2.3", "payload": {} }"#
+    let versionNumber = try json.withUTF8 { json in
+      try ABI.VersionNumber(fromRecordJSON: UnsafeRawBufferPointer(json))
+    }
+    #expect(versionNumber == ABI.VersionNumber(1, 2, 3))
   }
 #endif
 #endif

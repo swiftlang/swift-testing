@@ -14,10 +14,10 @@ extension ABI {
   ///
   /// The properties and members of this type are documented in ABI/JSON.md.
   ///
-  /// This type is not part of the public interface of the testing library. It
-  /// assists in converting values to JSON; clients that consume this JSON are
-  /// expected to write their own decoders.
-  struct EncodedTest<V>: Sendable where V: ABI.Version {
+  /// You can use this type and its conformance to [`Codable`](https://developer.apple.com/documentation/swift/codable),
+  /// when integrating the testing library with development tools. It is not
+  /// part of the testing library's public interface.
+  public struct EncodedTest<V>: Sendable where V: ABI.Version {
     /// An enumeration describing the various kinds of test.
     enum Kind: String, Sendable {
       /// A test suite.
