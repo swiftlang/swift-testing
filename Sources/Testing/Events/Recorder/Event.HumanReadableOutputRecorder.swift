@@ -80,6 +80,9 @@ extension Event {
         /// The instant at which the test started.
         var startInstant: Test.Clock.Instant
 
+        /// Whether the test has ended.
+        var hasEnded = false
+
         /// The number of issues recorded for the test, grouped by their
         /// level of severity.
         var issueCount: [Issue.Severity: Int] = [:]
@@ -335,6 +338,9 @@ extension Event.HumanReadableOutputRecorder {
       case .testCaseStarted:
         context.testData[keyPath] = .init(startInstant: instant)
 
+      case .testEnded, .testCaseEnded:
+        context.testData[keyPath]?.hasEnded = true
+
       case let .testCancelled(skipInfo), let .testCaseCancelled(skipInfo):
         context.testData[keyPath]?.cancellationInfo = skipInfo
 
@@ -477,6 +483,7 @@ extension Event.HumanReadableOutputRecorder {
       break
 
     case let .issueRecorded(issue):
+      let wasRecordedAfterTestEnded = context.testData[keyPath]?.hasEnded == true
       let parameterCount = if let parameters = test?.parameters {
         parameters.count
       } else {
@@ -508,6 +515,14 @@ extension Event.HumanReadableOutputRecorder {
         additionalMessages.append(Message(symbol: .difference, stringValue: differenceDescription))
       }
       additionalMessages += _formattedComments(issue.comments)
+      if wasRecordedAfterTestEnded {
+        additionalMessages.append(
+          Message(
+            symbol: .warning,
+            stringValue: "This issue was recorded after its associated test ended. Ensure asynchronous work has completed before your test ends."
+          )
+        )
+      }
       if let knownIssueComment = issue.knownIssueContext?.comment {
         additionalMessages.append(_formattedComment(knownIssueComment))
       }

@@ -521,6 +521,25 @@ struct EventRecorderTests {
     )
   }
 
+  @Test("HumanReadableOutputRecorder emits guidance for issues recorded after test end")
+  func humanReadableRecorderExplainsLateIssueRecording() {
+    let test = Test(name: "example") {}
+    let context = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
+    let recorder = Event.HumanReadableOutputRecorder()
+
+    recorder.record(Event(.testStarted, testID: test.id, testCaseID: nil), in: context)
+    recorder.record(Event(.testEnded, testID: test.id, testCaseID: nil), in: context)
+
+    let issue = Issue(kind: .unconditional, comments: ["Late"], sourceContext: .init())
+    let messages = recorder.record(Event(.issueRecorded(issue), testID: test.id, testCaseID: nil), in: context)
+
+    #expect(
+      messages.contains { message in
+        message.stringValue.contains("recorded after this test ended")
+      }
+    )
+  }
+
   @Test("JUnitXMLRecorder counts issues without associated tests")
   func junitRecorderCountsIssuesWithoutTests() async throws {
     let issue = Issue(kind: .unconditional)
