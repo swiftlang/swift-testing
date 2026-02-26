@@ -97,19 +97,15 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessColl
 #endif
   }
 
-#if _runtime(_ObjC) && canImport(MachO_Private.dyld)
-  let imageNames: [String] = {
-    var imageCount = UInt32(0)
-    let imageNames = objc_copyImageNames(&imageCount)
-    defer {
-      free(imageNames)
-    }
+#if _runtime(_ObjC) && canImport(MachO_Private)
+  var imageCount = UInt32(0)
+  let imageNames = objc_copyImageNames(&imageCount)
+  defer {
+    free(imageNames)
+  }
+  let imageNameBuffer = UnsafeBufferPointer(start: imageNames, count: Int(imageCount))
 
-    return UnsafeBufferPointer(start: imageNames, count: Int(imageCount))
-      .compactMap(String.init(validatingCString:))
-  }()
-
-  return imageNames.lazy.compactMap { imageName in
+  return imageNameBuffer.compactMap { imageName in
     guard let handle = dlopen(imageName, RTLD_LAZY | RTLD_NOLOAD) else {
       return nil
     }
