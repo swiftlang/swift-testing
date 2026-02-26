@@ -22,7 +22,7 @@ In Swift development snapshots, running `swift test --swift-sdk <wasm_swift_sdk_
 supported. When you have `jq` installed, you can run this command to compute Swift SDK ID automatically:
 
 ```
-swift test --swift-sdk $"(swiftc -print-target-info | from json | get swiftCompilerTag)_wasm"
+swift test --swift-sdk "$(swiftc -print-target-info | jq -r '.swiftCompilerTag')_wasm"
 ```
 
 ## Swift 6.2
@@ -32,7 +32,7 @@ to run your tests, building tests and running them are two separate steps. To
 build tests for WebAssembly, use the following command:
 
 ```sh
-swift build --swift-sdk wasm32-unknown-wasi --build-tests
+swift build --swift-sdk "$(swiftc -print-target-info | jq -r '.swiftCompilerTag')_wasm" --build-tests
 ```
 
 After building tests, you can run them using a [WASI](https://wasi.dev/)-compliant
