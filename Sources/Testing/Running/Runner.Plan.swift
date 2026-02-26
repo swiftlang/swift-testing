@@ -154,7 +154,11 @@ extension Runner.Plan {
   /// - Parameters:
   ///   - testGraph: The graph of tests to modify.
   private static func _recursivelyReduceTraits(in testGraph: inout Graph<String, Test?>) {
-    if var test = testGraph.value {
+    testGraph = testGraph.mapValues { _, test in
+      guard var test else {
+        return nil
+      }
+
       // O(n^2), but we expect n to be small, right?
       test.traits = test.traits.reduce(into: []) { traits, trait in
         for i in traits.indices {
@@ -168,13 +172,7 @@ extension Runner.Plan {
         // The trait wasn't reduced into any other traits, so preserve it.
         traits.append(trait)
       }
-      testGraph.value = test
-    }
-
-    testGraph.children = testGraph.children.mapValues { child in
-      var child = child
-      _recursivelyReduceTraits(in: &child)
-      return child
+      return test
     }
   }
 #endif
