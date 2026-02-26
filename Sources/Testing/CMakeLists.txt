@@ -73,6 +73,7 @@ add_library(Testing
   Running/SkipInfo.swift
   SourceAttribution/Backtrace.swift
   SourceAttribution/Backtrace+Symbolication.swift
+  SourceAttribution/CustomTestReflectable.swift
   SourceAttribution/CustomTestStringConvertible.swift
   SourceAttribution/Expression.swift
   SourceAttribution/Expression+Macro.swift
