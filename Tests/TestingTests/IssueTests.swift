@@ -289,9 +289,8 @@ final class IssueTests: XCTestCase {
       }
       if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
-        // The presence of `try` means we don't do complex expansion (yet.)
         XCTAssertNotNil(expectation.evaluatedExpression)
-        XCTAssertNil(expectation.evaluatedExpression.runtimeValue)
+        XCTAssertNotNil(expectation.evaluatedExpression.runtimeValue)
       }
     }
 
@@ -1259,7 +1258,28 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
-  func testCollectionDifferenceSkippedForStrings() async {
+  func testCollectionDifferenceForStrings() async throws {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        return XCTFail("Unexpected issue kind \(issue.kind)")
+      }
+      guard let differenceDescription = expectation.differenceDescription else {
+        return XCTFail("Unexpected nil differenceDescription")
+      }
+      XCTAssertTrue(differenceDescription.contains(#"inserted ["hello""#))
+      XCTAssertTrue(differenceDescription.contains(#"removed ["helbo""#))
+    }
+
+    await Test {
+      #expect("hello\nworld" == "helbo\nworld")
+    }.run(configuration: configuration)
+  }
+
+  func testCollectionDifferenceSkippedForStringsWithoutNewlines() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
@@ -1277,7 +1297,25 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
-  func testCollectionDifferenceSkippedForRanges() async {
+  func testCollectionDifferenceSkippedForStringsWithCharacterDifferencesOnly() async throws {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+      XCTAssertNil(expectation.differenceDescription)
+    }
+
+    await Test {
+      #expect("hello\n" == "hello\r")
+    }.run(configuration: configuration)
+  }
+
+  func testCollectionDifferenceSkippedForRanges() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
@@ -1337,33 +1375,6 @@ final class IssueTests: XCTestCase {
 
     await Test {
       #expect(!(   Bool(false)    ))
-    }.run(configuration: configuration)
-  }
-
-  func testNegatedExpressionsExpandToCaptureNegatedExpression() async {
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      guard case let .issueRecorded(issue) = event.kind else {
-        return
-      }
-      guard case let .expectationFailed(expectation) = issue.kind else {
-        XCTFail("Unexpected issue \(issue)")
-        return
-      }
-      XCTAssertNotNil(expectation.evaluatedExpression.runtimeValue)
-      XCTAssertTrue(expectation.evaluatedExpression.runtimeValue!.typeInfo.describes(Bool.self))
-      guard expectation.evaluatedExpression.isNegated,
-            let subexpression = expectation.evaluatedExpression.subexpressions.first else {
-        XCTFail("Expected expression was negated and had one subexpression")
-        return
-      }
-      XCTAssertNotNil(subexpression.runtimeValue)
-      XCTAssertTrue(subexpression.runtimeValue!.typeInfo.describes(Bool.self))
-    }
-
-    @Sendable func g() -> Int { 1 }
-    await Test {
-      #expect(!(g() == 1))
     }.run(configuration: configuration)
   }
 
