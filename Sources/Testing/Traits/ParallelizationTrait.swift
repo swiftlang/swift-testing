@@ -33,7 +33,6 @@ private import ObjectiveC
 ///
 /// To add this trait to a test, use ``Trait/serialized``.
 public struct ParallelizationTrait: TestTrait, SuiteTrait {
-#if !hasFeature(Embedded)
   /// A type that describes a data-based dependency that a test may have.
   ///
   /// When a test has a dependency, the testing library assumes it cannot run at
@@ -49,15 +48,22 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
       /// An unbounded dependency.
       case unbounded
 
-      /// A dependency on a tag.
-      case tag(Tag)
-
+#if !hasFeature(Embedded)
       /// A dependency on a Swift type.
-      case type(TypeInfo)
+      ///
+      /// - Parameters:
+      ///   - typeInfo: The Swift type.
+      case type(_ typeInfo: TypeInfo)
+#endif
     }
 
     /// The kind of this dependency.
     var kind: Kind
+
+#if !hasFeature(Embedded)
+    /// The key path used to construct this dependency, if any.
+    nonisolated(unsafe) var originalKeyPath: AnyKeyPath?
+#endif
   }
 
   /// This instance's dependency, if any.
@@ -68,7 +74,6 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
 
   /// A mapping of dependencies to serializers.
   private static let _serializers = Mutex<[Dependency.Kind: Serializer]>()
-#endif
 }
 
 #if !hasFeature(Embedded)
@@ -152,7 +157,6 @@ extension ParallelizationTrait: TestScoping {
     }
 
     configuration.isParallelizationEnabled = false
-#if !hasFeature(Embedded)
     try await Configuration.withCurrent(configuration) {
       if test.isSuite {
         // Suites do not need to use a serializer since they don't run their own
@@ -172,6 +176,7 @@ extension ParallelizationTrait: TestScoping {
           // prepare(). See Runner._applyScopingTraits() for an explanation of
           // what this code does.
           // TODO: share an implementation with that function?
+          // FIXME: if this dict rehashes mid-flight, will we deadlock?
           let function = Self._serializers.rawValue.values.lazy
             .reduce(function) { function, serializer in
               {
@@ -182,6 +187,7 @@ extension ParallelizationTrait: TestScoping {
             }
           try await function()
         }
+#if !hasFeature(Embedded)
       case let kind:
         // This test function has declared a single dependency, so fetch the
         // serializer for that dependency and run the test in serial with any
@@ -195,11 +201,9 @@ extension ParallelizationTrait: TestScoping {
         try await serializer.run {
           try await function()
         }
+#endif
       }
     }
-#else
-    try await Configuration.withCurrent(configuration, perform: function)
-#endif
   }
 }
 
@@ -240,13 +244,18 @@ extension ParallelizationTrait: CustomStringConvertible {
 
 extension ParallelizationTrait.Dependency: CustomStringConvertible {
   public var description: String {
+#if !hasFeature(Embedded)
+    if let originalKeyPath {
+      return #"\\#(originalKeyPath)"#
+    }
+#endif
     switch kind {
     case .unbounded:
-      "*"
-    case let .tag(tag):
-      String(describingForTest: tag)
+      return "*"
+#if !hasFeature(Embedded)
     case let .type(typeInfo):
-      "(\(typeInfo.fullyQualifiedName)).self)"
+      return #"(\#(typeInfo.fullyQualifiedName)).self"#
+#endif
     }
   }
 }
@@ -258,29 +267,24 @@ extension ParallelizationTrait: CustomStringConvertible {
 }
 #endif
 
-#if !hasFeature(Embedded)
 // MARK: - Dependencies
 
 @_spi(Experimental)
 extension Trait where Self == ParallelizationTrait {
   /// Constructs a trait that describes a test's dependency on shared state
-  /// using a tag.
+  /// using a key path.
   ///
   /// - Parameters:
-  ///   - tag: The tag representing the dependency.
+  ///   - keyPath: The key path representing the dependency.
   ///
   /// - Returns: An instance of ``ParallelizationTrait`` that marks any test it
-  ///   is applied to as dependent on `tag`.
+  ///   is applied to as dependent on `keyPath`.
   ///
   /// Use this trait when you write a test function is dependent on global
-  /// mutable state and you want to describe that state using a test tag.
+  /// mutable state and you can describe that state using a key path.
   ///
   /// ```swift
-  /// extension Tag {
-  ///   @Tag static var freezer: Self
-  /// }
-  ///
-  /// @Test(.serialized(for: .freezer))
+  /// @Test(.serialized(for: \FoodTruck.shared.freezer.door))
   /// func `Freezer door works`() {
   ///   let freezer = FoodTruck.shared.freezer
   ///   freezer.openDoor()
@@ -290,52 +294,27 @@ extension Trait where Self == ParallelizationTrait {
   /// }
   /// ```
   ///
-  /// When you apply ``Trait/serialized(for:)-(Tag)`` to a test, the testing
-  /// library does _not_ automatically add `tag` to the test. Conversely, if you
-  /// add `tag` to a test using the ``Trait/tags(_:)`` trait, the testing
-  /// library does _not_ automatically serialize the test.
-  ///
-  /// ## See Also
-  ///
-  /// - ``ParallelizationTrait``
-  public static func serialized(for tag: Tag) -> Self {
-    let dependency = ParallelizationTrait.Dependency(kind: .tag(tag))
-    return Self(dependency: dependency)
-  }
-
-  /// Constructs a trait that describes a test's dependency on shared state
-  /// using a type.
-  ///
-  /// - Parameters:
-  ///   - type: The type representing the dependency.
-  ///
-  /// - Returns: An instance of ``ParallelizationTrait`` that marks any test it
-  ///   is applied to as dependent on `type`.
-  ///
-  /// Use this trait when you write a test function is dependent on global
-  /// mutable state and you want to describe that state using a Swift type.
+  /// The testing library may combine dependencies represented by key paths with
+  /// common prefixes. For example, the testing library treats the following key
+  /// paths as equivalent for the purposes of serialization:
   ///
   /// ```swift
-  /// @Test(.serialized(for: Freezer.self))
-  /// func `Freezer door works`() {
-  ///   let freezer = FoodTruck.shared.freezer
-  ///   freezer.openDoor()
-  ///   #expect(freezer.isOpen)
-  ///   freezer.closeDoor()
-  ///   #expect(!freezer.isOpen)
-  /// }
+  /// let first = \T.x[0]
+  /// let second = \T.x[1]
   /// ```
-  ///
-  /// If you use `type` as a test suite, the testing library does _not_
-  /// automatically serialize test functions declared within `type`.
   ///
   /// ## See Also
   ///
   /// - ``ParallelizationTrait``
-  public static func serialized<T>(for type: T.Type) -> Self where T: ~Copyable & ~Escapable {
-    let typeInfo = TypeInfo(describing: type)
-    let dependency = ParallelizationTrait.Dependency(kind: .type(typeInfo))
+  @_unavailableInEmbedded
+  public static func serialized<R, V>(for keyPath: KeyPath<R, V>) -> Self {
+#if !hasFeature(Embedded)
+    let typeInfo = TypeInfo(describing: R.self)
+    let dependency = ParallelizationTrait.Dependency(kind: .type(typeInfo), originalKeyPath: keyPath)
     return Self(dependency: dependency)
+#else
+    swt_unreachable()
+#endif
   }
 }
 
@@ -414,4 +393,3 @@ extension Trait where Self == ParallelizationTrait {
     return Self(dependency: dependency)
   }
 }
-#endif

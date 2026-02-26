@@ -11,7 +11,7 @@
 @testable @_spi(Experimental) import Testing
 private import _TestingInternals
 
-@Suite("Environment Tests", .serialized(for: Environment.self))
+@Suite("Environment Tests", .serialized(for: \Environment.self))
 struct EnvironmentTests {
   var name = "SWT_ENVIRONMENT_VARIABLE_FOR_TESTING"
 
