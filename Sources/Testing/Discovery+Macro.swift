@@ -25,16 +25,15 @@ public typealias __TestContentRecordAccessor = @convention(c) (
 
 /// The content of a test content record.
 ///
-/// The layout of this type must match that of the corresponding type
-/// in the `_TestDiscovery` module. For more information, see
-/// `ABI/TestContent.md`.
+/// The layout of this type must match that of the corresponding type in the
+/// `_TestDiscovery` module. For more information, see `ABI/TestContent.md`.
 ///
 /// - Warning: This type is used to implement the `@Test` macro. Do not use it
 ///   directly.
 public typealias __TestContentRecord = (
   kind: UInt32,
   reserved1: UInt32,
-  accessor: __TestContentRecordAccessor?,
+  accessor: __TestContentRecordAccessor,
   context: UInt,
   reserved2: UInt
 )

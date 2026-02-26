@@ -8,10 +8,14 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+import Synchronization
+#endif
 #if canImport(XCTest)
 import XCTest
 #endif
-@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 struct MyError: Error, Equatable {
 }
@@ -798,15 +802,10 @@ final class RunnerTests: XCTestCase {
 
   @Suite(.hidden) struct AvailableWithDefinedAvailabilityTests {
     @Test(.hidden)
-    @available(_clockAPI, *)
-    func clockAPI() {}
+        func clockAPI() {}
   }
 
   func testAvailableWithDefinedAvailability() async throws {
-    guard #available(_clockAPI, *) else {
-      throw XCTSkip("Test method is unavailable here.")
-    }
-
     let testStarted = expectation(description: "Test started")
     testStarted.expectedFulfillmentCount = 3
     var configuration = Configuration()
@@ -974,7 +973,7 @@ extension OrderedTests.Inner {
 }
 
 @Suite(.hidden, .serialized) struct OrderedTests {
-  static let state = Locked(rawValue: 0)
+  static let state = Mutex(0)
 
   @Test(.hidden) func z() { XCTAssertEqual(Self.state.increment(), 1) }
   @Test(.hidden) func y() { XCTAssertEqual(Self.state.increment(), 2) }

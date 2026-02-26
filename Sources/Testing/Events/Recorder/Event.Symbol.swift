@@ -28,7 +28,8 @@ extension Event {
 
     /// The symbol to use when a test passes with one or more warnings.
     @_spi(Experimental)
-    case passWithWarnings
+    @available(*, deprecated, renamed: "warning")
+    static var passWithWarnings: Self { .warning }
 
     /// The symbol to use when a test fails.
     case fail
@@ -37,7 +38,7 @@ extension Event {
     case difference
 
     /// A warning or caution symbol to use when the developer should be aware of
-    /// some condition.
+    /// some condition, or if a test passes with one or more warnings.
     case warning
 
     /// The symbol to use when presenting details about an event to the user.
@@ -61,12 +62,10 @@ extension Event.Symbol {
       ("\u{10065F}", "arrow.triangle.turn.up.right.diamond.fill")
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
-        ("\u{100883}", "xmark.diamond")
+        ("\u{100882}", "minus.diamond.fill")
       } else {
         ("\u{10105B}", "checkmark.diamond.fill")
       }
-    case .passWithWarnings:
-      ("\u{100123}", "questionmark.diamond.fill")
     case .fail:
       ("\u{100884}", "xmark.diamond.fill")
     case .difference:
@@ -121,15 +120,12 @@ extension Event.Symbol {
       return "\u{279C}"
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
-        // Unicode: HEAVY BALLOT X
-        return "\u{2718}"
+        // Unicode: BOX DRAWINGS HEAVY HORIZONTAL
+        return "\u{2501}"
       } else {
         // Unicode: HEAVY CHECK MARK
         return "\u{2714}"
       }
-    case .passWithWarnings:
-      // Unicode: QUESTION MARK
-      return "\u{003F}"
     case .fail:
       // Unicode: HEAVY BALLOT X
       return "\u{2718}"
@@ -159,15 +155,12 @@ extension Event.Symbol {
       return "\u{279C}"
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
-        // Unicode: MULTIPLICATION SIGN
-        return "\u{00D7}"
+        // Unicode: HYPHEN-MINUS
+        return "\u{002D}"
       } else {
         // Unicode: SQUARE ROOT
         return "\u{221A}"
       }
-    case .passWithWarnings:
-      // Unicode: QUESTION MARK
-      return "\u{003F}"
     case .fail:
       // Unicode: MULTIPLICATION SIGN
       return "\u{00D7}"

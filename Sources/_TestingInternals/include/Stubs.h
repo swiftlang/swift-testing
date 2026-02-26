@@ -126,6 +126,33 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 }
 #endif
 
+#if defined(__linux__)
+/// Get the `FICLONE` `ioctl()` argument.
+///
+/// This function is provided because `FICLONE` is a complex macro and cannot be
+/// imported directly into Swift.
+static unsigned long swt_FICLONE(void) {
+  return FICLONE;
+}
+#endif
+
+#if defined(__FreeBSD__)
+/// Get the `COPY_FILE_RANGE_CLONE` `copy_file_range()` flag.
+///
+/// This function is provided because `COPY_FILE_RANGE_CLONE` is not available
+/// prior to FreeBSD 15.0. The caller should check `getosreldate()` before using
+/// this flag.
+static unsigned int swt_COPY_FILE_RANGE_CLONE(void) {
+#if defined(COPY_FILE_RANGE_CLONE)
+  return COPY_FILE_RANGE_CLONE;
+#else
+  // Compiled against an older unistd.h, but presumably running on FreeBSD 15.0
+  // or newer. SEE: https://github.com/freebsd/freebsd-src/blob/main/sys/sys/unistd.h
+  return 0x00800000;
+#endif
+}
+#endif
+
 #if !defined(__ANDROID__)
 #if __has_include(<signal.h>) && defined(si_pid)
 /// Get the value of the `si_pid` field of a `siginfo_t` structure.
@@ -180,10 +207,69 @@ static int swt_setfdflags(int fd, int flags) {
 }
 #endif
 
+/// Get the name of the given exit code if one is available.
+///
+/// - Parameters:
+///   - exitCode: An exit code.
+///
+/// - Returns: The name of `exitCode` if it is a known constant such as
+///   `EXIT_FAILURE` or if a name for it is defined in `<sysexits.h>` and that
+///   header is present at compile time. If no name is available for `exitCode`,
+///   returns `NULL`.
+///
+/// - Note: The set of exit codes in `<sysexits.h>` is _de facto_ standardized
+///   on platforms that include that header.
+static const char *_Nullable swt_getExitCodeName(int exitCode) {
+#define SWT_EXIT_CODE(NAME) NAME: return #NAME
+  switch (exitCode) {
+    case SWT_EXIT_CODE(EXIT_SUCCESS);
+    case SWT_EXIT_CODE(EXIT_FAILURE);
+#if __has_include(<sysexits.h>)
+    case SWT_EXIT_CODE(EX_USAGE);
+    case SWT_EXIT_CODE(EX_DATAERR);
+    case SWT_EXIT_CODE(EX_NOINPUT);
+    case SWT_EXIT_CODE(EX_NOUSER);
+    case SWT_EXIT_CODE(EX_NOHOST);
+    case SWT_EXIT_CODE(EX_UNAVAILABLE);
+    case SWT_EXIT_CODE(EX_SOFTWARE);
+    case SWT_EXIT_CODE(EX_OSERR);
+    case SWT_EXIT_CODE(EX_OSFILE);
+    case SWT_EXIT_CODE(EX_CANTCREAT);
+    case SWT_EXIT_CODE(EX_IOERR);
+    case SWT_EXIT_CODE(EX_TEMPFAIL);
+    case SWT_EXIT_CODE(EX_PROTOCOL);
+    case SWT_EXIT_CODE(EX_NOPERM);
+    case SWT_EXIT_CODE(EX_CONFIG);
+#endif
+    default: return 0;
+  }
+#undef SWT_SYSEXIT_CODE
+};
 
-extern struct Freezer *current_freezer;
-extern void plug_in_freezer(struct Freezer freezer);
-extern void unplug_freezer(void);
+#if !SWT_NO_INTEROP
+
+/// A type describing a fallback event handler that testing API can invoke as an
+/// alternate method of reporting test events to the current test runner.
+/// Shadows the type with the same name in _TestingInterop.
+///
+/// - Parameters:
+///   - recordJSONSchemaVersionNumber: The JSON schema version used to encode
+///     the event record.
+///   - recordJSONBaseAddress: A pointer to the first byte of the encoded event.
+///   - recordJSONByteCount: The size of the encoded event in bytes.
+///   - reserved: Reserved for future use.
+typedef void (* SWTFallbackEventHandler)(const char *recordJSONSchemaVersionNumber,
+                                      const void *recordJSONBaseAddress,
+                                      size_t recordJSONByteCount,
+                                      const void *_Nullable reserved);
+
+/// Get the current fallback event handler.
+/// Shadows the function with the same name in _TestingInterop.
+///
+/// - Returns: The currently-set handler function, if any.
+SWT_EXTERN SWTFallbackEventHandler _Nullable _swift_testing_getFallbackEventHandler(void);
+
+#endif
 
 SWT_ASSUME_NONNULL_END
 

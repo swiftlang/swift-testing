@@ -13,8 +13,9 @@ public import UniformTypeIdentifiers
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
-@available(_uttypesAPI, *)
+@available(_uttypesAPI, *) // For DocC
 extension AttachableImageFormat {
   /// The content type corresponding to this image format.
   ///
@@ -25,6 +26,7 @@ extension AttachableImageFormat {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var contentType: UTType {
     kind.contentType
@@ -47,6 +49,7 @@ extension AttachableImageFormat {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public init(contentType: UTType, encodingQuality: Float = 1.0) {
     switch contentType {
@@ -86,6 +89,7 @@ extension AttachableImageFormat {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public init?(pathExtension: String, encodingQuality: Float = 1.0) {
     let pathExtension = pathExtension.drop { $0 == "." }
@@ -101,7 +105,6 @@ extension AttachableImageFormat {
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
-@available(_uttypesAPI, *)
 extension AttachableImageFormat.Kind: CustomStringConvertible, CustomDebugStringConvertible {
   /// The content type corresponding to this image format.
   fileprivate var contentType: UTType {

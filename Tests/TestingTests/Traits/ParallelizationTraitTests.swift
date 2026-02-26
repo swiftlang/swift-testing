@@ -15,6 +15,10 @@ private import _TestingInternals
 import Foundation
 #endif
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 @Suite("Parallelization Trait Tests", .tags(.traitRelated))
 struct ParallelizationTraitTests {
   @Test(".serialized trait serializes parameterized test", arguments: await [
@@ -25,7 +29,7 @@ struct ParallelizationTraitTests {
     var configuration = Configuration()
     configuration.isParallelizationEnabled = true
 
-    let indicesRecorded = Locked<[Int]>()
+    let indicesRecorded = Mutex<[Int]>()
     configuration.eventHandler = { event, _ in
       if case let .issueRecorded(issue) = event.kind,
          let comment = issue.comments.first,

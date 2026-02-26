@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -12,10 +12,10 @@ extension ABI {
   /// A type implementing the JSON encoding of ``Event`` for the ABI entry point
   /// and event stream output.
   ///
-  /// This type is not part of the public interface of the testing library. It
-  /// assists in converting values to JSON; clients that consume this JSON are
-  /// expected to write their own decoders.
-  struct EncodedEvent<V>: Sendable where V: ABI.Version {
+  /// You can use this type and its conformance to [`Codable`](https://developer.apple.com/documentation/swift/codable),
+  /// when integrating the testing library with development tools. It is not
+  /// part of the testing library's public interface.
+  public struct EncodedEvent<V>: Sendable where V: ABI.Version {
     /// An enumeration describing the various kinds of event.
     ///
     /// Note that the set of encodable events is a subset of all events
@@ -29,10 +29,10 @@ extension ABI {
       case issueRecorded
       case valueAttached
       case testCaseEnded
-      case testCaseCancelled = "_testCaseCancelled"
+      case testCaseCancelled
       case testEnded
       case testSkipped
-      case testCancelled = "_testCancelled"
+      case testCancelled
       case runEnded
     }
 
@@ -96,7 +96,14 @@ extension ABI {
     ///
     /// - Warning: Source locations at this level of the JSON schema are not yet
     ///   part of said JSON schema.
-    var _sourceLocation: SourceLocation?
+    var _sourceLocation: EncodedSourceLocation<V>?
+
+    /// The iteration of the `testID` being executed.
+    ///
+    /// This value is one-indexed; the first iteration is `1`.
+    ///
+    /// - Warning: Iteration indices are not yet part of the JSON schema.
+    var _iteration: Int?
 
     init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
       switch event.kind {
@@ -142,14 +149,16 @@ extension ABI {
         switch event.kind {
         case let .issueRecorded(recordedIssue):
           _comments = recordedIssue.comments.map(\.rawValue)
-          _sourceLocation = recordedIssue.sourceLocation
+          _sourceLocation = recordedIssue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         case let .valueAttached(attachment):
-          _sourceLocation = attachment.sourceLocation
+          _sourceLocation = EncodedSourceLocation<V>(encoding: attachment.sourceLocation)
+        case .testCaseStarted, .testCaseEnded, .testStarted, .testEnded:
+          _iteration = eventContext.iteration
         case let .testCaseCancelled(skipInfo),
           let .testSkipped(skipInfo),
           let .testCancelled(skipInfo):
           _comments = Array(skipInfo.comment).map(\.rawValue)
-          _sourceLocation = skipInfo.sourceLocation
+          _sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         default:
           break
         }

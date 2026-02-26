@@ -460,18 +460,77 @@ extension FileHandle {
 #if !SWT_NO_PIPES
 // MARK: - Pipes
 
-#if !SWT_TARGET_OS_APPLE && !os(Windows) && !SWT_NO_DYNAMIC_LINKING
-/// Create a pipe with flags.
-///
-/// This function declaration is provided because `pipe2()` is only declared if
-/// `_GNU_SOURCE` is set, but setting it causes build errors due to conflicts
-/// with Swift's Glibc module.
-private let _pipe2 = symbol(named: "pipe2").map {
-  castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<CInt>, CInt) -> CInt).self)
-}
+extension FileHandle {
+#if os(Linux) && !SWT_NO_DYNAMIC_LINKING
+  /// Create a pipe with flags.
+  ///
+  /// This function declaration is provided because `pipe2()` is only declared
+  /// if `_GNU_SOURCE` is set, but setting it causes build errors due to
+  /// conflicts with Swift's Glibc module.
+  private static let _pipe2 = symbol(named: "pipe2").map {
+    castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<CInt>, CInt) -> CInt).self)
+  }
 #endif
 
-extension FileHandle {
+  /// A wrapper around either `pipe2()` or `pipe()` that passes `O_CLOEXEC` (or
+  /// sets `FD_CLOEXEC`).
+  ///
+  /// - Parameters:
+  ///   - fds: A pointer to two integers. On successful return, initialized to two
+  ///     file descriptors (as per `pipe2()` and `pipe()`).
+  ///
+  /// - Returns: On success, `0`. On failure, any other value. Check `errno` for
+  ///   more information about the failure that occurred.
+  ///
+  /// This function abstracts away the platform-specific differences in
+  /// availability for `pipe2()`. On Windows, it calls `_pipe()` and passes
+  /// `_O_NOINHERIT` (Windows' equivalent of `O_CLOEXEC`).
+  private static func _pipeWithO_CLOEXEC(_ fds: UnsafeMutablePointer<CInt>) -> CInt {
+#if os(Windows)
+    return _pipe(fds, 0, _O_BINARY | _O_NOINHERIT)
+#else
+    func simulatePipe2Call(_ fds: UnsafeMutablePointer<CInt>) -> CInt {
+      // pipe2() is not available. Use pipe() instead and simulate O_CLOEXEC to the
+      // best of our ability.
+      let result = pipe(fds)
+      guard result == 0 else {
+        return result
+      }
+      do {
+        try setFD_CLOEXEC(true, onFileDescriptor: fds[0])
+        try setFD_CLOEXEC(true, onFileDescriptor: fds[1])
+      } catch {
+        // Failed to set FD_CLOEXEC on either end of the pipe. This is unexpected
+        // and may in practice be unreachable.
+        _close(fds[0])
+        fds[0] = -1
+        _close(fds[1])
+        fds[1] = -1
+        return -1
+      }
+      return 0
+    }
+
+#if SWT_TARGET_OS_APPLE
+    // pipe2() is not implemented on Darwin. BUG: rdar://138426570
+    return simulatePipe2Call(fds)
+#elseif os(Linux)
+#if !SWT_NO_DYNAMIC_LINKING
+    if let _pipe2 {
+      return _pipe2(fds, O_CLOEXEC)
+    }
+#endif
+    return simulatePipe2Call(fds)
+#elseif os(FreeBSD) || os(OpenBSD) || os(Android)
+    // These platforms implement pipe2() without constraints.
+    return pipe2(fds, O_CLOEXEC)
+#else
+#warning("Platform-specific implementation missing: cannot call pipe2()")
+    return simulatePipe2Call(fds)
+#endif
+#endif
+  }
+
   /// Make a pipe connecting two new file handles.
   ///
   /// - Parameters:
@@ -492,48 +551,16 @@ extension FileHandle {
   /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
   /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
   static func makePipe(readEnd: inout FileHandle?, writeEnd: inout FileHandle?) throws {
-#if !os(Windows)
-    var pipe2Called = false
-#endif
-
     var (fdReadEnd, fdWriteEnd) = try withUnsafeTemporaryAllocation(of: CInt.self, capacity: 2) { fds in
-#if os(Windows)
-      guard 0 == _pipe(fds.baseAddress, 0, _O_BINARY | _O_NOINHERIT) else {
+      guard 0 == _pipeWithO_CLOEXEC(fds.baseAddress!) else {
         throw CError(rawValue: swt_errno())
       }
-#else
-#if !SWT_TARGET_OS_APPLE && !os(Windows) && !SWT_NO_DYNAMIC_LINKING
-      if let _pipe2 {
-        guard 0 == _pipe2(fds.baseAddress!, O_CLOEXEC) else {
-          throw CError(rawValue: swt_errno())
-        }
-        pipe2Called = true
-      }
-#endif
-
-      if !pipe2Called {
-        // pipe2() is not available. Use pipe() instead and simulate O_CLOEXEC
-        // to the best of our ability.
-        guard 0 == pipe(fds.baseAddress!) else {
-          throw CError(rawValue: swt_errno())
-        }
-      }
-#endif
       return (fds[0], fds[1])
     }
     defer {
       Self._close(fdReadEnd)
       Self._close(fdWriteEnd)
     }
-
-#if !os(Windows)
-    if !pipe2Called {
-      // pipe2() is not available. Use pipe() instead and simulate O_CLOEXEC
-      // to the best of our ability.
-      try setFD_CLOEXEC(true, onFileDescriptor: fdReadEnd)
-      try setFD_CLOEXEC(true, onFileDescriptor: fdWriteEnd)
-    }
-#endif
 
     do {
       defer {

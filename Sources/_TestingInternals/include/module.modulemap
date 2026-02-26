@@ -11,4 +11,9 @@
 module _TestingInternals {
   umbrella "."
   export *
+
+  module StubsOnly {
+    header "Stubs.h"
+    export *
+  }
 }

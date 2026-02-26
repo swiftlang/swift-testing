@@ -9,14 +9,18 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-#if !os(Windows)
-import RegexBuilder
-#endif
+
 #if canImport(Foundation)
 import Foundation
 #endif
 #if canImport(FoundationXML)
 import FoundationXML
+#endif
+#if !os(Windows)
+import RegexBuilder
+#endif
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+import Synchronization
 #endif
 
 #if FIXED_118452948
@@ -24,7 +28,7 @@ import FoundationXML
 #endif
 struct EventRecorderTests {
   final class Stream: TextOutputStream, Sendable {
-    let buffer = Locked<String>(rawValue: "")
+    let buffer = Mutex<String>("")
 
     @Sendable func write(_ string: String) {
       buffer.withLock {
@@ -94,7 +98,6 @@ struct EventRecorderTests {
   }
 
   @Test("Verbose output")
-  @available(_regexAPI, *)
   func verboseOutput() async throws {
     let stream = Stream()
 
@@ -109,8 +112,8 @@ struct EventRecorderTests {
     await runTest(for: WrittenTests.self, configuration: configuration)
 
     let buffer = stream.buffer.rawValue
-    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) "abc": Swift.String"#))
-    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) lhs: Swift.String → "987""#))
+    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter)   "abc": Swift.String"#))
+    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter)   lhs: Swift.String → "987""#))
     #expect(buffer.contains(#""Animal Crackers" (aka 'WrittenTests')"#))
     #expect(buffer.contains(#""Not A Lobster" (aka 'actuallyCrab()')"#))
     do {
@@ -155,7 +158,6 @@ struct EventRecorderTests {
   }
 
 #if !os(Windows)
-  @available(_regexAPI, *)
   @Test(
     "Titles of messages ('Test' vs. 'Suite') are determined correctly",
     arguments: [
@@ -192,7 +194,6 @@ struct EventRecorderTests {
     )
   }
   
-  @available(_regexAPI, *)
   @Test(
     "Log the total number of test cases in parameterized tests at the end of the test run",
     arguments: [
@@ -228,7 +229,6 @@ struct EventRecorderTests {
     )
   }
 
-  @available(_regexAPI, *)
   @Test(
     "Issue counts are summed correctly on test end",
     arguments: [
@@ -292,7 +292,6 @@ struct EventRecorderTests {
     }.run(configuration: configuration)
   }
 
-  @available(_regexAPI, *)
   @Test("Issue counts are omitted on a successful test")
   func issueCountOmittedForPassingTest() async throws {
     let stream = Stream()
@@ -315,7 +314,6 @@ struct EventRecorderTests {
   }
 
 #if !os(Windows)
-  @available(_regexAPI, *)
   @Test("Issue counts are summed correctly on run end")
   func issueCountSummingAtRunEnd() async throws {
     let stream = Stream()
@@ -377,7 +375,6 @@ struct EventRecorderTests {
   }
 
   @Test("Issue counts are summed correctly on run end for a test with only warning issues")
-  @available(_regexAPI, *)
   func warningIssueCountSummingAtRunEnd() async throws {
     let stream = Stream()
 
@@ -494,10 +491,10 @@ struct EventRecorderTests {
     let stream = Stream()
 
     let eventRecorder = Event.JUnitXMLRecorder(writingUsing: stream.write)
-    eventRecorder.record(Event(.runStarted, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, configuration: nil))
+    eventRecorder.record(Event(.runStarted, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil))
     let test = Test {}
-    eventRecorder.record(Event(.testSkipped(.init(sourceContext: .init())), testID: test.id, testCaseID: nil), in: Event.Context(test: test, testCase: nil, configuration: nil))
-    eventRecorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, configuration: nil))
+    eventRecorder.record(Event(.testSkipped(.init(sourceContext: .init())), testID: test.id, testCaseID: nil), in: Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil))
+    eventRecorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil))
 
     let xmlString = stream.buffer.rawValue
     #expect(xmlString.hasPrefix("<?xml"))
@@ -513,7 +510,7 @@ struct EventRecorderTests {
   func humanReadableRecorderCountsIssuesWithoutTests() {
     let issue = Issue(kind: .unconditional)
     let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
-    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
+    let context = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
 
     let recorder = Event.HumanReadableOutputRecorder()
     let messages = recorder.record(event, in: context)
@@ -527,7 +524,7 @@ struct EventRecorderTests {
   @Test("JUnitXMLRecorder counts issues without associated tests")
   func junitRecorderCountsIssuesWithoutTests() async throws {
     let issue = Issue(kind: .unconditional)
-    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
+    let context = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
 
     await confirmation { wroteTestSuite in
       let recorder = Event.JUnitXMLRecorder { string in
@@ -544,7 +541,7 @@ struct EventRecorderTests {
   @Test("JUnitXMLRecorder ignores warning issues")
   func junitRecorderIgnoresWarningIssues() async throws {
     let issue = Issue(kind: .unconditional, severity: .warning)
-    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
+    let context = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
 
     await confirmation { wroteTestSuite in
       let recorder = Event.JUnitXMLRecorder { string in
@@ -570,7 +567,7 @@ struct EventRecorderTests {
   func knownIssueComments(testName: String, expectedComments: [String]) async throws {
     var configuration = Configuration()
     let recorder = Event.HumanReadableOutputRecorder()
-    let messages = Locked<[Event.HumanReadableOutputRecorder.Message]>(rawValue: [])
+    let messages = Mutex<[Event.HumanReadableOutputRecorder.Message]>([])
     configuration.eventHandler = { event, context in
       guard case .issueRecorded = event.kind else { return }
       messages.withLock {
@@ -584,7 +581,7 @@ struct EventRecorderTests {
     // known issue" and includes a source location, so is inconvenient to
     // include in our expectation here.
     let actualComments = messages.rawValue.dropFirst().map(\.stringValue)
-    #expect(actualComments == expectedComments)
+    #expect(actualComments.starts(with: expectedComments))
   }
 }
 

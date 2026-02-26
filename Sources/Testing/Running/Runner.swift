@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type that runs tests according to a given configuration.
 @_spi(ForToolsIntegrationOnly)
 public struct Runner: Sendable {
@@ -78,6 +82,9 @@ extension Runner {
   private struct _Context: Sendable {
     /// A serializer used to reduce parallelism among test cases.
     var testCaseSerializer: Serializer?
+
+    /// Which iteration of the test plan is being executed.
+    var iteration: Int
   }
 
   /// Apply the custom scope for any test scope providers of the traits
@@ -195,6 +202,7 @@ extension Runner {
   /// - Parameters:
   ///   - step: The plan step for which events should be posted.
   ///   - configuration: The configuration to use for running.
+  ///   - context: Context for the test run.
   ///   - body: A function to execute between the started/ended events.
   ///
   /// - Throws: Whatever is thrown by `body` or while handling any issues
@@ -204,7 +212,7 @@ extension Runner {
   ///
   /// This function does _not_ post the `planStepStarted` and `planStepEnded`
   /// events.
-  private static func _postingTestStartedAndEndedEvents<R>(for step: Plan.Step, configuration: Configuration, _ body: @Sendable () async throws -> R) async throws -> R {
+  private static func _postingTestStartedAndEndedEvents<R>(for step: Plan.Step, configuration: Configuration, context: _Context, _ body: @Sendable () async throws -> R) async throws -> R {
     // Whether to send a `.testEnded` event at the end of running this step.
     // Some steps' actions may not require a final event to be sent — for
     // example, a skip event only sends `.testSkipped`.
@@ -213,10 +221,10 @@ extension Runner {
     // Determine what kind of event to send for this step based on its action.
     switch step.action {
     case .run:
-      Event.post(.testStarted, for: (step.test, nil), configuration: configuration)
+      Event.post(.testStarted, for: (step.test, nil), iteration: context.iteration, configuration: configuration)
       shouldSendTestEnded = true
     case let .skip(skipInfo):
-      Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: configuration)
+      Event.post(.testSkipped(skipInfo), for: (step.test, nil), iteration: context.iteration, configuration: configuration)
       shouldSendTestEnded = false
     case let .recordIssue(issue):
       // Scope posting the issue recorded event such that issue handling
@@ -236,7 +244,7 @@ extension Runner {
     }
     defer {
       if shouldSendTestEnded {
-        Event.post(.testEnded, for: (step.test, nil), configuration: configuration)
+        Event.post(.testEnded, for: (step.test, nil), iteration: context.iteration, configuration: configuration)
       }
     }
 
@@ -281,7 +289,7 @@ extension Runner {
           switch step.action {
           case .run:
             try await _applyScopingTraits(for: step.test, testCase: nil) {
-              try await _postingTestStartedAndEndedEvents(for: step, configuration: configuration) {
+              try await _postingTestStartedAndEndedEvents(for: step, configuration: configuration, context: context) {
                 // Run the test function at this step (if one is present.)
                 if let testCases = step.test.testCases {
                   await _runTestCases(testCases, within: step, context: context)
@@ -294,7 +302,7 @@ extension Runner {
           default:
             // Skipping this step or otherwise not running it. Post appropriate
             // started/ended events for the test and walk any child nodes.
-            try await _postingTestStartedAndEndedEvents(for: step, configuration: configuration) {
+            try await _postingTestStartedAndEndedEvents(for: step, configuration: configuration, context: context) {
               try await _runChildren(of: stepGraph, context: context)
             }
           }
@@ -427,9 +435,9 @@ extension Runner {
   private static func _runTestCase(_ testCase: Test.Case, within step: Plan.Step, context: _Context) async {
     let configuration = _configuration
 
-    Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
+    Event.post(.testCaseStarted, for: (step.test, testCase), iteration: context.iteration, configuration: configuration)
     defer {
-      Event.post(.testCaseEnded, for: (step.test, testCase), configuration: configuration)
+      Event.post(.testCaseEnded, for: (step.test, testCase), iteration: context.iteration, configuration: configuration)
     }
 
     await Test.Case.withCurrent(testCase) {
@@ -474,7 +482,7 @@ extension Runner {
 #endif
 
     // Track whether or not any issues were recorded across the entire run.
-    let issueRecorded = Locked(rawValue: false)
+    let issueRecorded = Mutex(false)
     runner.configuration.eventHandler = { [eventHandler = runner.configuration.eventHandler] event, context in
       if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
         issueRecorded.withLock { issueRecorded in
@@ -489,7 +497,7 @@ extension Runner {
     // accidentally depend on e.g. the `configuration` property rather than the
     // current configuration.
     let context: _Context = {
-      var context = _Context()
+      var context = _Context(iteration: 0)
 
       let maximumParallelizationWidth = runner.configuration.maximumParallelizationWidth
       if maximumParallelizationWidth > 1 && maximumParallelizationWidth < .max {
@@ -502,9 +510,11 @@ extension Runner {
     await Configuration.withCurrent(runner.configuration) {
       // Post an event for every test in the test plan being run. These events
       // are turned into JSON objects if JSON output is enabled.
-      for test in runner.plan.steps.lazy.map(\.test) {
+      let tests = runner.plan.stepGraph.compactMap { $0.value?.test }
+      for test in tests {
         Event.post(.testDiscovered, for: (test, nil), configuration: runner.configuration)
       }
+      schedule(tests)
 
       Event.post(.runStarted, for: (nil, nil), configuration: runner.configuration)
       defer {
@@ -525,7 +535,10 @@ extension Runner {
             taskAction = "running iteration #\(iterationIndex + 1)"
           }
           _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: taskAction)) {
-            try? await _runStep(atRootOf: runner.plan.stepGraph, context: context)
+            var iterationContext = context
+            // `iteration` is one-indexed, so offset that here.
+            iterationContext.iteration = iterationIndex + 1
+            try? await _runStep(atRootOf: runner.plan.stepGraph, context: iterationContext)
           }
           await taskGroup.waitForAll()
         }

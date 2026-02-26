@@ -216,24 +216,6 @@ struct FileHandleTests {
 
 // MARK: - Fixtures
 
-func withTemporaryPath<R>(_ body: (_ path: String) throws -> R) throws -> R {
-  // NOTE: we are not trying to test mkstemp() here. We are trying to test the
-  // capacity of FileHandle to open a file for reading or writing and we need a
-  // temporary file to write to.
-#if os(Windows)
-  let path = try String(unsafeUninitializedCapacity: 1024) { buffer in
-    try #require(0 == tmpnam_s(buffer.baseAddress!, buffer.count))
-    return strnlen(buffer.baseAddress!, buffer.count)
-  }
-#else
-  let path = appendPathComponent("file_named_\(UInt64.random(in: 0 ..< .max))", to: try temporaryDirectory())
-#endif
-  defer {
-    _ = remove(path)
-  }
-  return try body(path)
-}
-
 extension FileHandle {
   static func temporary() throws -> FileHandle {
 #if os(Windows)
@@ -257,6 +239,24 @@ extension FileHandle {
   }
 }
 #endif
+
+func withTemporaryPath<R>(_ body: (_ path: String) throws -> R) throws -> R {
+  // NOTE: we are not trying to test mkstemp() here. We are trying to test the
+  // capacity of FileHandle to open a file for reading or writing and we need a
+  // temporary file to write to.
+#if os(Windows)
+  let path = try String(unsafeUninitializedCapacity: 1024) { buffer in
+    try #require(0 == tmpnam_s(buffer.baseAddress!, buffer.count))
+    return strnlen(buffer.baseAddress!, buffer.count)
+  }
+#else
+  let path = appendPathComponent("file_named_\(UInt64.random(in: 0 ..< .max))", to: try temporaryDirectory())
+#endif
+  defer {
+    _ = remove(path)
+  }
+  return try body(path)
+}
 
 func temporaryDirectory() throws -> String {
 #if SWT_TARGET_OS_APPLE

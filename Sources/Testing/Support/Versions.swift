@@ -172,14 +172,8 @@ var targetTriple: String? {
 
 /// A human-readable string describing the Swift Standard Library's version.
 ///
-/// This value is unavailable on some earlier Apple runtime targets. On those
-/// targets, this property has a value of `5.0.0`.
-///
 /// This value is not part of the public interface of the testing library.
 let swiftStandardLibraryVersion: VersionNumber? = {
-  guard #available(_swiftVersionAPI, *) else {
-    return VersionNumber(5, 0)
-  }
   let packedValue = _SwiftStdlibVersion.current._value
   return VersionNumber(
     majorComponent: .init((packedValue & 0xFFFF0000) >> 16),

@@ -21,21 +21,7 @@ extension Test {
     /// An instant on the testing clock.
     public struct Instant: Sendable {
       /// The suspending-clock time corresponding to this instant.
-      fileprivate(set) var suspending: TimeValue = {
-#if !SWT_NO_TIMESPEC && SWT_TARGET_OS_APPLE
-        // The testing library's availability on Apple platforms is earlier than
-        // that of the Swift Clock API, so we don't use `SuspendingClock`
-        // directly on them and instead derive a value from platform-specific
-        // API. SuspendingClock corresponds to CLOCK_UPTIME_RAW on Darwin.
-        // SEE: https://github.com/swiftlang/swift/blob/main/stdlib/public/Concurrency/Clock.cpp
-        var uptime = timespec()
-        _ = clock_gettime(CLOCK_UPTIME_RAW, &uptime)
-        return TimeValue(uptime)
-#else
-        /// The corresponding suspending-clock time.
-        TimeValue(SuspendingClock.Instant.now)
-#endif
-      }()
+      fileprivate(set) var suspending = TimeValue(SuspendingClock.Instant.now)
 
 #if !SWT_NO_UTC_CLOCK
       /// The wall-clock time corresponding to this instant.
@@ -70,7 +56,6 @@ extension Test {
 // MARK: -
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-@available(_clockAPI, *)
 extension SuspendingClock.Instant {
   /// Initialize this instant to the equivalent of the same instant on the
   /// testing library's clock.
@@ -99,7 +84,6 @@ extension Test.Clock.Instant {
   /// The value of this property is the equivalent of `self` on the wall clock.
   /// It is suitable for display to the user, but not for fine timing
   /// calculations.
-  @available(_clockAPI, *)
   public var durationSince1970: Duration {
     Duration(wall)
   }
@@ -136,7 +120,6 @@ extension Test.Clock {
   /// This function is not part of the public interface of the testing library.
   /// It is primarily used by the testing library's own tests. External clients
   /// can use ``sleep(for:tolerance:)`` or ``sleep(until:tolerance:)`` instead.
-  @available(_clockAPI, *)
   static func sleep(for duration: Duration) async throws {
 #if !SWT_NO_UNSTRUCTURED_TASKS
     return try await SuspendingClock().sleep(for: duration)
@@ -156,7 +139,6 @@ extension Test.Clock {
 
 // MARK: - Clock
 
-@available(_clockAPI, *)
 extension Test.Clock: _Concurrency.Clock {
   public typealias Duration = SuspendingClock.Duration
 
@@ -202,7 +184,6 @@ extension Test.Clock.Instant: Equatable, Hashable, Comparable {
 
 // MARK: - InstantProtocol
 
-@available(_clockAPI, *)
 extension Test.Clock.Instant: InstantProtocol {
   public typealias Duration = Swift.Duration
 

@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A description of the type of a value encountered during testing or a
 /// parameter of a test function.
 @_spi(ForToolsIntegrationOnly)
@@ -185,7 +189,7 @@ extension TypeInfo {
   }
 
   /// An in-memory cache of fully-qualified type name components.
-  private static let _fullyQualifiedNameComponentsCache = Locked<[ObjectIdentifier: [String]]>()
+  private static let _fullyQualifiedNameComponentsCache = Mutex<[ObjectIdentifier: [String]]>()
 
   /// Split the given fully-qualified type name into its components.
   ///
@@ -316,9 +320,6 @@ extension TypeInfo {
   /// could not determine the mangled name of the represented type, the value of
   /// this property is `nil`.
   var mangledName: String? {
-    guard #available(_mangledTypeNameAPI, *) else {
-      return nil
-    }
     switch _kind {
     case let .type(type):
       return _mangledTypeName(type)

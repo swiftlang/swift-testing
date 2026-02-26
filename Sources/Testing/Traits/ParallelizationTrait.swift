@@ -67,7 +67,7 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
   var dependency: Dependency?
 
   /// A mapping of dependencies to serializers.
-  private static let _serializers = Locked<[Dependency.Kind: Serializer]>()
+  private static let _serializers = Mutex<[Dependency.Kind: Serializer]>()
 #endif
 }
 

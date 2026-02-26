@@ -11,6 +11,14 @@
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) private import _TestDiscovery
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
+#if SWT_TARGET_OS_APPLE && canImport(CrashReporterSupport)
+private import CrashReporterSupport // NOTE: depends on Core Foundation!
+#endif
+
 #if !SWT_NO_EXIT_TESTS
 #if SWT_NO_FILE_IO
 #error("Platform-specific misconfiguration: support for exit tests requires support for file I/O")
@@ -151,14 +159,7 @@ public struct ExitTest: Sendable, ~Copyable {
 
 extension ExitTest {
   /// Storage for ``current``.
-  ///
-  /// A pointer is used for indirection because `ManagedBuffer` cannot yet hold
-  /// move-only types.
-  private static nonisolated(unsafe) let _current: Locked<UnsafeMutablePointer<ExitTest?>> = {
-    let current = UnsafeMutablePointer<ExitTest?>.allocate(capacity: 1)
-    current.initialize(to: nil)
-    return Locked(rawValue: current)
-  }()
+  private static let _current = Mutex<ExitTest?>()
 
   /// The exit test that is running in the current process, if any.
   ///
@@ -180,7 +181,7 @@ extension ExitTest {
       // we must make a copy so that we don't yield lock-guarded memory to the
       // caller (which is not concurrency-safe.)
       let currentCopy = _current.withLock { current in
-        return current.pointee?.unsafeCopy()
+        return current?.unsafeCopy()
       }
       yield currentCopy
     }
@@ -194,7 +195,8 @@ extension ExitTest {
   /// Disable crash reporting, crash logging, or core dumps for the current
   /// process.
   private static func _disableCrashReporting() {
-#if SWT_TARGET_OS_APPLE && !SWT_NO_MACH_PORTS
+#if SWT_TARGET_OS_APPLE
+#if !SWT_NO_MACH_PORTS
     // We don't need to create a crash log (a "corpse notification") for an exit
     // test. In the future, we might want to investigate actually setting up a
     // listener port in the parent process and tracking interesting exceptions
@@ -209,6 +211,10 @@ extension ExitTest {
       EXCEPTION_DEFAULT,
       THREAD_STATE_NONE
     )
+#endif
+#if canImport(CrashReporterSupport)
+    _ = CRDisableCrashReporting()
+#endif
 #elseif os(Linux)
     // On Linux, disable the generation of core files. They may or may not be
     // disabled by default; if they are enabled, they significantly slow down
@@ -288,8 +294,8 @@ extension ExitTest {
 
     // Set ExitTest.current before the test body runs.
     Self._current.withLock { current in
-      precondition(current.pointee == nil, "Set the current exit test twice in the same process. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
-      current.pointee = self.unsafeCopy()
+      precondition(current == nil, "Set the current exit test twice in the same process. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      current = self.unsafeCopy()
     }
 
     let error = await Issue.withErrorRecording(at: nil) {
@@ -521,11 +527,27 @@ func callExitTest(
   }
 
   // Plumb the exit test's result through the general expectation machinery.
-  let expression = __Expression(String(describingForTest: expectedExitCondition))
+  func expressionWithCapturedRuntimeValues() -> __Expression {
+    var expression = expression.capturingRuntimeValues(result.exitStatus)
+
+    expression.subexpressions = [expectedExitCondition.exitStatus, result.exitStatus]
+      .compactMap { exitStatus in
+        guard let exitStatus, let exitStatusName = exitStatus.name else {
+          return nil
+        }
+        return __Expression(
+          exitStatusName,
+          runtimeValue: __Expression.Value(describing: exitStatus.code)
+        )
+      }
+
+    return expression
+  }
   return __checkValue(
     expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(result.exitStatus),
+    expressionWithCapturedRuntimeValues: expressionWithCapturedRuntimeValues(),
+    mismatchedExitConditionDescription: #"expected exit status "\#(expectedExitCondition)", but "\#(result.exitStatus)" was reported instead"#,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -1038,7 +1060,7 @@ extension ExitTest {
     lazy var comments: [Comment] = event._comments?.map(Comment.init(rawValue:)) ?? []
     lazy var sourceContext = SourceContext(
       backtrace: nil, // A backtrace from the child process will have the wrong address space.
-      sourceLocation: event._sourceLocation
+      sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)
     )
     lazy var skipInfo = SkipInfo(comment: comments.first, sourceContext: sourceContext)
     if let issue = event.issue {
@@ -1066,7 +1088,7 @@ extension ExitTest {
       }
       issueCopy.record()
     } else if let attachment = event.attachment {
-      Attachment.record(attachment, sourceLocation: event._sourceLocation!)
+      Attachment.record(attachment, sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)!)
     } else if case .testCancelled = event.kind {
       _ = try? Test.cancel(with: skipInfo)
     }

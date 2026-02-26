@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -9,6 +9,10 @@
 //
 
 private import _TestingInternals
+
+#if canImport(Synchronization)
+private import Synchronization
+#endif
 
 /// The common implementation of the entry point functions in this package.
 ///
@@ -26,7 +30,7 @@ private import _TestingInternals
 /// ``ABI/v0/entryPoint-swift.type.property`` to get a reference to an
 /// ABI-stable version of this function.
 func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
-  let exitCode = Locked(rawValue: EXIT_SUCCESS)
+  let exitCode = Mutex(EXIT_SUCCESS)
 
   do {
 #if !SWT_NO_EXIT_TESTS
@@ -91,7 +95,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
     // The set of matching tests (or, in the case of `swift test list`, the set
     // of all tests.)
-    let tests: [Test]
+    var tests: [Test]
 
     if args.listTests ?? false {
       tests = await Array(Test.all)
@@ -106,6 +110,10 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 #endif
         }
       }
+
+      // Synthesize any missing suites. Note we write to stdout before this
+      // step because we don't emit suites to stdout anyway.
+      tests = Runner.Plan.synthesizeSuites(for: tests)
 
       // Post an event for every discovered test. These events are turned into
       // JSON objects if JSON output is enabled.
@@ -553,21 +561,13 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   var configuration = Configuration()
 
   // Parallelization (on by default)
-  if let parallel = args.parallel, !parallel {
+  if let parallel = args.parallel {
     configuration.isParallelizationEnabled = parallel
-  } else {
-    var maximumParallelizationWidth = args.experimentalMaximumParallelizationWidth
-    if maximumParallelizationWidth == nil && Test.current == nil {
-      // Don't check the environment variable when a current test is set (which
-      // presumably means we're running our own unit tests).
-      maximumParallelizationWidth = Environment.variable(named: "SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH").flatMap(Int.init)
+  } else if let maximumParallelizationWidth = args.experimentalMaximumParallelizationWidth {
+    if maximumParallelizationWidth < 1 {
+      throw _EntryPointError.invalidArgument("--experimental-maximum-parallelization-width", value: String(describing: maximumParallelizationWidth))
     }
-    if let maximumParallelizationWidth {
-      if maximumParallelizationWidth < 1 {
-        throw _EntryPointError.invalidArgument("--experimental-maximum-parallelization-width", value: String(describing: maximumParallelizationWidth))
-      }
-      configuration.maximumParallelizationWidth = maximumParallelizationWidth
-    }
+    configuration.maximumParallelizationWidth = maximumParallelizationWidth
   }
 
   // Whether or not to symbolicate backtraces in the event stream.
@@ -635,9 +635,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       return .unfiltered
     }
 
-    guard #available(_regexAPI, *) else {
-      throw _EntryPointError.featureUnavailable("The `\(label)' option is not supported on this OS version.")
-    }
     return try Configuration.TestFilter(membership: membership, matchingAnyOf: regexes)
   }
   filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))
@@ -679,6 +676,11 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
   // Warning issues (experimental).
   switch args.eventStreamVersionNumber {
+#if !SWT_NO_SNAPSHOT_TYPES
+  case .some(ABI.Xcode16.versionNumber):
+    // Xcode 26 and later support warning severity, so leave it enabled.
+    break
+#endif
   case .some(..<ABI.v6_3.versionNumber):
     // If the event stream version was explicitly specified to a value < 6.3,
     // disable the warning issue event to maintain legacy behavior.
@@ -713,7 +715,7 @@ func eventHandlerForStreamingEvents(
   forwardingTo targetEventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
 ) throws -> Event.Handler {
   let versionNumber = versionNumber ?? ABI.CurrentVersion.versionNumber
-  guard let abi = ABI.version(forVersionNumber: versionNumber) else {
+  guard let abi = ABI._version(forVersionNumber: versionNumber) else {
     throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(versionNumber)")
   }
   return abi.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: targetEventHandler)
