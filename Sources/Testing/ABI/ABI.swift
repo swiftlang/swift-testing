@@ -261,7 +261,7 @@ private enum _MetadataKey: String, Sendable, CaseIterable {
     return copyJSON(for: ABI.v0.versionNumber)
   case .maximumSupportedABIVersion:
     return copyJSON(for: ABI.CurrentVersion.versionNumber)
-  default:
+  case nil:
     return nil
   }
 }
