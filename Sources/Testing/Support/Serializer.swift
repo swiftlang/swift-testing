@@ -72,6 +72,9 @@ final actor Serializer {
   /// - Returns: Whatever is returned from `workItem`.
   ///
   /// - Throws: Whatever is thrown by `workItem`.
+  ///
+  /// - Warning: Calling this function recursively on the same instance of
+  ///   ``Serializer`` will cause a deadlock.
   func run<R>(_ workItem: @isolated(any) @Sendable () async throws -> R) async rethrows -> R where R: Sendable {
 #if !SWT_NO_UNSTRUCTURED_TASKS
     _currentWidth += 1
@@ -100,4 +103,3 @@ final actor Serializer {
     return try await workItem()
   }
 }
-
