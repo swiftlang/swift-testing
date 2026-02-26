@@ -214,8 +214,8 @@ extension ABI {
 
 // MARK: -
 
-/// The set of keys accepted by ``swift_testing_copyGestalt(_:_:)``.
-private enum _GestaltKey: String, Sendable, CaseIterable {
+/// The set of keys accepted by ``swift_testing_copyMetadataValue(_:_:)``.
+private enum _MetadataKey: String, Sendable, CaseIterable {
   /// The minimum supported ABI version.
   case minimumSupportedABIVersion = "_minimumSupportedABIVersion"
 
@@ -227,7 +227,7 @@ private enum _GestaltKey: String, Sendable, CaseIterable {
 /// library without running any tests.
 ///
 /// - Parameters:
-///   - key: The name of the value of interest. See the `_GestaltKey`
+///   - key: The name of the value of interest. See the `_MetadataKey`
 ///     enumeration for a list of supported values.
 ///   - reserved: Reserved for future use. Pass `0`.
 ///
@@ -236,11 +236,11 @@ private enum _GestaltKey: String, Sendable, CaseIterable {
 ///   available. The caller is responsible for freeing this memory with C's
 ///   `free()` function.
 #if compiler(>=6.3)
-@c(swift_testing_copyGestalt)
+@c(swift_testing_copyMetadataValue)
 #else
-@_cdecl("swift_testing_copyGestalt")
+@_cdecl("swift_testing_copyMetadataValue")
 #endif
-@usableFromInline func swift_testing_copyGestalt(_ key: UnsafePointer<CChar>, _ reserved: UInt) -> UnsafeMutablePointer<CChar>? {
+@usableFromInline func swift_testing_copyMetadataValue(_ key: UnsafePointer<CChar>, _ reserved: UInt) -> UnsafeMutablePointer<CChar>? {
   func copyJSON(for value: some Encodable) -> UnsafeMutablePointer<CChar>? {
     try? JSON.withEncoding(of: value) { json in
       json.withMemoryRebound(to: CChar.self) { json in
@@ -256,7 +256,7 @@ private enum _GestaltKey: String, Sendable, CaseIterable {
     }
   }
 
-  switch String(validatingCString: key).flatMap(_GestaltKey.init) {
+  switch String(validatingCString: key).flatMap(_MetadataKey.init) {
   case .minimumSupportedABIVersion:
     return copyJSON(for: ABI.v0.versionNumber)
   case .maximumSupportedABIVersion:
