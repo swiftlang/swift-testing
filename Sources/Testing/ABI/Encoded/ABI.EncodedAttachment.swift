@@ -16,12 +16,30 @@ extension ABI {
   /// A type implementing the JSON encoding of ``Attachment`` for the ABI entry
   /// point and event stream output.
   ///
-  /// This type is not part of the public interface of the testing library. It
-  /// assists in converting values to JSON; clients that consume this JSON are
-  /// expected to write their own decoders.
-  struct EncodedAttachment<V>: Sendable where V: ABI.Version {
-    /// The path where the attachment was written.
-    var path: String?
+  /// You can use this type and its conformance to [`Codable`](https://developer.apple.com/documentation/swift/codable),
+  /// when integrating the testing library with development tools. It is not
+  /// part of the testing library's public interface.
+  public struct EncodedAttachment<V>: Sendable where V: ABI.Version {
+    /// The different kinds of encoded attachment.
+    private enum _Kind: Sendable {
+      /// The attachment has already been saved to disk and we have its local
+      /// file system path.
+      case savedAtPath(String)
+
+      /// The attachment is stored in memory and we have its serialized form.
+      case inMemory([UInt8])
+
+      /// The attachment has not been saved nor serialized yet and we still have
+      /// it as an attachable value.
+      case abstract(Attachment<AnyAttachable>)
+
+      /// An error occurred when the attachment was encoded that prevented it
+      /// from being properly serialized.
+      case error(ABI.EncodedError<V>)
+    }
+
+    /// The kind of encoded attachment.
+    private var _kind: _Kind
 
     /// The preferred name of the attachment.
     ///
@@ -29,109 +47,179 @@ extension ABI {
     ///   schema.
     var _preferredName: String?
 
-    /// The raw content of the attachment, if available.
-    ///
-    /// The value of this property is set if the attachment was not first saved
-    /// to a file. It may also be `nil` if an error occurred while trying to get
-    /// the original attachment's serialized representation.
-    ///
-    /// - Warning: Inline attachment content is not yet part of the JSON schema.
-    var _bytes: Bytes?
-
-    init(encoding attachment: borrowing Attachment<AnyAttachable>, in eventContext: borrowing Event.Context) {
-      path = attachment.fileSystemPath
+    public init(encoding attachment: borrowing Attachment<AnyAttachable>) {
+      if let path = attachment.fileSystemPath {
+        _kind = .savedAtPath(path)
+      } else {
+        _kind = .abstract(copy attachment)
+      }
 
       if V.includesExperimentalFields {
         _preferredName = attachment.preferredName
-
-        if path == nil {
-          _bytes = try? attachment.withUnsafeBytes { bytes in
-            return Bytes(rawValue: [UInt8](bytes))
-          }
-        }
       }
     }
 
-    /// A structure representing the bytes of an attachment.
-    struct Bytes: Sendable, RawRepresentable {
-      var rawValue: [UInt8]
+    public init(encoding attachment: borrowing Attachment<some Attachable & Sendable & ~Copyable>) {
+      let attachmentCopy = Attachment<AnyAttachable>(copy attachment)
+      self.init(encoding: attachmentCopy)
     }
   }
 }
 
 // MARK: - Codable
 
-extension ABI.EncodedAttachment: Codable {}
-
-extension ABI.EncodedAttachment.Bytes: Codable {
-  func encode(to encoder: any Encoder) throws {
-#if canImport(Foundation)
-    // If possible, encode this structure as Base64 data.
-    try rawValue.withUnsafeBytes { rawValue in
-      let data = Data(bytesNoCopy: .init(mutating: rawValue.baseAddress!), count: rawValue.count, deallocator: .none)
-      var container = encoder.singleValueContainer()
-      try container.encode(data)
-    }
-#else
-    // Otherwise, it's an array of integers.
-    var container = encoder.singleValueContainer()
-    try container.encode(rawValue)
-#endif
+extension ABI.EncodedAttachment: Codable {
+  private enum CodingKeys: String, CodingKey {
+    case path
+    case preferredName = "_preferredName"
+    case bytes = "_bytes"
+    case error = "_error"
   }
 
-  init(from decoder: any Decoder) throws {
-    let container = try decoder.singleValueContainer()
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
 
+    func encodeBytes(_ bytes: UnsafeRawBufferPointer) throws {
 #if canImport(Foundation)
-    // If possible, decode a whole Foundation Data object.
-    if let data = try? container.decode(Data.self) {
-      self.init(rawValue: [UInt8](data))
-      return
+      // If possible, encode this structure as Base64 data.
+      try bytes.withUnsafeBytes { bytes in
+        let data = Data(bytesNoCopy: .init(mutating: bytes.baseAddress!), count: bytes.count, deallocator: .none)
+        try container.encode(data, forKey: .bytes)
+      }
+#else
+      // Otherwise, it's an array of integers.
+      try container.encode(bytes, forKey: .bytes)
+#endif
     }
+
+    switch _kind {
+    case let .savedAtPath(path):
+      try container.encode(path, forKey: .path)
+    case let .abstract(attachment):
+      if V.includesExperimentalFields {
+        var errorWhileEncoding: (any Error)?
+        do {
+          try attachment.withUnsafeBytes { bytes in
+            do {
+              try encodeBytes(bytes)
+            } catch {
+              // An error occurred during encoding rather than coming from the
+              // attachment itself. Preserve it and throw it before returning.
+              errorWhileEncoding = error
+            }
+          }
+        } catch {
+          // An error occurred while serializing the attachment. Encode it
+          // separately for recovery on the calling side.
+          let error = ABI.EncodedError<V>(encoding: error)
+          try container.encode(error, forKey: .error)
+        }
+        if let errorWhileEncoding {
+          throw errorWhileEncoding
+        }
+      }
+    case let .inMemory(bytes):
+      if V.includesExperimentalFields {
+        try bytes.withUnsafeBytes(encodeBytes)
+      }
+    case let .error(error):
+      if V.includesExperimentalFields {
+        try container.encode(error, forKey: .error)
+      }
+    }
+    if V.includesExperimentalFields {
+      try container.encodeIfPresent(_preferredName, forKey: .preferredName)
+    }
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+
+    _kind = try {
+      if let path = try container.decodeIfPresent(String.self, forKey: .path) {
+        return .savedAtPath(path)
+      }
+
+      if V.includesExperimentalFields {
+#if canImport(Foundation)
+        // If possible, decode a whole Foundation Data object.
+        if let data = try? container.decodeIfPresent(Data.self, forKey: .bytes) {
+          return .inMemory([UInt8](data))
+        }
 #endif
 
-    // Fall back to trying to decode an array of integers.
-    let bytes = try container.decode([UInt8].self)
-    self.init(rawValue: bytes)
+        // Fall back to trying to decode an array of integers.
+        if let bytes = try container.decodeIfPresent([UInt8].self, forKey: .bytes) {
+          return .inMemory(bytes)
+        }
+
+        // Finally, look for an error caught during encoding.
+        if let error = try container.decodeIfPresent(ABI.EncodedError<V>.self, forKey: .error) {
+          return .error(error)
+        }
+      }
+
+      // Couldn't find anything to decode.
+      throw DecodingError.valueNotFound(
+        String.self,
+        DecodingError.Context(
+          codingPath: decoder.codingPath + [CodingKeys.path],
+          debugDescription: "Encoded attachment did not include any persistent representation."
+        )
+      )
+    }()
+
+    if V.includesExperimentalFields {
+      _preferredName = try container.decodeIfPresent(String.self, forKey: .preferredName)
+    }
   }
 }
 
 // MARK: - Attachable
 
 extension ABI.EncodedAttachment: Attachable {
-  var estimatedAttachmentByteCount: Int? {
-    _bytes?.rawValue.count
+  public var estimatedAttachmentByteCount: Int? {
+    switch _kind {
+    case .savedAtPath, .error:
+      return nil
+    case let .inMemory(bytes):
+      return bytes.count
+    case let .abstract(attachment):
+      return attachment.attachableValue.estimatedAttachmentByteCount
+    }
   }
 
   /// An error type that is thrown when ``ABI/EncodedAttachment`` cannot satisfy
   /// a request for the underlying attachment's bytes.
   fileprivate struct BytesUnavailableError: Error {}
 
-  borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    if let bytes = _bytes?.rawValue {
-      return try bytes.withUnsafeBytes(body)
-    }
-
+  public borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    switch _kind {
+    case let .savedAtPath(path):
 #if !SWT_NO_FILE_IO
-    guard let path else {
-      throw BytesUnavailableError()
-    }
 #if canImport(Foundation)
-    // Leverage Foundation's file-mapping logic since we're using Data anyway.
-    let url = URL(fileURLWithPath: path, isDirectory: false)
-    let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])
+      // Leverage Foundation's file-mapping logic since we're using Data anyway.
+      let url = URL(fileURLWithPath: path, isDirectory: false)
+      let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])
 #else
-    let fileHandle = try FileHandle(forReadingAtPath: path)
-    let bytes = try fileHandle.readToEnd()
+      let fileHandle = try FileHandle(forReadingAtPath: path)
+      let bytes = try fileHandle.readToEnd()
 #endif
-    return try bytes.withUnsafeBytes(body)
+      return try bytes.withUnsafeBytes(body)
 #else
-    // Cannot read the attachment from disk on this platform.
-    throw BytesUnavailableError()
+      // Cannot read the attachment from disk on this platform.
+      throw BytesUnavailableError()
 #endif
+    case let .inMemory(bytes):
+      return try bytes.withUnsafeBytes(body)
+    case let .abstract(attachment):
+      return try attachment.withUnsafeBytes(body)
+    case let .error(error):
+      throw error
+    }
   }
 
-  borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
+  public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     _preferredName ?? suggestedName
   }
 }
