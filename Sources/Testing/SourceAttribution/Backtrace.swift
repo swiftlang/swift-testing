@@ -436,6 +436,11 @@ extension Backtrace {
 #endif
   }
 
+#if !hasFeature(Embedded) && SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+  private static var _markerAddressBetweenSwiftWillThrowAndFoundation: Address {
+    0x6C7B8BEB4B611F10 // randomly generated
+  }
+#endif
   /// Initialize an instance of this type with the previously-cached backtrace
   /// for a given error.
   ///
@@ -456,30 +461,39 @@ extension Backtrace {
 #if !hasFeature(Embedded)
   @inline(never)
   init?(forFirstThrowOf error: any Error, checkFoundation: Bool = true) {
-    if checkFoundation && Self.isFoundationCaptureEnabled {
-#if !hasFeature(Embedded) && SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
-      if let addresses = Self._CFErrorCopyCallStackReturnAddresses?(error)?.takeRetainedValue() as? [Address] {
-        self.init(addresses: addresses)
-        return
-      }
-#endif
-
-      if let userInfo = error._userInfo as? [String: Any],
-         let addresses = userInfo["NSCallStackReturnAddresses"] as? [Address], !addresses.isEmpty {
-        self.init(addresses: addresses)
-        return
-      }
-    }
-
+    var addresses = [Address]()
     let entry = Self._errorMappingCache.withLock { cache in
       cache[.init(error)]
     }
     if let entry, entry.errorObject != nil {
       // There was an entry and its weak reference is still valid.
-      self = entry.backtrace
-    } else {
+      addresses = entry.backtrace.addresses
+    }
+
+#if !hasFeature(Embedded) && SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+    var foundationAddresses = [Address]()
+    if checkFoundation && Self.isFoundationCaptureEnabled {
+      foundationAddresses = Self._CFErrorCopyCallStackReturnAddresses?(error)?.takeRetainedValue() as? [Address] ?? []
+    }
+    if !foundationAddresses.isEmpty {
+      // Find any common suffix between the two sequences and insert the
+      // Foundation backtrace before it. That ought to produce a combined
+      // backtrace that looks correct, at least temporally speaking.
+      let indices = zip(addresses.indices.reversed(), foundationAddresses.indices.reversed())
+        .first { addresses[$0] != foundationAddresses[$1] }
+      switch indices {
+      case let .some((insertionIndex, truncationIndex)):
+        addresses.insert(contentsOf: foundationAddresses[...truncationIndex], at: insertionIndex)
+      default:
+        addresses += foundationAddresses
+      }
+    }
+#endif
+
+    if addresses.isEmpty {
       return nil
     }
+    self.init(addresses: addresses)
   }
 #else
   init?(forFirstThrowOf error: some Error, checkFoundation: Bool = true) {
