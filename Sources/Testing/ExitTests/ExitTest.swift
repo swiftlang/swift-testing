@@ -674,7 +674,7 @@ extension ExitTest {
   ///
   /// The effect of calling this function more than once for the same
   /// environment variable is undefined.
-  private static func _makeFileHandle(forEnvironmentVariableNamed name: String, mode: String) -> FileHandle? {
+  private static func _makeFileHandle(forEnvironmentVariableNamed name: String, options: FileHandle.OpenOptions) -> FileHandle? {
     guard let environmentVariable = Environment.variable(named: name) else {
       return nil
     }
@@ -682,13 +682,12 @@ extension ExitTest {
     // Erase the environment variable so that it cannot accidentally be opened
     // twice (nor, in theory, affect the code of the exit test.)
     Environment.setVariable(nil, named: name)
-
     var fd: CInt?
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
     fd = CInt(environmentVariable)
 #elseif os(Windows)
     if let handle = UInt(environmentVariable).flatMap(HANDLE.init(bitPattern:)) {
-      var flags: CInt = switch (mode.contains("r"), mode.contains("w")) {
+      var flags: CInt = switch (options.contains(.readAccess), options.contains(.writeAccess)) {
       case (true, true):
         _O_RDWR
       case (true, false):
@@ -698,7 +697,7 @@ extension ExitTest {
       case (false, false):
         0
       }
-      flags |= _O_BINARY
+      flags |= _O_BINARY | _O_NOINHERIT
       fd = _open_osfhandle(Int(bitPattern: handle), flags)
     }
 #else
@@ -708,7 +707,7 @@ extension ExitTest {
       return nil
     }
 
-    return try? FileHandle(unsafePOSIXFileDescriptor: fd, mode: mode)
+    return try? FileHandle(unsafePOSIXFileDescriptor: fd, options: options)
   }
 
   /// Make a string suitable for use as the value of an environment variable
@@ -768,7 +767,7 @@ extension ExitTest {
     // If an exit test was found, inject back channel handling into its body.
     // External tools authors should set up their own back channel mechanisms
     // and ensure they're installed before calling ExitTest.callAsFunction().
-    guard let backChannel = _makeFileHandle(forEnvironmentVariableNamed: "SWT_BACKCHANNEL", mode: "wb") else {
+    guard let backChannel = _makeFileHandle(forEnvironmentVariableNamed: "SWT_BACKCHANNEL", options: [.writeAccess]) else {
       return result
     }
 
@@ -1105,7 +1104,7 @@ extension ExitTest {
   private mutating func _decodeCapturedValuesForEntryPoint() throws {
     // Read the content of the captured values stream provided by the parent
     // process above.
-    guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_CAPTURED_VALUES", mode: "rb") else {
+    guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_CAPTURED_VALUES", options: [.readAccess]) else {
       return
     }
     let capturedValuesJSON = try fileHandle.readToEnd()
