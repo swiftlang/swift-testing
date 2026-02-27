@@ -35,6 +35,7 @@ struct TestingMacrosMain: CompilerPlugin {
       TagMacro.self,
       SourceLocationMacro.self,
       PragmaMacro.self,
+      PlanMacro.self,
     ]
   }
 }

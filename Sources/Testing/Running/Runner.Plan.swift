@@ -134,7 +134,7 @@ extension Runner.Plan {
   /// The traits in `testGraph.value?.traits` are added to each node in
   /// `testGraph`, and then this function is called recursively on each child
   /// node.
-  private static func _recursivelyApplyTraits(_ parentTraits: [any SuiteTrait] = [], to testGraph: inout Graph<String, Test?>) {
+  private static func _recursivelyApplyTraits(_ parentTraits: [any SuiteTrait], to testGraph: inout Graph<String, Test?>) {
     let traits: [any SuiteTrait] = parentTraits + (testGraph.value?.traits ?? []).lazy
       .compactMap { $0 as? any SuiteTrait }
       .filter(\.isRecursive)
@@ -306,7 +306,7 @@ extension Runner.Plan {
   ///   - configuration: The configuration to use for planning.
   ///
   /// - Returns: A graph of the steps corresponding to `tests`.
-  private static func _constructStepGraph(from tests: some Sequence<Test>, configuration: Configuration) async -> Graph<String, Step?> {
+  private static func _constructStepGraph(from tests: some Sequence<Test>, configuration: Configuration, globalTraits: [any Trait]) async -> Graph<String, Step?> {
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
     Backtrace.startCachingForThrownErrors()
@@ -354,7 +354,7 @@ extension Runner.Plan {
     // correctly evaluate the filter. It's also more efficient, since it avoids
     // needlessly applying non-filtering related traits to tests which might be
     // filtered out.
-    _recursivelyApplyTraits(to: &testGraph)
+    _recursivelyApplyTraits([], to: &testGraph)
 
     // For each test value, determine the appropriate action for it.
     testGraph = await testGraph.mapValues { keyPath, test in
@@ -402,7 +402,7 @@ extension Runner.Plan {
   ///
   /// This function produces a new runner plan for the provided tests.
   public init(tests: some Sequence<Test>, configuration: Configuration) async {
-    let stepGraph = await Self._constructStepGraph(from: tests, configuration: configuration)
+    let stepGraph = await Self._constructStepGraph(from: tests, configuration: configuration, globalTraits: [])
     self.init(stepGraph: stepGraph)
   }
 
@@ -412,7 +412,10 @@ extension Runner.Plan {
   /// - Parameters:
   ///   - configuration: The configuration to use for planning.
   public init(configuration: Configuration) async {
-    await self.init(tests: Test.all, configuration: configuration)
+    let tests = await Test.all
+    let globalTraits = await Testing.Plan.shared.traits
+    let stepGraph = await Self._constructStepGraph(from: tests, configuration: configuration, globalTraits: globalTraits)
+    self.init(stepGraph: stepGraph)
   }
 }
 

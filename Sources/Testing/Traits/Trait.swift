@@ -249,6 +249,8 @@ public protocol SuiteTrait: Trait {
   var isRecursive: Bool { get }
 }
 
+// MARK: -
+
 extension Trait {
   public func prepare(for test: Test) async throws {}
 
