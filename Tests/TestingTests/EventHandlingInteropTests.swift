@@ -112,7 +112,7 @@ struct EventHandlingInteropTests {
 
   /// Regression testing for a bug where we incorrectly directed issues to
   /// fallback event path for issues recorded without an associated configuration
-  @Test(.bug("rdar://170161483"), .filterIssues { $0.description != "[FILTER OUT]" })
+  @Test(.bug("rdar://170161483"), .filterIssues { !$0.description.contains("[FILTER OUT]") })
   func `Recording issue in detached task doesn't forward to fallback event handler`() async {
     await #expect(processExitsWith: .success) {
       // Install a handler that shouldn't ever get called.
@@ -187,7 +187,7 @@ struct EventHandlingInteropTests {
       #expect(
         issues.rawValue.map { $0.description }.sorted() == [
           "An API was misused (warning): XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead.",
-          "Issue recorded (error)",
+          "Issue recorded (error): Unknown issue",
         ]
       )
     }
