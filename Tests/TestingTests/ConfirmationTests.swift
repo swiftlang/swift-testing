@@ -33,7 +33,14 @@ struct ConfirmationTests {
 
   @Test("Unsuccessful confirmations")
   func unsuccessfulConfirmations() async {
-    await confirmation("Miscount recorded", expectedCount: 7) { miscountRecorded in
+    // confirmedOutOfRange(_:) is availability-guarded, but if it runs, increase
+    // the number of expected miscounts by the number of arguments passed to it.
+    var expectedCount = 3
+    if #available(_compositionOfParameterizedProtocols, *) {
+      expectedCount += 4
+    }
+
+    await confirmation("Miscount recorded", expectedCount: expectedCount) { miscountRecorded in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
         if case let .issueRecorded(issue) = event.kind {
