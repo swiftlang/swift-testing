@@ -232,7 +232,8 @@ extension SourceLocation: Codable {
   }
 
   /// The name of the ersatz Swift module used for synthesized file IDs.
-  static var synthesizedModuleName: String {
+  @_spi(ForToolsIntegrationOnly)
+  public static var synthesizedModuleName: String {
     "__C"
   }
 
