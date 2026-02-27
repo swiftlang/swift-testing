@@ -168,7 +168,20 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessColl
 #elseif (os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)) && !SWT_NO_DYNAMIC_LINKING
 // MARK: - ELF implementation
 
-private import SwiftShims // For MetadataSections
+private import SwiftShims // For MetadataSections and TestContentSectionBounds
+
+#if compiler(>=6.4)
+@_extern(c, "swift_elf_copyAllTestContent")
+private func _copyAllTestContent(
+  _ outCount: UnsafeMutablePointer<Int>
+) -> UnsafeMutablePointer<TestContentSectionBounds>
+#else
+@_extern(c, "swift_enumerateAllMetadataSections")
+private func _enumerateAllMetadataSections(
+  _ body: @convention(c) (UnsafePointer<MetadataSections>, UnsafeMutableRawPointer) -> CBool,
+  _ context: UnsafeMutableRawPointer
+)
+#endif
 
 /// The ELF-specific implementation of ``SectionBounds/all(_:)``.
 ///
@@ -178,6 +191,23 @@ private import SwiftShims // For MetadataSections
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
+#if compiler(>=6.4)
+  var count = 0
+  let sectionBounds = _copyAllTestContent(&count)
+  defer {
+    sectionBounds.deallocate()
+  }
+  return UnsafeMutableBufferPointer(start: sectionBounds, count: count)
+    .compactMap { sb in
+      let start = UnsafeRawPointer(bitPattern: sb.swift5_tests.start)
+      let size = Int(clamping: sb.swift5_tests.length)
+      guard let start, size > 0 else {
+        return nil
+      }
+      let buffer = UnsafeRawBufferPointer(start: start, count: size)
+      return SectionBounds(imageAddress: sb.baseAddress, buffer: buffer)
+    }
+#else
   struct Context {
     var kind: SectionBounds.Kind
     var result = [SectionBounds]()
@@ -185,29 +215,26 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
   var context = Context(kind: kind)
 
   withUnsafeMutablePointer(to: &context) { context in
-    swift_enumerateAllMetadataSections({ sections, context in
+    _enumerateAllMetadataSections({ sections, context in
       let context = context.assumingMemoryBound(to: Context.self)
-
-      let version = sections.load(as: UInt.self)
-      guard context.pointee.kind != .testContent || version >= 4 else {
+      guard context.pointee.kind != .testContent || sections.pointee.version >= 4 else {
         // This structure is too old to contain the swift5_tests field.
         return true
       }
-      let sections = sections.load(as: MetadataSections.self)
 
       let range = switch context.pointee.kind {
       case .testContent:
-        sections.swift5_tests
+        sections.pointee.swift5_tests
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
       case .typeMetadata:
-        sections.swift5_type_metadata
+        sections.pointee.swift5_type_metadata
 #endif
       }
       let start = UnsafeRawPointer(bitPattern: range.start)
       let size = Int(clamping: range.length)
       if let start, size > 0 {
         let buffer = UnsafeRawBufferPointer(start: start, count: size)
-        let sb = SectionBounds(imageAddress: sections.baseAddress, buffer: buffer)
+        let sb = SectionBounds(imageAddress: sections.pointee.baseAddress, buffer: buffer)
 
         context.pointee.result.append(sb)
       }
@@ -217,6 +244,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
   }
 
   return context.result
+#endif
 }
 
 #elseif os(Windows)
