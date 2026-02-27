@@ -186,7 +186,7 @@ struct ABIEntryPointTests {
 #endif
 
   func decodeMetadataValue<T>(forKey key: String, ofType type: T.Type) throws -> T where T: Decodable {
-    let cString = try #require(swift_testing_copyMetadataValue(key, 0))
+    let cString = try #require(_swift_testing_copyMetadataValue(key, 0))
     defer {
       free(cString)
     }

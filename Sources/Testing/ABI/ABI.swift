@@ -214,7 +214,7 @@ extension ABI {
 
 // MARK: -
 
-/// The set of keys accepted by ``swift_testing_copyMetadataValue(_:_:)``.
+/// The set of keys accepted by `_swift_testing_copyMetadataValue(_:_:)`.
 private enum _MetadataKey: String, Sendable, CaseIterable {
   /// The minimum supported ABI version.
   case minimumSupportedABIVersion = "_minimumSupportedABIVersion"
@@ -236,11 +236,11 @@ private enum _MetadataKey: String, Sendable, CaseIterable {
 ///   available. The caller is responsible for freeing this memory with C's
 ///   `free()` function.
 #if compiler(>=6.3)
-@c(swift_testing_copyMetadataValue)
+@c(_swift_testing_copyMetadataValue)
 #else
-@_cdecl("swift_testing_copyMetadataValue")
+@_cdecl("_swift_testing_copyMetadataValue")
 #endif
-@usableFromInline func swift_testing_copyMetadataValue(_ key: UnsafePointer<CChar>, _ reserved: UInt) -> UnsafeMutablePointer<CChar>? {
+@usableFromInline func _swift_testing_copyMetadataValue(_ key: UnsafePointer<CChar>, _ reserved: UInt) -> UnsafeMutablePointer<CChar>? {
   func copyJSON(for value: some Encodable) -> UnsafeMutablePointer<CChar>? {
     try? JSON.withEncoding(of: value) { json in
       json.withMemoryRebound(to: CChar.self) { json in
