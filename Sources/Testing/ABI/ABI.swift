@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A namespace for ABI symbols.
 @_spi(ForToolsIntegrationOnly)
 public enum ABI: Sendable {}
@@ -207,5 +209,59 @@ extension ABI {
     public static var versionNumber: VersionNumber {
       VersionNumber(99, 0)
     }
+  }
+}
+
+// MARK: -
+
+/// The set of keys accepted by `_swift_testing_copyMetadataValue(_:_:)`.
+private enum _MetadataKey: String, Sendable, CaseIterable {
+  /// The minimum supported ABI version.
+  case minimumSupportedABIVersion = "_minimumSupportedABIVersion"
+
+  /// The maximum supported ABI version.
+  case maximumSupportedABIVersion = "_maximumSupportedABIVersion"
+}
+
+/// An exported C function that allows querying information about the testing
+/// library without running any tests.
+///
+/// - Parameters:
+///   - key: The name of the value of interest. See the `_MetadataKey`
+///     enumeration for a list of supported values.
+///   - reserved: Reserved for future use. Pass `0`.
+///
+/// - Returns: A pointer to a UTF-8 C string containing the JSON representation
+///   of the requested information, or `nil` if that information was not
+///   available. The caller is responsible for freeing this memory with C's
+///   `free()` function.
+#if compiler(>=6.3)
+@c(_swift_testing_copyMetadataValue)
+#else
+@_cdecl("_swift_testing_copyMetadataValue")
+#endif
+@usableFromInline func _swift_testing_copyMetadataValue(_ key: UnsafePointer<CChar>, _ reserved: UInt) -> UnsafeMutablePointer<CChar>? {
+  func copyJSON(for value: some Encodable) -> UnsafeMutablePointer<CChar>? {
+    try? JSON.withEncoding(of: value) { json in
+      json.withMemoryRebound(to: CChar.self) { json in
+        // The JSON produced by Foundation is not null-terminated, so to avoid
+        // an intermediate copy we call `calloc()` instead of `strdup()`.
+        let result = calloc(json.count + 1, MemoryLayout<CChar>.stride)
+        guard let result = result?.assumingMemoryBound(to: CChar.self) else {
+          return nil
+        }
+        result.initialize(from: json.baseAddress!, count: json.count)
+        return result
+      }
+    }
+  }
+
+  switch String(validatingCString: key).flatMap(_MetadataKey.init) {
+  case .minimumSupportedABIVersion:
+    return copyJSON(for: ABI.v0.versionNumber)
+  case .maximumSupportedABIVersion:
+    return copyJSON(for: ABI.CurrentVersion.versionNumber)
+  case nil:
+    return nil
   }
 }
