@@ -1,6 +1,6 @@
 # This source file is part of the Swift.org open source project
 #
-# Copyright (c) 2024 Apple Inc. and the Swift project authors
+# Copyright (c) 2024-2026 Apple Inc. and the Swift project authors
 # Licensed under Apache License v2.0 with Runtime Library Exception
 #
 # See https://swift.org/LICENSE.txt for license information
@@ -13,6 +13,7 @@ add_library(Testing
   ABI/EntryPoints/SwiftPMEntryPoint.swift
   ABI/ABI.Record.swift
   ABI/ABI.Record+Streaming.swift
+  ABI/ABI.VersionNumber.swift
   ABI/ABI.swift
   ABI/Encoded/ABI.EncodedAttachment.swift
   ABI/Encoded/ABI.EncodedBacktrace.swift
@@ -72,6 +73,7 @@ add_library(Testing
   Running/SkipInfo.swift
   SourceAttribution/Backtrace.swift
   SourceAttribution/Backtrace+Symbolication.swift
+  SourceAttribution/CustomTestReflectable.swift
   SourceAttribution/CustomTestStringConvertible.swift
   SourceAttribution/Expression.swift
   SourceAttribution/Expression+Macro.swift
