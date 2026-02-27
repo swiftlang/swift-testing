@@ -19,7 +19,7 @@ To run tests for WebAssembly, install a Swift SDK for WebAssembly by following
 ## Swift Development Snapshots
 
 In Swift development snapshots, running `swift test --swift-sdk <wasm_swift_sdk_id>` is fully
-supported. When you have `jq` installed, you can run this command to compute Swift SDK ID automatically:
+supported. When you have `jq` installed, you can run this command to compute the Swift SDK ID automatically:
 
 ```
 swift test --swift-sdk "$(swiftc -print-target-info | jq -r '.swiftCompilerTag')_wasm"
