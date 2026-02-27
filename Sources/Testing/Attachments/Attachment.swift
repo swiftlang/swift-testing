@@ -432,10 +432,9 @@ extension Attachable where Self: ~Copyable {
 #endif
 
     try withUnsafeBytes(for: attachment) { buffer in
-      // Note "x" in the mode string which indicates that the file should be
-      // created and opened exclusively. The underlying `fopen()` call will thus
-      // fail with `EEXIST` if a file exists at `filePath`.
-      let file = try FileHandle(atPath: filePath, mode: "wxeb")
+      // The underlying `fopen()` call should fail with `EEXIST` if a file
+      // exists at `filePath`.
+      let file = try FileHandle(atPath: filePath, options: [.writeAccess, .creationRequired])
       try file.write(buffer)
     }
   }

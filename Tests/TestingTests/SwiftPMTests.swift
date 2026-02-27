@@ -223,7 +223,7 @@ struct SwiftPMTests {
       configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
 
-    let fileHandle = try FileHandle(forReadingAtPath: temporaryFilePath)
+    let fileHandle = try Testing.FileHandle(forReadingAtPath: temporaryFilePath)
     let fileContents = try fileHandle.readToEnd()
     #expect(!fileContents.isEmpty)
     #expect(fileContents.contains(UInt8(ascii: "<")))
@@ -241,7 +241,7 @@ struct SwiftPMTests {
       _ = remove(temporaryFilePath)
     }
     do {
-      let fileHandle = try FileHandle(forWritingAtPath: temporaryFilePath)
+      let fileHandle = try Testing.FileHandle(forWritingAtPath: temporaryFilePath)
       try fileHandle.write(
         """
         {

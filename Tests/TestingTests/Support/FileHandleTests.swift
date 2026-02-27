@@ -48,7 +48,7 @@ struct FileHandleTests {
   @Test("Init from invalid file descriptor")
   func invalidFileDescriptor() throws {
     #expect(throws: CError.self) {
-      _ = try FileHandle(unsafePOSIXFileDescriptor: -1, mode: "")
+      _ = try FileHandle(unsafePOSIXFileDescriptor: -1, options: [])
     }
   }
 #endif
@@ -86,7 +86,7 @@ struct FileHandleTests {
   @Test("Writing requires contiguous storage")
   func writeIsContiguous() async {
     await #expect(processExitsWith: .failure) {
-      let fileHandle = try FileHandle.null(mode: "wb")
+      let fileHandle = try FileHandle.null(options: [.writeAccess])
       try fileHandle.write([1, 2, 3, 4, 5].lazy.filter { $0 == 1 })
     }
   }
@@ -110,7 +110,7 @@ struct FileHandleTests {
 
   @Test("Cannot write bytes to a read-only file")
   func cannotWriteBytesToReadOnlyFile() throws {
-    let fileHandle = try FileHandle.null(mode: "rb")
+    let fileHandle = try FileHandle.null(options: [.readAccess])
     #expect(throws: CError.self) {
       try fileHandle.write([0, 1, 2, 3, 4, 5])
     }
@@ -118,7 +118,7 @@ struct FileHandleTests {
 
   @Test("Cannot write string to a read-only file")
   func cannotWriteStringToReadOnlyFile() throws {
-    let fileHandle = try FileHandle.null(mode: "rb")
+    let fileHandle = try FileHandle.null(options: [.readAccess])
     #expect(throws: CError.self) {
       try fileHandle.write("Impossible!")
     }
@@ -181,7 +181,7 @@ struct FileHandleTests {
 
   @Test("/dev/null is not a TTY or pipe")
   func devNull() throws {
-    let fileHandle = try FileHandle.null(mode: "wb")
+    let fileHandle = try FileHandle.null(options: [.writeAccess])
     #expect(!Bool(fileHandle.isTTY))
 #if !SWT_NO_PIPES
     #expect(!Bool(fileHandle.isPipe))
@@ -230,11 +230,11 @@ extension FileHandle {
     return FileHandle(unsafeCFILEHandle: tmpFile, closeWhenDone: true)
   }
 
-  static func null(mode: String) throws -> FileHandle {
+  static func null(options: FileHandle.OpenOptions) throws -> FileHandle {
 #if os(Windows)
-    try FileHandle(atPath: "NUL", mode: mode)
+    try FileHandle(atPath: "NUL", options: options)
 #else
-    try FileHandle(atPath: "/dev/null", mode: mode)
+    try FileHandle(atPath: "/dev/null", options: options)
 #endif
   }
 }
