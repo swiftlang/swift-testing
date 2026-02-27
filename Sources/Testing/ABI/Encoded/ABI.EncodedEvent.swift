@@ -113,9 +113,14 @@ extension ABI {
         kind = .testStarted
       case .testCaseStarted:
         if eventContext.test?.isParameterized == false {
-          return nil
+          if let iteration = eventContext.iteration, iteration > 1 {
+            kind = .testStarted
+          } else {
+            return nil
+          }
+        } else {
+          kind = .testCaseStarted
         }
-        kind = .testCaseStarted
       case let .issueRecorded(recordedIssue):
         kind = .issueRecorded
         issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
@@ -124,9 +129,14 @@ extension ABI {
         self.attachment = EncodedAttachment(encoding: attachment, in: eventContext)
       case .testCaseEnded:
         if eventContext.test?.isParameterized == false {
-          return nil
+          if let iteration = eventContext.iteration, iteration > 1 {
+            kind = .testEnded
+          } else {
+            return nil
+          }
+        } else {
+          kind = .testCaseEnded
         }
-        kind = .testCaseEnded
       case .testCaseCancelled:
         kind = .testCaseCancelled
       case .testEnded:
@@ -159,6 +169,7 @@ extension ABI {
           let .testCancelled(skipInfo):
           _comments = Array(skipInfo.comment).map(\.rawValue)
           _sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
+          _iteration = eventContext.iteration
         default:
           break
         }
