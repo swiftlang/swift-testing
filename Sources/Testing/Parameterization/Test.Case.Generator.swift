@@ -89,7 +89,7 @@ extension Test.Case {
     ) where S: Collection {
       if parameters.count > 1 {
         self.init(sequence: collection) { element in
-          let mirror = Mirror(reflecting: element)
+          let mirror = Mirror(reflectingForTest: element)
           let values: [any Sendable] = if mirror.displayStyle == .tuple {
             mirror.children.map { unsafeBitCast($0.value, to: (any Sendable).self) }
           } else {
