@@ -11,6 +11,19 @@
 private import _TestingInternals
 
 extension Issue {
+  /// Attempt to create an `Issue` from a foreign `EncodedIssue`.
+  ///
+  /// Typically, another testing library transforms its own test issue into the
+  /// `EncodedEvent` format and then passes it through Swift Testing's installed
+  /// fallback event handler to be converted into an `Issue`.
+  ///
+  /// The fidelity of this conversion is limited by the fields present in
+  /// `EncodedIssue`, in addition to how well the foreign test issue is
+  /// represented by the schema.
+  ///
+  /// - Parameter event: The `EncodedIssue` wrapped in an `EncodedEvent`.
+  /// Return `nil` if this is not an issueRecorded kind of event, or if the
+  /// event doesn't include an `EncodedIssue`.
   init?<V>(event: ABI.EncodedEvent<V>) where V: ABI.Version {
     switch event.kind {
     case .issueRecorded:
@@ -31,9 +44,17 @@ extension Issue {
         case nil, .error: .error
         }
 
-      let comments: [Comment] = event._comments?.map(Comment.init(rawValue:)) ?? []
+      let comments = {
+        let returnedComments = event.messages.map { $0.text }.map(Comment.init(rawValue:))
+        return if returnedComments.isEmpty {
+          [Comment("Unknown issue")]
+        } else {
+          returnedComments
+        }
+      }()
+
       let sourceContext = SourceContext(
-        backtrace: nil,  // A backtrace from the child process will have the wrong address space.
+        backtrace: nil,  // Requires backtrace information from the EncodedIssue
         sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)
       )
 
@@ -55,12 +76,12 @@ extension Event {
   ///
   /// - Parameters:
   ///   - recordJSON: The JSON encoding of an event record.
-  ///   - abi: The ABI version to use for decoding `recordJSON`.
+  ///   - version: The ABI version to use for decoding `recordJSON`.
   ///
   /// - Throws: Any error that prevented handling the encoded record.
   ///
   /// - Important: This function only handles a subset of event kinds.
-  static func handle<V>(_ recordJSON: UnsafeRawBufferPointer, encodedWith abi: V.Type) throws
+  static func handle<V>(_ recordJSON: UnsafeRawBufferPointer, encodedWith version: V.Type) throws
   where V: ABI.Version {
     let record = try JSON.decode(ABI.Record<V>.self, from: recordJSON)
     guard
@@ -73,7 +94,7 @@ extension Event {
     // For the time being, assume that foreign test events originate from XCTest
     let warnForXCTestUsageIssue = {
       let sourceContext = SourceContext(
-        backtrace: nil,  // A backtrace from the child process will have the wrong address space.
+        backtrace: issue.sourceContext.backtrace,
         sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)
       )
       return Issue(
