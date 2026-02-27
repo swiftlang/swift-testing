@@ -58,6 +58,10 @@ struct TimeValue: Sendable {
     self.init(unsafeBitCast(instant, to: Duration.self))
 #endif
   }
+
+  init<F>(_ fp: F) where F: BinaryFloatingPoint {
+    self.init(.nanoseconds(Int64(fp * 1_000_000_000)))
+  }
 }
 
 // MARK: - Equatable, Hashable, Comparable
@@ -126,7 +130,7 @@ extension timespec {
 }
 #endif
 
-extension FloatingPoint {
+extension BinaryFloatingPoint {
   /// Initialize this floating-point value with the total number of seconds
   /// (including the subsecond part) represented by an instance of
   /// ``TimeValue``.
