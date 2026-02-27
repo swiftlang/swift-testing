@@ -48,104 +48,35 @@ struct SectionBounds: Sendable, BitwiseCopyable {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
 // MARK: - Apple implementation
 
-extension SectionBounds.Kind {
-  /// The Mach-O segment and section name for this instance as a pair of
-  /// null-terminated UTF-8 C strings and pass them to a function.
-  ///
-  /// The values of this property are instances of `StaticString` rather than
-  /// `String` because the latter's inner storage is sometimes backed by
-  /// Objective-C and touching it here can cause a recursive access to an
-  /// internal libobjc lock, whereas `StaticString`'s internal storage is
-  /// immediately available.
-  fileprivate var segmentAndSectionName: (segmentName: StaticString, sectionName: StaticString) {
-    switch self {
-    case .testContent:
-      ("__DATA_CONST", "__swift5_tests")
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-    case .typeMetadata:
-      ("__TEXT", "__swift5_types")
-#endif
-    }
-  }
-}
-
-/// An array containing all of the test content section bounds known to the
-/// testing library.
+/// Get section bounds for the given section from the given Mach header.
 ///
-/// Indices into this array are equivalent to the `rawValue` values of instances
-/// of ``SectionBounds/Kind``.
-private nonisolated(unsafe) let _sectionBounds = {
-  // We generate a contiguous array here rather than a dictionary because the
-  // former has less overall bridging with the Objective-C runtime (reducing the
-  // risk of reentrance while holding the libobjc lock) and because the set of
-  // keys or indices is closed, so an array lookup is always more efficient than
-  // a hashtable lookup.
-  let kindCount = SectionBounds.Kind.allCases.count
-  let result = ManagedBuffer<ContiguousArray<ContiguousArray<SectionBounds>>, pthread_mutex_t>.create(
-    minimumCapacity: 1,
-    makingHeaderWith: { _ in .init(repeating: [], count: kindCount) }
-  )
-
-  result.withUnsafeMutablePointers { sectionBounds, lock in
-    _ = pthread_mutex_init(lock, nil)
-
-    let imageCount = Int(clamping: _dyld_image_count())
-    for kind in SectionBounds.Kind.allCases {
-      sectionBounds.pointee[kind.rawValue].reserveCapacity(imageCount)
-    }
-  }
-
-  return result
-}()
-
-/// A call-once function that initializes `_sectionBounds` and starts listening
-/// for loaded Mach headers.
-private let _startCollectingSectionBounds: Void = {
-  // Ensure _sectionBounds is initialized before we touch libobjc or dyld.
-  _ = _sectionBounds
-
-  func addSectionBounds(from mh: UnsafePointer<mach_header>) {
+/// - Parameters:
+///   - segmentName: The Mach-O segment name of interest.
+///   - sectionName: The Mach-O section name of interest.
+///   - mh: The Mach header.
+///
+/// - Returns: The requested section bounds, or `nil` if they couldn't be found.
+private func _sectionBounds(_ segmentName: String, _ sectionName: String, in mh: UnsafePointer<mach_header>) -> SectionBounds? {
 #if _pointerBitWidth(_64)
-    let mh = UnsafeRawPointer(mh).assumingMemoryBound(to: mach_header_64.self)
+  let mh = UnsafeRawPointer(mh).assumingMemoryBound(to: mach_header_64.self)
 #endif
 
-    // Ignore this Mach header if it is in the shared cache. On platforms that
-    // support it (Darwin), most system images are contained in this range.
-    // System images can be expected not to contain test declarations, so we
-    // don't need to walk them.
-    guard 0 == mh.pointee.flags & MH_DYLIB_IN_CACHE else {
-      return
-    }
-
-    // If this image contains the Swift section(s) we need, acquire the lock and
-    // store the section's bounds.
-    for kind in SectionBounds.Kind.allCases {
-      let (segmentName, sectionName) = kind.segmentAndSectionName
-      var size = CUnsignedLong(0)
-      if let start = getsectiondata(mh, segmentName.utf8Start, sectionName.utf8Start, &size), size > 0 {
-        let buffer = UnsafeRawBufferPointer(start: start, count: Int(clamping: size))
-        let sb = SectionBounds(imageAddress: mh, buffer: buffer)
-        _sectionBounds.withUnsafeMutablePointers { sectionBounds, lock in
-          pthread_mutex_lock(lock)
-          defer {
-            pthread_mutex_unlock(lock)
-          }
-          sectionBounds.pointee[kind.rawValue].append(sb)
-        }
-      }
-    }
+  // Ignore this Mach header if it is in the shared cache. On platforms that
+  // support it (Darwin), most system images are contained in this range.
+  // System images can be expected not to contain test declarations, so we
+  // don't need to walk them.
+  guard 0 == mh.pointee.flags & MH_DYLIB_IN_CACHE else {
+    return nil
   }
 
-#if _runtime(_ObjC)
-  objc_addLoadImageFunc { mh in
-    addSectionBounds(from: mh)
+  var size = CUnsignedLong(0)
+  if let start = getsectiondata(mh, segmentName, sectionName, &size), size > 0 {
+    let buffer = UnsafeRawBufferPointer(start: start, count: Int(clamping: size))
+    return SectionBounds(imageAddress: mh, buffer: buffer)
   }
-#else
-  _dyld_register_func_for_add_image { mh, _ in
-    addSectionBounds(from: mh!)
-  }
-#endif
-}()
+
+  return nil
+}
 
 /// The Apple-specific implementation of ``SectionBounds/all(_:)``.
 ///
@@ -155,14 +86,43 @@ private let _startCollectingSectionBounds: Void = {
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessCollection<SectionBounds> {
-  _startCollectingSectionBounds
-  return _sectionBounds.withUnsafeMutablePointers { sectionBounds, lock in
-    pthread_mutex_lock(lock)
-    defer {
-      pthread_mutex_unlock(lock)
-    }
-    return sectionBounds.pointee[kind.rawValue]
+  // If this image contains the Swift section(s) we need, get the section bounds
+  // of interest.
+  let (segmentName, sectionName) = switch kind {
+  case .testContent:
+    ("__DATA_CONST", "__swift5_tests")
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+  case .typeMetadata:
+    ("__TEXT", "__swift5_types")
+#endif
   }
+
+#if _runtime(_ObjC) && canImport(MachO_Private)
+  var imageCount = UInt32(0)
+  let imageNames = objc_copyImageNames(&imageCount)
+  defer {
+    free(imageNames)
+  }
+  let imageNameBuffer = UnsafeBufferPointer(start: imageNames, count: Int(imageCount))
+
+  return imageNameBuffer.compactMap { imageName in
+    guard let handle = dlopen(imageName, RTLD_LAZY | RTLD_NOLOAD) else {
+      return nil
+    }
+    defer {
+      dlclose(handle)
+    }
+    guard let mh = _dyld_get_dlopen_image_header(handle) else {
+      return nil
+    }
+    return _sectionBounds(sectionName, segmentName, in: mh)
+  }
+#else
+  let imageCount = _dyld_image_count()
+  return (0 ..< imageCount)
+    .compactMap(_dyld_get_image_header)
+    .compactMap { _sectionBounds(segmentName, sectionName, in: $0) }
+#endif
 }
 
 #elseif (os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)) && !SWT_NO_DYNAMIC_LINKING
