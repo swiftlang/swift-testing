@@ -108,6 +108,14 @@ static DWORD_PTR swt_PROC_THREAD_ATTRIBUTE_HANDLE_LIST(void) {
 static const IMAGE_SECTION_HEADER *_Null_unspecified swt_IMAGE_FIRST_SECTION(const IMAGE_NT_HEADERS *ntHeader) {
   return IMAGE_FIRST_SECTION(ntHeader);
 }
+
+/// Get the value of `FSCTL_DUPLICATE_EXTENTS_TO_FILE`.
+///
+/// This function is provided because `FSCTL_DUPLICATE_EXTENTS_TO_FILE` is a
+/// complex macro and cannot be imported directly into Swift.
+static DWORD swt_FSCTL_DUPLICATE_EXTENTS_TO_FILE(void) {
+  return FSCTL_DUPLICATE_EXTENTS_TO_FILE;
+}
 #endif
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__ANDROID__)
