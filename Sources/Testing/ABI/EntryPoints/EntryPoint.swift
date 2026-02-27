@@ -628,17 +628,54 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
   // Filtering
   var filters = [Configuration.TestFilter]()
-  func testFilter(forRegularExpressions regexes: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
-    guard let regexes, !regexes.isEmpty else {
-      // Return early if empty, even though the `reduce` logic below can handle
-      // this case, in order to avoid the `#available` guard.
-      return .unfiltered
+  func testFilters(forOptionArguments optionArguments: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> [Configuration.TestFilter] {
+
+    // Filters will come in two flavors: those with `tag:` as a prefix, and
+    // those without. We split them into two collections, taking care to handle
+    // an escaped colon, treating it as a pseudo-operator.
+    let tagPrefix = "tag:"
+    let escapedTagPrefix = #"tag\:"#
+    var tags = [Tag]()
+    var regexes = [String]()
+
+    // Loop through all the option arguments, separating tags from regex filters
+    for var optionArg in optionArguments ?? [] {
+      if optionArg.hasPrefix(tagPrefix) {
+        // Running into the `tag:` prefix means we should strip it and use the
+        // actual tag name the user has provided
+        let tagStringWithoutPrefix = String(optionArg.dropFirst(tagPrefix.count))
+        tags.append(Tag(userProvidedStringValue: tagStringWithoutPrefix))
+      } else {
+        // If we run into the escaped tag prefix, the user has indicated they
+        // want to us to treat it as a regex filter. We need to to unescape it
+        // before adding it as a regex filter
+        if optionArg.hasPrefix(escapedTagPrefix) {
+          optionArg.replaceSubrange(escapedTagPrefix.startIndex..<escapedTagPrefix.endIndex, with: tagPrefix)
+        }
+        regexes.append(optionArg)
+      }
     }
 
-    return try Configuration.TestFilter(membership: membership, matchingAnyOf: regexes)
+    // If we didn't find any tags, the tagFilter should be .unfiltered,
+    // otherwise we construct it with the provided tags
+    let tagFilter: Configuration.TestFilter = switch (membership, tags.isEmpty) {
+      case (_, true): .unfiltered
+      case (.including, false): Configuration.TestFilter(includingAnyOf: tags)
+      case (.excluding, false): Configuration.TestFilter(excludingAnyOf: tags)
+    }
+
+    guard !regexes.isEmpty else {
+      // Return early with just the tag filter, otherwise we try to match
+      // against an empty array of regular expressions which is _not_
+      // equivalent to `.unfiltered`.
+      return [tagFilter]
+    }
+
+    return [try Configuration.TestFilter(membership: membership, matchingAnyOf: regexes), tagFilter]
   }
-  filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))
-  filters.append(try testFilter(forRegularExpressions: args.skip, label: "--skip", membership: .excluding))
+
+  filters += try testFilters(forOptionArguments: args.filter, label: "--filter", membership: .including)
+  filters += try testFilters(forOptionArguments: args.skip, label: "--skip", membership: .excluding)
 
   configuration.testFilter = filters.reduce(.unfiltered) { $0.combining(with: $1) }
   if args.includeHiddenTests == true {
