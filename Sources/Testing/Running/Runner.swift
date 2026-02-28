@@ -452,6 +452,7 @@ extension Runner {
 #if !SWT_NO_FILE_IO
     runner.configureAttachmentHandling()
 #endif
+    _ = Event.installFallbackEventHandler()
 
     // Track whether or not any issues were recorded across the entire run.
     let issueRecorded = Mutex(false)
