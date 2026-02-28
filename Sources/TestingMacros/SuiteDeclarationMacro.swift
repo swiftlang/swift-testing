@@ -124,8 +124,8 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
     let generatorName = context.makeUniqueName("generator")
     result.append(
       """
-      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-      @Sendable private \(staticKeyword(for: containingType)) func \(generatorName)() async -> Testing.Test {
+      @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
+      @Sendable private nonisolated(nonsending) \(staticKeyword(for: containingType)) func \(generatorName)() async -> Testing.Test {
         .__type(
           \(declaration.type.trimmed).self,
           \(raw: attributeInfo.functionArgumentList(in: context))

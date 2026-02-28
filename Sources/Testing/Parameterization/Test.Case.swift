@@ -155,9 +155,9 @@ extension Test {
       }
     }
 
-    private init(kind: _Kind, body: @escaping @Sendable () async throws -> Void) {
-      self._kind = kind
-      self.body = body
+    private init(kind: _Kind, body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) {
+      _kind = kind
+      _body = body
     }
 
     /// Initialize a test case for a non-parameterized test function.
@@ -166,7 +166,7 @@ extension Test {
     ///   - body: The body closure of this test case.
     ///
     /// The resulting test case will have zero arguments.
-    init(body: @escaping @Sendable () async throws -> Void) {
+    init(body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) {
       self.init(kind: .nonParameterized, body: body)
     }
 
@@ -180,7 +180,7 @@ extension Test {
     init(
       values: [any Sendable],
       parameters: [Parameter],
-      body: @escaping @Sendable () async throws -> Void
+      body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
     ) {
       var isStable = true
 
@@ -229,10 +229,25 @@ extension Test {
     }
 
     /// The body closure of this test case.
+    private var _body: nonisolated(nonsending) @Sendable () async throws -> Void
+
+    /// Invoke the body closure of this test case.
     ///
-    /// Do not invoke this closure directly. Always use a ``Runner`` to invoke a
+    /// - Parameters:
+    ///   - configuration: The configuration to use for running.
+    ///
+    /// Do not call this function directly. Always use a ``Runner`` to invoke a
     /// test or test case.
-    var body: @Sendable () async throws -> Void
+    nonisolated(nonsending) func run(configuration: borrowing Configuration) async throws {
+      if let actor = configuration.defaultSynchronousIsolationContext {
+        func runIsolated(to actor: isolated some Actor) async throws {
+          try await _body()
+        }
+        try await runIsolated(to: actor)
+      } else {
+        try await _body()
+      }
+    }
   }
 
   /// A type representing a single parameter to a parameterized test function.

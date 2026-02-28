@@ -507,7 +507,7 @@ extension ExitTestConditionMacro {
     }
     decls.append(
       """
-      @Sendable func \(bodyThunkName)(\(bodyThunkParameterList)) async throws {
+      @Sendable nonisolated(nonsending) func \(bodyThunkName)(\(bodyThunkParameterList)) async throws {
         _ = \(applyEffectfulKeywords([.try, .await, .unsafe], to: bodyArgumentExpr))()
       }
       """
