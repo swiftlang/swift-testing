@@ -77,10 +77,6 @@ public struct Issue: Sendable {
 
   /// The kind of issue this value represents.
   public var kind: Kind
- 
-  /// Whether or not the issue is recorded after its associated test has
-  /// finished.
-  var isLate: Bool = false
 
   /// An enumeration representing the level of severity of a recorded issue.
   ///

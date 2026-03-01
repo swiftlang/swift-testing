@@ -268,7 +268,7 @@ public struct Event: Sendable {
     if case let .issueRecorded(issue) = kind, let testCase, testCase.hasFinished {
       // An issue was recorded after the associated test case ended. Record a
       // second issue, which emits another issue recorded event.
-      var lateRecordedIssue = Issue(
+      let lateRecordedIssue = Issue(
         kind: .apiMisused,
         comments: [
           """
@@ -278,7 +278,6 @@ public struct Event: Sendable {
         ],
         sourceContext: issue.sourceContext
       )
-      lateRecordedIssue.isLate = true
       
       let lateEvent = Event(.issueRecorded(lateRecordedIssue), testID: test?.id, testCaseID: testCase.id, instant: instant)
       lateEvent._post(in: context, configuration: configuration)
