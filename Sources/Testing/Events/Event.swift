@@ -267,13 +267,9 @@ public struct Event: Sendable {
    
     if case let .issueRecorded(issue) = kind, let testCase, testCase.hasFinished {
       // An issue was recorded after the associated test case ended. Record a
-      // second issue, which emits another issue recorded event, and guard
-      // against recursing.
-      guard !issue.isLate else { return }
-      
+      // second issue, which emits another issue recorded event.
       var lateRecordedIssue = Issue(
         kind: .apiMisused,
-        severity: .error,
         comments: [
           """
           An issue was recorded after its associated test ended. Ensure \
@@ -283,7 +279,9 @@ public struct Event: Sendable {
         sourceContext: issue.sourceContext
       )
       lateRecordedIssue.isLate = true
-      lateRecordedIssue.record()
+      
+      let lateEvent = Event(.issueRecorded(lateRecordedIssue), testID: test?.id, testCaseID: testCase.id, instant: instant)
+      lateEvent._post(in: context, configuration: configuration)
     }
   }
 }

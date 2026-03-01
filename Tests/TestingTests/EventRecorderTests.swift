@@ -536,7 +536,7 @@ struct EventRecorderTests {
     await Test {
       recordIssueLateTask.withLock {
         $0 = Task {
-          try? await Task.sleep(for: .seconds(1))
+          try? await Task.sleep(for: .milliseconds(1))
           Issue.record("Late")
         }
       }
