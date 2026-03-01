@@ -138,42 +138,6 @@ extension Mutex where Value: Copyable {
 
 // MARK: - Additions
 
-extension Mutex where Value: AdditiveArithmetic & Sendable {
-  /// Add something to the current wrapped value of this instance.
-  ///
-  /// - Parameters:
-  ///   - addend: The value to add.
-  ///
-  /// - Returns: The sum of ``rawValue`` and `addend`.
-  @discardableResult func add(_ addend: Value) -> Value {
-    withLock { rawValue in
-      let result = rawValue + addend
-      rawValue = result
-      return result
-    }
-  }
-}
-
-extension Mutex where Value: Numeric & Sendable {
-  /// Increment the current wrapped value of this instance.
-  ///
-  /// - Returns: The sum of ``rawValue`` and `1`.
-  ///
-  /// This function is exactly equivalent to `add(1)`.
-  @discardableResult func increment() -> Value {
-    add(1)
-  }
-
-  /// Decrement the current wrapped value of this instance.
-  ///
-  /// - Returns: The sum of ``rawValue`` and `-1`.
-  ///
-  /// This function is exactly equivalent to `add(-1)`.
-  @discardableResult func decrement() -> Value {
-    add(-1)
-  }
-}
-
 extension Mutex where Value: ~Copyable {
   /// Initialize an instance of this type with a raw value of `nil`.
   init<V>() where Value == V?, V: ~Copyable {
