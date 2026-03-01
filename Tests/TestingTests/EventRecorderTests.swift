@@ -521,23 +521,63 @@ struct EventRecorderTests {
     )
   }
 
-  @Test("HumanReadableOutputRecorder emits guidance for issues recorded after test end")
-  func humanReadableRecorderExplainsLateIssueRecording() {
-    let test = Test(name: "example") {}
-    let context = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
-    let recorder = Event.HumanReadableOutputRecorder()
-
-    recorder.record(Event(.testStarted, testID: test.id, testCaseID: nil), in: context)
-    recorder.record(Event(.testEnded, testID: test.id, testCaseID: nil), in: context)
-
-    let issue = Issue(kind: .unconditional, comments: ["Late"], sourceContext: .init())
-    let messages = recorder.record(Event(.issueRecorded(issue), testID: test.id, testCaseID: nil), in: context)
-
-    #expect(
-      messages.contains { message in
-        message.stringValue.contains("recorded after this test ended")
+  @Test("An additional late issue is recorded for issues recorded after test case end")
+  func lateIssueRecordedAfterTestCaseEnd() async throws {
+    var configuration = Configuration()
+    let recordedIssues = Mutex<[Issue]>([])
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else { return }
+      recordedIssues.withLock {
+        $0.append(issue)
       }
+    }
+
+    let recordIssueLateTask = Mutex<Task<Void, Never>?>(nil)
+    await Test {
+      recordIssueLateTask.withLock {
+        $0 = Task {
+          try? await Task.sleep(for: .seconds(1))
+          Issue.record("Late")
+        }
+      }
+    }.run(configuration: configuration)
+
+    let lateTask = recordIssueLateTask.withLock { $0 }
+    await lateTask?.value
+
+    let issues = recordedIssues.rawValue
+    let originalIssue = issues[0], lateIssue = issues[1]
+    #expect(issues.count == 2)
+    guard case .unconditional = originalIssue.kind else {
+      Issue.record(
+        "Unexpected issue kind \(originalIssue.kind)"
+      )
+      return
+    }
+    
+    guard case .apiMisused = lateIssue.kind else {
+      Issue.record(
+        "Unexpected issue kind \(originalIssue.kind)"
+      )
+      return
+    }
+    
+    let lateIssueFirstComment = try #require(
+      lateIssue.comments.first,
+      "Late issue should have a comment"
     )
+    
+    #expect(lateIssueFirstComment.rawValue ==
+          """
+          An issue was recorded after its associated test ended. Ensure \
+          asynchronous work has completed before your test ends.
+          """
+    )
+
+    let originalIssueSnapshot = Issue.Snapshot(snapshotting: originalIssue)
+    let lateIssueSnapshot = Issue.Snapshot(snapshotting: lateIssue)
+    #expect(originalIssueSnapshot.sourceContext == lateIssueSnapshot.sourceContext)
+    #expect(originalIssueSnapshot.sourceLocation == lateIssueSnapshot.sourceLocation)
   }
 
   @Test("JUnitXMLRecorder counts issues without associated tests")

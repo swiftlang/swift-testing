@@ -264,6 +264,27 @@ public struct Event: Sendable {
     let event = Event(kind, testID: test?.id, testCaseID: testCase?.id, instant: instant)
     let context = Event.Context(test: test, testCase: testCase, iteration: iteration, configuration: nil)
     event._post(in: context, configuration: configuration)
+   
+    if case let .issueRecorded(issue) = kind, let testCase, testCase.hasFinished {
+      // An issue was recorded after the associated test case ended. Record a
+      // second issue, which emits another issue recorded event, and guard
+      // against recursing.
+      guard !issue.isLate else { return }
+      
+      var lateRecordedIssue = Issue(
+        kind: .apiMisused,
+        severity: .error,
+        comments: [
+          """
+          An issue was recorded after its associated test ended. Ensure \
+          asynchronous work has completed before your test ends.
+          """
+        ],
+        sourceContext: issue.sourceContext
+      )
+      lateRecordedIssue.isLate = true
+      lateRecordedIssue.record()
+    }
   }
 }
 
