@@ -137,7 +137,7 @@ extension Configuration {
   ///   passed to `_removeFromAll(identifiedBy:)`` to unregister it.
   private func _addToAll() -> UInt64 {
     if eventHandlingOptions.isExpectationCheckedEventEnabled {
-      Self._deliverExpectationCheckedEventsCount.increment()
+      Self._deliverExpectationCheckedEventsCount.add(1, ordering: .sequentiallyConsistent)
     }
     return Self._all.withLock { all in
       let id = all.nextID
@@ -157,7 +157,7 @@ extension Configuration {
       all.instances.removeValue(forKey: id)
     }
     if let configuration, configuration.eventHandlingOptions.isExpectationCheckedEventEnabled {
-      Self._deliverExpectationCheckedEventsCount.decrement()
+      Self._deliverExpectationCheckedEventsCount.subtract(1, ordering: .sequentiallyConsistent)
     }
   }
 
@@ -182,7 +182,7 @@ extension Configuration {
   /// An atomic counter that tracks the number of "current" configurations that
   /// have set ``EventHandlingOptions/isExpectationCheckedEventEnabled`` to
   /// `true`.
-  private static let _deliverExpectationCheckedEventsCount = Mutex(0)
+  private static let _deliverExpectationCheckedEventsCount = Atomic(0)
 
   /// Whether or not events of the kind
   /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
@@ -194,7 +194,7 @@ extension Configuration {
   /// ``Configuration/EventHandlingOptions/isExpectationCheckedEventEnabled``
   /// property.
   static var deliverExpectationCheckedEvents: Bool {
-    _deliverExpectationCheckedEventsCount.rawValue > 0
+    _deliverExpectationCheckedEventsCount.load(ordering: .sequentiallyConsistent) > 0
   }
 }
 

@@ -68,38 +68,38 @@ struct TestScopingTraitTests {
   struct ExecutionControl {
     @Test("Trait applied directly to function is executed once")
     func traitAppliedToFunction() async {
-      let counter = Allocated(Mutex(0))
+      let counter = Allocated(Atomic(0))
       await DefaultExecutionTrait.$counter.withValue(counter) {
         await Test(DefaultExecutionTrait()) {}.run()
       }
-      #expect(counter.value.rawValue == 1)
+      #expect(counter.value.load(ordering: .sequentiallyConsistent) == 1)
     }
 
     @Test("Non-recursive suite trait with default scope provider implementation")
     func nonRecursiveSuiteTrait() async {
-      let counter = Allocated(Mutex(0))
+      let counter = Allocated(Atomic(0))
       await DefaultExecutionTrait.$counter.withValue(counter) {
         await runTest(for: SuiteWithNonRecursiveDefaultExecutionTrait.self)
       }
-      #expect(counter.value.rawValue == 1)
+      #expect(counter.value.load(ordering: .sequentiallyConsistent) == 1)
     }
 
     @Test("Recursive suite trait with default scope provider implementation")
     func recursiveSuiteTrait() async {
-      let counter = Allocated(Mutex(0))
+      let counter = Allocated(Atomic(0))
       await DefaultExecutionTrait.$counter.withValue(counter) {
         await runTest(for: SuiteWithRecursiveDefaultExecutionTrait.self)
       }
-      #expect(counter.value.rawValue == 1)
+      #expect(counter.value.load(ordering: .sequentiallyConsistent) == 1)
     }
 
     @Test("Recursive, all-inclusive suite trait")
     func recursiveAllInclusiveSuiteTrait() async {
-      let counter = Allocated(Mutex(0))
+      let counter = Allocated(Atomic(0))
       await AllInclusiveExecutionTrait.$counter.withValue(counter) {
         await runTest(for: SuiteWithAllInclusiveExecutionTrait.self)
       }
-      #expect(counter.value.rawValue == 3)
+      #expect(counter.value.load(ordering: .sequentiallyConsistent) == 3)
     }
   }
 }
@@ -127,29 +127,29 @@ private struct CustomThrowingErrorTrait: TestTrait, TestScoping {
 }
 
 struct DoSomethingBeforeAndAfterTrait: SuiteTrait, TestTrait, TestScoping {
-  static let state = Mutex(0)
+  static let state = Atomic(0)
 
   func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
-    #expect(Self.state.increment() == 1)
+    #expect(Self.state.add(1, ordering: .sequentiallyConsistent).newValue == 1)
 
     try await function()
-    #expect(Self.state.increment() == 3)
+    #expect(Self.state.add(1, ordering: .sequentiallyConsistent).newValue == 3)
   }
 }
 
 @Suite(.hidden, DoSomethingBeforeAndAfterTrait())
 struct TestsWithCustomTraitWithStrongOrdering {
   @Test(.hidden) func f() async {
-    #expect(DoSomethingBeforeAndAfterTrait.state.increment() == 2)
+    #expect(DoSomethingBeforeAndAfterTrait.state.add(1, ordering: .sequentiallyConsistent).newValue == 2)
   }
 }
 
 private struct DefaultExecutionTrait: SuiteTrait, TestTrait, TestScoping {
-  @TaskLocal static var counter: Allocated<Mutex<Int>>?
+  @TaskLocal static var counter: Allocated<Atomic<Int>>?
   var isRecursive: Bool = false
 
   func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
-    Self.counter!.value.increment()
+    Self.counter!.value.add(1, ordering: .sequentiallyConsistent)
     try await function()
   }
 }
@@ -165,7 +165,7 @@ private struct SuiteWithRecursiveDefaultExecutionTrait {
 }
 
 private struct AllInclusiveExecutionTrait: SuiteTrait, TestTrait, TestScoping {
-  @TaskLocal static var counter: Allocated<Mutex<Int>>?
+  @TaskLocal static var counter: Allocated<Atomic<Int>>?
 
   var isRecursive: Bool {
     true
@@ -177,7 +177,7 @@ private struct AllInclusiveExecutionTrait: SuiteTrait, TestTrait, TestScoping {
   }
 
   func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
-    Self.counter!.value.increment()
+    Self.counter!.value.add(1, ordering: .sequentiallyConsistent)
     try await function()
   }
 }
