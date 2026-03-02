@@ -55,16 +55,16 @@ extension Atomic: Sendable where Value: Sendable {}
 
 extension Atomic where Value == Bool {
   func load(ordering: Ordering) -> Value {
-    swt_atomicLoad_bool(_address)
+    swt_atomicLoad(_address)
   }
 
   func store(_ desired: consuming Value, ordering: Ordering) {
-    swt_atomicStore_bool(_address, desired)
+    swt_atomicStore(_address, desired)
   }
 
   func compareExchange(expected: consuming Value, desired: consuming Value) -> (exchanged: Bool, original: Value) {
     var expected = expected
-    let exchanged = swt_atomicCompareExchange_bool(_address, &expected, desired)
+    let exchanged = swt_atomicCompareExchange(_address, &expected, desired)
     return (exchanged, expected)
   }
 }
@@ -73,16 +73,16 @@ extension Atomic where Value == Bool {
 
 extension Atomic where Value == CInt {
   func load(ordering: Ordering) -> Value {
-    return swt_atomicLoad_int(_address)
+    return swt_atomicLoad(_address)
   }
 
   func store(_ desired: consuming Value, ordering: Ordering) {
-    swt_atomicStore_int(_address, desired)
+    swt_atomicStore(_address, desired)
   }
 
   func compareExchange(expected: consuming Value, desired: consuming Value, ordering: Ordering) -> (exchanged: Bool, original: Value) {
     var expected = expected
-    let exchanged = swt_atomicCompareExchange_int(_address, &expected, desired)
+    let exchanged = swt_atomicCompareExchange(_address, &expected, desired)
     return (exchanged, expected)
   }
 }
@@ -91,22 +91,22 @@ extension Atomic where Value == CInt {
 
 extension Atomic where Value == Int {
   func load(ordering: Ordering) -> Value {
-    swt_atomicLoad_intptr_t(_address)
+    swt_atomicLoad(_address)
   }
 
   func store(_ desired: consuming Value, ordering: Ordering) {
-    swt_atomicStore_intptr_t(_address, desired)
+    swt_atomicStore(_address, desired)
   }
 
   func compareExchange(expected: consuming Value, desired: consuming Value) -> (exchanged: Bool, original: Value) {
     var expected = expected
-    let exchanged = swt_atomicCompareExchange_intptr_t(_address, &expected, desired)
+    let exchanged = swt_atomicCompareExchange(_address, &expected, desired)
     return (exchanged, expected)
   }
 
   @discardableResult
   func add(_ operand: Value, ordering: Ordering) -> (oldValue: Value, newValue: Value) {
-    let newValue = swt_atomicAdd_intptr_t(_address, operand)
+    let newValue = swt_atomicAdd(_address, operand)
     return (newValue - operand, newValue)
   }
 
