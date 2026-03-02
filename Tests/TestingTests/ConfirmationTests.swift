@@ -35,7 +35,7 @@ struct ConfirmationTests {
   func unsuccessfulConfirmations() async {
     // confirmedOutOfRange(_:) is availability-guarded, but if it runs, increase
     // the number of expected miscounts by the number of arguments passed to it.
-    var expectedCount = 3
+    var expectedCount = 7
     if #available(_compositionOfParameterizedProtocols, *) {
       expectedCount += 4
     }
@@ -159,6 +159,20 @@ struct UnsuccessfulConfirmationTests {
     }
   }
 
+  // FIXME: Remove this test once the deployment targets are greater than or
+  // equal to the versions specified in `_compositionOfParameterizedProtocols`.
+  @Test(.hidden, arguments: [
+    1 ... 2 as any ExpectedCount,
+    1 ..< 2,
+    1 ..< 3,
+    999...,
+  ])
+  func confirmedOutOfRange_legacy(_ range: any ExpectedCount) async {
+    await confirmation(expectedCount: range) { (thingHappened) async in
+      thingHappened(count: 3)
+    }
+  }
+
   @Test(.hidden, arguments: [
     1 ... 2 as any RangeExpression<Int> & Sequence<Int> & Sendable,
     1 ..< 2,
@@ -172,3 +186,15 @@ struct UnsuccessfulConfirmationTests {
     }
   }
 }
+
+// MARK: -
+
+/// Needed since we don't have generic test functions, so we need a concrete
+/// argument type for `confirmedOutOfRange_legacy(_:)`. Although we can now write
+/// `any RangeExpression<Int> & Sequence<Int> & Sendable` as of Swift 6.2
+/// (per [swiftlang/swift#76705](https://github.com/swiftlang/swift/pull/76705)),
+/// attempting to form an array of such values crashes at runtime. ([163980446](rdar://163980446))
+protocol ExpectedCount: RangeExpression, Sequence, Sendable where Bound == Int, Element == Int {}
+extension ClosedRange<Int>: ExpectedCount {}
+extension PartialRangeFrom<Int>: ExpectedCount {}
+extension Range<Int>: ExpectedCount {}
