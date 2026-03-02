@@ -12,6 +12,10 @@
 private import ObjectiveC
 #endif
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 // TODO: update this documentation to clarify .serialized vs. .serialized(for:)
 
 /// A type that defines whether the testing library runs this test serially
