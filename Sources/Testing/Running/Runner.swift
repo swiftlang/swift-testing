@@ -81,7 +81,7 @@ extension Runner {
   /// type at runtime, it may be better-suited for ``Configuration`` instead.
   private struct _Context: Sendable {
     /// A serializer used to reduce parallelism among test cases.
-    var testCaseSerializer: Serializer?
+    var testCaseSerializer: Serializer<Void>?
 
     /// Which iteration of the test plan is being executed.
     var iteration: Int

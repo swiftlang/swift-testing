@@ -465,7 +465,9 @@ extension Array where Element == PackageDescription.SwiftSetting {
   /// module related to Swift Testing loaded into a runner process avoids this
   /// issue.
   static func moduleABIName(_ targetName: String) -> Self {
-    [.unsafeFlags(["-module-abi-name", "\(targetName)_package"])]
+    // Workaround: Disable module ABI name customization, since it has regressed
+    // building DocC documentation (see rdar://171555540).
+    [.unsafeFlags(["-module-abi-name", targetName /* + "_package" */])]
   }
 }
 
