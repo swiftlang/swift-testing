@@ -87,6 +87,7 @@ public struct Issue: Sendable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public enum Severity: Sendable {
     /// The severity level for an issue which should be noted but is not
@@ -97,6 +98,7 @@ public struct Issue: Sendable {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
+    ///   @Available(Xcode, introduced: 26.4)
     /// }
     case warning
 
@@ -107,6 +109,7 @@ public struct Issue: Sendable {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
+    ///   @Available(Xcode, introduced: 26.4)
     /// }
     case error
   }
@@ -115,6 +118,7 @@ public struct Issue: Sendable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var severity: Severity
   
@@ -131,6 +135,7 @@ public struct Issue: Sendable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var isFailure: Bool {
     return !self.isKnown && self.severity >= .error
@@ -287,7 +292,7 @@ extension Issue.Kind: CustomStringConvertible {
       } else if let mismatchedExitConditionDescription = expectation.mismatchedExitConditionDescription {
         "Expectation failed: \(mismatchedExitConditionDescription)"
       } else {
-        "Expectation failed: \(expectation.evaluatedExpression.expandedDescription())"
+        "Expectation failed: \(expectation.evaluatedExpression.sourceCode)"
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
       if let expected = expected as? any _RangeExpressionOverIntValues {
@@ -344,6 +349,7 @@ extension Issue {
     /// 
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
+    ///   @Available(Xcode, introduced: 26.4)
     /// }
     public var severity: Severity
 
@@ -626,7 +632,7 @@ extension Issue.Kind.Snapshot: CustomStringConvertible {
       if let mismatchedErrorDescription = expectation.mismatchedErrorDescription {
         "Expectation failed: \(mismatchedErrorDescription)"
       } else {
-        "Expectation failed: \(expectation.evaluatedExpression.expandedDescription())"
+        "Expectation failed: \(expectation.evaluatedExpression.sourceCode)"
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
       "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(expected.counting("time"))"

@@ -43,7 +43,6 @@ import Foundation
       "Default": .default,
       "Pass": .pass(knownIssueCount: 0),
       "Pass w/known issues": .pass(knownIssueCount: 1),
-      "Pass with warnings": .passWithWarnings,
       "Skip": .skip,
       "Fail": .fail,
       "Difference": .difference,

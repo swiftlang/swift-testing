@@ -143,7 +143,7 @@ struct TagListTests {
     }
     """
     try jsonContent.withUTF8 { jsonContent in
-      let fileHandle = try FileHandle(forWritingAtPath: jsonPath)
+      let fileHandle = try Testing.FileHandle(forWritingAtPath: jsonPath)
       try fileHandle.write(jsonContent)
     }
     defer {

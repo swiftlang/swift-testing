@@ -365,7 +365,12 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static var packageSettings: Self {
     var result = availabilityMacroSettings
 
-    result.append(.treatWarning("ExplicitSendable", as: .warning))
+    // treatWarning(..., as: .warning) cannot be used in packages which are
+    // used as dependencies, since the package manager suppresses all warnings
+    // for dependencies. (See: rdar://170562285)
+    if buildingForDevelopment {
+      result.append(.treatWarning("ExplicitSendable", as: .warning))
+    }
 
     if buildingForEmbedded {
       result.append(.enableExperimentalFeature("Embedded"))

@@ -171,6 +171,35 @@ struct ABIEntryPointTests {
     }
     #expect(versions == versions.shuffled().sorted())
   }
+
+#if !SWT_NO_FILE_IO
+  @Test func experimentalVersionIsAccepted() {
+    #expect(throws: Never.self) {
+      try withTemporaryPath { path in
+        var args = __CommandLineArguments_v0()
+        args.eventStreamVersionNumber = ABI.ExperimentalVersion.versionNumber
+        args.eventStreamOutputPath = path
+        _ = try configurationForEntryPoint(from: args)
+      }
+    }
+  }
+#endif
+
+  func decodeMetadataValue<T>(forKey key: String, ofType type: T.Type) throws -> T where T: Decodable {
+    let cString = try #require(_swift_testing_copyMetadataValue(key, 0))
+    defer {
+      free(cString)
+    }
+    let byteCount = strlen(cString)
+    return try JSON.decode(type, from: UnsafeRawBufferPointer(start: cString, count: byteCount))
+  }
+
+  @Test func copyMetadataValue() throws {
+    let lowerBound = try decodeMetadataValue(forKey: "_minimumSupportedABIVersion", ofType: ABI.VersionNumber.self)
+    #expect(lowerBound == ABI.v0.versionNumber)
+    let upperBound = try decodeMetadataValue(forKey: "_maximumSupportedABIVersion", ofType: ABI.VersionNumber.self)
+    #expect(upperBound == ABI.CurrentVersion.versionNumber)
+  }
 }
 
 #if !SWT_NO_DYNAMIC_LINKING

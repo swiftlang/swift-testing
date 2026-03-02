@@ -14,7 +14,7 @@ concurrency:
 jobs:
   tests:
     name: Test
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.6
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.7
     with:
       linux_swift_versions: '["nightly-main", "nightly-6.3"]'
       linux_os_versions: '["amazonlinux2", "jammy"]'
@@ -29,7 +29,7 @@ jobs:
       enable_android_sdk_build: true
   soundness:
     name: Soundness
-    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.6
+    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.7
     with:
       license_header_check_project_name: "Swift"
       docs_check_enabled: false

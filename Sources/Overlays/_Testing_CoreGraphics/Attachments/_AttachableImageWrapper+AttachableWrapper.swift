@@ -15,6 +15,7 @@ private import UniformTypeIdentifiers
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
 extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: AttachableAsImage {
   /// Get the image format to use when encoding an image, substituting a
@@ -51,6 +52,7 @@ extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: At
 
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableImageWrapper>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     let imageFormat = _imageFormat(forPreferredName: attachment.preferredName)
@@ -59,6 +61,7 @@ extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: At
 
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public borrowing func preferredName(for attachment: borrowing Attachment<_AttachableImageWrapper>, basedOn suggestedName: String) -> String {
     let imageFormat = _imageFormat(forPreferredName: suggestedName)
