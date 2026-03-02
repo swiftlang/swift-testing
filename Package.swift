@@ -467,7 +467,8 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static func moduleABIName(_ targetName: String) -> Self {
     // Workaround: Disable module ABI name customization, since it has regressed
     // building DocC documentation (see rdar://171555540).
-    [.unsafeFlags(["-module-abi-name", targetName /* + "_package" */])]
+//    [.unsafeFlags(["-module-abi-name", "\(targetName)_package"])]
+    []
   }
 }
 
