@@ -94,28 +94,34 @@ static mach_port_t swt_mach_task_self(void) {
 /// need them for.
 #define SWT_DEFINE_ATOMIC_OPERATIONS(T) \
   SWT_SWIFT_NAME(swt_atomicLoad(_:)) \
-  static inline T SWT_CONCAT(swt_atomicLoad_, __COUNTER__)(T *const _Nonnull src) { \
+  static inline T SWT_CONCAT(swt_atomicLoad, __COUNTER__)(T *const _Nonnull src) { \
     return __atomic_load_n(src, __ATOMIC_SEQ_CST); \
   } \
-  \
   SWT_SWIFT_NAME(swt_atomicStore(_:_:)) \
-  static inline void SWT_CONCAT(swt_atomicStore_, __COUNTER__)(T *_Nonnull dst, T src) { \
+  static inline void SWT_CONCAT(swt_atomicStore, __COUNTER__)(T *_Nonnull dst, T src) { \
     __atomic_store_n(dst, src, __ATOMIC_SEQ_CST); \
   } \
   SWT_SWIFT_NAME(swt_atomicCompareExchange(_:_:_:)) \
-	static inline bool SWT_CONCAT(swt_atomicCompareExchange_, __COUNTER__)(T *_Nonnull dst, T *_Nonnull expected, T desired) { \
-		return __atomic_compare_exchange_n(dst, expected, desired, /*weak: */false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST); \
-	} \
+  static inline bool SWT_CONCAT(swt_atomicCompareExchange, __COUNTER__)(T *_Nonnull dst, T *_Nonnull expected, T desired) { \
+    return __atomic_compare_exchange_n(dst, expected, desired, /*weak: */false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST); \
+  } \
+  SWT_SWIFT_NAME(swt_atomicStoreIfZero(_:_:)) \
+  static inline bool SWT_CONCAT(swt_atomicStoreIfZero, __COUNTER__)(T *_Nonnull dst, T desired) { \
+    T expectedZero = {}; \
+    return __atomic_compare_exchange_n(dst, &expectedZero, desired, /*weak: */false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST); \
+  }
+#define SWT_DEFINE_ATOMIC_OPERATIONS_WITH_ARITHMETIC(T) \
+  SWT_DEFINE_ATOMIC_OPERATIONS(T) \
   SWT_SWIFT_NAME(swt_atomicAdd(_:_:)) \
-	static inline T SWT_CONCAT(swt_atomicAdd_, __COUNTER__)(T *_Nonnull dst, T addend) { \
-		return __atomic_add_fetch(dst, (ptrdiff_t)addend, __ATOMIC_SEQ_CST); \
-	}
+  static inline T SWT_CONCAT(swt_atomicAdd, __COUNTER__)(T *_Nonnull dst, T addend) { \
+    return __atomic_add_fetch(dst, addend, __ATOMIC_SEQ_CST); \
+  }
 
 /// Define the minimal set of atomic operations that we use on various C types.
 SWT_DEFINE_ATOMIC_OPERATIONS(bool)
-SWT_DEFINE_ATOMIC_OPERATIONS(int)
-SWT_DEFINE_ATOMIC_OPERATIONS(intptr_t)
-SWT_DEFINE_ATOMIC_OPERATIONS(void *_Null_unspecified)
+SWT_DEFINE_ATOMIC_OPERATIONS_WITH_ARITHMETIC(int)
+SWT_DEFINE_ATOMIC_OPERATIONS_WITH_ARITHMETIC(intptr_t)
+SWT_DEFINE_ATOMIC_OPERATIONS(void const *_Nullable)
 #endif
 
 #if defined(_WIN32)
