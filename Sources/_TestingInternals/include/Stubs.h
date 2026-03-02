@@ -84,6 +84,42 @@ static mach_port_t swt_mach_task_self(void) {
 }
 #endif
 
+#if defined(__APPLE__)
+/// Define the minimal set of atomic operations supported and used by the
+/// testing library for a given C type.
+///
+/// This macro is provided because Swift cannot directly import the symbols in
+/// `<stdatomic.h>` nor clang's/GCC's generic atomic intrinsics. This macro
+/// simplifies the definition of atomic operations across the set of types we
+/// need them for.
+#define SWT_DEFINE_ATOMIC_OPERATIONS(T) \
+  static inline T swt_atomicLoad_##T(const T *src) { \
+    return __atomic_load_n(src, __ATOMIC_SEQ_CST); \
+  } \
+  \
+  static inline void swt_atomicStore_##T(T *dst, T src) { \
+    __atomic_store_n(dst, src, __ATOMIC_SEQ_CST); \
+  } \
+	static inline bool swt_atomicCompareExchange_##T(T *dst, T *expected, T desired) { \
+		return __atomic_compare_exchange_n(dst, expected, desired, /*weak: */false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST); \
+	} \
+	static inline T swt_atomicAdd_##T(T *dst, T addend) { \
+		return __atomic_add_fetch(dst, addend, __ATOMIC_SEQ_CST); \
+	}
+
+/// Define the minimal set of atomic operations supported and used on `bool` (in
+/// Swift, `Bool`).
+SWT_DEFINE_ATOMIC_OPERATIONS(bool)
+
+/// Define the minimal set of atomic operations supported and used on `int` (in
+/// Swift, `CInt`).
+SWT_DEFINE_ATOMIC_OPERATIONS(int)
+
+/// Define the minimal set of atomic operations supported and used on `intptr_t`
+/// (in Swift, `Int`).
+SWT_DEFINE_ATOMIC_OPERATIONS(intptr_t)
+#endif
+
 #if defined(_WIN32)
 /// Make a Win32 language ID.
 ///

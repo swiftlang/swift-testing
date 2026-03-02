@@ -20,29 +20,30 @@ internal import Synchronization
 /// This type is used on Apple platforms because our deployment target there is
 /// earlier than the availability of the ``Synchronization/Atomic`` type. It
 /// replicates the interface of that type but is implemented differently (using
-/// a mutex instead of actual atomic operations).
+/// a heap-allocated value) with support for only those atomic operations that
+/// we need to use in the testing library.
 ///
-/// Since we don't try to implement the ``Synchronization/AtomicRepresentable``
-/// protocol, this implementation only supports using a few types (i.e. the
-/// integers and `Bool`).
-struct Atomic<Value>: ~Copyable where Value: Sendable {
-  /// Storage for the underlying mutex.
-  private var _mutex: Mutex<Value>
+/// Since we don't try to implement the complete ``Synchronization/AtomicRepresentable``
+/// protocol, this implementation only supports using a few types that are
+/// actually in use in the testing library.
+struct Atomic<Value>: ~Copyable {
+  /// Storage for the underlying atomic value.
+  private nonisolated(unsafe) var _address: UnsafeMutablePointer<Value>
 
-  init(_ value: consuming sending Value) where Value == Bool {
-    _mutex = Mutex(value)
+  init(_ value: consuming sending Value) {
+    _address = .allocate(capacity: 1)
+    _address.initialize(to: value)
   }
 
-  init(_ value: consuming sending Value) where Value: BinaryInteger {
-    _mutex = Mutex(value)
+  deinit {
+    _address.deinitialize(count: 1)
+    _address.deallocate()
   }
 
   /// The orderings supported by this type.
   ///
-  /// Because this type implements atomic operations using a mutex, all of its
-  /// operations are inherently sequentially consistent.
-  ///
-  /// For more information, see [`AtomicUpdateOrdering`](https://developer.apple.com/documentation/synchronization/atomicupdateordering).
+  /// At this time, we only implement sequentially consistent ordering. For more
+  /// information about atomic operation ordering, see [`AtomicUpdateOrdering`](https://developer.apple.com/documentation/synchronization/atomicupdateordering).
   enum Ordering {
     case sequentiallyConsistent
   }
@@ -50,50 +51,68 @@ struct Atomic<Value>: ~Copyable where Value: Sendable {
 
 extension Atomic: Sendable where Value: Sendable {}
 
-// MARK: -
+// MARK: - Atomic<Bool>
 
-extension Atomic {
+extension Atomic where Value == Bool {
   func load(ordering: Ordering) -> Value {
-    _mutex.rawValue
+    swt_atomicLoad_bool(_address)
   }
 
   func store(_ desired: consuming Value, ordering: Ordering) {
-    _mutex.withLock { $0 = copy desired }
+    swt_atomicStore_bool(_address, desired)
+  }
+
+  func compareExchange(expected: consuming Value, desired: consuming Value) -> (exchanged: Bool, original: Value) {
+    var expected = expected
+    let exchanged = swt_atomicCompareExchange_bool(_address, &expected, desired)
+    return (exchanged, expected)
   }
 }
 
-extension Atomic where Value: Equatable {
+// MARK: - Atomic<CInt>
+
+extension Atomic where Value == CInt {
+  func load(ordering: Ordering) -> Value {
+    return swt_atomicLoad_int(_address)
+  }
+
+  func store(_ desired: consuming Value, ordering: Ordering) {
+    swt_atomicStore_int(_address, desired)
+  }
+
   func compareExchange(expected: consuming Value, desired: consuming Value, ordering: Ordering) -> (exchanged: Bool, original: Value) {
-    _mutex.withLock { value in
-      let original = value
-      guard original == expected else {
-        return (false, original)
-      }
-      value = copy desired
-      return (true, original)
-    }
+    var expected = expected
+    let exchanged = swt_atomicCompareExchange_int(_address, &expected, desired)
+    return (exchanged, expected)
   }
 }
 
-extension Atomic where Value: AdditiveArithmetic {
+// MARK: - Atomic<Int>
+
+extension Atomic where Value == Int {
+  func load(ordering: Ordering) -> Value {
+    swt_atomicLoad_intptr_t(_address)
+  }
+
+  func store(_ desired: consuming Value, ordering: Ordering) {
+    swt_atomicStore_intptr_t(_address, desired)
+  }
+
+  func compareExchange(expected: consuming Value, desired: consuming Value) -> (exchanged: Bool, original: Value) {
+    var expected = expected
+    let exchanged = swt_atomicCompareExchange_intptr_t(_address, &expected, desired)
+    return (exchanged, expected)
+  }
+
   @discardableResult
   func add(_ operand: Value, ordering: Ordering) -> (oldValue: Value, newValue: Value) {
-    _mutex.withLock { value in
-      let oldValue = value
-      value += operand
-      let newValue = value
-      return (oldValue, newValue)
-    }
+    let newValue = swt_atomicAdd_intptr_t(_address, operand)
+    return (newValue - operand, newValue)
   }
 
   @discardableResult
   func subtract(_ operand: Value, ordering: Ordering) -> (oldValue: Value, newValue: Value) {
-    _mutex.withLock { value in
-      let oldValue = value
-      value -= operand
-      let newValue = value
-      return (oldValue, newValue)
-    }
+    add(-operand, ordering: ordering)
   }
 }
 #endif
