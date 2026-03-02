@@ -1,9 +1,9 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.3
 
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023–2025 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -142,18 +142,10 @@ let package = Package(
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("Testing"),
-      linkerSettings: {
-        var result = [LinkerSetting]()
-        result += [
-          .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
-        ]
-#if compiler(>=6.3)
-        result += [
-          .linkedLibrary("_TestingInterop"),
-        ]
-#endif
-        return result
-      }()
+      linkerSettings: [
+        .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd])),
+        .linkedLibrary("_TestingInterop"),
+      ]
     ),
     .testTarget(
       name: "TestingTests",
@@ -373,14 +365,12 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static var packageSettings: Self {
     var result = availabilityMacroSettings
 
-#if compiler(>=6.3)
     // treatWarning(..., as: .warning) cannot be used in packages which are
     // used as dependencies, since the package manager suppresses all warnings
     // for dependencies. (See: rdar://170562285)
     if buildingForDevelopment {
       result.append(.treatWarning("ExplicitSendable", as: .warning))
     }
-#endif
 
     if buildingForEmbedded {
       result.append(.enableExperimentalFeature("Embedded"))
