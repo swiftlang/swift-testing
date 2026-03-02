@@ -58,7 +58,7 @@ struct DiscoveryTests {
   }
 #endif
 
-#if compiler(>=6.3) && !SWT_NO_DYNAMIC_LINKING
+#if !SWT_NO_DYNAMIC_LINKING
   struct MyTestContent: DiscoverableAsTestContent {
     typealias TestContentAccessorHint = UInt32
 
