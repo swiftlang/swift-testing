@@ -14,4 +14,5 @@ add_compile_options(
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -define-availability -Xfrontend \"_clockAPI:macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0\">"
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -define-availability -Xfrontend \"_typedThrowsAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0\">"
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -define-availability -Xfrontend \"_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0\">"
+  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -define-availability -Xfrontend \"_compositionOfParameterizedProtocols:macOS 26.4, iOS 26.4, watchOS 26.4, tvOS 26.4, visionOS 26.4\">"
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -define-availability -Xfrontend \"_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0\">")
