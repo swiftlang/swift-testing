@@ -105,7 +105,8 @@ package func _swift_testing_installFallbackEventHandler(_ handler: FallbackEvent
   let handler = _FallbackEventHandlerStorage(rawValue: handler)
 #if SWT_TARGET_OS_APPLE && !hasFeature(Embedded)
   let unmanaged = Unmanaged.passRetained(handler)
-  result = swt_atomicStoreIfZero(_fallbackEventHandler, unmanaged.toOpaque())
+  var expectedNil: UnsafeRawPointer?
+  result = swt_atomicCompareExchange(_fallbackEventHandler, &expectedNil, unmanaged.toOpaque())
   if !result {
     unmanaged.release()
   }

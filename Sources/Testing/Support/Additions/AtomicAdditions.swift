@@ -98,7 +98,7 @@ extension Atomic where Value == Int {
     swt_atomicStore(_address, desired)
   }
 
-  func compareExchange(expected: consuming Value, desired: consuming Value) -> (exchanged: Bool, original: Value) {
+  func compareExchange(expected: consuming Value, desired: consuming Value, ordering: Ordering) -> (exchanged: Bool, original: Value) {
     var expected = expected
     let exchanged = swt_atomicCompareExchange(_address, &expected, desired)
     return (exchanged, expected)
@@ -106,8 +106,13 @@ extension Atomic where Value == Int {
 
   @discardableResult
   func add(_ operand: Value, ordering: Ordering) -> (oldValue: Value, newValue: Value) {
-    let newValue = swt_atomicAdd(_address, operand)
-    return (newValue - operand, newValue)
+    while true {
+      let oldValue = load(ordering: ordering)
+      let newValue = oldValue + operand
+      if compareExchange(expected: oldValue, desired: newValue, ordering: ordering).exchanged {
+        return (oldValue, newValue)
+      }
+    }
   }
 
   @discardableResult
