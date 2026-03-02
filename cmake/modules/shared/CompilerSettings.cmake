@@ -46,9 +46,18 @@ endif()
 if (NOT (APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Windows"))
   add_compile_definitions("SWT_NO_IMAGE_ATTACHMENTS")
 endif()
+set(SWT_NO_FILE_CLONING_LIST "OpenBSD" "WASI" "Android")
+if(CMAKE_SYSTEM_NAME IN_LIST SWT_NO_FILE_CLONING_LIST)
+  add_compile_definitions("SWT_NO_FILE_CLONING")
+endif()
 
 file(STRINGS "${SWT_SOURCE_ROOT_DIR}/VERSION.txt" SWT_TESTING_LIBRARY_VERSION LIMIT_COUNT 1)
 if(SWT_TESTING_LIBRARY_VERSION)
   message(STATUS "Swift Testing version: ${SWT_TESTING_LIBRARY_VERSION}")
   add_compile_definitions("$<$<COMPILE_LANGUAGE:CXX>:SWT_TESTING_LIBRARY_VERSION=\"${SWT_TESTING_LIBRARY_VERSION}\">")
+endif()
+
+if((NOT BUILD_SHARED_LIBS) AND (NOT CMAKE_SYSTEM_NAME STREQUAL WASI))
+  # When building a static library, Interop is not supported at this time
+  add_compile_definitions("SWT_NO_INTEROP")
 endif()

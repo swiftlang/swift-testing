@@ -47,18 +47,12 @@ struct TimeValue: Sendable {
   }
 #endif
 
-  @available(_clockAPI, *)
   init(_ duration: Duration) {
     self.init(duration.components)
   }
 
-  @available(_clockAPI, *)
   init(_ instant: SuspendingClock.Instant) {
-#if compiler(>=6.3)
     self.init(SuspendingClock().systemEpoch.duration(to: instant))
-#else
-    self.init(unsafeBitCast(instant, to: Duration.self))
-#endif
   }
 }
 
@@ -81,10 +75,6 @@ extension TimeValue: Codable {}
 
 extension TimeValue: CustomStringConvertible {
   var description: String {
-#if os(WASI) && compiler(<6.3)
-    // BUG: https://github.com/swiftlang/swift/issues/72398
-    return String(describing: Duration(self))
-#else
     let (secondsFromAttoseconds, attosecondsRemaining) = attoseconds.quotientAndRemainder(dividingBy: 1_000_000_000_000_000_000)
     let seconds = seconds + secondsFromAttoseconds
     var milliseconds = attosecondsRemaining / 1_000_000_000_000_000
@@ -98,27 +88,20 @@ extension TimeValue: CustomStringConvertible {
       }
       return String(cString: buffer.baseAddress!)
     }
-#endif
   }
 }
 
 // MARK: -
 
-@available(_clockAPI, *)
 extension Duration {
   init(_ timeValue: TimeValue) {
     self.init(secondsComponent: timeValue.seconds, attosecondsComponent: timeValue.attoseconds)
   }
 }
 
-@available(_clockAPI, *)
 extension SuspendingClock.Instant {
   init(_ timeValue: TimeValue) {
-#if compiler(>=6.3)
     self = SuspendingClock().systemEpoch.advanced(by: Duration(timeValue))
-#else
-    self = unsafeBitCast(Duration(timeValue), to: SuspendingClock.Instant.self)
-#endif
   }
 }
 

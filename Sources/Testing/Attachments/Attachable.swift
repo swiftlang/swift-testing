@@ -101,6 +101,31 @@ public protocol Attachable: ~Copyable {
   borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String
 }
 
+// MARK: - FileClonable
+
+#if !SWT_NO_FILE_CLONING
+/// A protocol describing a type whose instances represent files and can be
+/// cloned (on platforms that support file cloning).
+///
+/// This protocol is not part of the public interface of the testing library. We
+/// may wish to promote it to API in the future if there is a need for it, but
+/// our Foundation overlay probably covers the real-world use cases.
+package protocol FileClonable {
+  /// Clone the file this instance represents to the given file path.
+  ///
+  /// - Parameters:
+  ///   - filePath: The path to clone this instance to.
+  ///
+  /// - Returns: Whether or not the file was successfully cloned.
+  ///
+  /// The implementation must not attempt to write to `filePath` if it already
+  /// exists. The testing library cannot check if a file exists at `filePath`
+  /// before calling this function (a race condition would be present if it did
+  /// attempt to check first).
+  borrowing func clone(toFileAtPath filePath: String) -> Bool
+}
+#endif
+
 // MARK: - Default implementations
 
 /// @Metadata {

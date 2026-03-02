@@ -1,9 +1,9 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.3
 
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023–2025 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -42,11 +42,11 @@ let package = Package(
   platforms: {
     if !buildingForEmbedded {
       [
-        .macOS(.v10_15),
-        .iOS(.v13),
-        .watchOS(.v6),
-        .tvOS(.v13),
-        .macCatalyst(.v13),
+        .macOS(.v14),
+        .iOS(.v17),
+        .watchOS(.v10),
+        .tvOS(.v17),
+        .macCatalyst(.v17),
         .visionOS(.v1),
       ]
     } else {
@@ -128,7 +128,7 @@ let package = Package(
     // manager to use the lexicographically highest-sorted tag with the
     // specified semantic version, meaning the most recent "prerelease" tag will
     // always be used.
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "603.0.0-latest"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "604.0.0-latest"),
   ],
 
   targets: [
@@ -143,7 +143,8 @@ let package = Package(
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("Testing"),
       linkerSettings: [
-        .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
+        .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd])),
+        .linkedLibrary("_TestingInterop"),
       ]
     ),
     .testTarget(
@@ -258,6 +259,7 @@ let package = Package(
     .target(
       name: "_Testing_Foundation",
       dependencies: [
+        "_TestingInternals",
         "Testing",
       ],
       path: "Sources/Overlays/_Testing_Foundation",
@@ -363,9 +365,12 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static var packageSettings: Self {
     var result = availabilityMacroSettings
 
-#if compiler(>=6.3)
-    result.append(.treatWarning("ExplicitSendable", as: .warning))
-#endif
+    // treatWarning(..., as: .warning) cannot be used in packages which are
+    // used as dependencies, since the package manager suppresses all warnings
+    // for dependencies. (See: rdar://170562285)
+    if buildingForDevelopment {
+      result.append(.treatWarning("ExplicitSendable", as: .warning))
+    }
 
     if buildingForEmbedded {
       result.append(.enableExperimentalFeature("Embedded"))
@@ -397,6 +402,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
       .define("SWT_NO_FOUNDATION_FILE_COORDINATION", .whenEmbedded(or: .whenApple(false))),
       .define("SWT_NO_IMAGE_ATTACHMENTS", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android]))),
+      .define("SWT_NO_FILE_CLONING", .whenEmbedded(or: .when(platforms: [.openbsd, .wasi, .android]))),
 
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
@@ -411,14 +417,11 @@ extension Array where Element == PackageDescription.SwiftSetting {
   /// [swift#65218](https://github.com/swiftlang/swift/pull/65218).
   private static var availabilityMacroSettings: Self {
     [
-      .enableExperimentalFeature("AvailabilityMacro=_mangledTypeNameAPI:macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0"),
       .enableExperimentalFeature("AvailabilityMacro=_uttypesAPI:macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0"),
-      .enableExperimentalFeature("AvailabilityMacro=_backtraceAsyncAPI:macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0"),
       .enableExperimentalFeature("AvailabilityMacro=_clockAPI:macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0"),
-      .enableExperimentalFeature("AvailabilityMacro=_regexAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0"),
-      .enableExperimentalFeature("AvailabilityMacro=_swiftVersionAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0"),
       .enableExperimentalFeature("AvailabilityMacro=_typedThrowsAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
       .enableExperimentalFeature("AvailabilityMacro=_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_compositionOfParameterizedProtocols:macOS 26.4, iOS 26.4, watchOS 26.4, tvOS 26.4, visionOS 26.4"),
 
       .enableExperimentalFeature("AvailabilityMacro=_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0"),
     ]
@@ -478,6 +481,8 @@ extension Array where Element == PackageDescription.CXXSetting {
       .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
       .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
       .define("SWT_NO_FOUNDATION_FILE_COORDINATION", .whenEmbedded(or: .whenApple(false))),
+      .define("SWT_NO_IMAGE_ATTACHMENTS", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android]))),
+      .define("SWT_NO_FILE_CLONING", .whenEmbedded(or: .when(platforms: [.openbsd, .wasi, .android]))),
 
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]

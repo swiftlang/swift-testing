@@ -35,7 +35,7 @@ satisfy the expectation.
 @Test func calculatingOrderTotal() {
   let calculator = OrderCalculator()
   #expect(calculator.total(of: [3, 3]) == 7)
-  // Prints "Expectation failed: (calculator.total(of: [3, 3]) → 6) == 7"
+  // Prints "Expectation failed: calculator.total(of: [3, 3]) == 7"
 }
 ```
 

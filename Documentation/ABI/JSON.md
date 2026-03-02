@@ -39,7 +39,9 @@ array (also defined as in JSON) whose elements all follow rule `<T>`.
 <bool> ::= true | false ; as in JSON
 
 <source-location> ::= {
-  "fileID": <string>, ; the Swift file ID of the file
+  ["fileID": <string>,] ; the Swift file ID of the file if available, as per
+                        ; SE-0274 § "Specification of the #file string format"
+  "filePath": <string>, ; the compile-time path to the file
   "line": <number>,
   "column": <number>,
 }
@@ -49,7 +51,8 @@ array (also defined as in JSON) whose elements all follow rule `<T>`.
   "since1970": <number>, ; floating-point seconds since 1970-01-01 00:00:00 UT
 }
 
-<version> ::= "version": 0 ; will be incremented as the format changes
+<version> ::= "version": <version-number>
+<version-number> ::= 0 | "<version core>" ; as per https://semver.org
 ```
 
 <!--
@@ -157,10 +160,21 @@ additional `"testCases"` field describing the individual test cases.
   ["displayName": <string>,] ; the user-supplied custom display name
   "sourceLocation": <source-location>, ; where the test is defined
   "id": <test-id>,
-  "isParameterized": <bool> ; is this a parameterized test function or not?
+  "isParameterized": <bool>, ; is this a parameterized test function or not?
+  ["tags": <array:tag>,] ; the tags associated with this test function
+  ["bugs": <array:bug>,] ; the bugs associated with this test function
+  ["timeLimit": <number>] ; the time limit associated with this test function
 }
 
 <test-id> ::= <string> ; an opaque string representing the test case
+
+<tag> ::= <string> ; a string representation of a tag
+
+<bug> ::= {
+  ["url": <string>,] ; the bug URL
+  ["id": <string>,] ; the bug id
+  ["title": <string>] ; the human readable bug title
+}
 ```
 
 <!--
@@ -195,7 +209,8 @@ sufficient information to display the event in a human-readable format.
 
 <event-kind> ::= "runStarted" | "testStarted" | "testCaseStarted" |
   "issueRecorded" | "testCaseEnded" | "testEnded" | "testSkipped" |
-  "runEnded" | "valueAttached"; additional event kinds may be added in the future
+  "runEnded" | "valueAttached" | "testCancelled" | "testCaseCancelled"
+  ; additional event kinds may be added in the future
 
 <issue> ::= {
   "isKnown": <bool>, ; is this a known issue or not?
@@ -230,3 +245,5 @@ sufficient information to display the event in a human-readable format.
 | [ST-0009](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0009-attachments.md#integration-with-supporting-tools) | Added attachments. | 6.2 | `0` |
 | [ST-0013](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0013-issue-severity-warning.md#event-stream) | Added test issue severity. | 6.3 | `"6.3"` |
 | [ST-0016](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0016-test-cancellation.md#integration-with-supporting-tools) | Added test cancellation. | 6.3 | `"6.3"` |
+| [ST-0019](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0019-include-tags-bugs-and-timeline-in-event-stream.md#json-schema-changes) | Added `tags`, `bugs`, and `timeLimit`. | 6.4 | `"6.4"` |
+| [ST-0020](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0020-sourcelocation-filepath.md#detailed-design) | Added `filePath`. | 6.3 | `"6.3"` |

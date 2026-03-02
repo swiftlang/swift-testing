@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type representing a backtrace or stack trace.
 @_spi(ForToolsIntegrationOnly)
 public struct Backtrace: Sendable {
@@ -70,11 +74,7 @@ public struct Backtrace: Sendable {
     withUnsafeTemporaryAllocation(of: UnsafeMutableRawPointer?.self, capacity: addressCount) { addresses in
       var initializedCount = 0
 #if SWT_TARGET_OS_APPLE
-      if #available(_backtraceAsyncAPI, *) {
-        initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
-      } else {
-        initializedCount = .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
-      }
+      initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
 #elseif os(Android)
 #if !SWT_NO_DYNAMIC_LINKING
       if let _backtrace {
@@ -220,13 +220,13 @@ extension Backtrace {
   /// same location.)
   ///
   /// Access to this dictionary is guarded by a lock.
-  private static let _errorMappingCache = Locked<[_ErrorMappingCacheKey: _ErrorMappingCacheEntry]>()
+  private static let _errorMappingCache = Mutex<[_ErrorMappingCacheKey: _ErrorMappingCacheEntry]>()
 
   /// The previous `swift_willThrow` handler, if any.
-  private static let _oldWillThrowHandler = Locked<SWTWillThrowHandler?>()
+  private static let _oldWillThrowHandler = Mutex<SWTWillThrowHandler?>()
 
   /// The previous `swift_willThrowTyped` handler, if any.
-  private static let _oldWillThrowTypedHandler = Locked<SWTWillThrowTypedHandler?>()
+  private static let _oldWillThrowTypedHandler = Mutex<SWTWillThrowTypedHandler?>()
 
   /// Handle a thrown error.
   ///

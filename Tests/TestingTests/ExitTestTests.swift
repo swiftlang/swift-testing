@@ -13,6 +13,18 @@ private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
 @Suite("Exit test tests") struct ExitTestTests {
+  @Test("Exit code names are reported (where supported)") func exitCodeName() {
+    #expect(String(describing: ExitStatus.exitCode(EXIT_SUCCESS)) == ".exitCode(EXIT_SUCCESS)")
+    #expect(String(describing: ExitStatus.exitCode(EXIT_FAILURE)) == ".exitCode(EXIT_FAILURE)")
+
+    if let EX_IOERR = swt_EX_IOERR()?.pointee {
+      let exitStatus = ExitStatus.exitCode(EX_IOERR)
+      #expect(exitStatus.code == EX_IOERR)
+      #expect(String(describing: exitStatus) == ".exitCode(EX_IOERR)")
+    }
+    #expect(String(describing: ExitStatus.exitCode(12345)) == ".exitCode(12345)")
+  }
+
   @Test("Signal names are reported (where supported)") func signalName() {
     var hasSignalNames = false
 #if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Android)
@@ -24,8 +36,9 @@ private import _TestingInternals
 #endif
 
     let exitStatus = ExitStatus.signal(SIGABRT)
+    #expect(exitStatus.code == SIGABRT)
     if Bool(hasSignalNames) {
-      #expect(String(describing: exitStatus) == ".signal(SIGABRT → \(SIGABRT))")
+      #expect(String(describing: exitStatus) == ".signal(SIGABRT)")
     } else {
       #expect(String(describing: exitStatus) == ".signal(\(SIGABRT))")
     }
@@ -56,11 +69,7 @@ private import _TestingInternals
       // Allow up to 1s for the signal to be delivered. On some platforms,
       // raise() delivers signals fully asynchronously and may not terminate the
       // child process before this closure returns.
-      if #available(_clockAPI, *) {
-        try await Test.Clock.sleep(for: .seconds(1))
-      } else {
-        try await Task.sleep(nanoseconds: 1_000_000_000)
-      }
+      try await Test.Clock.sleep(for: .seconds(1))
     }
     await #expect(processExitsWith: .signal(SIGABRT)) {
       abort()

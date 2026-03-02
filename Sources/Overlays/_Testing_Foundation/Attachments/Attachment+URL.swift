@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
+#if canImport(Foundation) && !SWT_NO_FILE_IO
 public import Testing
 public import Foundation
 
@@ -16,7 +16,6 @@ public import Foundation
 private import WinSDK
 #endif
 
-#if !SWT_NO_FILE_IO
 extension Attachment where AttachableValue == _AttachableURLWrapper {
 #if SWT_TARGET_OS_APPLE
   /// An operation queue to use for asynchronously reading data from disk.
@@ -77,7 +76,7 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
     let isDirectory = try url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory!
 
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FOUNDATION_FILE_COORDINATION
-    let data: Data = try await withCheckedThrowingContinuation { continuation in
+    let urlWrapper = try await withCheckedThrowingContinuation { continuation in
       let fileCoordinator = NSFileCoordinator()
       let fileAccessIntent = NSFileAccessIntent.readingIntent(with: url, options: [.forUploading])
 
@@ -86,21 +85,23 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
           if let error {
             throw error
           }
-          return try Data(contentsOf: fileAccessIntent.url, options: [.mappedIfSafe])
+          return try _AttachableURLWrapper(
+            url: url,
+            copiedToFileAt: fileAccessIntent.url,
+            isCompressedDirectory: isDirectory
+          )
         }
         continuation.resume(with: result)
       }
     }
 #else
-    let data = if isDirectory {
+    let urlWrapper = if isDirectory {
       try await _compressContentsOfDirectory(at: url)
     } else {
       // Load the file.
-      try Data(contentsOf: url, options: [.mappedIfSafe])
+      try _AttachableURLWrapper(url: url, isCompressedDirectory: false)
     }
 #endif
-
-    let urlWrapper = _AttachableURLWrapper(url: url, data: data, isCompressedDirectory: isDirectory)
     self.init(urlWrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 }
@@ -150,15 +151,14 @@ private let _archiverPath: String? = {
 /// - Parameters:
 ///   - directoryURL: A URL referring to the directory to attach.
 ///
-/// - Returns: An instance of `Data` containing the compressed contents of the
-///   given directory.
+/// - Returns: A value wrapping a compressed copy of the given directory.
 ///
 /// - Throws: Any error encountered trying to compress the directory, or if
 ///   directories cannot be compressed on this platform.
 ///
 /// This function asynchronously compresses the contents of `directoryURL` into
 /// an archive (currently of `.zip` format, although this is subject to change.)
-private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> Data {
+private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> _AttachableURLWrapper {
 #if !SWT_NO_PROCESS_SPAWNING
   let temporaryName = "\(UUID().uuidString).zip"
   let temporaryURL = FileManager.default.temporaryDirectory.appendingPathComponent(temporaryName)
@@ -236,10 +236,9 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
     ])
   }
 
-  return try Data(contentsOf: temporaryURL, options: [.mappedIfSafe])
+  return try _AttachableURLWrapper(url: directoryURL, copiedToFileAt: temporaryURL, isCompressedDirectory: true)
 #else
   throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "This platform does not support attaching directories to tests."])
 #endif
 }
-#endif
 #endif

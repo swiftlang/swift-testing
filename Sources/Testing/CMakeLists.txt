@@ -1,6 +1,6 @@
 # This source file is part of the Swift.org open source project
 #
-# Copyright (c) 2024 Apple Inc. and the Swift project authors
+# Copyright (c) 2024-2026 Apple Inc. and the Swift project authors
 # Licensed under Apache License v2.0 with Runtime Library Exception
 #
 # See https://swift.org/LICENSE.txt for license information
@@ -13,14 +13,18 @@ add_library(Testing
   ABI/EntryPoints/SwiftPMEntryPoint.swift
   ABI/ABI.Record.swift
   ABI/ABI.Record+Streaming.swift
+  ABI/ABI.VersionNumber.swift
   ABI/ABI.swift
   ABI/Encoded/ABI.EncodedAttachment.swift
   ABI/Encoded/ABI.EncodedBacktrace.swift
   ABI/Encoded/ABI.EncodedError.swift
   ABI/Encoded/ABI.EncodedEvent.swift
+  ABI/Encoded/ABI.EncodedExpectation.swift
+  ABI/Encoded/ABI.EncodedExpression.swift
   ABI/Encoded/ABI.EncodedInstant.swift
   ABI/Encoded/ABI.EncodedIssue.swift
   ABI/Encoded/ABI.EncodedMessage.swift
+  ABI/Encoded/ABI.EncodedSourceLocation.swift
   ABI/Encoded/ABI.EncodedTest.swift
   Attachments/Images/AttachableAsImage.swift
   Attachments/Images/_AttachableImageWrapper.swift
@@ -32,6 +36,7 @@ add_library(Testing
   Attachments/Attachment.swift
   Events/Clock.swift
   Events/Event.swift
+  Events/Event+FallbackHandler.swift
   Events/Recorder/Event.AdvancedConsoleOutputRecorder.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
   Events/Recorder/Event.HumanReadableOutputRecorder.swift
@@ -68,20 +73,25 @@ add_library(Testing
   Running/SkipInfo.swift
   SourceAttribution/Backtrace.swift
   SourceAttribution/Backtrace+Symbolication.swift
+  SourceAttribution/CustomTestReflectable.swift
   SourceAttribution/CustomTestStringConvertible.swift
   SourceAttribution/Expression.swift
   SourceAttribution/Expression+Macro.swift
+  SourceAttribution/SourceBounds.swift
   SourceAttribution/SourceContext.swift
   SourceAttribution/SourceLocation.swift
   SourceAttribution/SourceLocation+Macro.swift
   Support/Additions/ArrayAdditions.swift
+  Support/Additions/AtomicAdditions.swift
   Support/Additions/CollectionDifferenceAdditions.swift
   Support/Additions/CommandLineAdditions.swift
   Support/Additions/CopyableAdditions.swift
+  Support/Additions/MutexAdditions.swift
   Support/Additions/NumericAdditions.swift
   Support/Additions/ResultAdditions.swift
   Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
+  Support/Allocated.swift
   Support/CartesianProduct.swift
   Support/CError.swift
   Support/CustomIssueRepresentable.swift
@@ -90,7 +100,6 @@ add_library(Testing
   Support/GetSymbol.swift
   Support/Graph.swift
   Support/JSON.swift
-  Support/Locked.swift
   Support/Serializer.swift
   Support/VersionNumber.swift
   Support/Versions.swift
@@ -120,7 +129,8 @@ add_library(Testing
   Traits/Trait.swift)
 target_link_libraries(Testing PRIVATE
   _TestDiscovery
-  _TestingInternals)
+  _TestingInternals
+  _TestingInterop)
 if(NOT APPLE)
   if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
     target_link_libraries(Testing PUBLIC
@@ -138,7 +148,8 @@ if(NOT BUILD_SHARED_LIBS)
   # libraries.
   target_compile_options(Testing PRIVATE
     "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestDiscovery"
-    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals")
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals"
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInterop")
 endif()
 add_dependencies(Testing
   TestingMacros)

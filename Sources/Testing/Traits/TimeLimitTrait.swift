@@ -13,7 +13,7 @@ private import _TestingInternals
 /// A type that defines a time limit to apply to a test.
 ///
 /// To add this trait to a test, use ``Trait/timeLimit(_:)-4kzjp``.
-@available(_clockAPI, *)
+@available(_clockAPI, *) // For DocC
 public struct TimeLimitTrait: TestTrait, SuiteTrait {
   /// A type representing the duration of a time limit applied to a test.
   ///
@@ -52,7 +52,7 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
 
 // MARK: -
 
-@available(_clockAPI, *)
+@available(_clockAPI, *) // For DocC
 extension Trait where Self == TimeLimitTrait {
   /// Construct a time limit trait that causes a test to time out if it runs for
   /// too long.
@@ -135,7 +135,7 @@ extension Trait where Self == TimeLimitTrait {
   }
 }
 
-@available(_clockAPI, *)
+@available(_clockAPI, *) // For DocC
 extension TimeLimitTrait.Duration {
   /// Construct a time limit duration given a number of seconds.
   ///
@@ -196,7 +196,7 @@ extension TimeLimitTrait.Duration {
 
 // MARK: -
 
-@available(_clockAPI, *)
+@available(_clockAPI, *) // For DocC
 extension Test {
   /// The maximum amount of time this test's cases may run for.
   ///
@@ -275,7 +275,6 @@ struct TimeoutError: Error, CustomStringConvertible {
 /// and `body` is cancelled.
 ///
 /// This function is not part of the public interface of the testing library.
-@available(_clockAPI, *)
 func withTimeLimit(
   _ timeLimit: Duration,
   taskName: String? = nil,
@@ -323,8 +322,7 @@ func withTimeLimit(
   _ body: @escaping @Sendable () async throws -> Void,
   timeoutHandler: @escaping @Sendable (_ timeLimit: (seconds: Int64, attoseconds: Int64)) -> Void
 ) async throws {
-  if #available(_clockAPI, *),
-     let timeLimit = test.adjustedTimeLimit(configuration: configuration) {
+  if let timeLimit = test.adjustedTimeLimit(configuration: configuration) {
 #if SWT_NO_UNSTRUCTURED_TASKS
     // This environment may not support full concurrency, so check if the body
     // closure timed out after it returns. This won't help us catch hangs, but

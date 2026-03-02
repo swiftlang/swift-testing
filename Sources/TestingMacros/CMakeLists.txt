@@ -33,7 +33,7 @@ if(SwiftTesting_BuildMacrosAsExecutables)
   set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_d)
   FetchContent_Declare(SwiftSyntax
     GIT_REPOSITORY https://github.com/swiftlang/swift-syntax
-    GIT_TAG 07bf225e198119c23b2b9a0a3432bdb534498873) # 603.0.0-prerelease-2025-08-11
+    GIT_TAG 65b02a90ad2cc213e09309faeb7f6909e0a8577a) # 604.0.0-prerelease-2026-01-20
   FetchContent_MakeAvailable(SwiftSyntax)
 endif()
 

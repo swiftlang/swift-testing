@@ -10,12 +10,13 @@
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
 #if SWT_NO_IMAGE_ATTACHMENTS
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
-@available(_uttypesAPI, *)
+@available(_uttypesAPI, *) // For DocC
 extension Attachment {
   /// Initialize an instance of this type that encloses the given image.
   ///
@@ -39,6 +40,7 @@ extension Attachment {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public init<T>(
     _ image: T,
@@ -72,6 +74,7 @@ extension Attachment {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public static func record<T>(
     _ image: T,
@@ -90,12 +93,13 @@ extension Attachment {
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
-@available(_uttypesAPI, *)
+@available(_uttypesAPI, *) // For DocC
 extension Attachment where AttachableValue: AttachableWrapper, AttachableValue.Wrapped: AttachableAsImage {
   /// The image format to use when encoding the represented image, if specified.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   @_disfavoredOverload public var imageFormat: AttachableImageFormat? {
     // FIXME: no way to express `where AttachableValue == _AttachableImageWrapper<???>` on a property (see rdar://47559973)

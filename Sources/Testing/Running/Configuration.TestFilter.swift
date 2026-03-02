@@ -128,7 +128,6 @@ extension Configuration.TestFilter {
   ///   - membership: How to interpret the result when predicating tests.
   ///   - patterns: The patterns, expressed as a `Regex`-compatible regular
   ///     expressions, to match test IDs against.
-  @available(_regexAPI, *)
   init(membership: Membership, matchingAnyOf patterns: some Sequence<String>) throws {
     // Validate each regular expression by attempting to initialize a `Regex`
     // representing it, but do not preserve it. This type only represents
@@ -249,10 +248,6 @@ extension Configuration.TestFilter.Kind {
       }
       return .function(predicate, membership: membership)
     case let .patterns(patterns, membership):
-      guard #available(_regexAPI, *) else {
-        throw SystemError(description: "Filtering by regular expression matching is unavailable")
-      }
-
       nonisolated(unsafe) let regexes = try patterns.map(Regex.init)
       return .function({ item in
         let id = String(describing: item.test.id)

@@ -107,10 +107,10 @@ extension Test {
     _ containingType: S.Type,
     displayName: String? = nil,
     traits: [any SuiteTrait],
-    sourceLocation: SourceLocation
+    sourceBounds: __SourceBounds
   ) -> Self where S: ~Copyable & ~Escapable {
     let containingTypeInfo = TypeInfo(describing: containingType)
-    return Self(displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo)
+    return Self(displayName: displayName, traits: traits, sourceLocation: sourceBounds.lowerBound, containingTypeInfo: containingTypeInfo)
   }
 }
 
@@ -161,7 +161,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
-    sourceLocation: SourceLocation,
+    sourceBounds: __SourceBounds,
     parameters: [__Parameter] = [],
     testFunction: @escaping @Sendable () async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable {
@@ -173,7 +173,7 @@ extension Test {
       nil
     }
     let caseGenerator = { @Sendable in Case.Generator(testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: [])
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: [])
   }
 }
 
@@ -246,7 +246,7 @@ extension Test {
     displayName: String? = nil,
     traits: [any TestTrait],
     arguments collection: @escaping @Sendable () async throws -> C,
-    sourceLocation: SourceLocation,
+    sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element: Sendable {
@@ -257,7 +257,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
 
@@ -393,7 +393,7 @@ extension Test {
     displayName: String? = nil,
     traits: [any TestTrait],
     arguments collection1: @escaping @Sendable () async throws -> C1, _ collection2: @escaping @Sendable () async throws -> C2,
-    sourceLocation: SourceLocation,
+    sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
@@ -404,7 +404,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in try await Case.Generator(arguments: collection1(), collection2(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -421,7 +421,7 @@ extension Test {
     displayName: String? = nil,
     traits: [any TestTrait],
     arguments collection: @escaping @Sendable () async throws -> C,
-    sourceLocation: SourceLocation,
+    sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
@@ -432,7 +432,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -452,7 +452,7 @@ extension Test {
     displayName: String? = nil,
     traits: [any TestTrait],
     arguments dictionary: @escaping @Sendable () async throws -> Dictionary<Key, Value>,
-    sourceLocation: SourceLocation,
+    sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, Key: Sendable, Value: Sendable {
@@ -463,7 +463,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await dictionary(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -477,7 +477,7 @@ extension Test {
     displayName: String? = nil,
     traits: [any TestTrait],
     arguments zippedCollections: @escaping @Sendable () async throws -> Zip2Sequence<C1, C2>,
-    sourceLocation: SourceLocation,
+    sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
@@ -492,7 +492,7 @@ extension Test {
         try await testFunction($0, $1)
       }
     }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
 
