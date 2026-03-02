@@ -122,7 +122,7 @@ public struct __Expression: Sendable {
       debugDescription = String(reflecting: subject)
       typeInfo = TypeInfo(describingTypeOf: subject)
 
-      let mirror = Mirror(reflecting: subject)
+      let mirror = Mirror(reflectingForTest: subject)
       isCollection = mirror.displayStyle?.isCollection ?? false
     }
 
@@ -190,7 +190,7 @@ public struct __Expression: Sendable {
       self.init(describing: subject)
       self.label = label
 
-      let mirror = Mirror(reflecting: subject)
+      let mirror = Mirror(reflectingForTest: subject)
 
       // If the subject being reflected is an instance of a reference type (e.g.
       // a class), keep track of whether it has been seen previously. Later
