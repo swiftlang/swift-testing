@@ -22,16 +22,10 @@ internal import Synchronization
 /// replicates the interface of that type but is implemented differently (using
 /// heap-allocated storage for the underlying lock and the value it guards).
 ///
-/// **Q:** When should I use `Mutex<T>` vs. `Allocated<Mutex<T>>`?
+/// ## See Also
 ///
-/// **A (short):** Whenever the compiler lets you use `Mutex<T>`, use that.
-///
-/// **A (long):** Mutexes can generally be locally allocated when they are
-///   function-local, global, or `static`. If your mutex is an instance member
-///   of a reference type (a class or actor), you again generally won't need
-///   `Allocated`. If, however, you need a mutex to be an instance member of a
-///   copyable value type (a structure or enumeration), then it _must_ be boxed
-///   with `Allocated` (or something else that moves its storage onto the heap).
+/// - ``Allocated``
+/// - ``Atomic``
 struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
   /// The underlying lock type.
 #if !SWT_NO_OS_UNFAIR_LOCK
