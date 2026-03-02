@@ -235,11 +235,7 @@ private enum _MetadataKey: String, Sendable, CaseIterable {
 ///   of the requested information, or `nil` if that information was not
 ///   available. The caller is responsible for freeing this memory with C's
 ///   `free()` function.
-#if compiler(>=6.3)
 @c(_swift_testing_copyMetadataValue)
-#else
-@_cdecl("_swift_testing_copyMetadataValue")
-#endif
 @usableFromInline func _swift_testing_copyMetadataValue(_ key: UnsafePointer<CChar>, _ reserved: UInt) -> UnsafeMutablePointer<CChar>? {
   func copyJSON(for value: some Encodable) -> UnsafeMutablePointer<CChar>? {
     try? JSON.withEncoding(of: value) { json in
