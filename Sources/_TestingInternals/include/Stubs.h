@@ -84,6 +84,35 @@ static mach_port_t swt_mach_task_self(void) {
 }
 #endif
 
+#if defined(__APPLE__)
+/// Define the minimal set of atomic operations supported and used by the
+/// testing library for a given C type.
+///
+/// This macro is provided because Swift cannot directly import the symbols in
+/// `<stdatomic.h>` nor clang's/GCC's generic atomic intrinsics. This macro
+/// simplifies the definition of atomic operations across the set of types we
+/// need them for.
+#define SWT_DEFINE_ATOMIC_OPERATIONS(T) \
+  SWT_SWIFT_NAME(swt_atomicLoad(_:)) \
+  static inline T SWT_CONCAT(swt_atomicLoad, __COUNTER__)(T *const _Nonnull src) { \
+    return __atomic_load_n(src, __ATOMIC_SEQ_CST); \
+  } \
+  SWT_SWIFT_NAME(swt_atomicStore(_:_:)) \
+  static inline void SWT_CONCAT(swt_atomicStore, __COUNTER__)(T *_Nonnull dst, T src) { \
+    __atomic_store_n(dst, src, __ATOMIC_SEQ_CST); \
+  } \
+  SWT_SWIFT_NAME(swt_atomicCompareExchange(_:_:_:)) \
+  static inline bool SWT_CONCAT(swt_atomicCompareExchange, __COUNTER__)(T *_Nonnull dst, T *_Nonnull expected, T desired) { \
+    return __atomic_compare_exchange_n(dst, expected, desired, /*weak: */false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST); \
+  }
+
+/// Define the minimal set of atomic operations that we use on various C types.
+SWT_DEFINE_ATOMIC_OPERATIONS(bool)
+SWT_DEFINE_ATOMIC_OPERATIONS(int)
+SWT_DEFINE_ATOMIC_OPERATIONS(intptr_t)
+SWT_DEFINE_ATOMIC_OPERATIONS(void const *_Nullable)
+#endif
+
 #if defined(_WIN32)
 /// Make a Win32 language ID.
 ///

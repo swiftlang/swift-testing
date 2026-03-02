@@ -72,7 +72,7 @@ struct AttachmentTests {
 
 #if !SWT_NO_FILE_IO
   func compare(_ attachableValue: borrowing MySendableAttachable, toContentsOfFileAtPath filePath: String) throws {
-    let file = try FileHandle(forReadingAtPath: filePath)
+    let file = try Testing.FileHandle(forReadingAtPath: filePath)
     let bytes = try file.readToEnd()
 
     let decodedValue = if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {

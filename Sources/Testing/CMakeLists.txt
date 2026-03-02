@@ -82,6 +82,7 @@ add_library(Testing
   SourceAttribution/SourceLocation.swift
   SourceAttribution/SourceLocation+Macro.swift
   Support/Additions/ArrayAdditions.swift
+  Support/Additions/AtomicAdditions.swift
   Support/Additions/CollectionDifferenceAdditions.swift
   Support/Additions/CommandLineAdditions.swift
   Support/Additions/CopyableAdditions.swift

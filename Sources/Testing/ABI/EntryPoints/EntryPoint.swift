@@ -30,7 +30,7 @@ private import Synchronization
 /// ``ABI/v0/entryPoint-swift.type.property`` to get a reference to an
 /// ABI-stable version of this function.
 func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
-  let exitCode = Mutex(EXIT_SUCCESS)
+  let exitCode = Atomic(EXIT_SUCCESS)
 
   do {
 #if !SWT_NO_EXIT_TESTS
@@ -47,9 +47,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // Set up the event handler.
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
       if case let .issueRecorded(issue) = event.kind, issue.isFailure {
-        exitCode.withLock { exitCode in
-          exitCode = EXIT_FAILURE
-        }
+        exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
       }
       oldEventHandler(event, context)
     }
@@ -131,23 +129,21 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // the caller (assumed to be Swift Package Manager) can implement special
     // handling.
     if tests.isEmpty {
-      exitCode.withLock { exitCode in
-        if exitCode == EXIT_SUCCESS {
-          exitCode = EXIT_NO_TESTS_FOUND
-        }
-      }
+      _ = exitCode.compareExchange(
+        expected: EXIT_SUCCESS,
+        desired: EXIT_NO_TESTS_FOUND,
+        ordering: .sequentiallyConsistent
+      )
     }
   } catch {
 #if !SWT_NO_FILE_IO
     try? FileHandle.stderr.write("\(String(describingForTest: error))\n")
 #endif
 
-    exitCode.withLock { exitCode in
-      exitCode = EXIT_FAILURE
-    }
+    exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
   }
 
-  return exitCode.rawValue
+  return exitCode.load(ordering: .sequentiallyConsistent)
 }
 
 // MARK: - Listing tests

@@ -454,12 +454,10 @@ extension Runner {
 #endif
 
     // Track whether or not any issues were recorded across the entire run.
-    let issueRecorded = Mutex(false)
+    let issueRecorded = Atomic(false)
     runner.configuration.eventHandler = { [eventHandler = runner.configuration.eventHandler] event, context in
       if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
-        issueRecorded.withLock { issueRecorded in
-          issueRecorded = true
-        }
+        issueRecorded.store(true, ordering: .sequentiallyConsistent)
       }
       eventHandler(event, context)
     }
@@ -521,18 +519,16 @@ extension Runner {
         case nil:
           true
         case .untilIssueRecorded:
-          !issueRecorded.rawValue
+          !issueRecorded.load(ordering: .sequentiallyConsistent)
         case .whileIssueRecorded:
-          issueRecorded.rawValue
+          issueRecorded.load(ordering: .sequentiallyConsistent)
         }
         guard shouldContinue else {
           break
         }
 
         // Reset the run-wide "issue was recorded" flag for this iteration.
-        issueRecorded.withLock { issueRecorded in
-          issueRecorded = false
-        }
+        issueRecorded.store(false, ordering: .sequentiallyConsistent)
       }
     }
   }
