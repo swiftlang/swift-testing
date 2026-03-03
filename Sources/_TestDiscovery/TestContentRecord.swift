@@ -84,40 +84,20 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   ///   with interfaces such as `dlsym()` that expect such a pointer.
   public private(set) nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
-  /// A type defining storage for the underlying test content record.
-  private enum _RecordStorage: BitwiseCopyable {
-    /// The test content record is stored by address.
-    case atAddress(UnsafePointer<_TestContentRecord>)
-
-    /// The test content record is stored in-place.
-    case inline(_TestContentRecord)
-  }
-
-  /// Storage for `_record`.
-  private nonisolated(unsafe) var _recordStorage: _RecordStorage
+  /// The address at which `_record` is located.
+  private nonisolated(unsafe) var _recordAddress: UnsafePointer<_TestContentRecord>
 
   /// The underlying test content record.
   private var _record: _TestContentRecord {
-    _read {
-      switch _recordStorage {
-      case let .atAddress(recordAddress):
-        yield recordAddress.pointee
-      case let .inline(record):
-        yield record
-      }
+    unsafeAddress {
+      _recordAddress
     }
   }
 
   fileprivate init(imageAddress: UnsafeRawPointer?, recordAddress: UnsafePointer<_TestContentRecord>) {
     precondition(recordAddress.pointee.kind == T.testContentKind.rawValue)
     self.imageAddress = imageAddress
-    self._recordStorage = .atAddress(recordAddress)
-  }
-
-  fileprivate init(imageAddress: UnsafeRawPointer?, record: _TestContentRecord) {
-    precondition(record.kind == T.testContentKind.rawValue)
-    self.imageAddress = imageAddress
-    self._recordStorage = .inline(record)
+    self._recordAddress = recordAddress
   }
 
   /// The kind of this test content record.
@@ -214,16 +194,11 @@ extension TestContentRecord: CustomStringConvertible {
 #else
     let typeName = "TestContentRecord"
 #endif
-    switch _recordStorage {
-    case let .atAddress(recordAddress):
-      let recordAddress = imageAddress.map { imageAddress in
-        let recordAddressDelta = UnsafeRawPointer(recordAddress) - imageAddress
-        return "\(imageAddress)+0x\(String(recordAddressDelta, radix: 16))"
-      } ?? "\(recordAddress)"
-      return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(context) }"
-    case .inline:
-      return "<\(typeName)> { kind: \(kind), context: \(context) }"
-    }
+    let recordAddress = imageAddress.map { imageAddress in
+      let recordAddressDelta = UnsafeRawPointer(_recordAddress) - imageAddress
+      return "\(imageAddress)+0x\(String(recordAddressDelta, radix: 16))"
+    } ?? "\(_recordAddress)"
+    return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(context) }"
   }
 }
 
