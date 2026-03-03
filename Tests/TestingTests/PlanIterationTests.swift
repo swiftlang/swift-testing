@@ -62,7 +62,7 @@ struct PlanIterationTests {
 
   @Test("Iteration until issue recorded")
   func iterationUntilIssueRecorded() async {
-    let iterationIndex = Mutex(0)
+    let iterationIndex = Atomic(0)
     let iterationCount = 10
     let iterationWithIssue = 5
     await confirmation("N iterations started", expectedCount: iterationWithIssue + 1) { started in
@@ -70,9 +70,7 @@ struct PlanIterationTests {
         var configuration = Configuration()
         configuration.eventHandler = { event, _ in
           if case let .iterationStarted(index) = event.kind {
-            iterationIndex.withLock { iterationIndex in
-              iterationIndex = index
-            }
+            iterationIndex.store(index, ordering: .sequentiallyConsistent)
             started()
           } else if case .iterationEnded = event.kind {
             ended()
@@ -81,7 +79,8 @@ struct PlanIterationTests {
         configuration.repetitionPolicy = .repeating(.untilIssueRecorded, maximumIterationCount: iterationCount)
 
         await Test {
-          if iterationIndex.rawValue == iterationWithIssue {
+          let iterationIndex = iterationIndex.load(ordering: .sequentiallyConsistent)
+          if iterationIndex == iterationWithIssue {
             #expect(Bool(false))
           }
         }.run(configuration: configuration)
@@ -91,7 +90,7 @@ struct PlanIterationTests {
 
   @Test("Iteration while issue recorded")
   func iterationWhileIssueRecorded() async {
-    let iterationIndex = Mutex(0)
+    let iterationIndex = Atomic(0)
     let iterationCount = 10
     let iterationWithoutIssue = 5
     await confirmation("N iterations started", expectedCount: iterationWithoutIssue + 1) { started in
@@ -99,9 +98,7 @@ struct PlanIterationTests {
         var configuration = Configuration()
         configuration.eventHandler = { event, _ in
           if case let .iterationStarted(index) = event.kind {
-            iterationIndex.withLock { iterationIndex in
-              iterationIndex = index
-            }
+            iterationIndex.store(index, ordering: .sequentiallyConsistent)
             started()
           } else if case .iterationEnded = event.kind {
             ended()
@@ -110,7 +107,8 @@ struct PlanIterationTests {
         configuration.repetitionPolicy = .repeating(.whileIssueRecorded, maximumIterationCount: iterationCount)
 
         await Test {
-          if iterationIndex.rawValue < iterationWithoutIssue {
+          let iterationIndex = iterationIndex.load(ordering: .sequentiallyConsistent)
+          if iterationIndex < iterationWithoutIssue {
             #expect(Bool(false))
           }
         }.run(configuration: configuration)
