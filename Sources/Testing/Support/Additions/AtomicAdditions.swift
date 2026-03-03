@@ -26,6 +26,11 @@ internal import Synchronization
 /// Since we don't try to implement the complete ``Synchronization/AtomicRepresentable``
 /// protocol, this implementation only supports using a few types that are
 /// actually in use in the testing library.
+///
+/// ## See Also
+///
+/// - ``Allocated``
+/// - ``Mutex``
 struct Atomic<Value>: ~Copyable {
   /// Storage for the underlying atomic value.
   private nonisolated(unsafe) var _address: UnsafeMutablePointer<Value>
