@@ -256,23 +256,21 @@ private func _findSection(named sectionName: String, in hModule: HMODULE) -> Sec
           start: UnsafeRawPointer(hModule) + virtualAddress,
           count: Int(clamping: min(max(0, sectionHeader.Misc.VirtualSize), max(0, sectionHeader.SizeOfRawData)))
         )
-        guard buffer.count > 2 * MemoryLayout<UInt>.stride else {
-          return nil
-        }
 
-        // Skip over the leading and trailing zeroed uintptr_t values. These
-        // values are always emitted by SwiftRT-COFF.cpp into all Swift images.
-#if DEBUG
-        let firstPointerValue = buffer.baseAddress!.loadUnaligned(as: UInt.self)
-        assert(firstPointerValue == 0, "First pointer-width value in section '\(sectionName)' at \(buffer.baseAddress!) was expected to equal 0 (found \(firstPointerValue) instead)")
-        let lastPointerValue = ((buffer.baseAddress! + buffer.count) - MemoryLayout<UInt>.stride).loadUnaligned(as: UInt.self)
-        assert(lastPointerValue == 0, "Last pointer-width value in section '\(sectionName)' at \(buffer.baseAddress!) was expected to equal 0 (found \(lastPointerValue) instead)")
-#endif
-        buffer = UnsafeRawBufferPointer(
-          rebasing: buffer
-            .dropFirst(MemoryLayout<UInt>.stride)
-            .dropLast(MemoryLayout<UInt>.stride)
-        )
+        // Skip over the leading and trailing zeroed uintptr_t values if they're
+        // present. These values are emitted by older versions of SwiftRT-COFF.cpp
+        // into all Swift images. SEE: https://github.com/swiftlang/swift/issues/87650
+        if buffer.count > 2 * MemoryLayout<UInt>.stride {
+          let firstPointerValue = buffer.baseAddress!.loadUnaligned(as: UInt.self)
+          let lastPointerValue = ((buffer.baseAddress! + buffer.count) - MemoryLayout<UInt>.stride).loadUnaligned(as: UInt.self)
+          if firstPointerValue == 0 && lastPointerValue == 0 {
+            buffer = UnsafeRawBufferPointer(
+              rebasing: buffer
+                .dropFirst(MemoryLayout<UInt>.stride)
+                .dropLast(MemoryLayout<UInt>.stride)
+            )
+          }
+        }
 
         return SectionBounds(imageAddress: hModule, buffer: buffer)
       }.first
