@@ -40,7 +40,7 @@ extension ABI {
     var kind: Kind
 
     /// The instant at which the event occurred.
-    public internal(set) var instant: EncodedInstant<V>
+    public var instant: EncodedInstant<V>
 
     /// The issue that occurred, if any.
     ///

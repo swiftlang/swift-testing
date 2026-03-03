@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -55,7 +55,7 @@ struct TimeValue: Sendable {
     self.init(SuspendingClock().systemEpoch.duration(to: instant))
   }
 
-  init<F>(_ fp: F) where F: BinaryFloatingPoint {
+  init(_ fp: some BinaryFloatingPoint) {
     self.init(.nanoseconds(Int64(fp * 1_000_000_000)))
   }
 }

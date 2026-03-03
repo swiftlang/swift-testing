@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -23,26 +23,42 @@ extension ABI {
 
     /// The number of seconds since the UNIX epoch (1970-01-01 00:00:00 UT).
     package var since1970: Double
-
-    public init(encoding instant: borrowing Test.Clock.Instant) {
-      absolute = Double(instant.suspending)
-#if !SWT_NO_UTC_CLOCK
-      since1970 = Double(instant.wall)
-#else
-      since1970 = 0
-#endif
-    }
   }
 }
 
-// MARK: -
+// MARK: - Conversion to/from library types
+
+extension ABI.EncodedInstant {
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - instant: The instant to initialize this instance from.
+  public init(encoding instant: borrowing Test.Clock.Instant) {
+    absolute = Double(instant.suspending)
+#if !SWT_NO_UTC_CLOCK
+    since1970 = Double(instant.wall)
+#else
+    since1970 = 0
+#endif
+  }
+}
 
 @_spi(ForToolsIntegrationOnly)
 extension SuspendingClock.Instant {
-  public init(_ encodedInstant: ABI.EncodedInstant<some ABI.Version>) {
-    self.init(TimeValue(encodedInstant.absolute))
+  /// Initialize this instant to equal an instant from the testing library's
+  /// event stream.
+  ///
+  /// - Parameters:
+  ///   - instant: The encoded instant to initialize this instance from.
+  ///
+  /// The resulting instance is equivalent to the suspending-clock time
+  /// represented by `instant`.
+  public init?<V>(decoding instant: ABI.EncodedInstant<V>) {
+    self.init(TimeValue(instant.absolute))
   }
 }
+
+// Date.init(decoding:) is in the Foundation overlay.
 
 // MARK: - Codable
 

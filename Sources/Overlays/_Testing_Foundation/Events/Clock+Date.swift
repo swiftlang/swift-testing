@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -18,13 +18,13 @@ extension Date {
   /// library's clock.
   ///
   /// - Parameters:
-  ///   - testClockInstant: The equivalent instant on ``Test/Clock``.
+  ///   - instant: The equivalent instant on ``Test/Clock``.
   ///
   /// The resulting instance is equivalent to the wall-clock time represented by
-  /// `testClockInstant`. For precise date/time calculations, convert instances
-  /// of ``Test/Clock/Instant`` to `SuspendingClock.Instant` instead of `Date`.
-  public init(_ testClockInstant: Test.Clock.Instant) {
-    let components = testClockInstant.timeComponentsSince1970
+  /// `instant`. For precise date/time calculations, convert instances of
+  /// ``Test/Clock/Instant`` to `SuspendingClock.Instant` instead of `Date`.
+  public init(_ instant: Test.Clock.Instant) {
+    let components = instant.timeComponentsSince1970
     let secondsSince1970 = TimeInterval(components.seconds) + (TimeInterval(components.attoseconds) / TimeInterval(1_000_000_000_000_000_000))
     self.init(timeIntervalSince1970: secondsSince1970)
   }
@@ -33,13 +33,13 @@ extension Date {
   /// stream.
   ///
   /// - Parameters:
-  ///   - encodedInstant: The equivalent instant.
+  ///   - instant: The encoded instant to initialize this instance from.
   ///
   /// The resulting instance is equivalent to the wall-clock time represented by
-  /// `encodedInstant`. For precise date/time calculations, convert instances
-  /// of ``ABI/EncodedInstant`` to `SuspendingClock.Instant` instead of `Date`.
-  public init(_ encodedInstant: ABI.EncodedInstant<some ABI.Version>) {
-    self.init(timeIntervalSince1970: encodedInstant.since1970)
+  /// `instant`. For precise date/time calculations, convert instances of
+  /// ``ABI/EncodedInstant`` to `SuspendingClock.Instant` instead of `Date`.
+  public init?<V>(decoding instant: ABI.EncodedInstant<V>) {
+    self.init(timeIntervalSince1970: instant.since1970)
   }
 }
 #endif
