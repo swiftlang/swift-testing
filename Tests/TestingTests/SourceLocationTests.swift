@@ -80,7 +80,7 @@ struct SourceLocationTests {
     let esl = try json.withUTF8 { json in
       try JSON.decode(ABI.EncodedSourceLocation<ABI.v6_3>.self, from: UnsafeRawBufferPointer(json))
     }
-    let sourceLocation = try #require(SourceLocation(esl))
+    let sourceLocation = try #require(SourceLocation(decoding: esl))
     #expect(SourceLocation.synthesizedModuleName == "__C")
     #expect(sourceLocation.fileID == "\(SourceLocation.synthesizedModuleName)/FileName.swift")
     #expect(sourceLocation.moduleName == SourceLocation.synthesizedModuleName)

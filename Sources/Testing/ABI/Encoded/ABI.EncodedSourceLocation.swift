@@ -12,9 +12,9 @@ extension ABI {
   /// A type implementing the JSON encoding of ``SourceLocation`` for the ABI
   /// entry point and event stream output.
   ///
-  /// This type is not part of the public interface of the testing library. It
-  /// assists in converting values to JSON; clients that consume this JSON are
-  /// expected to write their own decoders.
+  /// You can use this type and its conformance to [`Codable`](https://developer.apple.com/documentation/swift/codable),
+  /// when integrating the testing library with development tools. It is not
+  /// part of the testing library's public interface.
   public struct EncodedSourceLocation<V>: Sendable where V: ABI.Version {
     /// The file ID of the source file.
     public var fileID: String?
@@ -49,19 +49,6 @@ extension ABI {
     /// Storage for ``filePath`` under the `"filePath"` JSON key, as used in
     /// Swift 6.3 and newer.
     private var _filePath_v6_3: String?
-
-    public init(encoding sourceLocation: borrowing SourceLocation) {
-      fileID = sourceLocation.fileID
-      filePath = sourceLocation.filePath
-      line = sourceLocation.line
-      column = sourceLocation.column
-
-      // When using the 6.3 schema, don't encode synthesized file IDs.
-      if V.versionNumber >= ABI.v6_3.versionNumber,
-         sourceLocation.moduleName == SourceLocation.synthesizedModuleName {
-        fileID = nil
-      }
-    }
   }
 }
 
@@ -77,7 +64,27 @@ extension ABI.EncodedSourceLocation: Codable {
   }
 }
 
-// MARK: -
+// MARK: - Conversion to/from library types
+
+@_spi(ForToolsIntegrationOnly)
+extension ABI.EncodedSourceLocation {
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - sourceLocation: The source location to initialize this instance from.
+  public init(encoding sourceLocation: borrowing SourceLocation) {
+    fileID = sourceLocation.fileID
+    filePath = sourceLocation.filePath
+    line = sourceLocation.line
+    column = sourceLocation.column
+
+    // When using the 6.3 schema, don't encode synthesized file IDs.
+    if V.versionNumber >= ABI.v6_3.versionNumber,
+       sourceLocation.moduleName == SourceLocation.synthesizedModuleName {
+      fileID = nil
+    }
+  }
+}
 
 @_spi(ForToolsIntegrationOnly)
 extension SourceLocation {
@@ -90,7 +97,10 @@ extension SourceLocation {
   /// If `sourceLocation` does not specify a value for its `fileID` field, the
   /// testing library synthesizes a value from its `filePath` property and
   /// hard-codes a module name of `"__C"`.
-  public init?<V>(_ sourceLocation: ABI.EncodedSourceLocation<V>) {
+  ///
+  /// If `sourceLocation` does not specify a value for its `filePath` field,
+  /// this initializer returns `nil`.
+  public init?<V>(decoding sourceLocation: ABI.EncodedSourceLocation<V>) {
     let fileID = sourceLocation.fileID
     let filePath = sourceLocation.filePath
     let line = max(1, sourceLocation.line)

@@ -96,7 +96,8 @@ extension ABI {
     ///
     /// - Warning: Source locations at this level of the JSON schema are not yet
     ///   part of said JSON schema.
-    var _sourceLocation: EncodedSourceLocation<V>?
+    @_spi(Experimental)
+    public var _sourceLocation: EncodedSourceLocation<V>?
 
     /// The iteration of the `testID` being executed.
     ///
