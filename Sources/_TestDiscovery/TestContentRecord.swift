@@ -84,15 +84,8 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   ///   with interfaces such as `dlsym()` that expect such a pointer.
   public private(set) nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
-  /// The address at which `_record` is located.
+  /// The address at which the record is located.
   private nonisolated(unsafe) var _recordAddress: UnsafePointer<_TestContentRecord>
-
-  /// The underlying test content record.
-  private var _record: _TestContentRecord {
-    unsafeAddress {
-      _recordAddress
-    }
-  }
 
   fileprivate init(imageAddress: UnsafeRawPointer?, recordAddress: UnsafePointer<_TestContentRecord>) {
     precondition(recordAddress.pointee.kind == T.testContentKind.rawValue)
@@ -102,7 +95,7 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
 
   /// The kind of this test content record.
   public var kind: TestContentKind {
-    TestContentKind(rawValue: _record.kind)
+    TestContentKind(rawValue: _recordAddress.pointee.kind)
   }
 
   /// The type of the ``context`` property.
@@ -111,7 +104,7 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   /// The context of this test content record.
   public var context: Context {
     T.validateMemoryLayout()
-    return withUnsafeBytes(of: _record.context) { context in
+    return withUnsafeBytes(of: _recordAddress.pointee.context) { context in
       context.load(as: Context.self)
     }
   }
@@ -161,7 +154,7 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   /// than once on the same instance, the testing library calls the underlying
   /// test content record's accessor function each time.
   public func load(withHint hint: Hint? = nil) -> T? {
-    guard let accessor = _record.accessor else {
+    guard let accessor = _recordAddress.pointee.accessor else {
       return nil
     }
 
