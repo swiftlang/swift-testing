@@ -302,7 +302,7 @@ typedef void (* SWTFallbackEventHandler)(const char *recordJSONSchemaVersionNumb
 /// The fallback event handler can only be installed once per process, typically
 /// by the first testing library to run. If this function has already been
 /// called and the handler set, it does not replace the previous handler.
-SWT_EXTERN bool _swift_testing_installFallbackEventHandler(SWTFallbackEventHandler);
+SWT_EXTERN bool _swift_testing_installFallbackEventHandler(SWTFallbackEventHandler handler);
 
 /// Get the current fallback event handler.
 /// Shadows the function with the same name in _TestingInterop.

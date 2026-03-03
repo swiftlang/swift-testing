@@ -148,6 +148,43 @@ struct EventHandlingInteropTests {
     }
   }
 
+  @Test func `Fallback handler records an issue if invalid event provided`() async throws {
+    await #expect(processExitsWith: .success) {
+      // Install and retrieve the fallback event handler.
+      // Capture all observed issues when running tests.
+      Self.enableExperimentalInterop()
+      try #require(Event.installFallbackEventHandler(), "Should successfully install a new handler")
+      let currentHandler = try #require(
+        _swift_testing_getFallbackEventHandler(), "Should successfully retrieve installed handler")
+
+      let issues = Mutex<[Issue]>()
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case .issueRecorded(let issue) = event.kind {
+          issues.withLock { $0.append(issue) }
+        }
+      }
+
+      // Pass an invalid record JSON to the event handler
+      struct Empty: Encodable {}
+      await Test {
+        try JSONEncoder().encode(Empty()).withUnsafeBytes { ptr in
+          let vers = String(describing: ABI.CurrentVersion.versionNumber)
+          currentHandler(vers, ptr.baseAddress!, ptr.count, nil)
+        }
+      }.run(configuration: configuration)
+
+      // Assert that we record an issue with a helpful debug message
+      let expectedPrefix =
+        "Issue recorded (error): Another test library reported a test event that Swift Testing could not decode. Inspect the payload to determine if this was a test assertion failure."
+      let actualMessages = issues.rawValue.map { $0.description }
+      #expect(actualMessages.count == 1)
+      #expect(
+        actualMessages.first?.hasPrefix(expectedPrefix) == true,
+        "\(actualMessages) did not match the expected message")
+    }
+  }
+
   @Test func `Handle fallback event warns issue about XCTest API usage`() async throws {
     await #expect(processExitsWith: .success) {
       // Install and retrieve the fallback event handler.

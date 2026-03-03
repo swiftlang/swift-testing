@@ -22,8 +22,8 @@ extension Issue {
   /// represented by the schema.
   ///
   /// - Parameter event: The `EncodedIssue` wrapped in an `EncodedEvent`.
-  /// Return `nil` if this is not an issueRecorded kind of event, or if the
-  /// event doesn't include an `EncodedIssue`.
+  /// - Returns: `nil` if this is not an issueRecorded kind of event, or if the
+  ///   event doesn't include an `EncodedIssue`.
   init?<V>(event: ABI.EncodedEvent<V>) where V: ABI.Version {
     switch event.kind {
     case .issueRecorded:
@@ -118,13 +118,27 @@ extension Event {
   /// testing library.
   private static let _ourFallbackEventHandler: SWTFallbackEventHandler = {
     recordJSONSchemaVersionNumber, recordJSONBaseAddress, recordJSONByteCount, _ in
-    let abi = String(validatingCString: recordJSONSchemaVersionNumber)
+    let version = String(validatingCString: recordJSONSchemaVersionNumber)
       .flatMap(VersionNumber.init)
       .flatMap { ABI.version(forVersionNumber: $0) }
-    if let abi {
+    if let version {
       let recordJSON = UnsafeRawBufferPointer(
         start: recordJSONBaseAddress, count: recordJSONByteCount)
-      try! Self.handle(recordJSON, encodedWith: abi)
+      do {
+        try Self.handle(recordJSON, encodedWith: version)
+      } catch {
+        // Surface otherwise "unhandleable" records instead of dropping them silently
+        let errorContext: Comment = """
+        Another test library reported a test event that Swift Testing could not decode. Inspect the payload to determine if this was a test assertion failure.
+
+        Error:
+        \(error)
+
+        Raw payload:
+        \(recordJSON)
+        """
+        Issue.record(errorContext)
+      }
     }
   }
 #endif
@@ -132,10 +146,7 @@ extension Event {
   /// The implementation of ``installFallbackEventHandler()``.
   private static let _installFallbackEventHandler: Bool = {
 #if !SWT_NO_INTEROP
-    if let environmentValue = Environment.variable(named: "SWT_EXPERIMENTAL_INTEROP_ENABLED")
-      .flatMap(Int.init),
-      environmentValue > 0
-    {
+    if Environment.flag(named: "SWT_EXPERIMENTAL_INTEROP_ENABLED") == true {
       return _swift_testing_installFallbackEventHandler(Self._ourFallbackEventHandler)
     }
 #endif
