@@ -52,11 +52,7 @@ struct TimeValue: Sendable {
   }
 
   init(_ instant: SuspendingClock.Instant) {
-#if compiler(>=6.3)
     self.init(SuspendingClock().systemEpoch.duration(to: instant))
-#else
-    self.init(unsafeBitCast(instant, to: Duration.self))
-#endif
   }
 
   init<F>(_ fp: F) where F: BinaryFloatingPoint {
@@ -83,10 +79,6 @@ extension TimeValue: Codable {}
 
 extension TimeValue: CustomStringConvertible {
   var description: String {
-#if os(WASI) && compiler(<6.3)
-    // BUG: https://github.com/swiftlang/swift/issues/72398
-    return String(describing: Duration(self))
-#else
     let (secondsFromAttoseconds, attosecondsRemaining) = attoseconds.quotientAndRemainder(dividingBy: 1_000_000_000_000_000_000)
     let seconds = seconds + secondsFromAttoseconds
     var milliseconds = attosecondsRemaining / 1_000_000_000_000_000
@@ -100,7 +92,6 @@ extension TimeValue: CustomStringConvertible {
       }
       return String(cString: buffer.baseAddress!)
     }
-#endif
   }
 }
 
@@ -114,11 +105,7 @@ extension Duration {
 
 extension SuspendingClock.Instant {
   init(_ timeValue: TimeValue) {
-#if compiler(>=6.3)
     self = SuspendingClock().systemEpoch.advanced(by: Duration(timeValue))
-#else
-    self = unsafeBitCast(Duration(timeValue), to: SuspendingClock.Instant.self)
-#endif
   }
 }
 
