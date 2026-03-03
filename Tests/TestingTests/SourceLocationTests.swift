@@ -86,6 +86,20 @@ struct SourceLocationTests {
     #expect(sourceLocation.moduleName == SourceLocation.synthesizedModuleName)
     #expect(sourceLocation.fileName == "FileName.swift")
   }
+
+  @Test("SourceLocation does not accept a bad file ID from an EncodedSourceLocation")
+  func badFileIDInEncodedSourceLocation() throws {
+#if os(Windows)
+    var json = #"{"filePath": "C:\fake/dir/FileName.swift/", "fileID": "bad", "line": 1, "column": 1}"#
+#else
+    var json = #"{"filePath": "/fake/dir/FileName.swift/", "fileID": "bad", "line": 1, "column": 1}"#
+#endif
+    let esl = try json.withUTF8 { json in
+      try JSON.decode(ABI.EncodedSourceLocation<ABI.v6_3>.self, from: UnsafeRawBufferPointer(json))
+    }
+    let sourceLocation = SourceLocation(decoding: esl)
+    #expect(sourceLocation == nil)
+  }
 #endif
 
   @Test("SourceLocation.line and .column properties")
