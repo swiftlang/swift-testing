@@ -149,8 +149,7 @@ extension Event.JUnitXMLRecorder {
           .compactMap(\.value?.skipInfo)
           .count
         let durationSeconds = context.runStartInstant
-          .map { instant.suspending.rawValue - $0.suspending.rawValue }
-          .map { $0 / .seconds(1) } ?? 0.0
+          .map { (instant.suspending.rawValue - $0.suspending.rawValue) / .seconds(1) } ?? 0.0
         return #"""
             <testsuite name="TestResults" errors="0" tests="\#(context.testCount)" failures="\#(issueCount)" skipped="\#(skipCount)" time="\#(durationSeconds)">
           \#(Self._xml(for: context.testData))
