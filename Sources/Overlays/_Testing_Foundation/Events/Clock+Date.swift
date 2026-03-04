@@ -24,9 +24,7 @@ extension Date {
   /// `instant`. For precise date/time calculations, convert instances of
   /// ``Test/Clock/Instant`` to `SuspendingClock.Instant` instead of `Date`.
   public init(_ instant: Test.Clock.Instant) {
-    let components = instant.timeComponentsSince1970
-    let secondsSince1970 = TimeInterval(components.seconds) + (TimeInterval(components.attoseconds) / TimeInterval(1_000_000_000_000_000_000))
-    self.init(timeIntervalSince1970: secondsSince1970)
+    self.init(timeIntervalSince1970: instant.durationSince1970 / .seconds(1))
   }
 
   /// Initialize this date to equal an instant from the testing library's event

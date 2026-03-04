@@ -34,9 +34,9 @@ extension ABI.EncodedInstant {
   /// - Parameters:
   ///   - instant: The instant to initialize this instance from.
   public init(encoding instant: borrowing Test.Clock.Instant) {
-    absolute = Double(instant.suspending)
+    absolute = instant.suspending.rawValue / .seconds(1)
 #if !SWT_NO_UTC_CLOCK
-    since1970 = Double(instant.wall)
+    since1970 = instant.wall.rawValue / .seconds(1)
 #else
     since1970 = 0
 #endif
@@ -54,7 +54,7 @@ extension SuspendingClock.Instant {
   /// The resulting instance is equivalent to the suspending-clock time
   /// represented by `instant`.
   public init?<V>(decoding instant: ABI.EncodedInstant<V>) {
-    self.init(TimeValue(instant.absolute))
+    self = SuspendingClock().systemEpoch + .seconds(instant.absolute)
   }
 }
 

@@ -131,9 +131,7 @@ extension ABI {
         if !bugs.isEmpty {
           self.bugs = bugs
         }
-        self.timeLimit = test.timeLimit
-          .map(TimeValue.init)
-          .map(Double.init)
+        self.timeLimit = test.timeLimit.map { $0 / .seconds(1) }
       }
     }
   }
