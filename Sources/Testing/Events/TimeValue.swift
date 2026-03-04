@@ -24,31 +24,6 @@ private import _TestingInternals
 /// standard library like ``Duration``.
 struct TimeValue: Sendable, RawRepresentable {
   var rawValue: Duration
-
-  init(rawValue: Duration) {
-    self.rawValue = rawValue
-  }
-
-  /// The amount of time represented by this instance as a tuple.
-  var components: (seconds: Int64, attoseconds: Int64) {
-    rawValue.components
-  }
-
-  init(_ components: (seconds: Int64, attoseconds: Int64)) {
-    rawValue = Duration(secondsComponent: components.seconds, attosecondsComponent: components.attoseconds)
-  }
-
-  init(_ instant: SuspendingClock.Instant) {
-    self.init(rawValue: SuspendingClock().systemEpoch.duration(to: instant))
-  }
-}
-
-// MARK: - Equatable, Hashable, Comparable
-
-extension TimeValue: Equatable, Hashable, Comparable {
-  static func <(lhs: Self, rhs: Self) -> Bool {
-    lhs.rawValue < rhs.rawValue
-  }
 }
 
 #if !SWT_NO_SNAPSHOT_TYPES
@@ -63,7 +38,7 @@ extension TimeValue: Codable {
   }
 
   func encode(to encoder: any Encoder) throws {
-    let encodedForm = _Xcode16EncodedForm(seconds: components.seconds, attoseconds: components.attoseconds)
+    let encodedForm = _Xcode16EncodedForm(seconds: rawValue.components.seconds, attoseconds: rawValue.components.attoseconds)
     var container = encoder.singleValueContainer()
     try container.encode(encodedForm)
   }
@@ -73,6 +48,10 @@ extension TimeValue: Codable {
     let encodedForm = try container.decode(_Xcode16EncodedForm.self)
     self.init(rawValue: Duration(secondsComponent: encodedForm.seconds, attosecondsComponent: encodedForm.attoseconds))
   }
+
+  init(_ components: (seconds: Int64, attoseconds: Int64)) {
+    rawValue = Duration(secondsComponent: components.seconds, attosecondsComponent: components.attoseconds)
+  }
 }
 #endif
 
@@ -80,15 +59,14 @@ extension TimeValue: Codable {
 
 extension TimeValue: CustomStringConvertible {
   var description: String {
-    let (secondsFromAttoseconds, attosecondsRemaining) = components.attoseconds.quotientAndRemainder(dividingBy: 1_000_000_000_000_000_000)
-    let seconds = components.seconds + secondsFromAttoseconds
-    var milliseconds = attosecondsRemaining / 1_000_000_000_000_000
-    if seconds == 0 && milliseconds == 0 && attosecondsRemaining > 0 {
+    let seconds = CLongLong(rawValue.components.seconds)
+    var milliseconds = CInt((rawValue - .seconds(rawValue.components.seconds)) / .milliseconds(1))
+    if seconds == 0 && milliseconds == 0 && rawValue > .zero {
       milliseconds = 1
     }
 
     return withUnsafeTemporaryAllocation(of: CChar.self, capacity: 512) { buffer in
-      withVaList([CLongLong(seconds), CInt(milliseconds)]) { args in
+      withVaList([seconds, milliseconds]) { args in
         _ = vsnprintf(buffer.baseAddress!, buffer.count, "%lld.%03d seconds", args)
       }
       return String(cString: buffer.baseAddress!)

@@ -21,7 +21,7 @@ extension Test {
     /// An instant on the testing clock.
     public struct Instant: Sendable {
       /// The suspending-clock time corresponding to this instant.
-      fileprivate(set) var suspending = TimeValue(SuspendingClock.Instant.now)
+      fileprivate(set) var suspending = TimeValue(rawValue: SuspendingClock().systemEpoch.duration(to: .now))
 
 #if !SWT_NO_UTC_CLOCK
       /// The wall-clock time corresponding to this instant.
@@ -67,24 +67,20 @@ extension SuspendingClock.Instant {
   }
 }
 
-extension Test.Clock.Instant {
 #if !SWT_NO_UTC_CLOCK
+extension Test.Clock.Instant {
   /// The duration since 1970 represented by this instance.
   ///
-  /// The value of this property is the equivalent of `self` on the wall clock.
-  /// It is suitable for display to the user, but not for fine timing
-  /// calculations.
-  public var durationSince1970: Duration {
+  /// The Foundation overlay uses this property to implement `Date.init(_:)`.
+  package var durationSince1970: Duration {
     wall.rawValue
   }
-#endif
 }
+#endif
 
 // MARK: - Clock
 
 extension Test.Clock: _Concurrency.Clock {
-  public typealias Duration = SuspendingClock.Duration
-
   public var now: Instant {
     .now
   }
@@ -133,23 +129,21 @@ extension Test.Clock: _Concurrency.Clock {
 
 extension Test.Clock.Instant: Equatable, Hashable, Comparable {
   public static func ==(lhs: Self, rhs: Self) -> Bool {
-    lhs.suspending == rhs.suspending
+    lhs.suspending.rawValue == rhs.suspending.rawValue
   }
 
   public func hash(into hasher: inout Hasher) {
-    hasher.combine(suspending)
+    hasher.combine(suspending.rawValue)
   }
 
   public static func <(lhs: Self, rhs: Self) -> Bool {
-    lhs.suspending < rhs.suspending
+    lhs.suspending.rawValue < rhs.suspending.rawValue
   }
 }
 
 // MARK: - InstantProtocol
 
 extension Test.Clock.Instant: InstantProtocol {
-  public typealias Duration = Swift.Duration
-
   public func advanced(by duration: Duration) -> Self {
     var result = self
 

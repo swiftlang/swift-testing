@@ -320,7 +320,7 @@ func withTimeLimit(
   for test: Test,
   configuration: Configuration,
   _ body: @escaping @Sendable () async throws -> Void,
-  timeoutHandler: @escaping @Sendable (_ timeLimit: (seconds: Int64, attoseconds: Int64)) -> Void
+  timeoutHandler: @escaping @Sendable (_ timeLimit: Duration) -> Void
 ) async throws {
   if let timeLimit = test.adjustedTimeLimit(configuration: configuration) {
 #if SWT_NO_UNSTRUCTURED_TASKS
@@ -330,7 +330,7 @@ func withTimeLimit(
     let start = Test.Clock.Instant.now
     defer {
       if start.duration(to: .now) > timeLimit {
-        timeoutHandler(timeLimit.components)
+        timeoutHandler(timeLimit)
       }
     }
     try await body()
@@ -338,7 +338,7 @@ func withTimeLimit(
     return try await withTimeLimit(timeLimit) {
       try await body()
     } timeoutHandler: {
-      timeoutHandler(timeLimit.components)
+      timeoutHandler(timeLimit)
     }
 #endif
   }

@@ -35,11 +35,11 @@ struct ClockTests {
     #expect(instants.count == 2)
 
     let now = Test.Clock.Instant.now
-    #expect(now.suspending.components.seconds > 0)
-    #expect(now.suspending.components.attoseconds >= 0)
+    #expect(now.suspending.rawValue.components.seconds > 0)
+    #expect(now.suspending.rawValue.components.attoseconds >= 0)
 #if !SWT_NO_UTC_CLOCK
-    #expect(now.wall.components.seconds > 0)
-    #expect(now.wall.components.attoseconds >= 0)
+    #expect(now.wall.rawValue.components.seconds > 0)
+    #expect(now.wall.rawValue.components.attoseconds >= 0)
 #endif
   }
 
