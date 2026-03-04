@@ -147,13 +147,7 @@ extension Test.Clock: _Concurrency.Clock {
   }
 
   public var minimumResolution: Duration {
-#if SWT_TARGET_OS_APPLE
-    var res = timespec()
-    _ = clock_getres(CLOCK_UPTIME_RAW, &res)
-    return Duration(TimeValue(res))
-#else
     SuspendingClock().minimumResolution
-#endif
   }
 
   public func sleep(until deadline: Instant, tolerance: Duration?) async throws {
@@ -214,12 +208,7 @@ extension Test.Clock.Instant {
   /// - Returns: A string describing the duration between `self` and `other`,
   ///   up to millisecond accuracy.
   func descriptionOfDuration(to other: Test.Clock.Instant) -> String {
-#if SWT_TARGET_OS_APPLE
-    let (seconds, nanosecondsRemaining) = nanoseconds(until: other).quotientAndRemainder(dividingBy: 1_000_000_000)
-    return String(describing: TimeValue((seconds, nanosecondsRemaining * 1_000_000_000)))
-#else
-    return String(describing: TimeValue(Duration(other.suspending) - Duration(suspending)))
-#endif
+    String(describing: TimeValue(Duration(other.suspending) - Duration(suspending)))
   }
 }
 
