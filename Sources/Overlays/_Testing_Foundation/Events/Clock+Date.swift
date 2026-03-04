@@ -24,9 +24,7 @@ extension Date {
   /// of ``Test/Clock/Instant`` to `SuspendingClock.Instant` instead of `Date`.
   @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
   public init(_ testClockInstant: Test.Clock.Instant) {
-    let components = testClockInstant.timeComponentsSince1970
-    let secondsSince1970 = TimeInterval(components.seconds) + (TimeInterval(components.attoseconds) / TimeInterval(1_000_000_000_000_000_000))
-    self.init(timeIntervalSince1970: secondsSince1970)
+    self.init(timeIntervalSince1970: testClockInstant.durationSince1970 / .seconds(1))
   }
 }
 #endif

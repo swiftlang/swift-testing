@@ -286,7 +286,7 @@ func withTimeLimit(
       // If sleep() returns instead of throwing a CancellationError, that means
       // the timeout was reached before this task could be cancelled, so call
       // the timeout handler.
-      try await Test.Clock.sleep(for: timeLimit)
+      try await Test.Clock().sleep(for: timeLimit)
       timeoutHandler()
     }
     group.addTask(name: decorateTaskName(taskName, withAction: "running"), operation: body)

@@ -35,11 +35,11 @@ struct ClockTests {
     #expect(instants.count == 2)
 
     let now = Test.Clock.Instant.now
-    #expect(now.suspending.seconds > 0)
-    #expect(now.suspending.attoseconds >= 0)
+    #expect(now.suspending.components.seconds > 0)
+    #expect(now.suspending.components.attoseconds >= 0)
 #if !SWT_NO_UTC_CLOCK
-    #expect(now.wall.seconds > 0)
-    #expect(now.wall.attoseconds >= 0)
+    #expect(now.wall.components.seconds > 0)
+    #expect(now.wall.components.attoseconds >= 0)
 #endif
   }
 
@@ -60,17 +60,6 @@ struct ClockTests {
 
     #expect(instant1 < instant2)
   }
-
-#if !SWT_NO_UTC_CLOCK
-  @Test("Clock.Instant.timeComponentsSince1970 property")
-  func timeComponentsSince1970() async throws {
-    let instant1 = Test.Clock.Instant.now.timeComponentsSince1970
-    try await Test.Clock.sleep(for: .nanoseconds(50_000_000))
-    let instant2 = Test.Clock.Instant.now.timeComponentsSince1970
-
-    #expect(instant1.seconds < instant2.seconds || instant1.attoseconds < instant2.attoseconds)
-  }
-#endif
 
 #if !SWT_NO_UTC_CLOCK
   @Test("Clock.Instant.durationSince1970 property")
@@ -123,17 +112,4 @@ struct ClockTests {
     #expect(instant != now)
   }
 #endif
-
-  @Test("Clock.Instant.nanoseconds(until:) method",
-    arguments: [
-      (Duration.zero, 0),
-      (.nanoseconds(1), 1),
-      (.seconds(1), 1_000_000_000),
-      (Duration(secondsComponent: 0, attosecondsComponent: 1), 0),
-    ]
-  )
-  func nanoseconds(until offset: Duration, nanoseconds: Int) {
-    let now = Test.Clock.Instant.now
-    #expect(now.nanoseconds(until: now.advanced(by: offset)) == nanoseconds)
-  }
 }

@@ -466,7 +466,7 @@ extension Test {
 
     /// The maximum amount of time a test may run for before timing out.
     public var timeLimit: Duration? {
-      _timeLimit.map(Duration.init)
+      _timeLimit?.rawValue
     }
 
     /// Initialize an instance of this type by snapshotting the specified test.
