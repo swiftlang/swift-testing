@@ -102,7 +102,7 @@ struct ClockTests {
     #expect(duration == .nanoseconds(offsetNanoseconds))
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_SNAPSHOT_TYPES && canImport(Foundation)
   @Test("Codable")
   func codable() async throws {
     let now = Test.Clock.Instant()
