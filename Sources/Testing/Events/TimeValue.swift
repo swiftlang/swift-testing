@@ -23,36 +23,35 @@ private import _TestingInternals
 /// represented as instances of ``Test/Clock/Instant`` or a type from the Swift
 /// standard library like ``Duration``.
 struct TimeValue: Sendable, RawRepresentable {
+#if !SWT_NO_SNAPSHOT_TYPES
+  private var seconds: Int64
+  private var attoseconds: Int64
+
+  var rawValue: Duration {
+    get {
+      Duration(secondsComponent: seconds, attosecondsComponent: attoseconds)
+    }
+    set {
+      (seconds, attoseconds) = newValue.components
+    }
+  }
+
+  init(rawValue: Duration) {
+    (seconds, attoseconds) = rawValue.components
+  }
+
+  init(_ components: (seconds: Int64, attoseconds: Int64)) {
+    (seconds, attoseconds) = components
+  }
+#else
   var rawValue: Duration
+#endif
 }
 
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Codable
 
-extension TimeValue: Codable {
-  /// A structure representing an instance of ``TimeValue`` whose `Codable`
-  /// conformance is compatible with Xcode 16.
-  private struct _Xcode16EncodedForm: Codable {
-    var seconds: Int64
-    var attoseconds: Int64
-  }
-
-  func encode(to encoder: any Encoder) throws {
-    let encodedForm = _Xcode16EncodedForm(seconds: rawValue.components.seconds, attoseconds: rawValue.components.attoseconds)
-    var container = encoder.singleValueContainer()
-    try container.encode(encodedForm)
-  }
-
-  init(from decoder: any Decoder) throws {
-    let container = try decoder.singleValueContainer()
-    let encodedForm = try container.decode(_Xcode16EncodedForm.self)
-    self.init(rawValue: Duration(secondsComponent: encodedForm.seconds, attosecondsComponent: encodedForm.attoseconds))
-  }
-
-  init(_ components: (seconds: Int64, attoseconds: Int64)) {
-    rawValue = Duration(secondsComponent: components.seconds, attosecondsComponent: components.attoseconds)
-  }
-}
+extension TimeValue: Codable {}
 #endif
 
 // MARK: - CustomStringConvertible
