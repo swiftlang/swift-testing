@@ -54,7 +54,6 @@ extension ABI.EncodedExpression: Codable {}
 
 // MARK: - Conversion to/from library types
 
-@_spi(ForToolsIntegrationOnly)
 extension __Expression {
   /// Initialize an instance of this type from the given value.
   ///
