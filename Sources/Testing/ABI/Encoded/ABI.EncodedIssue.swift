@@ -163,8 +163,7 @@ extension Issue {
       sourceContext: sourceContext
     )
     if issue.isKnown {
-      // The known issue comment, if there was one, is already included in
-      // the `comments` array above.
+      // FIXME: The known issue comment is not currently encoded.
       self.knownIssueContext = Issue.KnownIssueContext()
     }
   }
