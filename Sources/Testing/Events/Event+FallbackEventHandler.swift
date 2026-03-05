@@ -108,6 +108,26 @@ extension Event {
     warnForXCTestUsageIssue.record()
   }
 
+  /// Get the best available source location to use when diagnosing an issue
+  /// decoding a bad record JSON blob.
+  ///
+  /// - Parameters:
+  ///   - recordJSON: The undecodable JSON.
+  ///
+  /// - Returns: A source location to use when reporting an issue about
+  ///   `recordJSON`.
+  private static func _bestAvailableSourceLocation(forInvalidRecordJSON recordJSON: UnsafeRawBufferPointer) -> SourceLocation {
+    // TODO: try to actually extract a source location from arbitrary JSON?
+
+    // If there's a test associated with the current task, it should have a
+    // source location associated with it.
+    if let test = Test.current {
+      return test.sourceLocation
+    }
+
+    return SourceLocation(fileID: "<unknown>/<unknown>", filePath: "<unknown>", line: 1, column: 1)
+  }
+
 #if !SWT_NO_INTEROP
   /// The fallback event handler to install when Swift Testing is the active
   /// testing library.
@@ -115,15 +135,14 @@ extension Event {
     recordJSONSchemaVersionNumber, recordJSONBaseAddress, recordJSONByteCount, _ in
     let version = String(validatingCString: recordJSONSchemaVersionNumber)
       .flatMap(VersionNumber.init)
-      .flatMap { ABI.version(forVersionNumber: $0) }
-    if let version {
-      let recordJSON = UnsafeRawBufferPointer(
-        start: recordJSONBaseAddress, count: recordJSONByteCount)
-      do {
-        try Self.handle(recordJSON, encodedWith: version)
-      } catch {
-        // Surface otherwise "unhandleable" records instead of dropping them silently
-        let errorContext: Comment = """
+      .flatMap { ABI.version(forVersionNumber: $0) } ?? ABI.v0.self
+    let recordJSON = UnsafeRawBufferPointer(
+      start: recordJSONBaseAddress, count: recordJSONByteCount)
+    do {
+      try Self.handle(recordJSON, encodedWith: version)
+    } catch {
+      // Surface otherwise "unhandleable" records instead of dropping them silently
+      let errorContext: Comment = """
         Another test library reported a test event that Swift Testing could not decode. Inspect the payload to determine if this was a test assertion failure.
 
         Error:
@@ -132,8 +151,19 @@ extension Event {
         Raw payload:
         \(recordJSON)
         """
-        Issue.record(errorContext)
-      }
+
+      // Try to figure out a reasonable source context for this issue.
+      let sourceContext = SourceContext(
+        backtrace: .current(),
+        sourceLocation: _bestAvailableSourceLocation(forInvalidRecordJSON: recordJSON)
+      )
+
+      // Record the issue.
+      Issue(
+        kind: .system,
+        comments: [errorContext],
+        sourceContext: sourceContext
+      ).record()
     }
   }
 #endif
