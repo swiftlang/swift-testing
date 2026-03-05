@@ -1056,39 +1056,25 @@ extension ExitTest {
       return
     }
 
-    lazy var comments: [Comment] = event._comments?.map(Comment.init(rawValue:)) ?? []
-    lazy var sourceContext = SourceContext(
-      backtrace: nil, // A backtrace from the child process will have the wrong address space.
-      sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)
-    )
-    lazy var skipInfo = SkipInfo(comment: comments.first, sourceContext: sourceContext)
-    if let issue = event.issue {
-      // Translate the issue back into a "real" issue and record it
-      // in the parent process. This translation is, of course, lossy
-      // due to the process boundary, but we make a best effort.
-      let issueKind: Issue.Kind = if let error = issue._error {
-        .errorCaught(error)
-      } else {
-        // TODO: improve fidelity of issue kind reporting (especially those without associated values)
-        .unconditional
-      }
-      let severity: Issue.Severity = switch issue.severity {
-      case .warning:
-        .warning
-      case .error, nil:
-        // Prior to 6.3, all Issues are errors
-        .error
-      }
-      var issueCopy = Issue(kind: issueKind, severity: severity, comments: comments, sourceContext: sourceContext)
-      if issue.isKnown {
-        // The known issue comment, if there was one, is already included in
-        // the `comments` array above.
-        issueCopy.knownIssueContext = Issue.KnownIssueContext()
-      }
-      issueCopy.record()
+    // Translate the event back into a "real" event (such as "issue recorded")
+    // and post it in the parent process. This translation is, of course, lossy
+    // due to the process boundary, but we make a best effort.
+    if var issue = Issue(decoding: event) {
+      // A backtrace from the child process will have the wrong address space,
+      // so remove the backtrace if present before recording it.
+      issue.sourceContext.backtrace = nil
+      issue.record()
     } else if let attachment = event.attachment {
       Attachment.record(attachment, sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)!)
     } else if case .testCancelled = event.kind {
+      let comment = event._comments?.lazy
+        .map(Comment.init(rawValue:))
+        .first
+      let sourceContext = SourceContext(
+        backtrace: nil, // A backtrace from the child process will have the wrong address space.
+        sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)
+      )
+      let skipInfo = SkipInfo(comment: comment, sourceContext: sourceContext)
       _ = try? Test.cancel(with: skipInfo)
     }
   }
