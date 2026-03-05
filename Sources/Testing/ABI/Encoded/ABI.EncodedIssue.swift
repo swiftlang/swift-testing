@@ -48,7 +48,7 @@ extension ABI {
     var isKnown: Bool
 
     /// The location in source where this issue occurred, if available.
-    var sourceLocation: EncodedSourceLocation<V>?
+    public var sourceLocation: EncodedSourceLocation<V>?
 
     /// The backtrace where this issue occurred, if available.
     ///
