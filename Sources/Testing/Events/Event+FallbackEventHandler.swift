@@ -160,7 +160,7 @@ extension Event {
 
       // Record the issue.
       Issue(
-        kind: .apiMisused,
+        kind: .system,
         comments: [errorContext],
         sourceContext: sourceContext
       ).record()//(errorContext, sourceLocation: sourceLocation)
