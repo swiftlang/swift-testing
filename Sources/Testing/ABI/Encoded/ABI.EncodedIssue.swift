@@ -102,7 +102,6 @@ extension ABI.EncodedIssue.Severity: Codable {}
 
 // MARK: - Conversion to/from library types
 
-@_spi(ForToolsIntegrationOnly)
 extension Issue {
   /// Initialize an instance of this type from the given value.
   ///
