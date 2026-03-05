@@ -46,27 +46,41 @@ extension Event {
     warnForXCTestUsageIssue.record()
   }
 
-#if !SWT_NO_INTEROP
-  /// The fallback event handler that was installed in the current test process.
-  private static let _activeFallbackEventHandler: SWTFallbackEventHandler? = {
-    _swift_testing_getFallbackEventHandler()
-  }()
+  /// Get the best available source location to use when diagnosing an issue
+  /// decoding a bad record JSON blob.
+  ///
+  /// - Parameters:
+  ///   - recordJSON: The undecodable JSON.
+  ///
+  /// - Returns: A source location to use when reporting an issue about
+  ///   `recordJSON`.
+  private static func _bestAvailableSourceLocation(forInvalidRecordJSON recordJSON: UnsafeRawBufferPointer) -> SourceLocation {
+    // TODO: try to actually extract a source location from arbitrary JSON?
 
+    // If there's a test associated with the current task, it should have a
+    // source location associated with it.
+    if let test = Test.current {
+      return test.sourceLocation
+    }
+
+    return SourceLocation(fileID: "<unknown>/<unknown>", filePath: "<unknown>", line: 1, column: 1)
+  }
+
+#if !SWT_NO_INTEROP
   /// The fallback event handler to install when Swift Testing is the active
   /// testing library.
   private static let _ourFallbackEventHandler: SWTFallbackEventHandler = {
     recordJSONSchemaVersionNumber, recordJSONBaseAddress, recordJSONByteCount, _ in
     let version = String(validatingCString: recordJSONSchemaVersionNumber)
       .flatMap(VersionNumber.init)
-      .flatMap { ABI.version(forVersionNumber: $0) }
-    if let version {
-      let recordJSON = UnsafeRawBufferPointer(
-        start: recordJSONBaseAddress, count: recordJSONByteCount)
-      do {
-        try Self.handle(recordJSON, encodedWith: version)
-      } catch {
-        // Surface otherwise "unhandleable" records instead of dropping them silently
-        let errorContext: Comment = """
+      .flatMap { ABI.version(forVersionNumber: $0) } ?? ABI.v0.self
+    let recordJSON = UnsafeRawBufferPointer(
+      start: recordJSONBaseAddress, count: recordJSONByteCount)
+    do {
+      try Self.handle(recordJSON, encodedWith: version)
+    } catch {
+      // Surface otherwise "unhandleable" records instead of dropping them silently
+      let errorContext: Comment = """
         Another test library reported a test event that Swift Testing could not decode. Inspect the payload to determine if this was a test assertion failure.
 
         Error:
@@ -75,8 +89,19 @@ extension Event {
         Raw payload:
         \(recordJSON)
         """
-        Issue.record(errorContext)
-      }
+
+      // Try to figure out a reasonable source context for this issue.
+      let sourceContext = SourceContext(
+        backtrace: .current(),
+        sourceLocation: _bestAvailableSourceLocation(forInvalidRecordJSON: recordJSON)
+      )
+
+      // Record the issue.
+      Issue(
+        kind: .system,
+        comments: [errorContext],
+        sourceContext: sourceContext
+      ).record()
     }
   }
 #endif
@@ -117,21 +142,33 @@ extension Event {
   ///   `false`.
   borrowing func postToFallbackEventHandler(in context: borrowing Context) -> Bool {
 #if !SWT_NO_INTEROP
-    guard let fallbackEventHandler = Self._activeFallbackEventHandler else {
-      return false
+    return Self._postToFallbackEventHandler?(self, context) != nil
+#else
+    return false
+#endif
+  }
+
+  /// The implementation of ``postToFallbackEventHandler(in:)`` that actually
+  /// invokes the installed fallback event handler.
+  ///
+  /// If there was no fallback event handler installed, or if the installed
+  /// handler belongs to the testing library (and so shouldn't be called by us),
+  /// the value of this property is `nil`.
+  private static let _postToFallbackEventHandler: Event.Handler? = {
+    guard let fallbackEventHandler = _swift_testing_getFallbackEventHandler() else {
+      return nil
     }
 
-    let isOurInstalledHandler =
-      castCFunction(fallbackEventHandler, to: UnsafeRawPointer.self)
-      == castCFunction(Self._ourFallbackEventHandler, to: UnsafeRawPointer.self)
-    guard !isOurInstalledHandler else {
+    let fallbackEventHandlerAddress = castCFunction(fallbackEventHandler, to: UnsafeRawPointer.self)
+    let ourFallbackEventHandlerAddress = castCFunction(Self._ourFallbackEventHandler, to: UnsafeRawPointer.self)
+    if fallbackEventHandlerAddress == ourFallbackEventHandlerAddress {
       // The fallback event handler belongs to Swift Testing, so we don't want
       // to call it on our own behalf.
-      return false
+      return nil
     }
 
     // Encode the event as JSON and pass it to the handler.
-    let encodeAndInvoke = ABI.CurrentVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
+    return ABI.CurrentVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
       fallbackEventHandler(
         String(describing: ABI.CurrentVersion.versionNumber),
         recordJSON.baseAddress!,
@@ -139,10 +176,5 @@ extension Event {
         nil
       )
     }
-    encodeAndInvoke(self, context)
-    return true
-#else
-    return false
-#endif
-  }
+  }()
 }
