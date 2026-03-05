@@ -20,7 +20,8 @@ public struct SourceLocationMacro: ExpressionMacro, Sendable {
     of macro: some FreestandingMacroExpansionSyntax,
     in context: some MacroExpansionContext
   ) throws -> ExprSyntax {
-    createSourceLocationExpr(of: macro, context: context)
+    diagnoseExpansionInLibraryTarget(of: macro, in: context)
+    return createSourceLocationExpr(of: macro, context: context)
   }
 
   public static var formatMode: FormatMode {

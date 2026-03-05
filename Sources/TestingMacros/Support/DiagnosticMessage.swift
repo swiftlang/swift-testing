@@ -18,6 +18,24 @@ import SwiftSyntaxMacroExpansion
 /// A type describing diagnostic messages emitted by this module's macro during
 /// evaluation.
 struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
+#if DEBUG
+  /// Create a diagnostic message for the given macro stating it cannot be used
+  /// when building the testing library itself.
+  ///
+  /// - Parameters:
+  ///   - macro: The macro that cannot be used.
+  ///   - targetName: The name of the target being built.
+  ///
+  /// - Returns: A diagnostic message.
+  static func macroExpansionNotAllowed(_ macro: some FreestandingMacroExpansionSyntax, inLibraryTargetNamed targetName: String) -> Self {
+    Self(
+      syntax: Syntax(macro),
+      message: "\(_macroName(macro)) cannot be used within the target '\(targetName)' because it will not be available when building the Swift toolchain",
+      severity: .error
+    )
+  }
+#endif
+
   /// Create a diagnostic message for the macro with the specified name
   /// stating that its condition will always pass or fail.
   ///
