@@ -119,8 +119,8 @@ extension Event {
   private static func _bestAvailableSourceLocation(forInvalidRecordJSON recordJSON: UnsafeRawBufferPointer) -> SourceLocation {
     // TODO: try to actually extract a source location from arbitrary JSON?
 
-    // We couldn't figure out where in the JSON the source location was (if
-    // it was there at all), so try the current test.
+    // If there's a test associated with the current task, it should have a
+    // source location associated with it.
     if let test = Test.current {
       return test.sourceLocation
     }
