@@ -18,9 +18,9 @@ import Foundation
 import Synchronization
 #endif
 
-#if !SWIFT_PACKAGE && SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE
 // Xcode already installs a handler, so the preconditions for this suite may not be met
-let interopHandlerMayBeInstalled = true
+let interopHandlerMayBeInstalled = Environment.variable(named: "XCTestSessionIdentifier") != nil
 #else
 let interopHandlerMayBeInstalled = false
 #endif
@@ -224,7 +224,7 @@ struct EventHandlingInteropTests {
       #expect(
         issues.rawValue.map { $0.description }.sorted() == [
           "An API was misused (warning): XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead.",
-          "Issue recorded (error): Unknown issue",
+          "Issue recorded (error)",
         ]
       )
     }

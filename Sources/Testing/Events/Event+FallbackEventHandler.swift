@@ -10,63 +10,6 @@
 
 private import _TestingInternals
 
-extension Issue {
-  /// Attempt to create an `Issue` from a foreign `EncodedIssue`.
-  ///
-  /// Typically, another testing library transforms its own test issue into the
-  /// `EncodedEvent` format and then passes it through Swift Testing's installed
-  /// fallback event handler to be converted into an `Issue`.
-  ///
-  /// The fidelity of this conversion is limited by the fields present in
-  /// `EncodedIssue`, in addition to how well the foreign test issue is
-  /// represented by the schema.
-  ///
-  /// - Parameter event: The `EncodedIssue` wrapped in an `EncodedEvent`.
-  /// - Returns: `nil` if this is not an issueRecorded kind of event, or if the
-  ///   event doesn't include an `EncodedIssue`.
-  init?<V>(event: ABI.EncodedEvent<V>) where V: ABI.Version {
-    switch event.kind {
-    case .issueRecorded:
-      guard let issue = event.issue else { return nil }
-      let issueKind: Issue.Kind =
-        if let error = issue._error {
-          .errorCaught(error)
-        } else {
-          // The encoded Issue doesn't include enough information to determine
-          // the exact kind of issue, so a expectation and unconditional failure
-          // have the same representation.
-          .unconditional
-        }
-
-      let severity: Issue.Severity =
-        switch issue.severity {
-        case .warning: .warning
-        case nil, .error: .error
-        }
-
-      let comments = {
-        let returnedComments = event.messages.map { $0.text }.map(Comment.init(rawValue:))
-        return if returnedComments.isEmpty {
-          [Comment("Unknown issue")]
-        } else {
-          returnedComments
-        }
-      }()
-
-      let sourceContext = SourceContext(
-        backtrace: nil,  // Requires backtrace information from the EncodedIssue
-        sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)
-      )
-
-      self.init(
-        kind: issueKind, severity: severity, comments: comments, sourceContext: sourceContext)
-    default:
-      // The fallback handler does not support this event type
-      return nil
-    }
-  }
-}
-
 extension Event {
   /// Attempt to handle an event encoded as JSON as if it had been generated in
   /// the current testing context.
@@ -84,24 +27,19 @@ extension Event {
   static func handle<V>(_ recordJSON: UnsafeRawBufferPointer, encodedWith version: V.Type) throws
   where V: ABI.Version {
     let record = try JSON.decode(ABI.Record<V>.self, from: recordJSON)
-    guard
-      case .event(let event) = record.kind,
-      let issue = Issue(event: event)
-    else {
+    guard case .event(let event) = record.kind,
+          let issue = Issue(decoding: event) else {
       return
     }
 
     // For the time being, assume that foreign test events originate from XCTest
     let warnForXCTestUsageIssue = {
-      let sourceContext = SourceContext(
-        backtrace: issue.sourceContext.backtrace,
-        sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)
-      )
       return Issue(
         kind: .apiMisused, severity: .warning,
         comments: [
           "XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead."
-        ], sourceContext: sourceContext)
+        ], sourceContext: issue.sourceContext
+      )
     }()
 
     issue.record()
