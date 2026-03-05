@@ -210,6 +210,7 @@ extension Event {
 #endif
   }
 
+#if !SWT_NO_INTEROP
   /// The implementation of ``postToFallbackEventHandler(in:)`` that actually
   /// invokes the installed fallback event handler.
   ///
@@ -239,4 +240,5 @@ extension Event {
       )
     }
   }()
+#endif
 }
