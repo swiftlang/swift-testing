@@ -214,7 +214,7 @@ private import _TestingInternals
 
         await Test {
           await #expect(processExitsWith: .success) {
-            #expect(Bool(false), "Something went wrong!")
+            Issue.record("Something went wrong!")
             exit(0)
           }
           await #expect(processExitsWith: .failure) {
