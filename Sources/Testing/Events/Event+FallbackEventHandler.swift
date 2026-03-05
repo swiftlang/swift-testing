@@ -109,11 +109,6 @@ extension Event {
   }
 
 #if !SWT_NO_INTEROP
-  /// The fallback event handler that was installed in the current test process.
-  private static let _activeFallbackEventHandler: SWTFallbackEventHandler? = {
-    _swift_testing_getFallbackEventHandler()
-  }()
-
   /// The fallback event handler to install when Swift Testing is the active
   /// testing library.
   private static let _ourFallbackEventHandler: SWTFallbackEventHandler = {
@@ -179,21 +174,33 @@ extension Event {
   ///   `false`.
   borrowing func postToFallbackEventHandler(in context: borrowing Context) -> Bool {
 #if !SWT_NO_INTEROP
-    guard let fallbackEventHandler = Self._activeFallbackEventHandler else {
-      return false
+    return Self._postToFallbackEventHandler?(self, context) != nil
+#else
+    return false
+#endif
+  }
+
+  /// The implementation of ``postToFallbackEventHandler(in:)`` that actually
+  /// invokes the installed fallback event handler.
+  ///
+  /// If there was no fallback event handler installed, or if the installed
+  /// handler belongs to the testing library (and so shouldn't be called by us),
+  /// the value of this property is `nil`.
+  private static let _postToFallbackEventHandler: Event.Handler? = {
+    guard let fallbackEventHandler = _swift_testing_getFallbackEventHandler() else {
+      return nil
     }
 
-    let isOurInstalledHandler =
-      castCFunction(fallbackEventHandler, to: UnsafeRawPointer.self)
-      == castCFunction(Self._ourFallbackEventHandler, to: UnsafeRawPointer.self)
-    guard !isOurInstalledHandler else {
+    let fallbackEventHandlerAddress = castCFunction(fallbackEventHandler, to: UnsafeRawPointer.self)
+    let ourFallbackEventHandlerAddress = castCFunction(Self._ourFallbackEventHandler, to: UnsafeRawPointer.self)
+    if fallbackEventHandlerAddress == ourFallbackEventHandlerAddress {
       // The fallback event handler belongs to Swift Testing, so we don't want
       // to call it on our own behalf.
-      return false
+      return nil
     }
 
     // Encode the event as JSON and pass it to the handler.
-    let encodeAndInvoke = ABI.CurrentVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
+    return ABI.CurrentVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
       fallbackEventHandler(
         String(describing: ABI.CurrentVersion.versionNumber),
         recordJSON.baseAddress!,
@@ -201,10 +208,5 @@ extension Event {
         nil
       )
     }
-    encodeAndInvoke(self, context)
-    return true
-#else
-    return false
-#endif
-  }
+  }()
 }
