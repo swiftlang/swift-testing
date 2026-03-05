@@ -152,9 +152,18 @@ extension Event {
         \(recordJSON)
         """
 
-      // Try to figure out a reasonable source location for this issue.
-      let sourceLocation = _bestAvailableSourceLocation(forInvalidRecordJSON: recordJSON)
-      Issue.record(errorContext, sourceLocation: sourceLocation)
+      // Try to figure out a reasonable source context for this issue.
+      let sourceContext = SourceContext(
+        backtrace: .current(),
+        sourceLocation: _bestAvailableSourceLocation(forInvalidRecordJSON: recordJSON)
+      )
+
+      // Record the issue.
+      Issue(
+        kind: .apiMisused,
+        comments: [errorContext],
+        sourceContext: sourceContext
+      ).record()//(errorContext, sourceLocation: sourceLocation)
     }
   }
 #endif

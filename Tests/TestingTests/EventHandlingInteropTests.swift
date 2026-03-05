@@ -176,7 +176,7 @@ struct EventHandlingInteropTests {
 
       // Assert that we record an issue with a helpful debug message
       let expectedPrefix =
-        "Issue recorded (error): Another test library reported a test event that Swift Testing could not decode. Inspect the payload to determine if this was a test assertion failure."
+        "An API was misused (error): Another test library reported a test event that Swift Testing could not decode. Inspect the payload to determine if this was a test assertion failure."
       let actualMessages = issues.rawValue.map { $0.description }
       #expect(actualMessages.count == 1)
       #expect(
