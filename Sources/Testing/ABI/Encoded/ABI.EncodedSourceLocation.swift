@@ -66,7 +66,6 @@ extension ABI.EncodedSourceLocation: Codable {
 
 // MARK: - Conversion to/from library types
 
-@_spi(ForToolsIntegrationOnly)
 extension ABI.EncodedSourceLocation {
   /// Initialize an instance of this type from the given value.
   ///

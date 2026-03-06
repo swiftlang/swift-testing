@@ -21,7 +21,7 @@ extension ABI {
   /// part of the testing library's public interface.
   public struct EncodedAttachment<V>: Sendable where V: ABI.Version {
     /// The different kinds of encoded attachment.
-    private enum _Kind: Sendable {
+    fileprivate enum Kind: Sendable {
       /// The attachment has already been saved to disk and we have its local
       /// file system path.
       case savedAtPath(String)
@@ -39,7 +39,7 @@ extension ABI {
     }
 
     /// The kind of encoded attachment.
-    private var _kind: _Kind
+    fileprivate var kind: Kind
 
     /// The preferred name of the attachment.
     ///
@@ -47,22 +47,12 @@ extension ABI {
     ///   schema.
     var _preferredName: String?
 
-    public init(encoding attachment: borrowing Attachment<AnyAttachable>) {
-      if let path = attachment.fileSystemPath {
-        _kind = .savedAtPath(path)
-      } else {
-        _kind = .abstract(copy attachment)
-      }
-
-      if V.includesExperimentalFields {
-        _preferredName = attachment.preferredName
-      }
-    }
-
-    public init(encoding attachment: borrowing Attachment<some Attachable & Sendable & ~Copyable>) {
-      let attachmentCopy = Attachment<AnyAttachable>(copy attachment)
-      self.init(encoding: attachmentCopy)
-    }
+    /// The source location of the attachment.
+    ///
+    /// - Warning: Attachments' source locations are not yet part of the JSON
+    ///   schema.
+    @_spi(Experimental)
+    public var _sourceLocation: ABI.EncodedSourceLocation<V>?
   }
 }
 
@@ -74,6 +64,7 @@ extension ABI.EncodedAttachment: Codable {
     case preferredName = "_preferredName"
     case bytes = "_bytes"
     case error = "_error"
+    case sourceLocation = "_sourceLocation"
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -92,7 +83,7 @@ extension ABI.EncodedAttachment: Codable {
 #endif
     }
 
-    switch _kind {
+    switch kind {
     case let .savedAtPath(path):
       try container.encode(path, forKey: .path)
     case let .abstract(attachment):
@@ -129,13 +120,14 @@ extension ABI.EncodedAttachment: Codable {
     }
     if V.includesExperimentalFields {
       try container.encodeIfPresent(_preferredName, forKey: .preferredName)
+      try container.encodeIfPresent(_sourceLocation, forKey: .sourceLocation)
     }
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
 
-    _kind = try {
+    kind = try {
       if let path = try container.decodeIfPresent(String.self, forKey: .path) {
         return .savedAtPath(path)
       }
@@ -171,6 +163,7 @@ extension ABI.EncodedAttachment: Codable {
 
     if V.includesExperimentalFields {
       _preferredName = try container.decodeIfPresent(String.self, forKey: .preferredName)
+      _sourceLocation = try container.decodeIfPresent(ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
     }
   }
 }
@@ -179,7 +172,7 @@ extension ABI.EncodedAttachment: Codable {
 
 extension ABI.EncodedAttachment: Attachable {
   public var estimatedAttachmentByteCount: Int? {
-    switch _kind {
+    switch kind {
     case .savedAtPath, .error:
       return nil
     case let .inMemory(bytes):
@@ -194,7 +187,7 @@ extension ABI.EncodedAttachment: Attachable {
   fileprivate struct BytesUnavailableError: Error {}
 
   public borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    switch _kind {
+    switch kind {
     case let .savedAtPath(path):
 #if !SWT_NO_FILE_IO
 #if canImport(Foundation)
@@ -227,5 +220,45 @@ extension ABI.EncodedAttachment: Attachable {
 extension ABI.EncodedAttachment.BytesUnavailableError: CustomStringConvertible {
   var description: String {
     "The attachment's content could not be deserialized."
+  }
+}
+
+// MARK: - Conversion to/from library types
+
+extension ABI.EncodedAttachment {
+  public init(encoding attachment: borrowing Attachment<AnyAttachable>) {
+    if let path = attachment.fileSystemPath {
+      kind = .savedAtPath(path)
+    } else {
+      kind = .abstract(copy attachment)
+    }
+
+    if V.includesExperimentalFields {
+      _preferredName = attachment.preferredName
+      _sourceLocation = ABI.EncodedSourceLocation(encoding: attachment.sourceLocation)
+    }
+  }
+
+  public init(encoding attachment: borrowing Attachment<some Attachable & Sendable & ~Copyable>) {
+    let attachmentCopy = Attachment<AnyAttachable>(copy attachment)
+    self.init(encoding: attachmentCopy)
+  }
+}
+
+@_spi(ForToolsIntegrationOnly)
+extension Attachment where AttachableValue == AnyAttachable {
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - attachment: The encoded attachment to initialize this instance from.
+  public init?<V>(decoding attachment: ABI.EncodedAttachment<V>) {
+    switch attachment.kind {
+    case let .abstract(attachment):
+      self = attachment // No need to nest it further.
+    default:
+      let sourceLocation = attachment._sourceLocation.flatMap(SourceLocation.init(decoding:)) ?? .unknown
+      let attachmentCopy = Attachment<ABI.EncodedAttachment<V>>(attachment, sourceLocation: sourceLocation)
+      self.init(attachmentCopy)
+    }
   }
 }
