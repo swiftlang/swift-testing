@@ -10,6 +10,57 @@
 
 private import _TestingInternals
 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+public enum Interop: Sendable {}
+
+extension Interop {
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+  public enum Mode: String, Sendable, CaseIterable {
+    /// The interop feature is not active.
+    case none
+
+    /// Show runtime warnings for assertion failures caused by primitives
+    /// from other test libraries. The overall test case success/failure is
+    /// therefore not affected.
+    ///
+    /// Show runtime warning issues for XCTest API usage when running a
+    /// Swift Testing test.
+    case limited
+
+    /// Show assertion failures caused by primitives from other test
+    /// libraries.
+    ///
+    /// Show runtime warning issues for XCTest API usage when running a
+    /// Swift Testing test.
+    case complete
+
+    /// Show assertion failures caused by primitives from other test
+    /// libraries.
+    ///
+    /// `fatalError` upon any XCTest assertion failures when running a
+    /// Swift Testing test.
+    case strict
+  }
+}
+
+extension Interop.Mode {
+  static let interopModeEnvKey = "SWIFT_TESTING_XCTEST_INTEROP_MODE"
+
+  var requiresInstallation: Bool {
+    self != .none
+  }
+
+  /// Current interop mode, which should not be changed after tests start
+  /// running.
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+  public static let current: Self = _currentImpl()
+
+  /// Exposed for testing only.
+  static func _currentImpl() -> Self {
+    Environment.variable(named: interopModeEnvKey).flatMap(Interop.Mode.init) ?? .complete
+  }
+}
+
 extension Event {
   /// Attempt to handle an event encoded as JSON as if it had been generated in
   /// the current testing context.
@@ -28,22 +79,36 @@ extension Event {
   where V: ABI.Version {
     let record = try JSON.decode(ABI.Record<V>.self, from: recordJSON)
     guard case .event(let event) = record.kind,
-          let issue = Issue(decoding: event) else {
+      var issue = Issue(decoding: event)
+    else {
       return
     }
 
     // For the time being, assume that foreign test events originate from XCTest
-    let warnForXCTestUsageIssue = {
-      return Issue(
+    let warnForXCTestUsageIssue =
+      Issue(
         kind: .apiMisused, severity: .warning,
         comments: [
           "XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead."
-        ], sourceContext: issue.sourceContext
-      )
-    }()
+        ], sourceContext: issue.sourceContext)
 
-    issue.record()
-    warnForXCTestUsageIssue.record()
+    switch Interop.Mode.current {
+    case .none: return  // no-op
+    case .limited:
+      issue.severity = .warning
+      issue.record()
+      warnForXCTestUsageIssue.record()
+    case .complete:
+      issue.severity = .error
+      issue.record()
+      warnForXCTestUsageIssue.record()
+    case .strict:
+      issue.severity = .error
+      issue.record()
+      fatalError(
+        "XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead. This is a fatal error because strict interop mode is active (\(Interop.Mode.interopModeEnvKey)=strict)",
+      )
+    }
   }
 
   /// Get the best available source location to use when diagnosing an issue
@@ -109,7 +174,9 @@ extension Event {
   /// The implementation of ``installFallbackEventHandler()``.
   private static let _installFallbackEventHandler: Bool = {
 #if !SWT_NO_INTEROP
-    if Environment.flag(named: "SWT_EXPERIMENTAL_INTEROP_ENABLED") == true {
+    if Environment.flag(named: "SWT_EXPERIMENTAL_INTEROP_ENABLED") == true
+      && Interop.Mode.current.requiresInstallation
+      {
       return _swift_testing_installFallbackEventHandler(Self._ourFallbackEventHandler)
     }
 #endif
