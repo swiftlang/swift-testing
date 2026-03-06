@@ -38,7 +38,7 @@ extension ABI {
     var displayName: String?
 
     /// The source location of this test.
-    var sourceLocation: EncodedSourceLocation<V>
+    public var sourceLocation: EncodedSourceLocation<V>
 
     /// A type implementing the JSON encoding of ``Test/ID`` for the ABI entry
     /// point and event stream output.
@@ -131,9 +131,7 @@ extension ABI {
         if !bugs.isEmpty {
           self.bugs = bugs
         }
-        self.timeLimit = test.timeLimit
-          .map(TimeValue.init)
-          .map(Double.init)
+        self.timeLimit = test.timeLimit.map { $0 / .seconds(1) }
       }
     }
   }

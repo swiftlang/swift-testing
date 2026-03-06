@@ -117,8 +117,25 @@ public struct __Expression: Sendable {
       debugDescription = String(reflecting: subject)
       typeInfo = TypeInfo(describingTypeOf: subject)
 
-      let mirror = Mirror(reflecting: subject)
+      let mirror = Mirror(reflectingForTest: subject)
       isCollection = mirror.displayStyle?.isCollection ?? false
+    }
+
+    /// Initialize an instance of this type with a previously-generated
+    /// description of some subject.
+    ///
+    /// - Parameters:
+    ///   - description: A description of the subject.
+    ///   - typeInfo: The type of the subject.
+    ///
+    /// This initializer is only used when decoding an instance of
+    /// ``ABI/EncodedExpression``. Callers should prefer other initializers
+    /// where possible.
+    init(description: String, typeInfo: TypeInfo) {
+      self.description = description
+      self.debugDescription = description
+      self.typeInfo = typeInfo
+      self.isCollection = false
     }
 
     /// Initialize an instance of this type with the specified description.
@@ -185,7 +202,7 @@ public struct __Expression: Sendable {
       self.init(describing: subject)
       self.label = label
 
-      let mirror = Mirror(reflecting: subject)
+      let mirror = Mirror(reflectingForTest: subject)
 
       // If the subject being reflected is an instance of a reference type (e.g.
       // a class), keep track of whether it has been seen previously. Later

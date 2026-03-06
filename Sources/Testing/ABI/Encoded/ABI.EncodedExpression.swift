@@ -51,3 +51,25 @@ extension ABI {
 // MARK: - Codable
 
 extension ABI.EncodedExpression: Codable {}
+
+// MARK: - Conversion to/from library types
+
+extension __Expression {
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - expression: The encoded expression to initialize this instance from.
+  init?<V>(decoding expression: ABI.EncodedExpression<V>) {
+    self.init(expression.sourceCode)
+    if let runtimeValue = expression.runtimeValue,
+       let runtimeTypeName = expression.runtimeTypeName {
+      self.runtimeValue =  __Expression.Value(
+        description: runtimeValue,
+        typeInfo: TypeInfo(fullyQualifiedName: runtimeTypeName, mangledName: nil)
+      )
+    }
+    if let children = expression.children {
+      self.subexpressions = children.compactMap(__Expression.init(decoding:))
+    }
+  }
+}

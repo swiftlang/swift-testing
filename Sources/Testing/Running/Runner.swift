@@ -81,7 +81,7 @@ extension Runner {
   /// type at runtime, it may be better-suited for ``Configuration`` instead.
   private struct _Context: Sendable {
     /// A serializer used to reduce parallelism among test cases.
-    var testCaseSerializer: Serializer?
+    var testCaseSerializer: Serializer<Void>?
 
     /// Which iteration of the test plan is being executed.
     var iteration: Int
@@ -424,7 +424,7 @@ extension Runner {
           }
         } timeoutHandler: { timeLimit in
           let issue = Issue(
-            kind: .timeLimitExceeded(timeLimitComponents: timeLimit),
+            kind: .timeLimitExceeded(timeLimit: timeLimit),
             comments: [],
             sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
           )
@@ -452,14 +452,13 @@ extension Runner {
 #if !SWT_NO_FILE_IO
     runner.configureAttachmentHandling()
 #endif
+    _ = Event.installFallbackEventHandler()
 
     // Track whether or not any issues were recorded across the entire run.
-    let issueRecorded = Mutex(false)
+    let issueRecorded = Atomic(false)
     runner.configuration.eventHandler = { [eventHandler = runner.configuration.eventHandler] event, context in
       if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
-        issueRecorded.withLock { issueRecorded in
-          issueRecorded = true
-        }
+        issueRecorded.store(true, ordering: .sequentiallyConsistent)
       }
       eventHandler(event, context)
     }
@@ -521,18 +520,16 @@ extension Runner {
         case nil:
           true
         case .untilIssueRecorded:
-          !issueRecorded.rawValue
+          !issueRecorded.load(ordering: .sequentiallyConsistent)
         case .whileIssueRecorded:
-          issueRecorded.rawValue
+          issueRecorded.load(ordering: .sequentiallyConsistent)
         }
         guard shouldContinue else {
           break
         }
 
         // Reset the run-wide "issue was recorded" flag for this iteration.
-        issueRecorded.withLock { issueRecorded in
-          issueRecorded = false
-        }
+        issueRecorded.store(false, ordering: .sequentiallyConsistent)
       }
     }
   }

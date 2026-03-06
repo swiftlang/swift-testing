@@ -1,9 +1,9 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.3
 
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023–2025 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -140,20 +140,12 @@ let package = Package(
         "TestingMacros",
       ],
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
-      cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("Testing"),
-      linkerSettings: {
-        var result = [LinkerSetting]()
-        result += [
-          .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
-        ]
-#if compiler(>=6.3)
-        result += [
-          .linkedLibrary("_TestingInterop"),
-        ]
-#endif
-        return result
-      }()
+      cxxSettings: .packageSettings(),
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("Testing"),
+      linkerSettings: [
+        .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd])),
+        .linkedLibrary("_TestingInterop"),
+      ]
     ),
     .testTarget(
       name: "TestingTests",
@@ -167,7 +159,7 @@ let package = Package(
         "_Testing_WinSDK",
         "MemorySafeTestingTests",
       ],
-      swiftSettings: .packageSettings,
+      swiftSettings: .packageSettings(isTestTarget: true),
       linkerSettings: [
         .linkedLibrary("util", .when(platforms: [.openbsd]))
       ]
@@ -184,7 +176,7 @@ let package = Package(
         "Testing",
       ],
       path: "Tests/_MemorySafeTestingTests",
-      swiftSettings: .packageSettings + [.strictMemorySafety()]
+      swiftSettings: .packageSettings(isTestTarget: true) + [.strictMemorySafety()]
     ),
     .testTarget(
       name: "SubexpressionShowcase",
@@ -205,7 +197,7 @@ let package = Package(
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
       ],
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + [
+      swiftSettings: .packageSettings() + [
         // The only target which needs the ability to import this macro
         // implementation target's module is its unit test target. Users of the
         // macros this target implements use them via their declarations in the
@@ -221,14 +213,14 @@ let package = Package(
     .target(
       name: "_TestingInternals",
       exclude: ["CMakeLists.txt"],
-      cxxSettings: .packageSettings
+      cxxSettings: .packageSettings()
     ),
     .target(
       name: "_TestDiscovery",
       dependencies: ["_TestingInternals",],
       exclude: ["CMakeLists.txt"],
-      cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_TestDiscovery")
+      cxxSettings: .packageSettings(),
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_TestDiscovery")
     ),
     .target(
       // Build _TestingInterop for debugging/testing purposes only. It is
@@ -237,8 +229,8 @@ let package = Package(
       dependencies: ["_TestingInternals",],
       path: "Sources/_TestingInterop",
       exclude: ["CMakeLists.txt"],
-      cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings + .moduleABIName("_TestingInterop")
+      cxxSettings: .packageSettings(),
+      swiftSettings: .packageSettings() + .moduleABIName("_TestingInterop")
     ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
@@ -250,7 +242,7 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_AppKit",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("Testing")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("Testing")
     ),
     .target(
       name: "_Testing_CoreGraphics",
@@ -259,7 +251,7 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_CoreGraphics",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreGraphics")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreGraphics")
     ),
     .target(
       name: "_Testing_CoreImage",
@@ -269,7 +261,7 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_CoreImage",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreImage")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreImage")
     ),
     .target(
       name: "_Testing_Foundation",
@@ -282,7 +274,7 @@ let package = Package(
       // The Foundation module only has Library Evolution enabled on Apple
       // platforms, and since this target's module publicly imports Foundation,
       // it can only enable Library Evolution itself on those platforms.
-      swiftSettings: .packageSettings + .enableLibraryEvolution(.whenApple()) + .moduleABIName("_Testing_Foundation")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution(.whenApple()) + .moduleABIName("_Testing_Foundation")
     ),
     .target(
       name: "_Testing_UIKit",
@@ -293,7 +285,7 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_UIKit",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_Testing_UIKit")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_UIKit")
     ),
     .target(
       name: "_Testing_WinSDK",
@@ -302,7 +294,7 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_WinSDK",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_Testing_WinSDK")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_WinSDK")
     ),
 
     // Utility targets: These are utilities intended for use when developing
@@ -312,7 +304,7 @@ let package = Package(
       dependencies: [
         "Testing",
       ],
-      swiftSettings: .packageSettings
+      swiftSettings: .packageSettings()
     ),
   ],
 
@@ -328,7 +320,7 @@ package.targets.append(contentsOf: [
       "Testing",
       "TestingMacros",
     ],
-    swiftSettings: .packageSettings
+    swiftSettings: .packageSettings(isTestTarget: true)
   )
 ])
 #endif
@@ -377,20 +369,26 @@ extension BuildSettingCondition {
 extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings intended to be applied to every Swift target in this package.
   /// Analogous to project-level build settings in an Xcode project.
-  static var packageSettings: Self {
+  static func packageSettings(isTestTarget: Bool = false) -> Self {
     var result = availabilityMacroSettings
 
-#if compiler(>=6.3)
     // treatWarning(..., as: .warning) cannot be used in packages which are
     // used as dependencies, since the package manager suppresses all warnings
     // for dependencies. (See: rdar://170562285)
     if buildingForDevelopment {
       result.append(.treatWarning("ExplicitSendable", as: .warning))
     }
-#endif
 
     if buildingForEmbedded {
       result.append(.enableExperimentalFeature("Embedded"))
+    }
+
+    // Define a compiler condition so we can discover at macro expansion time if
+    // we're accidentally expanding our own macros in Swift Testing.
+    if !isTestTarget {
+      result += [
+        .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
+      ]
     }
 
     result += [
@@ -481,15 +479,26 @@ extension Array where Element == PackageDescription.SwiftSetting {
   /// module related to Swift Testing loaded into a runner process avoids this
   /// issue.
   static func moduleABIName(_ targetName: String) -> Self {
-    [.unsafeFlags(["-module-abi-name", "\(targetName)_package"])]
+    // Workaround: Disable module ABI name customization, since it has regressed
+    // building DocC documentation (see rdar://171555540).
+//    [.unsafeFlags(["-module-abi-name", "\(targetName)_package"])]
+    []
   }
 }
 
 extension Array where Element == PackageDescription.CXXSetting {
   /// Settings intended to be applied to every C++ target in this package.
   /// Analogous to project-level build settings in an Xcode project.
-  static var packageSettings: Self {
+  static func packageSettings(isTestTarget: Bool = false) -> Self {
     var result = Self()
+
+    // Define a compiler condition so we can discover at macro expansion time if
+    // we're accidentally expanding our own macros in Swift Testing.
+    if !isTestTarget {
+      result += [
+        .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
+      ]
+    }
 
     result += [
       .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),

@@ -40,7 +40,7 @@ extension ABI {
     var kind: Kind
 
     /// The instant at which the event occurred.
-    var instant: EncodedInstant<V>
+    public var instant: EncodedInstant<V>
 
     /// The issue that occurred, if any.
     ///
@@ -96,7 +96,8 @@ extension ABI {
     ///
     /// - Warning: Source locations at this level of the JSON schema are not yet
     ///   part of said JSON schema.
-    var _sourceLocation: EncodedSourceLocation<V>?
+    @_spi(Experimental)
+    public var _sourceLocation: EncodedSourceLocation<V>?
 
     /// The iteration of the `testID` being executed.
     ///

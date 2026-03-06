@@ -9,6 +9,7 @@
 //
 
 import SwiftDiagnostics
+import SwiftIfConfig
 import SwiftParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
@@ -313,4 +314,34 @@ func declarationInheritsFromXCTestClass(_ decl: some DeclSyntaxProtocol) -> Bool
 
   // We couldn't tell either way.
   return nil
+}
+
+// MARK: -
+
+/// Check if the given macro is being expanded in one of the testing library's
+/// production targets.
+///
+/// - Parameters:
+///   - macro: The macro being expanded.
+///   - context: The macro context in which the expression is being parsed.
+///
+/// If `macro` is being expanded in one of our production targets (as opposed to
+/// test targets), a diagnostic is emitted.
+///
+/// This function has no effect in release builds.
+func diagnoseExpansionInLibraryTarget(of macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) {
+#if DEBUG
+  guard let buildConfiguration = context.buildConfiguration,
+        let isBuildingSwiftTestingContent = try? buildConfiguration.isCustomConditionSet(name: "SWT_BUILDING_SWIFT_TESTING_CONTENT"),
+        isBuildingSwiftTestingContent else {
+    return
+  }
+
+  var targetName = "<unknown>"
+  if let fileID = context.location(of: macro, at: .afterLeadingTrivia, filePathMode: .fileID)?.file.trimmedDescription,
+     let slashIndex = fileID.firstIndex(of: "/") {
+    targetName = String(fileID[..<slashIndex])
+  }
+  context.diagnose(.macroExpansionNotAllowed(macro, inLibraryTargetNamed: targetName))
+#endif
 }
