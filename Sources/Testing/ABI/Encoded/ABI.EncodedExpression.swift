@@ -17,7 +17,8 @@ extension ABI {
   /// expected to write their own decoders.
   ///
   /// - Warning: Expressions are not yet part of the JSON schema.
-  struct EncodedExpression<V>: Sendable where V: ABI.Version {
+  @_spi(Experimental)
+  public struct EncodedExpression<V>: Sendable where V: ABI.Version {
     /// The source code of the original captured expression.
     var sourceCode: String
 
@@ -33,18 +34,6 @@ extension ABI {
 
     /// Any child expressions within this expression.
     var children: [EncodedExpression]?
-
-    init(encoding expression: borrowing __Expression, in eventContext: borrowing Event.Context) {
-      sourceCode = expression.sourceCode
-      runtimeValue = expression.runtimeValue.map(String.init(describingForTest:))
-      runtimeTypeName = expression.runtimeValue.map(\.typeInfo.fullyQualifiedName)
-      let subexpressions = expression.subexpressions
-      if !subexpressions.isEmpty {
-        children = subexpressions.map { [eventContext = copy eventContext] subexpression in
-          Self(encoding: subexpression, in: eventContext)
-        }
-      }
-    }
   }
 }
 
@@ -54,12 +43,29 @@ extension ABI.EncodedExpression: Codable {}
 
 // MARK: - Conversion to/from library types
 
-extension __Expression {
+extension ABI.EncodedExpression {
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - expression: The expression to initialize this instance from.
+  public init(encoding expression: borrowing Expression) {
+    sourceCode = expression.sourceCode
+    runtimeValue = expression.runtimeValue.map(String.init(describingForTest:))
+    runtimeTypeName = expression.runtimeValue.map(\.typeInfo.fullyQualifiedName)
+    let subexpressions = expression.subexpressions
+    if !subexpressions.isEmpty {
+      children = subexpressions.map(Self.init(encoding:))
+    }
+  }
+}
+
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+extension Expression {
   /// Initialize an instance of this type from the given value.
   ///
   /// - Parameters:
   ///   - expression: The encoded expression to initialize this instance from.
-  init?<V>(decoding expression: ABI.EncodedExpression<V>) {
+  public init?<V>(decoding expression: ABI.EncodedExpression<V>) {
     self.init(expression.sourceCode)
     if let runtimeValue = expression.runtimeValue,
        let runtimeTypeName = expression.runtimeTypeName {

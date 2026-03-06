@@ -63,7 +63,7 @@ extension ABI {
     /// The expectation associated with this issue, if applicable.
     ///
     /// - Warning: Expectations are not yet part of the JSON schema.
-    var _expectation: EncodedExpectation<V>?
+    var _expression: EncodedExpression<V>?
 
     init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
       // >= v0
@@ -88,7 +88,7 @@ extension ABI {
           _error = EncodedError(encoding: error, in: eventContext)
         }
         if case let .expectationFailed(expectation) = issue.kind {
-          _expectation = EncodedExpectation(encoding: expectation, in: eventContext)
+          _expression = EncodedExpression(encoding: expectation.evaluatedExpression)
         }
       }
     }
@@ -131,8 +131,7 @@ extension Issue {
     let issueKind: Issue.Kind
     if let error = issue._error {
       issueKind = .errorCaught(error)
-    } else if let expectation = issue._expectation,
-              let expression = __Expression(decoding: expectation._expression),
+    } else if let expression = issue._expression.flatMap(__Expression.init(decoding:)),
               let sourceLocation = issue.sourceLocation.flatMap(SourceLocation.init) {
       let expectation = Expectation(
         evaluatedExpression: expression,
