@@ -60,9 +60,9 @@ extension ABI {
     /// - Warning: Errors are not yet part of the JSON schema.
     var _error: EncodedError<V>?
 
-    /// The expectation associated with this issue, if applicable.
+    /// The expression associated with this issue, if applicable.
     ///
-    /// - Warning: Expectations are not yet part of the JSON schema.
+    /// - Warning: Expressions are not yet part of the JSON schema.
     var _expression: EncodedExpression<V>?
 
     init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
