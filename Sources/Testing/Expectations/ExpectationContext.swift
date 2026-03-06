@@ -190,7 +190,40 @@ extension __ExpectationContext where Output: ~Copyable {
   ///
   /// This function helps subscript overloads disambiguate themselves and avoid
   /// accidental recursion.
-  func captureValue<T>(_ value: borrowing T, identifiedBy id: __ExpressionID) where T: ~Copyable & ~Escapable {
+  func captureValue<T>(_ value: borrowing T, identifiedBy id: __ExpressionID) where T: Copyable & Escapable {
+    let value = copy value
+    captureValue(Expression.Value(reflecting: value), identifiedBy: id)
+  }
+
+  /// Capture information about a value for use if the expectation currently
+  /// being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The value to pass through.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// This function helps subscript overloads disambiguate themselves and avoid
+  /// accidental recursion.
+  func captureValue<T>(_ value: borrowing T, identifiedBy id: __ExpressionID) where T: Copyable & ~Escapable {
+    if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
+      captureValue(Expression.Value(reflecting: value), identifiedBy: id)
+    } else {
+      captureValue(Expression.Value(failingToReflectInstanceOf: T.self), identifiedBy: id)
+    }
+  }
+
+  /// Capture information about a value for use if the expectation currently
+  /// being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The value to pass through.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// This function helps subscript overloads disambiguate themselves and avoid
+  /// accidental recursion.
+  func captureValue<T>(_ value: borrowing T, identifiedBy id: __ExpressionID) where T: ~Copyable & Escapable {
     if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
       captureValue(Expression.Value(reflecting: value), identifiedBy: id)
     } else {
@@ -211,9 +244,42 @@ extension __ExpectationContext where Output: ~Copyable {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_lifetime(borrow value)
-  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T where T: ~Escapable {
-    captureValue(value, identifiedBy: id)
-    return copy value
+  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> ObservedValue<T> where T: Copyable & Escapable {
+    ObservedValue(value, identifiedBy: id, in: self)
+  }
+
+  /// Capture information about a value for use if the expectation currently
+  /// being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The value to pass through.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: `value`, verbatim.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  @_lifetime(borrow value)
+  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> ObservedValue<T> where T: Copyable & ~Escapable {
+    ObservedValue(value, identifiedBy: id, in: self)
+  }
+
+  /// Capture information about a value for use if the expectation currently
+  /// being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The value to pass through.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: `value`, verbatim.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  @_lifetime(borrow value)
+  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> ObservedValue<T> where T: ~Copyable & Escapable {
+    ObservedValue(value, identifiedBy: id, in: self)
   }
 
   /// Capture information about a value passed `inout` to a function call after
@@ -226,7 +292,35 @@ extension __ExpectationContext where Output: ~Copyable {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public func __inoutAfter<T>(_ value: inout T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
+  public func __inoutAfter<T>(_ value: inout T, _ id: __ExpressionID) where T: Copyable & Escapable {
+    captureValue(value, identifiedBy: id)
+  }
+
+  /// Capture information about a value passed `inout` to a function call after
+  /// the function has returned.
+  ///
+  /// - Parameters:
+  ///   - value: The value that was passed `inout` (i.e. with the `&` operator.)
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public func __inoutAfter<T>(_ value: inout T, _ id: __ExpressionID) where T: Copyable & ~Escapable {
+    captureValue(value, identifiedBy: id)
+  }
+
+  /// Capture information about a value passed `inout` to a function call after
+  /// the function has returned.
+  ///
+  /// - Parameters:
+  ///   - value: The value that was passed `inout` (i.e. with the `&` operator.)
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public func __inoutAfter<T>(_ value: inout T, _ id: __ExpressionID) where T: ~Copyable & Escapable {
     captureValue(value, identifiedBy: id)
   }
 }
