@@ -226,6 +226,10 @@ extension ABI.EncodedAttachment.BytesUnavailableError: CustomStringConvertible {
 // MARK: - Conversion to/from library types
 
 extension ABI.EncodedAttachment {
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - attachment: The attachment to initialize this instance from.
   public init(encoding attachment: borrowing Attachment<AnyAttachable>) {
     if let path = attachment.fileSystemPath {
       kind = .savedAtPath(path)
@@ -239,6 +243,10 @@ extension ABI.EncodedAttachment {
     }
   }
 
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - attachment: The attachment to initialize this instance from.
   public init(encoding attachment: borrowing Attachment<some Attachable & Sendable & ~Copyable>) {
     let attachmentCopy = Attachment<AnyAttachable>(copy attachment)
     self.init(encoding: attachmentCopy)
