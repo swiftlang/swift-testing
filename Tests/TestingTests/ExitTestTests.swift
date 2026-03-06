@@ -214,7 +214,7 @@ private import _TestingInternals
 
         await Test {
           await #expect(processExitsWith: .success) {
-            #expect(Bool(false), "Something went wrong!")
+            Issue.record("Something went wrong!")
             exit(0)
           }
           await #expect(processExitsWith: .failure) {
@@ -222,6 +222,35 @@ private import _TestingInternals
           }
         }.run(configuration: configuration)
       }
+    }
+  }
+
+  @Test("Exit test issues contain expression trees") func expressionsInIssues() async {
+    await confirmation("Expectation failed") { expectationFailed in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        guard case let .issueRecorded(issue) = event.kind else {
+          return
+        }
+        if case let .expectationFailed(expectation) = issue.kind,
+           expectation.evaluatedExpression.sourceCode == "lhs == rhs",
+           expectation.evaluatedExpression.subexpressions.count > 1 {
+          expectationFailed()
+        }
+      }
+      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+
+      await Test {
+        await #expect(processExitsWith: .success) {
+          struct S: Equatable {
+            var x: Int
+            var y: String
+          }
+          let lhs = S(x: 1, y: "abc")
+          let rhs = S(x: 2, y: "def")
+          #expect(lhs == rhs)
+        }
+      }.run(configuration: configuration)
     }
   }
 
