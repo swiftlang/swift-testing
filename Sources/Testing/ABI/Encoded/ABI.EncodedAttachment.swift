@@ -46,13 +46,6 @@ extension ABI {
     /// - Warning: Attachments' preferred names are not yet part of the JSON
     ///   schema.
     var _preferredName: String?
-
-    /// The source location of the attachment.
-    ///
-    /// This value is not encoded or decoded as part of the attachment itself.
-    /// It is contained in the enclosing encoded event and is recovered from the
-    /// event when you use ``Attachment/init(decoding:)-(ABI.EncodedEvent<V>)``.
-    fileprivate var _sourceLocation: ABI.EncodedSourceLocation<V>?
   }
 }
 
@@ -236,7 +229,6 @@ extension ABI.EncodedAttachment {
 
     if V.includesExperimentalFields {
       _preferredName = attachment.preferredName
-      _sourceLocation = ABI.EncodedSourceLocation(encoding: attachment.sourceLocation)
     }
   }
 
@@ -264,7 +256,9 @@ extension Attachment where AttachableValue == AnyAttachable {
       return nil
     }
     self.init(decoding: attachment)
-    self.sourceLocation = event._sourceLocation.flatMap(SourceLocation.init(decoding:)) ?? .unknown
+    if let sourceLocation = event._sourceLocation.flatMap(SourceLocation.init(decoding:)) {
+      self.sourceLocation = sourceLocation
+    }
   }
 
   /// Initialize an instance of this type from the given value.
@@ -276,8 +270,7 @@ extension Attachment where AttachableValue == AnyAttachable {
     case let .abstract(attachment):
       self = attachment // No need to nest it further.
     default:
-      let sourceLocation = attachment._sourceLocation.flatMap(SourceLocation.init(decoding:)) ?? .unknown
-      let attachmentCopy = Attachment<ABI.EncodedAttachment<V>>(attachment, sourceLocation: sourceLocation)
+      let attachmentCopy = Attachment<ABI.EncodedAttachment<V>>(attachment, sourceLocation: .unknown)
       self.init(attachmentCopy)
     }
   }
