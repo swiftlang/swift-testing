@@ -49,10 +49,10 @@ extension ABI {
 
     /// The source location of the attachment.
     ///
-    /// - Warning: Attachments' source locations are not yet part of the JSON
-    ///   schema.
-    @_spi(Experimental)
-    public var _sourceLocation: ABI.EncodedSourceLocation<V>?
+    /// This value is not encoded or decoded as part of the attachment itself.
+    /// It is contained in the enclosing encoded event and is recovered from the
+    /// event when you use ``Attachment/init(decoding:)-(ABI.EncodedEvent<V>)``.
+    fileprivate var _sourceLocation: ABI.EncodedSourceLocation<V>?
   }
 }
 
@@ -64,7 +64,6 @@ extension ABI.EncodedAttachment: Codable {
     case preferredName = "_preferredName"
     case bytes = "_bytes"
     case error = "_error"
-    case sourceLocation = "_sourceLocation"
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -120,7 +119,6 @@ extension ABI.EncodedAttachment: Codable {
     }
     if V.includesExperimentalFields {
       try container.encodeIfPresent(_preferredName, forKey: .preferredName)
-      try container.encodeIfPresent(_sourceLocation, forKey: .sourceLocation)
     }
   }
 
@@ -163,7 +161,6 @@ extension ABI.EncodedAttachment: Codable {
 
     if V.includesExperimentalFields {
       _preferredName = try container.decodeIfPresent(String.self, forKey: .preferredName)
-      _sourceLocation = try container.decodeIfPresent(ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
     }
   }
 }
@@ -255,6 +252,21 @@ extension ABI.EncodedAttachment {
 
 @_spi(ForToolsIntegrationOnly)
 extension Attachment where AttachableValue == AnyAttachable {
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - event: The encoded event to initialize this instance from.
+  ///
+  /// If `event` does not represent an attached value, the initializer returns
+  /// `nil`.
+  public init?<V>(decoding event: ABI.EncodedEvent<V>) {
+    guard let attachment = event.attachment else {
+      return nil
+    }
+    self.init(decoding: attachment)
+    self.sourceLocation = event._sourceLocation.flatMap(SourceLocation.init(decoding:)) ?? .unknown
+  }
+
   /// Initialize an instance of this type from the given value.
   ///
   /// - Parameters:

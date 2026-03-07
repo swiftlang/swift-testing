@@ -1015,6 +1015,24 @@ extension AttachmentTests {
       #expect(error._code == 123)
     }
   }
+
+  @Test("Decoding an encoded attachment from an event")
+  func decodingAnEncodedAttachmentWithEvent() throws {
+    var json = #"""
+      {
+        "kind": "valueAttached",
+        "instant": { "since1970": 0, "absolute": 0 },
+        "messages": [],
+        "_sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
+        "attachment": { "_bytes": "YWJjMTIz" }
+      }
+      """#
+    let event = try json.withUTF8 { json in
+      try JSON.decode(ABI.EncodedEvent<ABI.ExperimentalVersion>.self, from: UnsafeRawBufferPointer(json))
+    }
+    let attachment = try #require(Attachment(decoding: event))
+    #expect(attachment.sourceLocation.line == 12345)
+  }
 #endif
 }
 
