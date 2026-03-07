@@ -957,8 +957,10 @@ extension AttachmentTests {
       let url = URL(fileURLWithPath: path, isDirectory: false)
       try Data(expectedBytes).write(to: url)
 
+#if os(Windows)
+      let path = path.replacing(#"\"#, with: #"\\"#)
+#endif
       var json = #"{"path": "\#(path)"}"#
-      print("ATTACHMENT JSON:", json)
       let eattachment = try json.withUTF8 { json in
         try JSON.decode(ABI.EncodedAttachment<ABI.v6_3>.self, from: UnsafeRawBufferPointer(json))
       }
