@@ -75,7 +75,7 @@ extension ABI.EncodedAttachment: Codable {
       // If possible, encode this structure as Base64 data.
       try bytes.withUnsafeBytes { bytes in
         let data = Data(bytesNoCopy: .init(mutating: bytes.baseAddress!), count: bytes.count, deallocator: .none)
-        try container.encode(data, forKey: .bytes)
+        try container.encode(data.base64EncodedString(), forKey: .bytes)
       }
 #else
       // Otherwise, it's an array of integers.
