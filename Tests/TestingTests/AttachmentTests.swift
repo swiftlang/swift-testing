@@ -958,6 +958,7 @@ extension AttachmentTests {
       try Data(expectedBytes).write(to: url)
 
       var json = #"{"path": "\#(path)"}"#
+      print("ATTACHMENT JSON:", json)
       let eattachment = try json.withUTF8 { json in
         try JSON.decode(ABI.EncodedAttachment<ABI.v6_3>.self, from: UnsafeRawBufferPointer(json))
       }
