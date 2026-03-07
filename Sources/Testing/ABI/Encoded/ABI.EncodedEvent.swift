@@ -54,8 +54,8 @@ extension ABI {
     /// ``kind-swift.property`` property is ``Kind-swift.enum/valueAttached``.
     ///
     /// To get an instance of ``Attachment`` from an instance of
-    /// ``ABI/EncodedEvent`` of kind `valueAttached`, pass the encoded event to
-    /// ``Attachment/init(decoding:)-(ABI.EncodedEvent<V>)``.
+    /// ``ABI/EncodedEvent`` of kind ``Kind-swift.enum/valueAttached``, pass the
+    /// encoded event to ``Attachment/init(decoding:)-(ABI.EncodedEvent<V>)``.
     var attachment: EncodedAttachment<V>?
 
     /// Human-readable messages associated with this event that can be presented
