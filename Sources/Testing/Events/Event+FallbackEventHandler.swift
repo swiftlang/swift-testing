@@ -63,7 +63,7 @@ extension Event {
       return test.sourceLocation
     }
 
-    return SourceLocation(fileID: "<unknown>/<unknown>", filePath: "<unknown>", line: 1, column: 1)
+    return .unknown
   }
 
 #if !SWT_NO_INTEROP

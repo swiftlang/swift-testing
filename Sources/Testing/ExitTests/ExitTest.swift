@@ -1064,8 +1064,8 @@ extension ExitTest {
       // so remove the backtrace if present before recording it.
       issue.sourceContext.backtrace = nil
       issue.record()
-    } else if let attachment = event.attachment {
-      Attachment.record(attachment, sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)!)
+    } else if let attachment = Attachment(decoding: event) {
+      Attachment.record(attachment, sourceLocation: attachment.sourceLocation)
     } else if case .testCancelled = event.kind {
       let comment = event._comments?.lazy
         .map(Comment.init(rawValue:))
