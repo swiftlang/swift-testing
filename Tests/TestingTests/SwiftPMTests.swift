@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -223,7 +223,7 @@ struct SwiftPMTests {
       configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
 
-    let fileHandle = try FileHandle(forReadingAtPath: temporaryFilePath)
+    let fileHandle = try Testing.FileHandle(forReadingAtPath: temporaryFilePath)
     let fileContents = try fileHandle.readToEnd()
     #expect(!fileContents.isEmpty)
     #expect(fileContents.contains(UInt8(ascii: "<")))
@@ -241,7 +241,7 @@ struct SwiftPMTests {
       _ = remove(temporaryFilePath)
     }
     do {
-      let fileHandle = try FileHandle(forWritingAtPath: temporaryFilePath)
+      let fileHandle = try Testing.FileHandle(forWritingAtPath: temporaryFilePath)
       try fileHandle.write(
         """
         {
@@ -298,7 +298,7 @@ struct SwiftPMTests {
     let currentVersionNumber = ABI.CurrentVersion.versionNumber
     var newerVersionNumber = currentVersionNumber
     newerVersionNumber.patchComponent += 1
-    let version = try #require(ABI.version(forVersionNumber: newerVersionNumber, givenSwiftCompilerVersion: newerVersionNumber))
+    let version = try #require(ABI._version(forVersionNumber: newerVersionNumber, givenSwiftCompilerVersion: newerVersionNumber))
     #expect(version.versionNumber == currentVersionNumber)
   }
 
@@ -463,6 +463,15 @@ struct SwiftPMTests {
     #expect(throws: (any Error).self) {
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--event-stream-version", "xyz-invalid"])
     }
+  }
+
+  @Test("Can extract the ABI version from record JSON")
+  func getVersionFromRecordJSON() throws {
+    var json = #"{ "kind": "test", "version": "1.2.3", "payload": {} }"#
+    let versionNumber = try json.withUTF8 { json in
+      try ABI.VersionNumber(fromRecordJSON: UnsafeRawBufferPointer(json))
+    }
+    #expect(versionNumber == ABI.VersionNumber(1, 2, 3))
   }
 #endif
 #endif

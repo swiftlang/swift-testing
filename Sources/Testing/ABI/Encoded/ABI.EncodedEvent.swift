@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -12,10 +12,10 @@ extension ABI {
   /// A type implementing the JSON encoding of ``Event`` for the ABI entry point
   /// and event stream output.
   ///
-  /// This type is not part of the public interface of the testing library. It
-  /// assists in converting values to JSON; clients that consume this JSON are
-  /// expected to write their own decoders.
-  struct EncodedEvent<V>: Sendable where V: ABI.Version {
+  /// You can use this type and its conformance to [`Codable`](https://developer.apple.com/documentation/swift/codable),
+  /// when integrating the testing library with development tools. It is not
+  /// part of the testing library's public interface.
+  public struct EncodedEvent<V>: Sendable where V: ABI.Version {
     /// An enumeration describing the various kinds of event.
     ///
     /// Note that the set of encodable events is a subset of all events
