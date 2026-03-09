@@ -194,14 +194,6 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
         }
       }
     )
-    if functionName == nil {
-      result = ExprSyntax(
-        SubscriptCallExprSyntax(
-          calledExpression: result,
-          arguments: []
-        )
-      )
-    }
 
     // If the resulting expression has an optional type due to containing an
     // optional chaining expression (e.g. `foo?`) *and* its immediate parent

@@ -44,7 +44,7 @@ extension __ExpectationContext {
 
     private var _storage: _Storage
 
-    private var _captureValue: (borrowing Self) -> Void
+    private var _observe: (borrowing Self, __ExpressionID) -> Void
 
     @_lifetime(immortal)
     @available(*, unavailable)
@@ -52,96 +52,91 @@ extension __ExpectationContext {
       Builtin.unreachable()
     }
   }
-}
 
-@available(*, unavailable)
-extension __ExpectationContext.ObservedValue: Sendable {}
-
-extension __ExpectationContext.ObservedValue where T: Copyable & Escapable {
-  @_lifetime(immortal)
-  init(_ value: borrowing @_addressable T, identifiedBy id: __ExpressionID, in expectationContext: __ExpectationContext) {
-    _expectationContext = expectationContext
-    _storage = .byAddress(Builtin.addressOfBorrow(value))
-    _captureValue = { ov in
-      let address = UnsafePointer<T>(ov._storage.address)
-      ov._expectationContext.captureValue(address.pointee, identifiedBy: id)
-    }
-  }
-
-  public subscript() -> T {
-    unsafeAddress {
-      _captureValue(self)
-      return UnsafePointer(_storage.address)
-    }
-    nonmutating unsafeMutableAddress {
-      UnsafeMutablePointer(_storage.address)
-    }
-  }
-}
-
-@available(*, unavailable, message: "Cannot capture a value with suppressed conformances to both 'Copyable' and 'Escapable' in an expectation expressions")
-extension __ExpectationContext.ObservedValue where T: ~Copyable & ~Escapable {
-  @_lifetime(immortal)
-  init(_ value: borrowing T, identifiedBy id: __ExpressionID, in expectationContext: __ExpectationContext) {
-    Builtin.unreachable()
-  }
-
-  public subscript() -> T {
+  extension ObservedValue where T: Copyable & Escapable {
     @_lifetime(immortal)
-    _read {
+    init(_ value: borrowing @_addressable T, in expectationContext: __ExpectationContext) {
+      _expectationContext = expectationContext
+      _storage = .byAddress(Builtin.addressOfBorrow(value))
+      _observe = { self, id in
+        let address = UnsafePointer<T>(self._storage.address)
+        self._expectationContext.captureValue(value, identifiedBy: id)
+      }
+    }
+
+    public subscript(id: __ExpressionID) -> T {
+      unsafeAddress {
+        _observe(_storage)
+        return UnsafePointer(_storage.address)
+      }
+      nonmutating unsafeMutableAddress {
+        UnsafeMutablePointer(_storage.address)
+      }
+    }
+  }
+
+  @available(*, unavailable, message: "Cannot capture a value with suppressed conformances to both 'Copyable' and 'Escapable' in an expectation expressions")
+  extension ObservedValue where T: ~Copyable & ~Escapable {
+    @_lifetime(immortal)
+    init(_ value: borrowing T, in expectationContext: __ExpectationContext) {
       Builtin.unreachable()
     }
-    @_lifetime(&self)
-    nonmutating _modify {
-      Builtin.unreachable()
-    }
-  }
-}
 
-extension __ExpectationContext.ObservedValue where T: Copyable & ~Escapable {
-  @_lifetime(copy value)
-  init(_ value: borrowing T, identifiedBy id: __ExpressionID, in expectationContext: __ExpectationContext) {
-    _expectationContext = expectationContext
-    _storage = .byValue(copy value)
-    _captureValue = { ov in
-      let value = ov._storage.value
-      ov._expectationContext.captureValue(value, identifiedBy: id)
+    public subscript() -> T {
+      @_lifetime(immortal)
+      _read {
+        Builtin.unreachable()
+      }
+      @_lifetime(&self)
+      nonmutating _modify {
+        Builtin.unreachable()
+      }
     }
   }
 
-  public subscript() -> T {
-    @_lifetime(borrow self)
-    _read {
-      _captureValue(self)
-      yield _storage.value
+  extension ObservedValue where T: Copyable & ~Escapable {
+    @_lifetime(copy value)
+    init(_ value: borrowing T, in expectationContext: __ExpectationContext) {
+      _expectationContext = expectationContext
+      _storage = .byValue(copy value)
+      _observe = { self, id in
+        self._expectationContext.captureValue(self._storage.value, id)
+      }
     }
 
-    @_lifetime(&self)
-    @available(*, unavailable, message: "Cannot mutate a value with suppressed conformance to 'Escapable' in an expectation expression")
-    nonmutating _modify {
-      Builtin.unreachable()
+    public subscript() -> T {
+      @_lifetime(borrow self)
+      _read {
+        _observe(_storage)
+        yield _storage.value
+      }
+
+      @_lifetime(&self)
+      @available(*, unavailable, message: "Cannot mutate a value with suppressed conformance to 'Escapable' in an expectation expression")
+      nonmutating _modify {
+        Builtin.unreachable()
+      }
     }
   }
-}
 
-extension __ExpectationContext.ObservedValue where T: ~Copyable & Escapable {
-  @_lifetime(borrow value)
-  init(_ value: borrowing @_addressable T, identifiedBy id: __ExpressionID, in expectationContext: __ExpectationContext) {
-    _expectationContext = expectationContext
-    _storage = .byAddress(Builtin.addressOfBorrow(value))
-    _captureValue = { ov in
-      let address = UnsafePointer<T>(ov._storage.address)
-      ov._expectationContext.captureValue(address.pointee, identifiedBy: id)
+  extension ObservedValue where T: ~Copyable & Escapable {
+    init(_ value: borrowing @_addressable T, in expectationContext: __ExpectationContext) {
+      _expectationContext = expectationContext
+      _storage = .byAddress(Builtin.addressOfBorrow(value))
+      _observe = { self, id in
+        let address = UnsafePointer<T>(self._storage.address)
+        self._expectationContext.captureValue(value, identifiedBy: id)
+      }
     }
-  }
 
-  public subscript() -> T {
-    unsafeAddress {
-      _captureValue(self)
-      return UnsafePointer(_storage.address)
-    }
-    nonmutating unsafeMutableAddress {
-      UnsafeMutablePointer(_storage.address)
+    public subscript() -> T {
+      unsafeAddress {
+        _observe(_storage)
+        return UnsafePointer(_storage.address)
+      }
+      nonmutating unsafeMutableAddress {
+        UnsafeMutablePointer(_storage.address)
+      }
     }
   }
 }
