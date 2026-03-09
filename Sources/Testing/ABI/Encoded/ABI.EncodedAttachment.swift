@@ -79,7 +79,9 @@ extension ABI.EncodedAttachment: Codable {
     case let .savedAtPath(path):
       try container.encode(path, forKey: .path)
     case let .abstract(attachment):
-      if V.includesExperimentalFields {
+      if let path = attachment.fileSystemPath {
+        try container.encode(path, forKey: .path)
+      } else if V.includesExperimentalFields {
         var errorWhileEncoding: (any Error)?
         do {
           try attachment.withUnsafeBytes { bytes in
@@ -207,6 +209,18 @@ extension ABI.EncodedAttachment: Attachable {
   }
 }
 
+#if !SWT_NO_FILE_CLONING
+extension ABI.EncodedAttachment: FileClonable {
+  package func clone(toFileAtPath filePath: String) -> Bool {
+    guard case let .abstract(attachment) = kind else {
+      return false
+    }
+    return attachment.attachableValue.clone(toFileAtPath: filePath)
+  }
+  
+}
+#endif
+
 extension ABI.EncodedAttachment.BytesUnavailableError: CustomStringConvertible {
   var description: String {
     "The attachment's content could not be deserialized."
@@ -221,12 +235,7 @@ extension ABI.EncodedAttachment {
   /// - Parameters:
   ///   - attachment: The attachment to initialize this instance from.
   public init(encoding attachment: borrowing Attachment<AnyAttachable>) {
-    if let path = attachment.fileSystemPath {
-      kind = .savedAtPath(path)
-    } else {
-      kind = .abstract(copy attachment)
-    }
-
+    kind = .abstract(copy attachment)
     if V.includesExperimentalFields {
       _preferredName = attachment.preferredName
     }
