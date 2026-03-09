@@ -270,7 +270,7 @@ extension Test {
       traits += bugs
     }
     if let timeLimit = test.timeLimit {
-      traits += [.timeLimit(.seconds(timeLimit))]
+      traits += [TimeLimitTrait(timeLimit: .seconds(timeLimit))]
     }
 
     switch test.kind {
