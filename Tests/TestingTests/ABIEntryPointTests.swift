@@ -63,6 +63,37 @@ struct ABIEntryPointTests {
     }
   }
 
+  @Test("v0 entry point listing and decoding test records")
+  func v0_listingAndDecodingTests() async throws {
+    var arguments = __CommandLineArguments_v0()
+    arguments.listTests = true
+    arguments.eventStreamSchemaVersion = "0"
+    arguments.verbosity = .min
+    arguments.filter = ["ABIEntryPointTests"]
+
+    _ = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
+      #expect(throws: Never.self) {
+        let record = try JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
+        guard case let .test(encodedTest) = record.kind else {
+          Issue.record("Unexpected record \(record)")
+          return
+        }
+        let test = try #require(Test(decoding: encodedTest))
+        #expect(test.id.moduleName.hasSuffix("Tests"))
+        #expect(!test.id.nameComponents.isEmpty)
+        if !test.isSuite {
+          let functionName = try #require(test.id.nameComponents.last)
+          #expect(functionName == test.name)
+          #expect(test.id.sourceLocation != nil)
+          if test.isParameterized {
+            let parameters = try #require(test.parameters)
+            #expect(parameters.count > 0)
+          }
+        }
+      }
+    }
+  }
+
   private func _invokeEntryPointV0(
     passing arguments: __CommandLineArguments_v0,
     recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }
