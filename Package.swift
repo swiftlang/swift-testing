@@ -183,7 +183,7 @@ let package = Package(
       dependencies: [
         "Testing",
       ],
-      swiftSettings: .packageSettings(isTestTarget: true)
+      swiftSettings: .packageSettings
     ),
 
     .macro(
@@ -401,11 +401,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       // Enabled to allow tests to be added to ~Escapable suites.
       .enableExperimentalFeature("Lifetimes"),
-
-      // Enabled to allow boxing ~Copyable values in expectation macros.
-      .enableExperimentalFeature("BuiltinModule"),
-      .enableExperimentalFeature("AddressableParameters"),
-      .enableExperimentalFeature("AddressableTypes"),
 
       .enableUpcomingFeature("InferIsolatedConformances"),
 
