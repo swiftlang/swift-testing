@@ -264,13 +264,13 @@ extension Test {
     var traits = [any Trait]()
     if let tags = test.tags ?? test._tags {
       let tags = tags.map(Tag.init(userProvidedStringValue:))
-      traits += [Tag.List(tags: tags)]
+      traits.append(Tag.List(tags: tags))
     }
     if let bugs = test.bugs {
       traits += bugs
     }
     if let timeLimit = test.timeLimit {
-      traits += [TimeLimitTrait(timeLimit: .seconds(timeLimit))]
+      traits.append(TimeLimitTrait(timeLimit: .seconds(timeLimit)))
     }
 
     switch test.kind {
