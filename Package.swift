@@ -183,7 +183,7 @@ let package = Package(
       dependencies: [
         "Testing",
       ],
-      swiftSettings: .packageSettings
+      swiftSettings: .packageSettings(isTestTarget: true)
     ),
 
     .macro(
