@@ -115,7 +115,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
       // Post an event for every discovered test. These events are turned into
       // JSON objects if JSON output is enabled.
-      for test in tests {
+      for test in tests where !test.isHidden {
         Event.post(.testDiscovered, for: (test, nil), configuration: configuration)
       }
     } else {

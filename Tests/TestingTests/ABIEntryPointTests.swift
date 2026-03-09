@@ -71,6 +71,8 @@ struct ABIEntryPointTests {
     arguments.verbosity = .min
     arguments.filter = ["ABIEntryPointTests"]
 
+    let testIDs = Mutex<[Test.ID]>()
+
     _ = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
       #expect(throws: Never.self) {
         let record = try JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
@@ -79,6 +81,7 @@ struct ABIEntryPointTests {
           return
         }
         let test = try #require(Test(decoding: encodedTest))
+        testIDs.withLock { $0.append(test.id) }
         #expect(test.id.moduleName.hasSuffix("Tests"))
         #expect(!test.id.nameComponents.isEmpty)
         if !test.isSuite {
@@ -91,6 +94,16 @@ struct ABIEntryPointTests {
           }
         }
       }
+    }
+
+    // The set of tests reported by `swift test list` will include some of our
+    // fixture suites that are intentionally not annotated `@Suite(.hidden)`, so
+    // we can't just compare the two sets of IDs for equality. This doesn't
+    // affect external test targets that can't use `.hidden` anyway.
+    let idsFromEntryPoint = Set(testIDs.rawValue)
+    let idsFromAll = await Test.all.filter { !$0.isHidden }.map(\.id)
+    for id in idsFromAll {
+      #expect(idsFromEntryPoint.contains(id))
     }
   }
 

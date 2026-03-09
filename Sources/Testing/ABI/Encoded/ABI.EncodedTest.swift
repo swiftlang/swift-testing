@@ -207,6 +207,13 @@ extension ABI.EncodedTest {
 
 @_spi(ForToolsIntegrationOnly)
 extension Test {
+  /// Attempt to reconstruct an instance of ``TypeInfo`` from an encoded test.
+  ///
+  /// - Parameters:
+  ///   - test: The test that may contain type information.
+  ///
+  /// - Returns: On success, an instance of ``TypeInfo`` describing the suite
+  ///   type containing or equalling `test`. On failure, `nil`.
   private static func _makeTypeInfo<V>(for test: ABI.EncodedTest<V>) -> TypeInfo? {
     // Find the module name, which for XCTest compatibility is split from the
     // rest of the test ID by a period character instead of a slash character.
@@ -228,9 +235,9 @@ extension Test {
     testIDComponents.insert(secondTestIDComponent, at: 1)
 
     if test.kind == .function {
-      if let lastComponent = testIDComponents.last,
-         lastComponent.utf8.first != UInt8(ascii: "`"),
-         lastComponent.utf8.contains(UInt8(ascii: ":")) {
+      if let lastComponent = testIDComponents.last?.utf8,
+         lastComponent.first != UInt8(ascii: "`"),
+         lastComponent.contains(UInt8(ascii: ":")) {
         // The last component of the test ID (when split by slash characters)
         // appears to be a source location. Remove it as it's not part of the
         // suite type.
