@@ -177,6 +177,12 @@ extension ABI.EncodedTest {
     if V.includesExperimentalFields {
       if isParameterized == true {
         _testCases = test.uncheckedTestCases?.map(ABI.EncodedTestCase.init(encoding:))
+        _parameters = test.parameters?.map { parameter in
+          Parameter(
+            name: parameter.secondName ?? parameter.firstName,
+            typeName: parameter.typeInfo.fullyQualifiedName
+          )
+        }
       }
       let tags = test.tags
       if !tags.isEmpty {
