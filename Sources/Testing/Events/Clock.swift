@@ -21,7 +21,7 @@ extension Test {
     /// An instant on the testing clock.
     public struct Instant: Sendable {
       /// The suspending-clock time corresponding to this instant.
-      fileprivate(set) var suspending = TimeValue(SuspendingClock.Instant.now)
+      fileprivate(set) var suspending = TimeValue(rawValue: SuspendingClock().systemEpoch.duration(to: .now))
 
 #if !SWT_NO_UTC_CLOCK
       /// The wall-clock time corresponding to this instant.
@@ -35,10 +35,10 @@ extension Test {
 #else
         timespec_get(&wall, TIME_UTC)
 #endif
-        return TimeValue(wall)
+        return TimeValue(rawValue: .seconds(wall.tv_sec) + .nanoseconds(wall.tv_nsec))
 #else
 #warning("Platform-specific implementation missing: UTC time unavailable (no timespec)")
-        return TimeValue((0, 0))
+        return TimeValue(rawValue: .zero)
 #endif
       }()
 #endif
@@ -63,52 +63,32 @@ extension SuspendingClock.Instant {
   /// - Parameters:
   ///   - testClockInstant: The equivalent instant on ``Test/Clock``.
   public init(_ testClockInstant: Test.Clock.Instant) {
-    self.init(testClockInstant.suspending)
+    self = SuspendingClock().systemEpoch + testClockInstant.suspending.rawValue
   }
 }
 
-extension Test.Clock.Instant {
 #if !SWT_NO_UTC_CLOCK
-  /// The duration since 1970 represented by this instance as a tuple of seconds
-  /// and attoseconds.
-  ///
-  /// The value of this property is the equivalent of `self` on the wall clock.
-  /// It is suitable for display to the user, but not for fine timing
-  /// calculations.
-  public var timeComponentsSince1970: (seconds: Int64, attoseconds: Int64) {
-    wall.components
-  }
-
+extension Test.Clock.Instant {
   /// The duration since 1970 represented by this instance.
   ///
-  /// The value of this property is the equivalent of `self` on the wall clock.
-  /// It is suitable for display to the user, but not for fine timing
-  /// calculations.
-  public var durationSince1970: Duration {
-    Duration(wall)
-  }
-#endif
-
-  /// Get the number of nanoseconds from this instance to another.
-  ///
-  /// - Parameters:
-  ///   - other: The later instant.
-  ///
-  /// - Returns: The number of nanoseconds between `self` and `other`. If
-  ///   `other` is ordered before this instance, the result is negative.
-  func nanoseconds(until other: Self) -> Int64 {
-    if other < self {
-      return -other.nanoseconds(until: self)
-    }
-    let otherNanoseconds = (other.suspending.seconds * 1_000_000_000) + (other.suspending.attoseconds / 1_000_000_000)
-    let selfNanoseconds = (suspending.seconds * 1_000_000_000) + (suspending.attoseconds / 1_000_000_000)
-    return otherNanoseconds - selfNanoseconds
+  /// The Foundation overlay uses this property to implement `Date.init(_:)`.
+  package var durationSince1970: Duration {
+    wall.rawValue
   }
 }
+#endif
 
-// MARK: - Sleeping
+// MARK: - Clock
 
-extension Test.Clock {
+extension Test.Clock: _Concurrency.Clock {
+  public var now: Instant {
+    .now
+  }
+
+  public var minimumResolution: Duration {
+    SuspendingClock().minimumResolution
+  }
+
   /// Suspend the current task for the given duration.
   ///
   /// - Parameters:
@@ -124,8 +104,7 @@ extension Test.Clock {
 #if !SWT_NO_UNSTRUCTURED_TASKS
     return try await SuspendingClock().sleep(for: duration)
 #elseif !SWT_NO_TIMESPEC
-    let timeValue = TimeValue(duration)
-    var ts = timespec(timeValue)
+    var ts = timespec(tv_sec: .init(duration.components.seconds), tv_nsec: .init(duration.components.attoseconds / 1_000_000_000))
     var tsRemaining = ts
     while 0 != nanosleep(&ts, &tsRemaining) {
       try Task.checkCancellation()
@@ -133,26 +112,6 @@ extension Test.Clock {
     }
 #else
 #warning("Platform-specific implementation missing: task sleep unavailable")
-#endif
-  }
-}
-
-// MARK: - Clock
-
-extension Test.Clock: _Concurrency.Clock {
-  public typealias Duration = SuspendingClock.Duration
-
-  public var now: Instant {
-    .now
-  }
-
-  public var minimumResolution: Duration {
-#if SWT_TARGET_OS_APPLE
-    var res = timespec()
-    _ = clock_getres(CLOCK_UPTIME_RAW, &res)
-    return Duration(TimeValue(res))
-#else
-    SuspendingClock().minimumResolution
 #endif
   }
 
@@ -170,59 +129,39 @@ extension Test.Clock: _Concurrency.Clock {
 
 extension Test.Clock.Instant: Equatable, Hashable, Comparable {
   public static func ==(lhs: Self, rhs: Self) -> Bool {
-    lhs.suspending == rhs.suspending
+    lhs.suspending.rawValue == rhs.suspending.rawValue
   }
 
   public func hash(into hasher: inout Hasher) {
-    hasher.combine(suspending)
+    hasher.combine(suspending.rawValue)
   }
 
   public static func <(lhs: Self, rhs: Self) -> Bool {
-    lhs.suspending < rhs.suspending
+    lhs.suspending.rawValue < rhs.suspending.rawValue
   }
 }
 
 // MARK: - InstantProtocol
 
 extension Test.Clock.Instant: InstantProtocol {
-  public typealias Duration = Swift.Duration
-
   public func advanced(by duration: Duration) -> Self {
     var result = self
 
-    result.suspending = TimeValue(Duration(result.suspending) + duration)
+    result.suspending = TimeValue(rawValue: result.suspending.rawValue + duration)
 #if !SWT_NO_UTC_CLOCK
-    result.wall = TimeValue(Duration(result.wall) + duration)
+    result.wall = TimeValue(rawValue: result.wall.rawValue + duration)
 #endif
 
     return result
   }
 
   public func duration(to other: Test.Clock.Instant) -> Duration {
-    Duration(other.suspending) - Duration(suspending)
+    other.suspending.rawValue - suspending.rawValue
   }
 }
 
-// MARK: - Duration descriptions
-
-extension Test.Clock.Instant {
-  /// Get a description of the duration between this instance and another.
-  ///
-  /// - Parameters:
-  ///   - other: The later instant.
-  ///
-  /// - Returns: A string describing the duration between `self` and `other`,
-  ///   up to millisecond accuracy.
-  func descriptionOfDuration(to other: Test.Clock.Instant) -> String {
-#if SWT_TARGET_OS_APPLE
-    let (seconds, nanosecondsRemaining) = nanoseconds(until: other).quotientAndRemainder(dividingBy: 1_000_000_000)
-    return String(describing: TimeValue((seconds, nanosecondsRemaining * 1_000_000_000)))
-#else
-    return String(describing: TimeValue(Duration(other.suspending) - Duration(suspending)))
-#endif
-  }
-}
-
+#if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Codable
 
 extension Test.Clock.Instant: Codable {}
+#endif

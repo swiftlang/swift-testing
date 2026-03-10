@@ -209,7 +209,8 @@ sufficient information to display the event in a human-readable format.
 
 <event-kind> ::= "runStarted" | "testStarted" | "testCaseStarted" |
   "issueRecorded" | "testCaseEnded" | "testEnded" | "testSkipped" |
-  "runEnded" | "valueAttached"; additional event kinds may be added in the future
+  "runEnded" | "valueAttached" | "testCancelled" | "testCaseCancelled"
+  ; additional event kinds may be added in the future
 
 <issue> ::= {
   "isKnown": <bool>, ; is this a known issue or not?

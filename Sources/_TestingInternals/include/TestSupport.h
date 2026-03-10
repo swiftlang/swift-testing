@@ -43,6 +43,15 @@ static inline LPCSTR swt_IDI_SHIELD(void) {
 }
 #endif
 
+static const int *_Nullable swt_EX_IOERR(void) {
+#if __has_include(<sysexits.h>) && defined(EX_IOERR)
+  static int result = EX_IOERR;
+  return &result;
+#else
+  return 0;
+#endif
+}
+
 SWT_ASSUME_NONNULL_END
 
 #endif

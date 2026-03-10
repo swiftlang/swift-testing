@@ -29,6 +29,15 @@ extension Event {
       /// The symbol associated with this message, if any.
       var symbol: Symbol?
 
+      /// How much to indent this message when presenting it.
+      ///
+      /// The way in which this additional indentation is rendered is
+      /// implementation-defined. Typically, the greater the value of this
+      /// property, the more whitespace characters are inserted.
+      ///
+      /// Rendering of indentation is optional.
+      var indentation = 0
+
       /// The human-readable message.
       var stringValue: String
 
@@ -351,6 +360,11 @@ extension Event.HumanReadableOutputRecorder {
       }
     }
 
+    // A helper function for displaying test durations.
+    func descriptionOfDuration(from start: Test.Clock.Instant, to end: Test.Clock.Instant) -> String {
+      String(describing: TimeValue(rawValue: end.suspending.rawValue - start.suspending.rawValue))
+    }
+
     // Finally, produce any messages for the event.
     switch event.kind {
     case .testDiscovered:
@@ -420,7 +434,7 @@ extension Event.HumanReadableOutputRecorder {
       let testDataGraph = context.testData.subgraph(at: keyPath)
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
-      let duration = testData.startInstant.descriptionOfDuration(to: instant)
+      let duration = descriptionOfDuration(from: testData.startInstant, to: instant)
       let testCasesCount = if test.isParameterized, let testDataGraph {
         " with \(testDataGraph.children.count.counting("test case"))"
       } else {
@@ -486,7 +500,7 @@ extension Event.HumanReadableOutputRecorder {
       } else {
         switch issue.severity {
         case .warning:
-          symbol = .passWithWarnings
+          symbol = .warning
           subject = "a warning"
         case .error:
           symbol = .fail
@@ -503,20 +517,18 @@ extension Event.HumanReadableOutputRecorder {
         additionalMessages.append(_formattedComment(knownIssueComment))
       }
 
-      if verbosity > 0, case let .expectationFailed(expectation) = issue.kind {
+      if verbosity >= 0, case let .expectationFailed(expectation) = issue.kind {
         let expression = expectation.evaluatedExpression
-        func addMessage(about expression: __Expression) {
-          let description = expression.expandedDebugDescription()
-          additionalMessages.append(Message(symbol: .details, stringValue: description))
-        }
-        let subexpressions = expression.subexpressions
-        if subexpressions.isEmpty {
-          addMessage(about: expression)
-        } else {
-          for subexpression in subexpressions {
-            addMessage(about: subexpression)
+        func addMessage(about expression: __Expression, depth: Int) {
+          let description = expression.expandedDescription(verbose: verbosity > 0)
+          if description != expression.sourceCode {
+            additionalMessages.append(Message(symbol: .details, indentation: depth, stringValue: description))
+          }
+          for subexpression in expression.subexpressions {
+            addMessage(about: subexpression, depth: depth + 1)
           }
         }
+        addMessage(about: expression, depth: 0)
       }
 
       let atSourceLocation = issue.sourceLocation.map { " at \($0)" } ?? ""
@@ -572,7 +584,7 @@ extension Event.HumanReadableOutputRecorder {
       let testDataGraph = context.testData.subgraph(at: keyPath)
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
-      let duration = testData.startInstant.descriptionOfDuration(to: instant)
+      let duration = descriptionOfDuration(from: testData.startInstant, to: instant)
 
       var cancellationComment = "."
       let (symbol, verbed): (Event.Symbol, String)
@@ -601,7 +613,7 @@ extension Event.HumanReadableOutputRecorder {
       guard let iterationStartInstant = context.iterationStartInstant else {
         break
       }
-      let duration = iterationStartInstant.descriptionOfDuration(to: instant)
+      let duration = descriptionOfDuration(from: iterationStartInstant, to: instant)
 
       return [
         Message(
@@ -615,7 +627,7 @@ extension Event.HumanReadableOutputRecorder {
       let suiteCount = context.suiteCount
       let issues = _issueCounts(in: context.testData)
       let runStartInstant = context.runStartInstant ?? instant
-      let duration = runStartInstant.descriptionOfDuration(to: instant)
+      let duration = descriptionOfDuration(from: runStartInstant, to: instant)
 
       return if issues.errorIssueCount > 0 {
         [

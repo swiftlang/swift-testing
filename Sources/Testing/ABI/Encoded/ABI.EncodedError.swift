@@ -29,7 +29,7 @@ extension ABI {
 
     // TODO: userInfo (partial) encoding
 
-    init(encoding error: some Error, in eventContext: borrowing Event.Context) {
+    init(encoding error: some Error) {
       description = String(describingForTest: error)
       domain = error._domain
       code = error._code
