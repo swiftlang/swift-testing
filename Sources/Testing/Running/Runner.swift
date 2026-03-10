@@ -104,7 +104,7 @@ extension Runner {
   private static func _applyScopingTraits(
     for test: Test,
     testCase: Test.Case?,
-    _ body: @escaping @Sendable () async throws -> Void
+    _ body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
   ) async throws {
     // If the test does not have any traits, exit early to avoid unnecessary
     // heap allocations below.
@@ -140,7 +140,7 @@ extension Runner {
   ///
   /// - Throws: Whatever is thrown by `body` or by any of the traits' provide
   ///   scope function calls.
-  private static func _applyIssueHandlingTraits(for test: Test, _ body: @escaping @Sendable () async throws -> Void) async throws {
+  private static func _applyIssueHandlingTraits(for test: Test, _ body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) async throws {
     // If the test does not have any traits, exit early to avoid unnecessary
     // heap allocations below.
     if test.traits.isEmpty {
@@ -420,7 +420,7 @@ extension Runner {
 
         try await withTimeLimit(for: step.test, configuration: configuration) {
           try await _applyScopingTraits(for: step.test, testCase: testCase) {
-            try await testCase.body()
+            try await testCase.run(configuration: configuration)
           }
         } timeoutHandler: { timeLimit in
           let issue = Issue(
