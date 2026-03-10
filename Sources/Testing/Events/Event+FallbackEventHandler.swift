@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
+private import _TestingInternals.InteropOnly
 
 extension Event {
   /// Attempt to handle an event encoded as JSON as if it had been generated in
