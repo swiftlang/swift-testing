@@ -10,11 +10,15 @@
 
 #if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+private import _TestingInternals
 
 #if canImport(Foundation)
 private import Foundation
 #endif
-private import _TestingInternals
+
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+import Synchronization
+#endif
 
 @Suite("ABI entry point tests")
 struct ABIEntryPointTests {
