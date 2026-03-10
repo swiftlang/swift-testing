@@ -17,7 +17,7 @@
 static std::atomic<SWTFallbackEventHandler> fallbackEventHandler { nullptr };
 
 bool _swift_testing_installFallbackEventHandler(SWTFallbackEventHandler handler) {
-  SWTFallbackEventHandler nullptrValue = nullptr
+  SWTFallbackEventHandler nullptrValue = nullptr;
   return fallbackEventHandler.compare_exchange_strong(nullptrValue, handler, std::memory_order_seq_cst, std::memory_order_relaxed);
 }
 
