@@ -65,13 +65,11 @@ extension ABI.EncodedAttachment: Codable {
     func encodeBytes(_ bytes: UnsafeRawBufferPointer) throws {
 #if canImport(Foundation)
       // If possible, encode this structure as Base64 data.
-      try bytes.withUnsafeBytes { bytes in
-        let data = Data(bytesNoCopy: .init(mutating: bytes.baseAddress!), count: bytes.count, deallocator: .none)
-        try container.encode(data.base64EncodedString(), forKey: .bytes)
-      }
+      let data = Data(bytesNoCopy: .init(mutating: bytes.baseAddress!), count: bytes.count, deallocator: .none)
+      try container.encode(data.base64EncodedString(), forKey: .bytes)
 #else
       // Otherwise, it's an array of integers.
-      try container.encode(bytes, forKey: .bytes)
+      try container.encode(Array(bytes), forKey: .bytes)
 #endif
     }
 
