@@ -486,6 +486,37 @@ private import _TestingInternals
     }
   }
 
+  @Test("Known issues")
+  func knownIssues() async {
+    await confirmation("Recorded issue was a known issue") { wasKnown in
+      await confirmation("Recorded issue had the expected known-issue comment") { hadComment in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          guard case let .issueRecorded(issue) = event.kind else {
+            return
+          }
+          if issue.isKnown {
+            wasKnown()
+          }
+          if issue.knownIssueContext?.comment?.rawValue == "ABC 123",
+             issue.comments.count == 1, issue.comments.first == "456 DEF" {
+            hadComment()
+          }
+        }
+
+        // Mock an exit test where the process exits successfully.
+        configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+        await Test {
+          await #expect(processExitsWith: .success) {
+            withKnownIssue("ABC 123") {
+              Issue.record("456 DEF")
+            }
+          }
+        }.run(configuration: configuration)
+      }
+    }
+  }
+
   @Test("Capture list")
   func captureList() async {
     let i = 123
