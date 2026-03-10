@@ -52,11 +52,13 @@ public struct TypeInfo: Sendable {
   /// Initialize an instance of this type with the specified names.
   ///
   /// - Parameters:
-  ///   - fullyQualifiedComponents: The fully-qualified name components of the
-  ///     type.
-  ///   - unqualified: The unqualified name of the type.
+  ///   - fullyQualifiedNameComponents: The fully-qualified name components of
+  ///   	the type.
+  ///   - unqualifiedName: The unqualified name of the type. If `nil`, the last
+  ///   	string in `fullyQualifiedNameComponents` is used instead.
   ///   - mangled: The mangled name of the type, if available.
-  init(fullyQualifiedNameComponents: [String], unqualifiedName: String, mangledName: String? = nil) {
+  init(fullyQualifiedNameComponents: [String], unqualifiedName: String? = nil, mangledName: String? = nil) {
+    let unqualifiedName = unqualifiedName ?? fullyQualifiedNameComponents.last ?? fullyQualifiedNameComponents.joined(separator: ".")
     _kind = .nameOnly(
       fullyQualifiedComponents: fullyQualifiedNameComponents,
       unqualified: unqualifiedName,
