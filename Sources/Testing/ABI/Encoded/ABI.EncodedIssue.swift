@@ -47,6 +47,11 @@ extension ABI {
     /// Whether or not this issue is known to occur.
     var isKnown: Bool
 
+    /// A comment associated with the known issue, if any.
+    ///
+    /// - Warning: This property is not yet part of the JSON schema.
+    var _knownIssueComment: String?
+
     /// The location in source where this issue occurred, if available.
     public var sourceLocation: EncodedSourceLocation<V>?
 
@@ -81,6 +86,9 @@ extension ABI {
 
       // Experimental fields
       if V.includesExperimentalFields {
+        if let knownIssueContext = issue.knownIssueContext {
+          _knownIssueComment = knownIssueContext.comment?.rawValue
+        }
         if let backtrace = issue.sourceContext.backtrace {
           _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
         }
@@ -163,8 +171,8 @@ extension Issue {
       sourceContext: sourceContext
     )
     if issue.isKnown {
-      // FIXME: The known issue comment is not currently encoded.
-      self.knownIssueContext = Issue.KnownIssueContext()
+      let knownIssueComment = issue._knownIssueComment.map(Comment.init(rawValue:))
+      self.knownIssueContext = Issue.KnownIssueContext(comment: knownIssueComment)
     }
   }
 }
