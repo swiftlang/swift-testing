@@ -191,8 +191,17 @@ extension TypeInfo {
     return String(String.UnicodeScalarView(result))
   }
 
+  /// Keys into the fully-qualified name cache.
+  private enum _CacheKey: Sendable, Equatable, Hashable {
+    /// The key is a type (cast to `ObjectIdentifier`).
+    case type(ObjectIdentifier)
+
+    /// The key is an unsplit fully-qualified name string.
+    case string(String)
+  }
+
   /// An in-memory cache of fully-qualified type name components.
-  private static let _fullyQualifiedNameComponentsCache = Mutex<[ObjectIdentifier: [String]]>()
+  private static let _fullyQualifiedNameComponentsCache = Mutex<[_CacheKey: [String]]>()
 
   /// Split the given fully-qualified type name into its components.
   ///
@@ -201,6 +210,13 @@ extension TypeInfo {
   ///
   /// - Returns: The components of `fullyQualifiedName` as substrings thereof.
   static func fullyQualifiedNameComponents(ofTypeWithName fullyQualifiedName: String) -> [String] {
+    let cachedResult = _fullyQualifiedNameComponentsCache.withLock { cache in
+      return cache[.string(fullyQualifiedName)]
+    }
+    if let cachedResult {
+      return cachedResult
+    }
+
     var components = rawIdentifierAwareSplit(fullyQualifiedName, separator: ".")
 
     // If a type is extended in another module and then referenced by name,
@@ -215,7 +231,7 @@ extension TypeInfo {
       components[0] = moduleName
     }
 
-    return components.lazy
+    let result: [String] = components.lazy
       .filter { component in
         // If a type is private or embedded in a function, its fully qualified
         // name may include "(unknown context at $xxxxxxxx)" as a component.
@@ -230,6 +246,12 @@ extension TypeInfo {
           component
         }
       }.map(String.init)
+
+    _fullyQualifiedNameComponentsCache.withLock { cache in
+      cache[.string(fullyQualifiedName)] = result
+    }
+
+    return result
   }
 
   /// The complete name of this type, with the names of all referenced types
@@ -250,14 +272,17 @@ extension TypeInfo {
   public var fullyQualifiedNameComponents: [String] {
     switch _kind {
     case let .type(type):
-      if let cachedResult = Self._fullyQualifiedNameComponentsCache.rawValue[ObjectIdentifier(type)] {
+      let cachedResult = Self._fullyQualifiedNameComponentsCache.withLock { cache in
+        return cache[.type(ObjectIdentifier(type))]
+      }
+      if let cachedResult {
         return cachedResult
       }
 
       let result = Self.fullyQualifiedNameComponents(ofTypeWithName: String(reflecting: type))
 
-      Self._fullyQualifiedNameComponentsCache.withLock { fullyQualifiedNameComponentsCache in
-        fullyQualifiedNameComponentsCache[ObjectIdentifier(type)] = result
+      Self._fullyQualifiedNameComponentsCache.withLock { cache in
+        cache[.type(ObjectIdentifier(type))] = result
       }
 
       return result
