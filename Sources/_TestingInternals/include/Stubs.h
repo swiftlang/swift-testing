@@ -84,6 +84,15 @@ static mach_port_t swt_mach_task_self(void) {
 }
 #endif
 
+#if defined(__APPLE__) && !SWT_NO_DYNAMIC_LINKING
+/// A function exported from dyld that maps a `dlopen()` handle to its
+/// corresponding Mach header.
+///
+/// This declaration is provided because it is not provided publicly by Apple's
+/// SDK. The dyld code owners are aware of this declaration.
+SWT_IMPORT_FROM_STDLIB const struct mach_header *_dyld_get_dlopen_image_header(void *handle);
+#endif
+
 #if defined(__APPLE__)
 /// Define the minimal set of atomic operations supported and used by the
 /// testing library for a given C type.

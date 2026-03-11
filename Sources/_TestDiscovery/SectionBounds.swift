@@ -97,7 +97,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessColl
 #endif
   }
 
-#if _runtime(_ObjC) && canImport(MachO_Private)
+#if _runtime(_ObjC)
   var imageCount = UInt32(0)
   let imageNames = objc_copyImageNames(&imageCount)
   defer {
@@ -115,7 +115,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessColl
     guard let mh = _dyld_get_dlopen_image_header(handle) else {
       return nil
     }
-    return _sectionBounds(sectionName, segmentName, in: mh)
+    return _sectionBounds(segmentName, sectionName, in: mh)
   }
 #else
   let imageCount = _dyld_image_count()
