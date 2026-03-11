@@ -47,8 +47,13 @@ extension ABI {
     /// Whether or not this issue is known to occur.
     var isKnown: Bool
 
+    /// A comment associated with the known issue, if any.
+    ///
+    /// - Warning: This property is not yet part of the JSON schema.
+    var _knownIssueComment: String?
+
     /// The location in source where this issue occurred, if available.
-    var sourceLocation: EncodedSourceLocation<V>?
+    public var sourceLocation: EncodedSourceLocation<V>?
 
     /// The backtrace where this issue occurred, if available.
     ///
@@ -60,10 +65,10 @@ extension ABI {
     /// - Warning: Errors are not yet part of the JSON schema.
     var _error: EncodedError<V>?
 
-    /// The expectation associated with this issue, if applicable.
+    /// The expression associated with this issue, if applicable.
     ///
-    /// - Warning: Expectations are not yet part of the JSON schema.
-    var _expectation: EncodedExpectation<V>?
+    /// - Warning: Expressions are not yet part of the JSON schema.
+    var _expression: EncodedExpression<V>?
 
     init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
       // >= v0
@@ -81,14 +86,17 @@ extension ABI {
 
       // Experimental fields
       if V.includesExperimentalFields {
+        if let knownIssueContext = issue.knownIssueContext {
+          _knownIssueComment = knownIssueContext.comment?.rawValue
+        }
         if let backtrace = issue.sourceContext.backtrace {
           _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
         }
         if let error = issue.error {
-          _error = EncodedError(encoding: error, in: eventContext)
+          _error = EncodedError(encoding: error)
         }
         if case let .expectationFailed(expectation) = issue.kind {
-          _expectation = EncodedExpectation(encoding: expectation, in: eventContext)
+          _expression = EncodedExpression(encoding: expectation.evaluatedExpression)
         }
       }
     }
@@ -99,3 +107,71 @@ extension ABI {
 
 extension ABI.EncodedIssue: Codable {}
 extension ABI.EncodedIssue.Severity: Codable {}
+
+// MARK: - Conversion to/from library types
+
+extension Issue {
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - event: The encoded event to initialize this instance from.
+  ///
+  /// If `event` does not represent a recorded issue, the initializer returns
+  /// `nil`.
+  init?<V>(decoding event: ABI.EncodedEvent<V>) {
+    guard let issue = event.issue else {
+      return nil
+    }
+    self.init(decoding: issue)
+    if let comments = event._comments {
+      self.comments += comments.map(Comment.init(rawValue:))
+    }
+  }
+
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - issue: The encoded issue to initialize this instance from.
+  ///
+  /// - Note: For higher fidelity, initialize the issue with an encoded event
+  ///   representing a recorded issue rather than just the encoded issue.
+  init?<V>(decoding issue: ABI.EncodedIssue<V>) {
+    let issueKind: Issue.Kind
+    if let error = issue._error {
+      issueKind = .errorCaught(error)
+    } else if let expression = issue._expression.flatMap(__Expression.init(decoding:)),
+              let sourceLocation = issue.sourceLocation.flatMap(SourceLocation.init) {
+      let expectation = Expectation(
+        evaluatedExpression: expression,
+        isPassing: false,
+        isRequired: false,
+        sourceLocation: sourceLocation
+      )
+      issueKind = .expectationFailed(expectation)
+    } else {
+      // TODO: improve fidelity of issue kind reporting (especially those without associated values)
+      issueKind = .unconditional
+    }
+    let severity: Issue.Severity = switch issue.severity {
+    case .warning:
+        .warning
+    case .error, nil:
+      // Prior to 6.3, all Issues are errors
+        .error
+    }
+    let sourceContext = SourceContext(
+      backtrace: issue._backtrace.map { Backtrace(addresses: $0.symbolicatedAddresses.map(\.address)) },
+      sourceLocation: issue.sourceLocation.flatMap(SourceLocation.init)
+    )
+    self.init(
+      kind: issueKind,
+      severity: severity,
+      comments: [],
+      sourceContext: sourceContext
+    )
+    if issue.isKnown {
+      let knownIssueComment = issue._knownIssueComment.map(Comment.init(rawValue:))
+      self.knownIssueContext = Issue.KnownIssueContext(comment: knownIssueComment)
+    }
+  }
+}

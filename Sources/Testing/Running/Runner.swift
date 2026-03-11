@@ -424,7 +424,7 @@ extension Runner {
           }
         } timeoutHandler: { timeLimit in
           let issue = Issue(
-            kind: .timeLimitExceeded(timeLimitComponents: timeLimit),
+            kind: .timeLimitExceeded(timeLimit: timeLimit),
             comments: [],
             sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
           )
@@ -452,6 +452,7 @@ extension Runner {
 #if !SWT_NO_FILE_IO
     runner.configureAttachmentHandling()
 #endif
+    _ = Event.installFallbackEventHandler()
 
     // Track whether or not any issues were recorded across the entire run.
     let issueRecorded = Atomic(false)

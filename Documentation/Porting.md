@@ -116,7 +116,7 @@ Once the header is included, we can call `GetDateTime()` from `Clock.swift`:
 +  var seconds = CUnsignedLong(0)
 +  GetDateTime(&seconds)
 +  seconds -= 2_082_844_800 // seconds between epochs
-+  return TimeValue((seconds: Int64(seconds), attoseconds: 0))
++  return TimeValue(rawValue: .seconds(seconds))
  #else
  #warning("Platform-specific implementation missing: UTC time unavailable (no timespec)")
  #endif

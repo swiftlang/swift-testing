@@ -219,12 +219,6 @@ struct TimeLimitTraitTests {
     }
   }
 
-  @Test("TimeoutError.description property")
-  func timeoutErrorDescription() async throws {
-    let timeLimit = TimeValue((0, 0))
-    #expect(String(describing: TimeoutError(timeLimit: timeLimit)).contains("0.000"))
-  }
-
   @Test("Issue.Kind.timeLimitExceeded.description property",
     arguments: [
       (123, 0, "123.000"),
@@ -237,7 +231,7 @@ struct TimeLimitTraitTests {
     ]
   )
   func timeLimitExceededDescription(seconds: Int64, attoseconds: Int64, description: String) async throws {
-    let issueKind = Issue.Kind.timeLimitExceeded(timeLimitComponents: (seconds, attoseconds))
+    let issueKind = Issue.Kind.timeLimitExceeded(timeLimit: Duration(secondsComponent: seconds, attosecondsComponent: attoseconds))
     #expect(String(describing: issueKind) == "Time limit was exceeded: \(description) seconds")
   }
 }
