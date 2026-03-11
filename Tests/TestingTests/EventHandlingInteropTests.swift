@@ -45,7 +45,7 @@ struct EventHandlingInteropTests {
   /// Must be set before we call `Event.installFallbackEventHandler()` which
   /// will cache the install outcome.
   static func enableExperimentalInterop() {
-    Environment.setVariable("1", named: "SWT_EXPERIMENTAL_INTEROP_ENABLED")
+    Environment.setVariable("1", named: Interop.experimentalOptInKey)
   }
 
   /// Sets the env var that determines the interop mode.
@@ -157,31 +157,6 @@ struct EventHandlingInteropTests {
 
   // MARK: - End to end handling of an issue with interop
 
-  /// Simulates the behaviour of XCTFail when called in a Swift Testing test.
-  /// This always forwards a test failure through the fallback event handler if it can find one.
-  /// It is an error to call this when a handler hasn't been installed yet.
-  /// - Parameter payload: Optional payload to use instead of generating a standard one.
-  private static func FakeXCTFail(payload: Data? = nil) throws {
-    let currentHandler = try #require(
-      _swift_testing_getFallbackEventHandler(),
-      "A fallback event handler must be installed ahead of time")
-
-    func wrapInEncodedEvent(issue: Issue) throws -> Data {
-      let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil, instant: .now)
-      let encodedEvent = ABI.Record<ABI.CurrentVersion>(
-        encoding: event, in: .init(test: nil, testCase: nil, iteration: nil, configuration: nil),
-        messages: [])
-      return try JSONEncoder().encode(encodedEvent)
-    }
-
-    let encodedIssue = try payload ?? wrapInEncodedEvent(issue: .init(kind: .unconditional))
-
-    encodedIssue.withUnsafeBytes { ptr in
-      let vers = String(describing: ABI.CurrentVersion.versionNumber)
-      currentHandler(vers, ptr.baseAddress!, ptr.count, nil)
-    }
-  }
-
   @Test func `Fallback handler records an issue if invalid event provided`() async throws {
     await #expect(processExitsWith: .success) {
       Self.enableExperimentalInterop()
@@ -189,7 +164,7 @@ struct EventHandlingInteropTests {
       // Pass an invalid record JSON to the event handler
       let issues = await Test {
         let emptyJSON = "{}".data(using: .utf8)!
-        try Self.FakeXCTFail(payload: emptyJSON)
+        try _FakeXCTFail(payload: emptyJSON)
       }.runCapturingIssues()
 
       // Assert that we record an issue with a helpful debug message
@@ -228,7 +203,7 @@ struct EventHandlingInteropTests {
 
       // Run the test, which should record two issues in response to the interop one
       let issues = await Test {
-        try Self.FakeXCTFail()
+        try _FakeXCTFail()
       }.runCapturingIssues()
 
       // Generate the interop test failure (as a warning) and warning about XCTest API usage
@@ -246,27 +221,31 @@ struct EventHandlingInteropTests {
 
       // Run the test, which should record two issues in response to the interop one
       let issues = await Test {
-        try Self.FakeXCTFail()
+        try _FakeXCTFail()
       }.runCapturingIssues()
 
       // Generate the interop test failure and warning about XCTest API usage
       #expect(
-        issues.map { $0.severity } == [.error, .warning]
+        issues.map { $0.severity }.sorted() == [.warning, .error]
       )
     }
   }
 
+  @available(macOS 15.0, *) // String(validating:as:) is unavailable on older macOS
   @Test func `Strict interop mode causes a process exit`() async throws {
-    await #expect(processExitsWith: .signal(SIGTRAP)) {  // SIGTRAP to match the fatalError
+    let result = await #expect(processExitsWith: .failure, observing: [\.standardErrorContent]) {
       Self.enableExperimentalInterop()
       Self.setInteropMode(.strict)
       try #require(Event.installFallbackEventHandler())
 
       // Run the test, which should cause a process exit due to strict mode
-      _ = await Test {
-        try Self.FakeXCTFail()
-      }.runCapturingIssues()
+      await Test {
+        try _FakeXCTFail()
+      }.run()
     }
+
+    let stderr = try #require(String(validating: result?.standardErrorContent ?? [UInt8](), as: UTF8.self))
+    #expect(stderr.contains("Fatal error: XCTest API was used in a Swift Testing test"))
   }
 
   @Test func `Handle fallback event warns issue about XCTest API usage`() async throws {
@@ -277,13 +256,13 @@ struct EventHandlingInteropTests {
       // Run the test, which should record two issues in response to the interop one
       // Prepare a test issue to inject into that handler to simulate receiving an interop issue.
       let issues = await Test {
-        try Self.FakeXCTFail()
+        try _FakeXCTFail()
       }.runCapturingIssues()
 
       #expect(
         issues.map { $0.description }.sorted() == [
           "An API was misused (warning): XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead.",
-          "Issue recorded (error)",
+          "Issue recorded (warning)",
         ]
       )
     }
@@ -291,18 +270,26 @@ struct EventHandlingInteropTests {
 }
 #endif
 
-extension Test {
-  func runCapturingIssues() async -> [Issue] {
-    let issues = Mutex<[Issue]>()
+/// Simulates the behaviour of XCTFail when called in a Swift Testing test.
+/// This always forwards a test failure through the fallback event handler if it can find one.
+/// It is an error to call this when a handler hasn't been installed yet.
+/// - Parameter payload: Optional payload to use instead of generating a standard one.
+fileprivate func _FakeXCTFail(payload: Data? = nil) throws {
+  // A fallback event handler must be installed ahead of time
+  let currentHandler = try #require(_swift_testing_getFallbackEventHandler())
 
-    var issueCapturingConfig = Configuration()
-    issueCapturingConfig.eventHandler = { event, _ in
-      if case .issueRecorded(let issue) = event.kind {
-        issues.withLock { $0.append(issue) }
-      }
-    }
+  func wrapInEncodedEvent(issue: Issue) throws -> Data {
+    let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil, instant: .now)
+    let encodedEvent = ABI.Record<ABI.CurrentVersion>(
+      encoding: event, in: .init(test: nil, testCase: nil, iteration: nil, configuration: nil),
+      messages: [])
+    return try JSONEncoder().encode(encodedEvent)
+  }
 
-    await self.run(configuration: issueCapturingConfig)
-    return issues.rawValue
+  let encodedIssue = try payload ?? wrapInEncodedEvent(issue: .init(kind: .unconditional))
+
+  encodedIssue.withUnsafeBytes { ptr in
+    let vers = String(describing: ABI.CurrentVersion.versionNumber)
+    currentHandler(vers, ptr.baseAddress!, ptr.count, nil)
   }
 }

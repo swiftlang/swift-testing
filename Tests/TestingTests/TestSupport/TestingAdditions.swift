@@ -18,6 +18,10 @@ import XCTest
 import Foundation
 #endif
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// The ABI name of the testing library's main module.
 ///
 /// This can be different than the target name ("Testing") whenever the module
@@ -305,6 +309,24 @@ extension Test {
     let runner = await Runner(testing: [self], configuration: configuration)
     await runner.run()
   }
+
+  /// Run a single test, returning all `.issueRecorded` event types that it
+  /// encountered while running.
+  func runCapturingIssues() async -> [Issue] {
+    let issues = Mutex<[Issue]>()
+
+    var issueCapturingConfig = Configuration()
+    issueCapturingConfig.eventHandler = { event, _ in
+      if case .issueRecorded(let issue) = event.kind {
+        issues.withLock { $0.append(issue) }
+      }
+    }
+
+    let runner = await Runner(testing: [self], configuration: issueCapturingConfig)
+    await runner.run()
+
+    return issues.rawValue
+  }
 }
 
 extension Test.ID {
@@ -465,5 +487,15 @@ extension SourceContext {
 
   init(sourceLocation: SourceLocation?) {
     self.init(backtrace: .current(), sourceLocation: sourceLocation)
+  }
+}
+
+@Suite struct TestingAdditionsTests {
+  @Test func `Demonstrate runCapturingIssues usage`() async {
+    let issues = await Test {
+      #expect(Bool(false))
+    }.runCapturingIssues()
+
+    #expect(issues.count == 1)
   }
 }

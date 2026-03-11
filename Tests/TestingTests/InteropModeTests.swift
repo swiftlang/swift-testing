@@ -12,56 +12,54 @@
 
 #if !SWT_NO_EXIT_TESTS && !SWT_NO_INTEROP
 @Suite struct `Unit tests for interop mode selection` {
+  @Test func `Installation not required if experimentalOptInKey not set`() async {
+    await #expect(processExitsWith: .success) {
+      Environment.setVariable("0", named: Interop.experimentalOptInKey)
+      #expect(Interop.Mode.limited.requiresInstallation == false)
+    }
+  }
+
   @Test(arguments: Interop.Mode.allCases)
-  func `Not-none interop modes require installation`(mode: Interop.Mode) {
-    switch mode {
-    case .none:
-      #expect(!mode.requiresInstallation)
-    case .complete, .limited, .strict:
-      #expect(mode.requiresInstallation)
+  func `Not-none interop modes require installation`(mode: Interop.Mode) async {
+    await #expect(processExitsWith: .success) { [mode] in
+      Environment.setVariable("1", named: Interop.experimentalOptInKey)
+      switch mode {
+      case .none:
+        #expect(!mode.requiresInstallation)
+      case .complete, .limited, .strict:
+        #expect(mode.requiresInstallation)
+      }
     }
   }
 
   @Test func `Default interop mode`() async {
-    #expect(Interop.Mode.current == .complete)
+    #expect(Interop.Mode.current == .limited)
   }
 
   /// Run this test case in a separate process via exit tests since we will
   /// be modifying the environment during the test.
-  ///
-  /// Ideally we'd run each value in a separate exit test, but that requires
-  /// combining parameterized tests and exit tests which is currently unsupported.
-  @Test func `Read interop modes from environment`() async {
-
-    /// Set the interop env var to the provided value. If the value is `nil`,
-    /// then the env var is unset.
-    @Sendable func given(
-      value: String?, expect expectedMode: Interop.Mode,
-      sourceLocation: SourceLocation = #_sourceLocation
-    ) {
-      let key = "SWIFT_TESTING_XCTEST_INTEROP_MODE"
-      Environment.setVariable(value, named: key)
-
-      #expect(Interop.Mode._currentImpl() == expectedMode, sourceLocation: sourceLocation)
-    }
-
-    await #expect(processExitsWith: .success) {
+  @Test(
+    arguments: [
       // Standard mode names
-      given(value: "none", expect: .none)
-      given(value: "limited", expect: .limited)
-      given(value: "complete", expect: .complete)
-      given(value: "strict", expect: .strict)
+      ("none" as String?, Interop.Mode.none),
+      ("limited", .limited),
+      ("complete", .complete),
+      ("strict", .strict),
 
-      let defaultMode = Interop.Mode.complete
-      // Unknown or unset mode
-      given(value: nil, expect: defaultMode)
-      given(value: "idk", expect: defaultMode)
+      // Unknown mode
+      (nil, .limited),
+      ("idk", .limited),
 
       // Case sensitivity
-      given(value: "None", expect: defaultMode)
-      given(value: "Limited", expect: defaultMode)
-      given(value: "Complete", expect: defaultMode)
-      given(value: "Strict", expect: defaultMode)
+      ("None", .limited),
+      ("Limited", .limited),
+      ("Complete", .limited),
+      ("Strict", .limited),
+    ])
+  func `Read interop modes from environment`(envValue: String?, expectedMode: Interop.Mode) async {
+    await #expect(processExitsWith: .success) { [envValue, expectedMode] in
+      Environment.setVariable(envValue, named: Interop.Mode.interopModeEnvKey)
+      #expect(Interop.Mode.current == expectedMode)
     }
   }
 }

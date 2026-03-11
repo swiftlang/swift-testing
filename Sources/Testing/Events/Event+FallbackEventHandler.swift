@@ -14,8 +14,7 @@ private import _TestingInternals
 public enum Interop: Sendable {}
 
 extension Interop {
-  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-  public enum Mode: String, Sendable, CaseIterable {
+  public enum Mode: String, Sendable, Codable, CaseIterable {
     /// The interop feature is not active.
     case none
 
@@ -43,22 +42,29 @@ extension Interop {
   }
 }
 
+extension Interop {
+  /// Name of the environment variable flag to set when opting-in to the
+  /// experimental interop feature.
+  static let experimentalOptInKey = "SWT_EXPERIMENTAL_INTEROP_ENABLED"
+}
+
 extension Interop.Mode {
+  /// The name for the environment variable which if set, overrides the default
+  /// interop mode.
   static let interopModeEnvKey = "SWIFT_TESTING_XCTEST_INTEROP_MODE"
 
+  /// Whether this interop mode causes Swift Testing to install a fallback event
+  /// handler ahead of running tests.
   var requiresInstallation: Bool {
-    self != .none
+    Environment.flag(named: Interop.experimentalOptInKey) == true && self != .none
   }
 
   /// Current interop mode, which should not be changed after tests start
   /// running.
   @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-  public static let current: Self = _currentImpl()
-
-  /// Exposed for testing only.
-  static func _currentImpl() -> Self {
-    Environment.variable(named: interopModeEnvKey).flatMap(Interop.Mode.init) ?? .complete
-  }
+  public static let current: Self = {
+    Environment.variable(named: interopModeEnvKey).flatMap(Interop.Mode.init) ?? .limited
+  }()
 }
 
 extension Event {
@@ -84,12 +90,15 @@ extension Event {
       return
     }
 
+    let xctestWarningMessage =
+      "XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead."
+
     // For the time being, assume that foreign test events originate from XCTest
-    let warnForXCTestUsageIssue =
+    lazy var warnForXCTestUsageIssue =
       Issue(
         kind: .apiMisused, severity: .warning,
         comments: [
-          "XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead."
+          .init(rawValue: xctestWarningMessage)
         ], sourceContext: issue.sourceContext)
 
     switch Interop.Mode.current {
@@ -106,7 +115,7 @@ extension Event {
       issue.severity = .error
       issue.record()
       fatalError(
-        "XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead. This is a fatal error because strict interop mode is active (\(Interop.Mode.interopModeEnvKey)=strict)",
+        "\(xctestWarningMessage) This is a fatal error because strict interop mode is active (\(Interop.Mode.interopModeEnvKey)=strict)",
       )
     }
   }
@@ -119,7 +128,9 @@ extension Event {
   ///
   /// - Returns: A source location to use when reporting an issue about
   ///   `recordJSON`.
-  private static func _bestAvailableSourceLocation(forInvalidRecordJSON recordJSON: UnsafeRawBufferPointer) -> SourceLocation {
+  private static func _bestAvailableSourceLocation(
+    forInvalidRecordJSON recordJSON: UnsafeRawBufferPointer
+  ) -> SourceLocation {
     // TODO: try to actually extract a source location from arbitrary JSON?
 
     // If there's a test associated with the current task, it should have a
@@ -131,12 +142,13 @@ extension Event {
     return .unknown
   }
 
-#if !SWT_NO_INTEROP
+  #if !SWT_NO_INTEROP
   /// The fallback event handler to install when Swift Testing is the active
   /// testing library.
   private static let _ourFallbackEventHandler: SWTFallbackEventHandler = {
     recordJSONSchemaVersionNumber, recordJSONBaseAddress, recordJSONByteCount, _ in
-    let version = String(validatingCString: recordJSONSchemaVersionNumber)
+    let version =
+      String(validatingCString: recordJSONSchemaVersionNumber)
       .flatMap(VersionNumber.init)
       .flatMap { ABI.version(forVersionNumber: $0) } ?? ABI.v0.self
     let recordJSON = UnsafeRawBufferPointer(
@@ -169,17 +181,15 @@ extension Event {
       ).record()
     }
   }
-#endif
+  #endif
 
   /// The implementation of ``installFallbackEventHandler()``.
   private static let _installFallbackEventHandler: Bool = {
-#if !SWT_NO_INTEROP
-    if Environment.flag(named: "SWT_EXPERIMENTAL_INTEROP_ENABLED") == true
-      && Interop.Mode.current.requiresInstallation
-      {
+    #if !SWT_NO_INTEROP
+    if Interop.Mode.current.requiresInstallation {
       return _swift_testing_installFallbackEventHandler(Self._ourFallbackEventHandler)
     }
-#endif
+    #endif
     return false
   }()
 
@@ -208,14 +218,14 @@ extension Event {
   ///   currently-installed handler belongs to the testing library, returns
   ///   `false`.
   borrowing func postToFallbackEventHandler(in context: borrowing Context) -> Bool {
-#if !SWT_NO_INTEROP
+    #if !SWT_NO_INTEROP
     return Self._postToFallbackEventHandler?(self, context) != nil
-#else
+    #else
     return false
-#endif
+    #endif
   }
 
-#if !SWT_NO_INTEROP
+  #if !SWT_NO_INTEROP
   /// The implementation of ``postToFallbackEventHandler(in:)`` that actually
   /// invokes the installed fallback event handler.
   ///
@@ -228,7 +238,8 @@ extension Event {
     }
 
     let fallbackEventHandlerAddress = castCFunction(fallbackEventHandler, to: UnsafeRawPointer.self)
-    let ourFallbackEventHandlerAddress = castCFunction(Self._ourFallbackEventHandler, to: UnsafeRawPointer.self)
+    let ourFallbackEventHandlerAddress = castCFunction(
+      Self._ourFallbackEventHandler, to: UnsafeRawPointer.self)
     if fallbackEventHandlerAddress == ourFallbackEventHandlerAddress {
       // The fallback event handler belongs to Swift Testing, so we don't want
       // to call it on our own behalf.
@@ -245,5 +256,5 @@ extension Event {
       )
     }
   }()
-#endif
+  #endif
 }
