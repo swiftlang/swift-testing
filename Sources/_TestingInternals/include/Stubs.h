@@ -90,7 +90,7 @@ static mach_port_t swt_mach_task_self(void) {
 ///
 /// This declaration is provided because it is not provided publicly by Apple's
 /// SDK. The dyld code owners are aware of this declaration.
-SWT_IMPORT_FROM_STDLIB const struct mach_header *_dyld_get_dlopen_image_header(void *handle);
+SWT_IMPORT_FROM_STDLIB const struct mach_header *_Nullable _dyld_get_dlopen_image_header(void *handle);
 #endif
 
 #if defined(__APPLE__)
