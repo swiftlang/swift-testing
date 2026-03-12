@@ -159,6 +159,11 @@ struct Graph<K, V> where K: Hashable {
         // indicate there was no previous value (otherwise we'll end up
         // returning the value we just created.)
         var child = Graph(value: intermediateValue)
+        func f() -> Any {
+          let start = keyPath.index(keyPath.startIndex, offsetBy: 1, limitedBy: keyPath.endIndex) ?? keyPath.endIndex
+          return keyPath[start..<keyPath.endIndex]
+        }
+        _ = f()
         child.insertValue(newValue, at: keyPath.dropFirst(), intermediateValue: intermediateValue)
         children[key] = child
         result = nil

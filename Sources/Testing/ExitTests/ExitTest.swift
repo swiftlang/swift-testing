@@ -464,17 +464,16 @@ extension ExitTest {
 /// This function contains the common implementation for all
 /// `await #expect(processExitsWith:) { }` invocations regardless of calling
 /// convention.
-func callExitTest(
+nonisolated(nonsending) func callExitTest(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
-  expression: __Expression,
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTest.Result?, any Error> {
+) async -> Result<ExitTest.Result?, ExpectationFailedError> {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
     preconditionFailure("A test must be running on the current task to use #expect(processExitsWith:).")
   }
@@ -527,27 +526,14 @@ func callExitTest(
   }
 
   // Plumb the exit test's result through the general expectation machinery.
-  func expressionWithCapturedRuntimeValues() -> __Expression {
-    var expression = expression.capturingRuntimeValues(result.exitStatus)
-
-    expression.subexpressions = [expectedExitCondition.exitStatus, result.exitStatus]
-      .compactMap { exitStatus in
-        guard let exitStatus, let exitStatusName = exitStatus.name else {
-          return nil
-        }
-        return __Expression(
-          exitStatusName,
-          runtimeValue: __Expression.Value(describing: exitStatus.code)
-        )
-      }
-
-    return expression
-  }
-  return __checkValue(
+  let expectationContext = __ExpectationContext<Bool>(
+    sourceCode: [.root: String(describingForTest: expectedExitCondition)],
+    runtimeValues: [.root: { Expression.Value(reflecting: result.exitStatus) }]
+  )
+  return check(
     expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
-    expression: expression,
-    expressionWithCapturedRuntimeValues: expressionWithCapturedRuntimeValues(),
-    mismatchedExitConditionDescription: #"expected exit status "\#(expectedExitCondition)", but "\#(result.exitStatus)" was reported instead"#,
+    expectationContext: expectationContext,
+    mismatchedErrorDescription: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation

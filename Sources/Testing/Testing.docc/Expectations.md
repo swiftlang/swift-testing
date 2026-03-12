@@ -60,7 +60,7 @@ the test when the code doesn't satisfy a requirement, use
 
 - ``expect(_:_:sourceLocation:)``
 - ``require(_:_:sourceLocation:)-5l63q``
-- ``require(_:_:sourceLocation:)-6w9oo``
+- ``require(_:_:sourceLocation:)-1k9w3``
 
 ### Checking that errors are thrown
 

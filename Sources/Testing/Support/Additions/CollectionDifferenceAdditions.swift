@@ -8,6 +8,28 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+extension CollectionDifference<Any> {
+  /// Convert an instance of `CollectionDifference` to one that is type-erased
+  /// over elements of type `Any`.
+  ///
+  /// - Parameters:
+  ///   - difference: The difference to convert.
+  init(_ difference: CollectionDifference<some Any>) {
+    self.init(
+      difference.lazy.map { change in
+        switch change {
+        case let .insert(offset, element, associatedWith):
+          return .insert(offset: offset, element: element as Any, associatedWith: associatedWith)
+        case let .remove(offset, element, associatedWith):
+          return .remove(offset: offset, element: element as Any, associatedWith: associatedWith)
+        }
+      }
+    )!
+  }
+}
+
+// MARK: -
+
 extension CollectionDifference.Change {
   /// The element that was changed.
   var element: ChangeElement {
