@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable import Testing
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) @testable import Testing
 
 @Suite("Graph<K, V> Tests")
 struct GraphTests {
@@ -552,34 +552,43 @@ struct GraphTests {
 
   @Test
   func `inserting many items with the same prefix is not quadratic`() {
-    // This test verifies that inserting 15,000 elements that all share a common prefix
-    // doesn't cause O(n^2) COW copies of the graph.
+    // This test verifies that inserting various numbers of elements that
+    // all share a common prefix scales ~linearly.
 
-    let itemCount = 15000
-    var graph = Graph<String, Int?>()
+    var perItemTimes = [Int: Double]()
+    let clock = Test.Clock()
 
-    // Start with a representative target/suite/test prefix
-    let sharedPrefix = ["ProjectTests", "ProjectSuite", "something(_:)"]
-    graph[sharedPrefix] = -1
+    for itemCount in [500, 1000, 5000, 10000] {
+      var graph = Graph<String, Int?>()
 
-    let startTime = ContinuousClock.now
+      // Start with a representative target/suite/test prefix
+      let sharedPrefix = ["ProjectTests", "ProjectSuite", "something(_:)"]
+      graph[sharedPrefix] = -1
 
-    // Insert many items that all share this prefix
-    for i in 0..<itemCount {
-      var path = sharedPrefix
-      path.append("Argument \(i)")
-      graph[path] = i
+      let startTime = clock.now
+
+      // Insert many items that all share this prefix
+      for i in 0..<itemCount {
+        var path = sharedPrefix
+        path.append("Argument \(i)")
+        graph[path] = i
+      }
+
+      #expect(graph[sharedPrefix + ["Argument 0"]] == 0)
+      #expect(graph[sharedPrefix + ["Argument \(itemCount - 1)"]] == itemCount - 1)
+
+      let elapsedTime = startTime.duration(to: clock.now) / .seconds(1)
+      perItemTimes[itemCount] = elapsedTime / Double(itemCount)
     }
 
-    let totalTime = ContinuousClock.now - startTime
-    let avgTime = totalTime / Double(itemCount)
+    let averageTimePerItem = perItemTimes.values.reduce(0, +) / Double(perItemTimes.count)
+    
+    // All per-item times should be within 30% of average.
 
-    print("  \(itemCount) insertions: \(totalTime) total")
-    print("  Average per insert: \(avgTime)")
-
-    #expect(graph[sharedPrefix + ["Argument 0"]] == 0)
-    #expect(graph[sharedPrefix + ["Argument \(itemCount - 1)"]] == itemCount - 1)
-
-    #expect(totalTime.components.seconds < 1)
+    let maxAllowedDeviation = averageTimePerItem * 0.30
+    for (_, perItemTime) in perItemTimes {
+      let deviation = abs(perItemTime - averageTimePerItem)
+      #expect(deviation < maxAllowedDeviation)
+    }
   }
 }
