@@ -77,8 +77,10 @@ struct EventHandlingInteropTests {
       try Self.handlerContents.withLock {
         let contents = try #require(
           $0, "Fallback should have been called with non nil contents")
-        #expect(contents.version == "\(ABI.CurrentVersion.versionNumber)")
-        #expect(contents.record?.contains("A system failure occurred") ?? false)
+        let versionNumberString = "\(ABI.v6_3.versionNumber)"
+        #expect(contents.version == versionNumberString)
+        #expect(contents.record?.contains(versionNumberString) == true)
+        #expect(contents.record?.contains("A system failure occurred") == true)
       }
     }
   }
@@ -231,7 +233,7 @@ struct EventHandlingInteropTests {
     }
   }
 
-  @available(macOS 15.0, *) // String(validating:as:) is unavailable on older macOS
+  @available(macOS 15.0, *)  // String(validating:as:) is unavailable on older macOS
   @Test func `Strict interop mode causes a process exit`() async throws {
     let result = await #expect(processExitsWith: .failure, observing: [\.standardErrorContent]) {
       Self.enableExperimentalInterop()
@@ -244,7 +246,8 @@ struct EventHandlingInteropTests {
       }.run()
     }
 
-    let stderr = try #require(String(validating: result?.standardErrorContent ?? [UInt8](), as: UTF8.self))
+    let stderr = try #require(
+      String(validating: result?.standardErrorContent ?? [UInt8](), as: UTF8.self))
     #expect(stderr.contains("Fatal error: XCTest API was used in a Swift Testing test"))
   }
 
@@ -274,7 +277,7 @@ struct EventHandlingInteropTests {
 /// This always forwards a test failure through the fallback event handler if it can find one.
 /// It is an error to call this when a handler hasn't been installed yet.
 /// - Parameter payload: Optional payload to use instead of generating a standard one.
-fileprivate func _FakeXCTFail(payload: Data? = nil) throws {
+private func _FakeXCTFail(payload: Data? = nil) throws {
   // A fallback event handler must be installed ahead of time
   let currentHandler = try #require(_swift_testing_getFallbackEventHandler())
 
