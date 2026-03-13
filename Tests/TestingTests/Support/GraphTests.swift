@@ -581,14 +581,11 @@ struct GraphTests {
       perItemTimes[itemCount] = elapsedTime / Double(itemCount)
     }
 
-    let averageTimePerItem = perItemTimes.values.reduce(0, +) / Double(perItemTimes.count)
-    
-    // All per-item times should be within 30% of average.
+    let mean = perItemTimes.values.reduce(0, +) / Double(perItemTimes.count)
+    let variance = perItemTimes.values.reduce(0) { $0 + ($1 - mean) * ($1 - mean) }
+    let standardDeviation = (variance / (Double(perItemTimes.count) - 1)).squareRoot()
 
-    let maxAllowedDeviation = averageTimePerItem * 0.30
-    for (_, perItemTime) in perItemTimes {
-      let deviation = abs(perItemTime - averageTimePerItem)
-      #expect(deviation < maxAllowedDeviation)
-    }
+    // Standard deviation should be less than 10% of mean
+    #expect(standardDeviation < mean * 0.1)
   }
 }
