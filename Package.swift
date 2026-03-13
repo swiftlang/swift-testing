@@ -510,14 +510,14 @@ extension Array where Element: _LanguageBuildSetting {
     //   building for Embedded. (This is not currently expressible as a build
     //   setting conditional.)
     let defines: [String: (platforms: [Platform]?, embedded: Bool)] = [
-      "SWT_NO_EXIT_TESTS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
-      "SWT_NO_PROCESS_SPAWNING": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
+      "SWT_NO_EXIT_TESTS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .custom("emscripten"), .android], embedded: true),
+      "SWT_NO_PROCESS_SPAWNING": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .custom("emscripten"), .android], embedded: true),
       "SWT_NO_SNAPSHOT_TYPES": (platforms: .nonApplePlatforms, embedded: true),
-      "SWT_NO_DYNAMIC_LINKING": (platforms: [.wasi], embedded: true),
-      "SWT_NO_PIPES": (platforms: [.wasi], embedded: true),
+      "SWT_NO_DYNAMIC_LINKING": (platforms: [.wasi, .custom("emscripten")], embedded: true),
+      "SWT_NO_PIPES": (platforms: [.wasi, .custom("emscripten")], embedded: true),
       "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .nonApplePlatforms, embedded: true),
-      "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
-      "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
+      "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .custom("emscripten"), .android], embedded: true),
+      "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .custom("emscripten"), .android], embedded: true),
       "SWT_NO_ABI_ENTRY_POINT": (platforms: .none, embedded: true),
       "SWT_NO_ABI_JSON_SCHEMA": (platforms: .none, embedded: true),
       "SWT_NO_CODABLE": (platforms: .none, embedded: true),

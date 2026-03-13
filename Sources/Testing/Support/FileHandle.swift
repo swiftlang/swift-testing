@@ -309,7 +309,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// descriptor, `nil` is passed to `body`.
   borrowing func withUnsafePOSIXFileDescriptor<R>(_ body: (CInt?) throws -> R) rethrows -> R {
     try withUnsafeCFILEHandle { handle in
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI) || os(Emscripten)
       let fd = fileno(handle)
 #elseif os(Windows)
       let fd = _fileno(handle)
@@ -368,7 +368,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// other threads.
   borrowing func withLock<R>(_ body: () throws -> R) rethrows -> R {
     try withUnsafeCFILEHandle { handle in
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(Emscripten)
       flockfile(handle)
       defer {
         funlockfile(handle)
@@ -403,7 +403,7 @@ extension FileHandle {
     // If possible, reserve enough space in the resulting buffer to contain
     // the contents of the file being read.
     var size: Int?
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI) || os(Emscripten)
     withUnsafePOSIXFileDescriptor { fd in
       var s = stat()
       if let fd, 0 == fstat(fd, &s) {
@@ -667,7 +667,7 @@ extension FileHandle {
 extension FileHandle {
   /// Is this file handle a TTY or PTY?
   var isTTY: Bool {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI) || os(Emscripten)
     // If stderr is a TTY and TERM is set, that's good enough for us.
     withUnsafePOSIXFileDescriptor { fd in
       if let fd, 0 != isatty(fd), let term = Environment.variable(named: "TERM"), !term.isEmpty {
@@ -769,7 +769,7 @@ func fileExists(atPath path: String) -> Bool {
 ///   resolved, the resulting string may differ slightly but refers to the same
 ///   file system object. If the path could not be resolved, returns `nil`.
 func canonicalizePath(_ path: String) -> String? {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI) || os(Emscripten)
   path.withCString { path in
     if let resolvedCPath = realpath(path, nil) {
       defer {
