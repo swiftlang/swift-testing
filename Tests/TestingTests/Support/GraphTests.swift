@@ -549,4 +549,37 @@ struct GraphTests {
     }
     #expect(Set(values) == [123, 124, 456, 457, 13579, 13580, 789, 790, 2468, 2469])
   }
+
+  @Test
+  func `inserting many items with the same prefix is not quadratic`() {
+    // This test verifies that inserting 15,000 elements that all share a common prefix
+    // doesn't cause O(n^2) COW copies of the graph.
+
+    let itemCount = 15000
+    var graph = Graph<String, Int?>()
+
+    // Start with a representative target/suite/test prefix
+    let sharedPrefix = ["ProjectTests", "ProjectSuite", "something(_:)"]
+    graph[sharedPrefix] = -1
+
+    let startTime = ContinuousClock.now
+
+    // Insert many items that all share this prefix
+    for i in 0..<itemCount {
+      var path = sharedPrefix
+      path.append("Argument \(i)")
+      graph[path] = i
+    }
+
+    let totalTime = ContinuousClock.now - startTime
+    let avgTime = totalTime / Double(itemCount)
+
+    print("  \(itemCount) insertions: \(totalTime) total")
+    print("  Average per insert: \(avgTime)")
+
+    #expect(graph[sharedPrefix + ["Argument 0"]] == 0)
+    #expect(graph[sharedPrefix + ["Argument \(itemCount - 1)"]] == itemCount - 1)
+
+    #expect(totalTime.components.seconds < 1)
+  }
 }
