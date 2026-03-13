@@ -13,6 +13,8 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _TestDiscovery
+
 /// An enumeration representing the different kinds of test content known to the
 /// testing library.
 ///
@@ -21,12 +23,12 @@ import SwiftSyntaxMacros
 ///
 /// - Bug: This type should be imported directly from `_TestDiscovery` instead
 ///   of being redefined (differently) here.
-enum TestContentKind: UInt32 {
+extension TestContentKind {
   /// A test or suite declaration.
-  case testDeclaration = 0x74657374
+  static var testDeclaration: Self { "test" }
 
   /// An exit test.
-  case exitTest = 0x65786974
+  static var exitTest: Self { "exit" }
 
   /// This kind value as a comment (`/* 'abcd' */`) if it looks like it might be
   /// a [FourCC](https://en.wikipedia.org/wiki/FourCC) value, or `nil` if not.

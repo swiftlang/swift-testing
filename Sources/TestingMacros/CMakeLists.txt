@@ -114,13 +114,19 @@ target_sources(TestingMacros PRIVATE
   TestDeclarationMacro.swift
   TestingMacrosMain.swift)
 
+add_subdirectory(../_TestDiscovery)
+add_subdirectory(../_TestingInternals)
+
 target_compile_options(TestingMacros PRIVATE
   "SHELL:-Xfrontend -disable-implicit-string-processing-module-import")
 
 target_link_libraries(TestingMacros PRIVATE
   SwiftSyntax::SwiftSyntax
   SwiftSyntax::SwiftSyntaxMacroExpansion
-  SwiftSyntax::SwiftSyntaxMacros)
+  SwiftSyntax::SwiftSyntaxMacros
+  _TestDiscovery
+  _TestingInternals)
+
 if(SwiftTesting_BuildMacrosAsExecutables)
   # Link the 'SwiftCompilerPlugin' target, but only when built as an executable.
   target_link_libraries(TestingMacros PRIVATE
