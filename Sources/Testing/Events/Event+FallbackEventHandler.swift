@@ -247,9 +247,10 @@ extension Event {
     }
 
     // Encode the event as JSON and pass it to the handler.
-    return ABI.CurrentVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
+    let abiVersion = ABI.v6_3.self
+    return abiVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
       fallbackEventHandler(
-        String(describing: ABI.CurrentVersion.versionNumber),
+        String(describing: abiVersion.versionNumber),
         recordJSON.baseAddress!,
         recordJSON.count,
         nil
