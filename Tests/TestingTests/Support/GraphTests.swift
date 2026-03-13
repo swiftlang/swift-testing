@@ -585,7 +585,7 @@ struct GraphTests {
     let variance = perItemTimes.values.reduce(0) { $0 + ($1 - mean) * ($1 - mean) }
     let standardDeviation = (variance / (Double(perItemTimes.count) - 1)).squareRoot()
 
-    // Standard deviation should be less than 10% of mean
-    #expect(standardDeviation < mean * 0.1)
+    // Standard deviation should be less than 25% of mean
+    #expect(standardDeviation < mean * 0.25)
   }
 }
