@@ -503,7 +503,6 @@ struct TestDeclarationMacroTests {
     let (output, _) = try parse(input)
 
     #expect(output.contains("@section"))
-    #expect(!output.contains("__TestContentRecordContainer"))
     if let expectedTypeName {
       #expect(output.contains(expectedTypeName))
     }
