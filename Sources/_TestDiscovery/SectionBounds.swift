@@ -346,7 +346,7 @@ private struct _SectionBound: Sendable, ~Copyable {
 @_silgen_name(raw: "section$start$__TEXT$__swift5_types") private nonisolated(unsafe) var _typeMetadataSectionBegin: _SectionBound
 @_silgen_name(raw: "section$end$__TEXT$__swift5_types") private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound
 #endif
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI) || os(Emscripten)
 @_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
 @_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
