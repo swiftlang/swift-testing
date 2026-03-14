@@ -409,6 +409,7 @@ extension Runner {
 
     Event.post(.testCaseStarted, for: (step.test, testCase), iteration: context.iteration, configuration: configuration)
     defer {
+      testCase.hasFinished = true
       Event.post(.testCaseEnded, for: (step.test, testCase), iteration: context.iteration, configuration: configuration)
     }
 

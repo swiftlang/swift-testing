@@ -233,6 +233,21 @@ extension Test {
     /// Do not invoke this closure directly. Always use a ``Runner`` to invoke a
     /// test or test case.
     var body: @Sendable () async throws -> Void
+   
+    /// Whether or not the test case has finished.
+    var hasFinished: Bool {
+      get { _executionState.hasFinished.withLock { $0 }}
+      nonmutating set { _executionState.hasFinished.withLock { $0 = newValue } }
+    }
+    
+    /// The execution state of this test case.
+    private var _executionState: _ExecutionState = .init()
+    
+    /// A backing class that stores execution state for this test case.
+    private final class _ExecutionState: Sendable {
+      /// Whether or not the test case has finished executing.
+      let hasFinished: Mutex<Bool> = .init(false)
+    }
   }
 
   /// A type representing a single parameter to a parameterized test function.
