@@ -586,6 +586,12 @@ struct GraphTests {
     let standardDeviation = (variance / (Double(perItemTimes.count) - 1)).squareRoot()
 
     // Standard deviation should be less than 25% of mean
-    #expect(standardDeviation < mean * 0.25)
+
+    let description = perItemTimes
+      .sorted { $0.key < $1.key }
+      .map { "\($0)\t\($1)" }
+      .joined(separator: "\n")
+
+    #expect(standardDeviation < mean * 0.25, "Expected standard deviation to be <25% of mean, but was \(standardDeviation) (mean: \(mean))\n\(description)")
   }
 }
