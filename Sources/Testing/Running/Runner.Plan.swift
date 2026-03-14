@@ -147,6 +147,36 @@ extension Runner.Plan {
     }
   }
 
+#if !hasFeature(Embedded)
+  /// Recursively deduplicate traits on the given test by calling
+  /// ``ReducibleTrait/reduce(_:)`` across all nodes in the graph.
+  ///
+  /// - Parameters:
+  ///   - testGraph: The graph of tests to modify.
+  private static func _recursivelyReduceTraits(in testGraph: inout Graph<String, Test?>) {
+    testGraph = testGraph.mapValues { _, test in
+      guard var test else {
+        return nil
+      }
+
+      // O(n^2), but we expect n to be small, right?
+      test.traits = test.traits.reduce(into: []) { traits, trait in
+        for i in traits.indices {
+          let other = traits[i]
+          if let replacement = trait._reduce(into: other) {
+            traits[i] = replacement
+            return
+          }
+        }
+
+        // The trait wasn't reduced into any other traits, so preserve it.
+        traits.append(trait)
+      }
+      return test
+    }
+  }
+#endif
+
   /// Recursively synthesize test instances representing suites for all missing
   /// values in the specified test graph.
   ///
@@ -355,6 +385,11 @@ extension Runner.Plan {
     // needlessly applying non-filtering related traits to tests which might be
     // filtered out.
     _recursivelyApplyTraits(to: &testGraph)
+
+#if !hasFeature(Embedded)
+    // Recursively reduce traits in the graph.
+    _recursivelyReduceTraits(in: &testGraph)
+#endif
 
     // For each test value, determine the appropriate action for it.
     testGraph = await testGraph.mapValues { keyPath, test in

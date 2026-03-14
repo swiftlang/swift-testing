@@ -63,4 +63,5 @@ names prefixed with `SWT_`.
 | `HOME`[\*](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html) | `String` | Used to determine the user's home directory. |
 | `SIMULATOR_RUNTIME_BUILD_VERSION`\* | `String` | Used when running in the iOS (etc.) Simulator to determine the simulator's version. |
 | `SIMULATOR_RUNTIME_VERSION`\* | `String` | Used when running in the iOS (etc.) Simulator to determine the simulator's version. |
+| `SWT_SERIALIZED_TRAIT_APPLIES_GLOBALLY` | `Bool` | Whether or not `.serialized` applies globally or just to its branch of the test graph. |
 | `SWT_USE_LEGACY_TEST_DISCOVERY` | `Bool` | Used to explicitly enable or disable legacy test discovery. |

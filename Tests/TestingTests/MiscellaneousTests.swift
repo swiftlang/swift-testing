@@ -607,7 +607,7 @@ struct MiscellaneousTests {
   func testMutationCount() throws {
     let test = try #require(Test.current)
     #expect(
-      test.mutationCount <= 2,
+      test.mutationCount <= 3,
       """
       More mutations than expected on test '\(test.name)'. This is not
       necessarily a bug. Please double-check where the additional mutations came
