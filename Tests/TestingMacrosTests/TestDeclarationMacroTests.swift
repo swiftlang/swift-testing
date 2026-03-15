@@ -512,6 +512,35 @@ struct TestDeclarationMacroTests {
     }
   }
 
+  static var parameterizedArgumentTypePreservationInputs: [(String, String)] {
+    [
+      (
+        """
+        @Test(arguments: [])
+        func f(i: Int) {}
+        """,
+        #"arguments:{[]as[Int]}"#
+      ),
+      (
+        """
+        @Test(arguments: [
+          (nil, 1),
+          ("a", nil),
+          ("b", nil)
+        ])
+        func f(s: String?, i: Int?) {}
+        """,
+        #"arguments:{[(nil,1),("a",nil),("b",nil)]as[(String?,Int?)]}"#
+      ),
+    ]
+  }
+
+  @Test("Literal arguments preserve contextual types after lazy wrapping", arguments: parameterizedArgumentTypePreservationInputs)
+  func preservesParameterizedArgumentTypes(input: String, expectedOutput: String) throws {
+    let (output, _) = try parse(input, removeWhitespace: true)
+    #expect(output.contains(expectedOutput))
+  }
+
   @Test("Display name is preserved",
     arguments: [
       #"@Test("Display Name") func f() {}"#,

@@ -171,7 +171,12 @@ struct AttributeInfo {
     if let testFunctionArguments {
       arguments += testFunctionArguments.map { argument in
         var copy = argument
-        copy.expression = .init(ClosureExprSyntax { argument.expression.trimmed })
+        let argumentExpr = argument.expression.trimmed
+        if let contextualType = _contextualTypeForLiteralArgument(for: argumentExpr, among: testFunctionArguments) {
+          copy.expression = .init(ClosureExprSyntax { "\(argumentExpr) as \(raw: contextualType)" as ExprSyntax })
+        } else {
+          copy.expression = .init(ClosureExprSyntax { argumentExpr })
+        }
         return copy
       }
     }
@@ -179,5 +184,39 @@ struct AttributeInfo {
     arguments.append(Argument(label: "sourceBounds", expression: sourceBounds))
 
     return LabeledExprListSyntax(arguments)
+  }
+
+  /// The contextual type to explicitly apply to a literal `arguments:`
+  /// expression after it is wrapped in a closure for lazy evaluation.
+  ///
+  /// Parameterized `@Test` declarations are modeled in terms of the collection
+  /// type supplied to the macro, but macro expansion only sees source syntax.
+  /// When the `arguments:` parameter is supplied as a single array literal,
+  /// reconstruct the array type from the test function's parameters so the
+  /// literal retains enough contextual type information after lazy wrapping.
+  private func _contextualTypeForLiteralArgument(
+    for expression: ExprSyntax,
+    among testFunctionArguments: [Argument]
+  ) -> String? {
+    guard let functionDecl = declaration.as(FunctionDeclSyntax.self) else {
+      return nil
+    }
+
+    let parameters = functionDecl.signature.parameterClause.parameters
+    guard !parameters.isEmpty else {
+      return nil
+    }
+
+    if testFunctionArguments.count == 1, expression.is(ArrayExprSyntax.self) {
+      if parameters.count == 1, let parameter = parameters.first {
+        // A single-parameter test expects collection elements of the parameter
+        // type itself, not tuple-shaped elements.
+        return "[\(parameter.baseTypeName)]"
+      }
+      let elementType = parameters.map(\.baseTypeName).joined(separator: ", ")
+      return "[(\(elementType))]"
+    }
+
+    return nil
   }
 }
