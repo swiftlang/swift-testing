@@ -348,6 +348,17 @@ extension Event.ConsoleOutputRecorder {
     }
 
     write(lines.joined())
+
+    // Print failure summary when run ends, unless an environment variable is
+    // set to explicitly disable it. The summary is printed after the main
+    // output so it appears at the very end of the console output.
+    if case .runEnded = event.kind, Environment.flag(named: "SWT_FAILURE_SUMMARY_ENABLED") != false {
+      if let summary = _humanReadableOutputRecorder.generateFailureSummary(options: options) {
+        // Add blank line before summary for visual separation
+        write("\n\(summary)")
+      }
+    }
+
     return !messages.isEmpty
   }
 
