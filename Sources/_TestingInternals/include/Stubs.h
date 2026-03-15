@@ -155,6 +155,18 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 }
 #endif
 
+#if defined(__ELF__) && defined(__swift__)
+/// A function exported by the Swift runtime that enumerates all metadata
+/// sections loaded into the current process.
+///
+/// This function is needed on ELF-based platforms because they do not preserve
+/// section information that we can discover at runtime.
+SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
+  bool (* body)(const void *sections, void *context),
+  void *context
+);
+#endif
+
 #if defined(__linux__)
 /// Get the `FICLONE` `ioctl()` argument.
 ///

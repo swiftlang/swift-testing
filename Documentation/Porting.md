@@ -154,10 +154,6 @@ to load that information:
 +  let resourceName: Str255 = switch kind {
 +  case .testContent:
 +    "__swift5_tests"
-+#if !SWT_NO_LEGACY_TEST_DISCOVERY
-+  case .typeMetadata:
-+    "__swift5_types"
-+#endif
 +  }
 +
 +  let oldRefNum = CurResFile()
@@ -198,6 +194,11 @@ to load that information:
  #endif
 ```
 
+> [!NOTE]
+> We are not using `objectFormat()` yet to maintain compatibility with the Swift
+> 6.2 toolchain. We will migrate to `objectFormat()` when we drop Swift 6.2
+> toolchain support (presumably after Swift 6.3 ships).
+
 You may also need to update the `makeTestContentRecordDecl()` function in the
 `TestingMacros` target to emit the correct `@section` attribute for your
 platform if it does not use an image format already supported by Swift Testing:
@@ -205,6 +206,7 @@ platform if it does not use an image format already supported by Swift Testing:
 ```diff
 --- a/Sources/TestingMacros/Support/TestContentGeneration.swift
 +++ b/Sources/TestingMacros/Support/TestContentGeneration.swift
+
    let objectFormatsAndSectionNames: [(objectFormat: String, sectionName: String)] = [
      ("MachO", "__DATA_CONST,__swift5_tests"),
      ("ELF", "swift5_tests"),
@@ -219,9 +221,8 @@ platform if it does not use an image format already supported by Swift Testing:
 If your platform does not support dynamic linking and loading, you will need to
 use static linkage instead. Define the `"SWT_NO_DYNAMIC_LINKING"` compiler
 conditional for your platform in both `Package.swift` and
-`CompilerSettings.cmake`, then define the symbols `_testContentSectionBegin`,
-`_testContentSectionEnd`, `_typeMetadataSectionBegin`, and
-`_typeMetadataSectionEnd` in `SectionBounds.swift`:
+`CompilerSettings.cmake`, then define the symbols `_testContentSectionBegin` and
+`_testContentSectionEnd` in `SectionBounds.swift`:
 
 ```diff
 --- a/Sources/_TestDiscovery/SectionBounds.swift
@@ -230,18 +231,10 @@ conditional for your platform in both `Package.swift` and
 +#elseif os(Classic)
 +@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
 +@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
-+#if !SWT_NO_LEGACY_TEST_DISCOVERY
-+@_silgen_name(raw: "...") private nonisolated(unsafe) var _typeMetadataSectionBegin: _SectionBound
-+@_silgen_name(raw: "...") private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound
-+#endif
  #else
  #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
  private nonisolated(unsafe) let _testContentSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
  private nonisolated(unsafe) let _testContentSectionEnd = _testContentSectionBegin
- #if !SWT_NO_LEGACY_TEST_DISCOVERY
- private nonisolated(unsafe) let _typeMetadataSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
- private nonisolated(unsafe) let _typeMetadataSectionEnd = _typeMetadataSectionBegin
- #endif
  #endif
  // ...
 ```
