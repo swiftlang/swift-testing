@@ -546,7 +546,7 @@ struct EventRecorderTests {
     await lateTask?.value
 
     let issues = recordedIssues.rawValue
-    let originalIssue = issues[0], lateIssue = issues[1]
+    let originalIssue = issues[1], lateIssue = issues[0]
     #expect(issues.count == 2)
     guard case .unconditional = originalIssue.kind else {
       Issue.record(

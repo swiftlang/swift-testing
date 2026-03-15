@@ -409,7 +409,6 @@ extension Runner {
 
     Event.post(.testCaseStarted, for: (step.test, testCase), iteration: context.iteration, configuration: configuration)
     defer {
-      testCase.hasFinished = true
       Event.post(.testCaseEnded, for: (step.test, testCase), iteration: context.iteration, configuration: configuration)
     }
 
@@ -439,6 +438,13 @@ extension Runner {
   public func run() async {
     await Self._run(self)
   }
+  
+  /// An enumeration describing a test or test case that has already finished
+  /// running.
+  private enum _FinishedItem: Sendable, Equatable, Hashable {
+    case test(Test.ID)
+    case testCase(Test.Case.ID)
+  }
 
   /// Run the tests in a runner's plan with a given configuration.
   ///
@@ -456,11 +462,52 @@ extension Runner {
 
     // Track whether or not any issues were recorded across the entire run.
     let issueRecorded = Mutex(false)
+    
+    // Track whether or not an issue is recorded after its test ends.
+    let finishedItems = Allocated(Mutex<Set<_FinishedItem>>([]))
+    
     runner.configuration.eventHandler = { [eventHandler = runner.configuration.eventHandler] event, context in
-      if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
-        issueRecorded.withLock { issueRecorded in
-          issueRecorded = true
+      switch event.kind {
+      case .testEnded:
+        finishedItems.value.withLock { finishedItems in
+          _ = finishedItems.insert(.test(event.testID!))
         }
+      case .testCaseEnded:
+        finishedItems.value.withLock { finishedItems in
+          _ = finishedItems.insert(.testCase(event.testCaseID!))
+        }
+      case .issueRecorded(let issue):
+        if !issue.isKnown {
+          issueRecorded.withLock { issueRecorded in
+            issueRecorded = true
+          }
+        }
+        
+        guard !issue.isLate else { break }
+        
+        var lateRecordedIssue = Issue(
+          kind: .apiMisused,
+          comments: [
+                      """
+                      An issue was recorded after its associated test ended. Ensure \
+                      asynchronous work has completed before your test ends.
+                      """
+          ],
+          sourceContext: issue.sourceContext
+        )
+        lateRecordedIssue.isLate = true
+        
+        let finishedItems = finishedItems.value.rawValue
+        if let testCaseID = event.testCaseID,
+           finishedItems.contains(.testCase(testCaseID)) {
+          Event.post(.issueRecorded(lateRecordedIssue))
+          
+        } else if let testID = event.testID,
+                  finishedItems.contains(.test(testID)) {
+          Event.post(.issueRecorded(lateRecordedIssue))
+        }
+      default:
+        break
       }
       eventHandler(event, context)
     }
