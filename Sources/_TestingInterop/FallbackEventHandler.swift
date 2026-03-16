@@ -8,26 +8,13 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if compiler(>=6.3) && !SWT_NO_INTEROP
-#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK && !hasFeature(Embedded)
+#if !SWT_NO_INTEROP
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded)
 private import _TestingInternals
 #else
 private import Synchronization
 #endif
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK && !hasFeature(Embedded)
-/// The installed event handler.
-private nonisolated(unsafe) let _fallbackEventHandler = {
-  let result = ManagedBuffer<FallbackEventHandler?, os_unfair_lock>.create(
-    minimumCapacity: 1,
-    makingHeaderWith: { _ in nil }
-  )
-  result.withUnsafeMutablePointerToElements { lock in
-    lock.initialize(to: .init())
-  }
-  return result
-}()
-#else
 /// `Atomic`-compatible storage for ``FallbackEventHandler``.
 private final class _FallbackEventHandlerStorage: Sendable, RawRepresentable {
   let rawValue: FallbackEventHandler
@@ -38,6 +25,13 @@ private final class _FallbackEventHandlerStorage: Sendable, RawRepresentable {
 }
 
 /// The installed event handler.
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded)
+private nonisolated(unsafe) let _fallbackEventHandler = {
+  let result = UnsafeMutablePointer<UnsafeRawPointer?>.allocate(capacity: 1)
+  result.initialize(to: nil)
+  return result
+}()
+#else
 private let _fallbackEventHandler = AtomicLazyReference<_FallbackEventHandlerStorage>()
 #endif
 
@@ -66,21 +60,14 @@ package typealias FallbackEventHandler = @Sendable @convention(c) (
 /// Get the current fallback event handler.
 ///
 /// - Returns: The currently-set handler function, if any.
-#if compiler(>=6.3)
 @c
-#else
-@_cdecl("_swift_testing_getFallbackEventHandler")
-#endif
 @usableFromInline
 package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
-#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK && !hasFeature(Embedded)
-  return _fallbackEventHandler.withUnsafeMutablePointers { fallbackEventHandler, lock in
-    os_unfair_lock_lock(lock)
-    defer {
-      os_unfair_lock_unlock(lock)
-    }
-    return fallbackEventHandler.pointee
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded)
+  guard let unmanaged = swt_atomicLoad(_fallbackEventHandler).map(Unmanaged<_FallbackEventHandlerStorage>.fromOpaque) else {
+    return nil
   }
+  return unmanaged.takeUnretainedValue().rawValue
 #else
   // If we had a setter, this load would present a race condition because
   // another thread could store a new value in between the load and the call to
@@ -102,29 +89,20 @@ package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
 /// The fallback event handler can only be installed once per process, typically
 /// by the first testing library to run. If this function has already been
 /// called and the handler set, it does not replace the previous handler.
-#if compiler(>=6.3)
 @c
-#else
-@_cdecl("_swift_testing_installFallbackEventHandler")
-#endif
 @usableFromInline
 package func _swift_testing_installFallbackEventHandler(_ handler: FallbackEventHandler) -> CBool {
   var result = false
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK && !hasFeature(Embedded)
-  result = _fallbackEventHandler.withUnsafeMutablePointers { fallbackEventHandler, lock in
-    os_unfair_lock_lock(lock)
-    defer {
-      os_unfair_lock_unlock(lock)
-    }
-    guard fallbackEventHandler.pointee == nil else {
-      return false
-    }
-    fallbackEventHandler.pointee = handler
-    return true
+  let handler = _FallbackEventHandlerStorage(rawValue: handler)
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded)
+  let unmanaged = Unmanaged.passRetained(handler)
+  var expectedNil: UnsafeRawPointer?
+  result = swt_atomicCompareExchange(_fallbackEventHandler, &expectedNil, unmanaged.toOpaque())
+  if !result {
+    unmanaged.release()
   }
 #else
-  let handler = _FallbackEventHandlerStorage(rawValue: handler)
   let stored = _fallbackEventHandler.storeIfNil(handler)
   result = (handler === stored)
 #endif

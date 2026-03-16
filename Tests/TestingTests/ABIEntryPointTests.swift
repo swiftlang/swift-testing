@@ -10,11 +10,15 @@
 
 #if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+private import _TestingInternals
 
 #if canImport(Foundation)
 private import Foundation
 #endif
-private import _TestingInternals
+
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+import Synchronization
+#endif
 
 @Suite("ABI entry point tests")
 struct ABIEntryPointTests {
@@ -60,6 +64,50 @@ struct ABIEntryPointTests {
           Issue.record("Unexpected record \(record)")
         }
       }
+    }
+  }
+
+  @Test("v0 entry point listing and decoding test records")
+  func v0_listingAndDecodingTests() async throws {
+    var arguments = __CommandLineArguments_v0()
+    arguments.listTests = true
+    arguments.eventStreamSchemaVersion = "0"
+    arguments.verbosity = .min
+    arguments.filter = ["ABIEntryPointTests"]
+
+    let testIDs = Mutex<[Test.ID]>()
+
+    _ = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
+      #expect(throws: Never.self) {
+        let record = try JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
+        guard case let .test(encodedTest) = record.kind else {
+          Issue.record("Unexpected record \(record)")
+          return
+        }
+        let test = try #require(Test(decoding: encodedTest))
+        testIDs.withLock { $0.append(test.id) }
+        #expect(test.id.moduleName.hasSuffix("Tests"))
+        #expect(!test.id.nameComponents.isEmpty)
+        if !test.isSuite {
+          let functionName = try #require(test.id.nameComponents.last)
+          #expect(functionName == test.name)
+          #expect(test.id.sourceLocation != nil)
+          if test.isParameterized {
+            let parameters = try #require(test.parameters)
+            #expect(parameters.count > 0)
+          }
+        }
+      }
+    }
+
+    // The set of tests reported by `swift test list` will include some of our
+    // fixture suites that are intentionally not annotated `@Suite(.hidden)`, so
+    // we can't just compare the two sets of IDs for equality. This doesn't
+    // affect external test targets that can't use `.hidden` anyway.
+    let idsFromEntryPoint = Set(testIDs.rawValue)
+    let idsFromAll = await Test.all.filter { !$0.isHidden }.map(\.id)
+    for id in idsFromAll {
+      #expect(idsFromEntryPoint.contains(id))
     }
   }
 
@@ -184,6 +232,22 @@ struct ABIEntryPointTests {
     }
   }
 #endif
+
+  func decodeMetadataValue<T>(forKey key: String, ofType type: T.Type) throws -> T where T: Decodable {
+    let cString = try #require(_swift_testing_copyMetadataValue(key, 0))
+    defer {
+      free(cString)
+    }
+    let byteCount = strlen(cString)
+    return try JSON.decode(type, from: UnsafeRawBufferPointer(start: cString, count: byteCount))
+  }
+
+  @Test func copyMetadataValue() throws {
+    let lowerBound = try decodeMetadataValue(forKey: "_minimumSupportedABIVersion", ofType: ABI.VersionNumber.self)
+    #expect(lowerBound == ABI.v0.versionNumber)
+    let upperBound = try decodeMetadataValue(forKey: "_maximumSupportedABIVersion", ofType: ABI.VersionNumber.self)
+    #expect(upperBound == ABI.CurrentVersion.versionNumber)
+  }
 }
 
 #if !SWT_NO_DYNAMIC_LINKING

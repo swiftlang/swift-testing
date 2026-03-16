@@ -18,7 +18,7 @@ struct FoundationTests {
   func castTestClockInstantToDate() {
     let instant = Test.Clock.Instant.now
     let date = Date(instant)
-    #expect(TimeInterval(instant.timeComponentsSince1970.seconds) == date.timeIntervalSince1970.rounded(.down))
+    #expect(TimeInterval(instant.durationSince1970.components.seconds) == date.timeIntervalSince1970.rounded(.down))
   }
 }
 #endif

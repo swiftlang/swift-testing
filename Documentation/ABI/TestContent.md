@@ -28,7 +28,8 @@ section in built test products:
 [^windowsPadding]: On Windows, the Swift compiler [emits](https://github.com/swiftlang/swift/blob/main/stdlib/public/runtime/SwiftRT-COFF.cpp)
   leading and trailing padding into this section, both zeroed and of size
   `MemoryLayout<UInt>.stride`. Code that walks this section must skip over this
-  padding.
+  padding. This padding will be removed in a future update to the Swift
+  toolchain ([swift-#87650](https://github.com/swiftlang/swift/issues/87650)).
 
 ### Record layout
 

@@ -75,7 +75,6 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
   )
   """
 
-#if compiler(>=6.3)
   result = """
   @used
   \(result)
@@ -115,7 +114,6 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
       """
     }
   }
-#endif
 
   return result
 }
