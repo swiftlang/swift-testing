@@ -64,6 +64,7 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
     /// The kind of this dependency.
     var kind: Kind
 
+#if !hasFeature(Embedded)
     /// The key path used to construct this dependency, if any.
     nonisolated(unsafe) var originalKeyPath: AnyKeyPath?
 #endif
