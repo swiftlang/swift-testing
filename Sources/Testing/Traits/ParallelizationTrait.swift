@@ -64,7 +64,6 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
     /// The kind of this dependency.
     var kind: Kind
 
-#if !hasFeature(Embedded)
     /// The key path used to construct this dependency, if any.
     nonisolated(unsafe) var originalKeyPath: AnyKeyPath?
 #endif
@@ -77,7 +76,7 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
   var dependency: Dependency?
 
   /// A mapping of dependencies to serializers.
-  private static let _serializers = Mutex<[Dependency.Kind: Serializer]>()
+  private static let _serializers = Mutex<[Dependency.Kind: Serializer<Void>]>()
 }
 
 #if !hasFeature(Embedded)
@@ -107,39 +106,35 @@ extension ParallelizationTrait {
       }
     }
   }
+}
 
-  public func _reduce(into other: any Trait) -> (any Trait)? {
-    guard var other = other as? Self else {
-      // The other trait is not a ParallelizationTrait instance, so ignore it.
-      return nil
-    }
+// MARK: -
 
+@_spi(Experimental)
+extension ParallelizationTrait: ReducibleTrait {
+  public func reduce(into other: Self) -> Self? {
     let selfKind = dependency?.kind
     let otherKind = other.dependency?.kind
 
     switch (selfKind, otherKind) {
     case (.none, .none),
       (.some, .some) where selfKind == otherKind:
-      // Both traits have equivalent (or no) dependencies. Use the other trait
-      // and discard this one.
-      break
+      // Both traits have equivalent (or no) dependencies. It doesn't matter
+      // which one we keep.
+      return self
     case (.some, .some):
       // The two traits have different dependencies. Combine them into a single
       // .unbounded dependency.
-      other = .serialized(for: *)
+      return .serialized(for: *)
     case (.some, .none):
       // This trait specifies a dependency, but the other one does not. Use this
       // trait and discard the other one.
-      other = self
+      return self
     case (.none, .some):
       // The other trait specifies a dependency, but this one does not. Use the
       // other trait and discard this one.
-      break
+      return other
     }
-
-    // NOTE: We always reduce to a single ParallelizationTrait instance, so this
-    // function always returns the other instance.
-    return other
   }
 }
 #endif
@@ -236,7 +231,6 @@ extension Trait where Self == ParallelizationTrait {
 
 // MARK: - CustomStringConvertible
 
-#if !hasFeature(Embedded)
 extension ParallelizationTrait: CustomStringConvertible {
   public var description: String {
     if let dependency {
@@ -250,7 +244,7 @@ extension ParallelizationTrait.Dependency: CustomStringConvertible {
   public var description: String {
 #if !hasFeature(Embedded)
     if let originalKeyPath {
-      return #"\\#(originalKeyPath)"#
+      return #"\#(originalKeyPath)"#
     }
 #endif
     switch kind {
@@ -263,13 +257,6 @@ extension ParallelizationTrait.Dependency: CustomStringConvertible {
     }
   }
 }
-#else
-extension ParallelizationTrait: CustomStringConvertible {
-  public var description: String {
-    ".serialized"
-  }
-}
-#endif
 
 // MARK: - Dependencies
 

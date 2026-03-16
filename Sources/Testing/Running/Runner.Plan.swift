@@ -159,19 +159,31 @@ extension Runner.Plan {
         return nil
       }
 
-      // O(n^2), but we expect n to be small, right?
-      test.traits = test.traits.reduce(into: []) { traits, trait in
-        for i in traits.indices {
-          let other = traits[i]
-          if let replacement = trait._reduce(into: other) {
-            traits[i] = replacement
-            return
-          }
+      var traits = test.traits.map { $0 as Optional }
+      for i in traits.indices {
+        guard var trait = traits[i] as? any ReducibleTrait else {
+          // The trait is not reducible, so preserve it verbatim and move on.
+          continue
+        }
+        defer {
+          traits[i] = trait
         }
 
-        // The trait wasn't reduced into any other traits, so preserve it.
-        traits.append(trait)
+        func open<T>(_ trait: inout T) where T: ReducibleTrait {
+          for j in traits.index(after: i) ..< traits.endIndex {
+            if let other = traits[j] as? T,
+               let replacement = other.reduce(into: trait) {
+              // Reduction occurred, so remove the other trait and replace this one
+              // with the reduced trait.
+              trait = replacement
+              traits[j] = nil
+            }
+          }
+        }
+        open(&trait)
       }
+      test.traits = traits.compactMap(\.self)
+
       return test
     }
   }
