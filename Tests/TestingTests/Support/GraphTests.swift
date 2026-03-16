@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly) @testable import Testing
+@_spi(Experimental) @testable import Testing
 
 @Suite("Graph<K, V> Tests")
 struct GraphTests {
@@ -550,7 +550,7 @@ struct GraphTests {
     #expect(Set(values) == [123, 124, 456, 457, 13579, 13580, 789, 790, 2468, 2469])
   }
 
-  @Test
+  @Test(.enabled(if: performanceTestsEnabled))
   func `inserting many items with the same prefix is not quadratic`() {
     // This test verifies that inserting various numbers of elements that
     // all share a common prefix scales ~linearly.
@@ -586,12 +586,6 @@ struct GraphTests {
     let standardDeviation = (variance / (Double(perItemTimes.count) - 1)).squareRoot()
 
     // Standard deviation should be less than 25% of mean
-
-    let description = perItemTimes
-      .sorted { $0.key < $1.key }
-      .map { "\($0)\t\($1)" }
-      .joined(separator: "\n")
-
-    #expect(standardDeviation < mean * 0.25, "Expected standard deviation to be <25% of mean, but was \(standardDeviation) (mean: \(mean))\n\(description)")
+    #expect(standardDeviation < mean * 0.25)
   }
 }
