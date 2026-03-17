@@ -523,6 +523,20 @@ struct TestDeclarationMacroTests {
       ),
       (
         """
+        @Test(arguments: [], [])
+        func f(i: Int, s: String) {}
+        """,
+        #"arguments:{[]as[Int]},{[]as[String]}"#
+      ),
+      (
+        """
+        @Test(arguments: [nil], [nil])
+        func f(i: Int?, s: String?) {}
+        """,
+        #"arguments:{[nil]as[Int?]},{[nil]as[String?]}"#
+      ),
+      (
+        """
         @Test(arguments: [
           (nil, 1),
           ("a", nil),
@@ -539,6 +553,19 @@ struct TestDeclarationMacroTests {
   func preservesParameterizedArgumentTypes(input: String, expectedOutput: String) throws {
     let (output, _) = try parse(input, removeWhitespace: true)
     #expect(output.contains(expectedOutput))
+  }
+
+  @Test("Non-literal parameterized arguments are left unchanged")
+  func nonLiteralParameterizedArgumentsRemainUncast() throws {
+    let input = """
+    let ints = [1, 2]
+    let strings = ["a", "b"]
+    @Test(arguments: ints, strings)
+    func f(i: Int, s: String) {}
+    """
+    let (output, _) = try parse(input, removeWhitespace: true)
+    #expect(output.contains(#"arguments:{ints},{strings}"#))
+    #expect(!output.contains(#"arguments:{intsas[Int]},{stringsas[String]}"#))
   }
 
   @Test("Display name is preserved",

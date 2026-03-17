@@ -169,14 +169,24 @@ struct AttributeInfo {
     // If there are any parameterized test function arguments, wrap each in a
     // closure so they may be evaluated lazily at runtime.
     if let testFunctionArguments {
-      arguments += testFunctionArguments.map { argument in
+      arguments += testFunctionArguments.enumerated().map { index, argument in
         var copy = argument
-        let argumentExpr = argument.expression.trimmed
-        if let contextualType = _contextualTypeForLiteralArgument(for: argumentExpr, among: testFunctionArguments) {
-          copy.expression = .init(ClosureExprSyntax { "\(argumentExpr) as \(raw: contextualType)" as ExprSyntax })
-        } else {
-          copy.expression = .init(ClosureExprSyntax { argumentExpr })
+        var expr = copy.expression.trimmed
+        if let contextualType = _contextualTypeForLiteralArgument(
+          at: index,
+          for: expr,
+          among: testFunctionArguments
+        ) {
+          expr = ExprSyntax(
+            AsExprSyntax(
+              expression: expr,
+              asKeyword: .keyword(.as, leadingTrivia: .space, trailingTrivia: .space),
+              type: contextualType.trimmed
+            )
+          )
         }
+        let lazyExpression = expr.trimmed
+        copy.expression = .init(ClosureExprSyntax { lazyExpression })
         return copy
       }
     }
@@ -191,30 +201,62 @@ struct AttributeInfo {
   ///
   /// Parameterized `@Test` declarations are modeled in terms of the collection
   /// type supplied to the macro, but macro expansion only sees source syntax.
-  /// When the `arguments:` parameter is supplied as a single array literal,
-  /// reconstruct the array type from the test function's parameters so the
+  /// When the `arguments:` parameter is supplied as an array literal, derive
+  /// the corresponding array type from the test function's parameters so the
   /// literal retains enough contextual type information after lazy wrapping.
+  ///
+  /// This applies to both the single-collection form and the overloads where
+  /// each `arguments:` expression corresponds directly to one parameter.
+  ///
+  /// - Parameters:
+  ///   - index: The position of `expression` within `testFunctionArguments`.
+  ///   - expression: The argument expression being wrapped for lazy evaluation.
+  ///   - testFunctionArguments: The full list of argument expressions supplied
+  ///     to the parameterized `@Test`.
+  ///
+  /// - Returns: The array type to apply to `expression`, or `nil` if no
+  ///   contextual type reconstruction is needed.
   private func _contextualTypeForLiteralArgument(
+    at index: Int,
     for expression: ExprSyntax,
     among testFunctionArguments: [Argument]
   ) -> TypeSyntax? {
+    guard expression.is(ArrayExprSyntax.self) else {
+      return nil
+    }
+
     guard let functionDecl = declaration.as(FunctionDeclSyntax.self) else {
       return nil
     }
 
-    let parameters = functionDecl.signature.parameterClause.parameters
+    let parameters = Array(functionDecl.signature.parameterClause.parameters)
     if parameters.isEmpty {
       return nil
     }
 
-    if testFunctionArguments.count == 1, expression.is(ArrayExprSyntax.self) {
+    if testFunctionArguments.count == parameters.count {
+      let parameter = parameters[index]
+      return TypeSyntax(
+        ArrayTypeSyntax(element: parameter.baseType.trimmed)
+      )
+    }
+
+    if testFunctionArguments.count == 1 {
       if parameters.count == 1, let parameter = parameters.first {
         // A single-parameter test expects collection elements of the parameter
         // type itself, not tuple-shaped elements.
-        return TypeSyntax(stringLiteral: "[\(parameter.baseTypeName)]")
+        return TypeSyntax(
+          ArrayTypeSyntax(element: parameter.baseType.trimmed)
+        )
       }
-      let elementType = parameters.map(\.baseTypeName).joined(separator: ", ")
-      return TypeSyntax(stringLiteral: "[(\(elementType))]")
+      let elementType = TypeSyntax(
+        TupleTypeSyntax(elements: TupleTypeElementListSyntax {
+          for parameter in parameters {
+            TupleTypeElementSyntax(type: parameter.baseType.trimmed)
+          }
+        })
+      )
+      return TypeSyntax(ArrayTypeSyntax(element: elementType))
     }
 
     return nil
