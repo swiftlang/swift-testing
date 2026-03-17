@@ -24,7 +24,7 @@ Use `jq` to extract the Swift SDK ID automatically to build and test in a single
 swift test --swift-sdk "$(swiftc -print-target-info | jq -r '.swiftCompilerTag')_wasm"
 ```
 
-## Swift 6.2
+## Build and Test WebAssembly separately
 
 Prior to Swift 6.3 `swift test` doesn't support using the SDK to indicate the WebAssembly environment to use for tests.
 In this case, building tests and running them are two separate steps.
