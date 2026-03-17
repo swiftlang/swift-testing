@@ -84,19 +84,6 @@ let package = Package(
     )
 #endif
 
-    result += [
-      .library(
-        name: "_Testing_ExperimentalImageAttachments",
-        targets: [
-          "_Testing_AppKit",
-          "_Testing_CoreGraphics",
-          "_Testing_CoreImage",
-          "_Testing_UIKit",
-          "_Testing_WinSDK",
-        ]
-      )
-    ]
-
     result.append(
       .library(
         name: "_TestDiscovery",
@@ -156,6 +143,7 @@ let package = Package(
         "_Testing_CoreImage",
         "_Testing_Foundation",
         "_Testing_UIKit",
+        "_Testing_UniformTypeIdentifiers",
         "_Testing_WinSDK",
         "MemorySafeTestingTests",
       ],
@@ -235,12 +223,13 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_AppKit",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("Testing")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_AppKit")
     ),
     .target(
       name: "_Testing_CoreGraphics",
       dependencies: [
         "Testing",
+        "_Testing_UniformTypeIdentifiers",
       ],
       path: "Sources/Overlays/_Testing_CoreGraphics",
       exclude: ["CMakeLists.txt"],
@@ -279,6 +268,15 @@ let package = Package(
       path: "Sources/Overlays/_Testing_UIKit",
       exclude: ["CMakeLists.txt"],
       swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_UIKit")
+    ),
+    .target(
+      name: "_Testing_UniformTypeIdentifiers",
+      dependencies: [
+        "Testing",
+      ],
+      path: "Sources/Overlays/_Testing_UniformTypeIdentifiers",
+      exclude: ["CMakeLists.txt"],
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_UniformTypeIdentifiers")
     ),
     .target(
       name: "_Testing_WinSDK",
@@ -430,7 +428,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("AvailabilityMacro=_clockAPI:macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0"),
       .enableExperimentalFeature("AvailabilityMacro=_typedThrowsAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
       .enableExperimentalFeature("AvailabilityMacro=_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
-
+      .enableExperimentalFeature("AvailabilityMacro=_uttypesOverlay:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0"),
       .enableExperimentalFeature("AvailabilityMacro=_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0"),
     ]
   }

@@ -140,6 +140,14 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
 #if !SWT_NO_FILE_CLONING
     _clone = { attachment.attachableValue.clone(toFileAtPath: $0, for: attachment) }
 #endif
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded) && canImport(UniformTypeIdentifiers)
+    _preferredContentType = {
+      guard let contentType = attachment.attachableValue._preferredContentType(for: attachment) as? any UTTypeConvertible else {
+        return nil
+      }
+      return UTTypeProxy(contentType)
+    }
+#endif
   }
 
   /// The implementation of ``estimatedAttachmentByteCount`` borrowed from the
@@ -177,6 +185,16 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
 
   package func clone(toFileAtPath filePath: String) -> Bool {
     _clone(filePath)
+  }
+#endif
+
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded) && canImport(UniformTypeIdentifiers)
+  /// The implementation of ``_preferredContentType(for:)`` borrowed from the
+  /// original attachment.
+  private var _preferredContentType: @Sendable () -> UTTypeProxy?
+
+  public borrowing func _preferredContentType(for attachment: borrowing Attachment<AnyAttachable>) -> (some Any)? {
+    _preferredContentType()
   }
 #endif
 }

@@ -9,6 +9,3 @@
 //
 
 @_exported public import Testing
-#if canImport(_Testing_UniformTypeIdentifiers)
-@_exported public import _Testing_UniformTypeIdentifiers
-#endif

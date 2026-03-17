@@ -11,7 +11,7 @@
 #if SWT_TARGET_OS_APPLE && canImport(CoreGraphics)
 private import CoreGraphics
 
-private import UniformTypeIdentifiers
+public import UniformTypeIdentifiers
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
@@ -66,6 +66,11 @@ extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: At
   public borrowing func preferredName(for attachment: borrowing Attachment<_AttachableImageWrapper>, basedOn suggestedName: String) -> String {
     let imageFormat = _imageFormat(forPreferredName: suggestedName)
     return (suggestedName as NSString).appendingPathExtension(for: imageFormat.contentType)
+  }
+
+  public borrowing func _preferredContentType(for attachment: borrowing Attachment<_AttachableImageWrapper>) -> UTType? {
+    let imageFormat = _imageFormat(forPreferredName: attachment.preferredName)
+    return imageFormat.contentType
   }
 }
 #endif

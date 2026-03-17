@@ -46,6 +46,14 @@ extension ABI {
     /// - Warning: Attachments' preferred names are not yet part of the JSON
     ///   schema.
     var _preferredName: String?
+
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded) && canImport(UniformTypeIdentifiers)
+    /// The preferred uniform type identifier of the attachment.
+    ///
+    /// - Warning: Attachments' preferred content types are not yet part of the
+    ///   JSON schema. This property is Apple-specific.
+    var _preferredContentType: UTTypeProxy?
+#endif
   }
 }
 
@@ -57,6 +65,9 @@ extension ABI.EncodedAttachment: Codable {
     case preferredName = "_preferredName"
     case bytes = "_bytes"
     case error = "_error"
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded) && canImport(UniformTypeIdentifiers)
+    case preferredContentType = "_preferredContentType"
+#endif
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -112,6 +123,9 @@ extension ABI.EncodedAttachment: Codable {
     }
     if V.includesExperimentalFields {
       try container.encodeIfPresent(_preferredName, forKey: .preferredName)
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded) && canImport(UniformTypeIdentifiers)
+      try container.encodeIfPresent(_preferredContentType?.identifier, forKey: .preferredContentType)
+#endif
     }
   }
 
@@ -154,6 +168,11 @@ extension ABI.EncodedAttachment: Codable {
 
     if V.includesExperimentalFields {
       _preferredName = try container.decodeIfPresent(String.self, forKey: .preferredName)
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded) && canImport(UniformTypeIdentifiers)
+      if let identifier = try container.decodeIfPresent(String.self, forKey: .preferredContentType) {
+        _preferredContentType = UTTypeProxy(identifier)
+      }
+#endif
     }
   }
 }
@@ -205,6 +224,12 @@ extension ABI.EncodedAttachment: Attachable {
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     _preferredName ?? suggestedName
   }
+
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded) && canImport(UniformTypeIdentifiers)
+  public borrowing func _preferredContentType(for attachment: borrowing Attachment<ABI.EncodedAttachment<V>>) -> (some Any)? {
+    _preferredContentType
+  }
+#endif
 }
 
 #if !SWT_NO_FILE_CLONING
@@ -236,6 +261,11 @@ extension ABI.EncodedAttachment {
     kind = .abstract(copy attachment)
     if V.includesExperimentalFields {
       _preferredName = attachment.preferredName
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded) && canImport(UniformTypeIdentifiers)
+      if let preferredContentType = attachment.attachableValue._preferredContentType(for: attachment) as? any UTTypeConvertible {
+        _preferredContentType = UTTypeProxy(preferredContentType)
+      }
+#endif
     }
   }
 

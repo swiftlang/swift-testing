@@ -33,6 +33,7 @@ add_library(Testing
   Attachments/Attachable.swift
   Attachments/AttachableWrapper.swift
   Attachments/Attachment.swift
+  Attachments/UTTypeConvertible.swift
   Events/Clock.swift
   Events/Event.swift
   Events/Event+FallbackEventHandler.swift

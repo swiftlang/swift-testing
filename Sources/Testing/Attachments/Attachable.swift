@@ -99,6 +99,39 @@ public protocol Attachable: ~Copyable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String
+
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded) && canImport(UniformTypeIdentifiers)
+  /// The Swift type of the `_preferredContentType(for:)` function's result.
+  ///
+  /// By default, this associated type equals `Never`, indicating that this type
+  /// does not specify a preferred content type.
+  ///
+  /// - Warning: This associated type is experimental. Due to technical
+  ///   constraints, it must be exposed publicly. Do not use it.
+  associatedtype _UTType = Never
+
+  /// Get the content type to use for an instance of ``Attachment`` created from
+  /// this instance.
+  ///
+  /// - Parameters:
+  ///   - attachment: The attachment whose content type is needed.
+  ///
+  /// - Returns: The preferred content type for `attachment`. If this function
+  ///   returns `nil`, the testing library will attempt to derive an appropriate
+  ///   content type from the attachment's ``Attachment/preferredName`` property.
+  ///
+  /// Implementations of this function should return instances of [`UTType`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct)
+  /// or return `nil`. If they return values of other types, the result is
+  /// unspecified.
+  ///
+  /// You do not usually need to call this function directly. Instead, get the
+  /// value of ``Attachment/preferredContentType`` from an instance of
+  /// ``Attachment`` that wraps this value.
+  ///
+  /// - Warning: This function is experimental. Due to technical constraints, it
+  ///   must be exposed publicly. Do not use it.
+  borrowing func _preferredContentType(for attachment: borrowing Attachment<Self>) -> _UTType?
+#endif
 }
 
 // MARK: - FileClonable
@@ -148,6 +181,12 @@ extension Attachable where Self: ~Copyable {
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     suggestedName
   }
+
+#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded) && canImport(UniformTypeIdentifiers)
+  public borrowing func _preferredContentType(for attachment: borrowing Attachment<Self>) -> Never? {
+    nil
+  }
+#endif
 }
 
 /// @Metadata {
