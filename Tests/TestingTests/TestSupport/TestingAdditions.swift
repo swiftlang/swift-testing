@@ -420,6 +420,11 @@ extension Configuration {
 /// library.
 let testsWithSignificantIOAreEnabled = Environment.flag(named: "SWT_ENABLE_TESTS_WITH_SIGNIFICANT_IO") == true
 
+/// Whether or not to enable performance tests. These tests may be subject to scheduling differences,
+/// so they are not enabled in CI. When doing any sort of performance work on Swift Testing, you
+/// should enable these tests.
+let performanceTestsEnabled = Environment.flag(named: "SWT_ENABLE_PERFORMANCE_TESTS") == true
+
 extension JSON {
   /// Round-trip a value through JSON encoding/decoding.
   ///
