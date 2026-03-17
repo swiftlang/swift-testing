@@ -197,7 +197,7 @@ struct AttributeInfo {
   private func _contextualTypeForLiteralArgument(
     for expression: ExprSyntax,
     among testFunctionArguments: [Argument]
-  ) -> String? {
+  ) -> TypeSyntax? {
     guard let functionDecl = declaration.as(FunctionDeclSyntax.self) else {
       return nil
     }
@@ -211,10 +211,10 @@ struct AttributeInfo {
       if parameters.count == 1, let parameter = parameters.first {
         // A single-parameter test expects collection elements of the parameter
         // type itself, not tuple-shaped elements.
-        return "[\(parameter.baseTypeName)]"
+        return TypeSyntax(stringLiteral: "[\(parameter.baseTypeName)]")
       }
       let elementType = parameters.map(\.baseTypeName).joined(separator: ", ")
-      return "[(\(elementType))]"
+      return TypeSyntax(stringLiteral: "[(\(elementType))]")
     }
 
     return nil
