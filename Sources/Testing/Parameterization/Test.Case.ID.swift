@@ -81,32 +81,6 @@ extension Test.Case.ID: Codable {
     /// A coding key for ``Test/Case/ID/isStable``.
     case isStable
   }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-
-    if container.contains(.isStable) {
-      // `isStable` is present, so we're decoding an instance encoded using the
-      // newest style: every property can be decoded straightforwardly.
-      try self.init(
-        argumentIDs: container.decodeIfPresent([Test.Case.Argument.ID].self, forKey: .argumentIDs),
-        discriminator: container.decodeIfPresent(Int.self, forKey: .discriminator),
-        isStable: container.decode(Bool.self, forKey: .isStable)
-      )
-    } else {
-      // This is the old style, and since `argumentIDs` is absent, we know this
-      // ID represents a parameterized test case which is non-stable.
-      self.init(argumentIDs: [.init(bytes: [])], discriminator: 0, isStable: false)
-    }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-
-    try container.encode(isStable, forKey: .isStable)
-    try container.encodeIfPresent(discriminator, forKey: .discriminator)
-    try container.encodeIfPresent(argumentIDs, forKey: .argumentIDs)
-  }
 }
 
 // MARK: - Equatable, Hashable
