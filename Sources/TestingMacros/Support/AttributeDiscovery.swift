@@ -203,7 +203,7 @@ struct AttributeInfo {
     }
 
     let parameters = functionDecl.signature.parameterClause.parameters
-    guard !parameters.isEmpty else {
+    if parameters.isEmpty {
       return nil
     }
 
