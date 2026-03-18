@@ -65,6 +65,9 @@ The [`ABI`](ABI/) directory contains documents related to Swift Testing's ABI:
 that is, parts of its interface that are intended to be stable over time and can
 be used without needing to write any code in Swift:
 
+- [`ABI/EventStreamHandling.md`](ABI/EventStreamHandling.md) contains
+  information about Swift Testing's SPI that you can use when working with the
+  library's JSON event stream.
 - [`ABI/JSON.md`](ABI/JSON.md) contains Swift Testing's JSON specification that
   can be used by tools to interact with Swift Testing either directly or via the
   `swift test` command-line tool.
