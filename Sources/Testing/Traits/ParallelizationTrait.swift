@@ -52,22 +52,18 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
       /// An unbounded dependency.
       case unbounded
 
-#if !hasFeature(Embedded)
       /// A dependency on a Swift type.
       ///
       /// - Parameters:
       ///   - typeInfo: The Swift type.
       case type(_ typeInfo: TypeInfo)
-#endif
     }
 
     /// The kind of this dependency.
     var kind: Kind
 
-#if !hasFeature(Embedded)
     /// The key path used to construct this dependency, if any.
     nonisolated(unsafe) var originalKeyPath: AnyKeyPath?
-#endif
   }
 
   /// This instance's dependency, if any.
@@ -80,7 +76,6 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
   private static let _serializers = Mutex<[Dependency.Kind: Serializer<Void>]>()
 }
 
-#if !hasFeature(Embedded)
 // MARK: - Parallelization over a dependency
 
 extension ParallelizationTrait {
@@ -138,7 +133,6 @@ extension ParallelizationTrait: ReducibleTrait {
     }
   }
 }
-#endif
 
 // MARK: - TestScoping
 
@@ -187,7 +181,6 @@ extension ParallelizationTrait: TestScoping {
             }
           try await function()
         }
-#if !hasFeature(Embedded)
       case let kind:
         // This test function has declared a single dependency, so fetch the
         // serializer for that dependency and run the test in serial with any
@@ -201,7 +194,6 @@ extension ParallelizationTrait: TestScoping {
         try await serializer.run {
           try await function()
         }
-#endif
       }
     }
   }
@@ -243,18 +235,14 @@ extension ParallelizationTrait: CustomStringConvertible {
 
 extension ParallelizationTrait.Dependency: CustomStringConvertible {
   public var description: String {
-#if !hasFeature(Embedded)
     if let originalKeyPath {
       return #"\#(originalKeyPath)"#
     }
-#endif
     switch kind {
     case .unbounded:
       return "*"
-#if !hasFeature(Embedded)
     case let .type(typeInfo):
       return #"(\#(typeInfo.fullyQualifiedName)).self"#
-#endif
     }
   }
 }
@@ -298,15 +286,10 @@ extension Trait where Self == ParallelizationTrait {
   /// ## See Also
   ///
   /// - ``ParallelizationTrait``
-  @_unavailableInEmbedded
   public static func serialized<R, V>(for keyPath: KeyPath<R, V>) -> Self {
-#if !hasFeature(Embedded)
     let typeInfo = TypeInfo(describing: R.self)
     let dependency = ParallelizationTrait.Dependency(kind: .type(typeInfo), originalKeyPath: keyPath)
     return Self(dependency: dependency)
-#else
-    swt_unreachable()
-#endif
   }
 }
 

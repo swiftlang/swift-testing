@@ -57,7 +57,6 @@ struct ParallelizationTraitTests {
 
 // MARK: -
 
-#if !hasFeature(Embedded)
 @Suite("Parallelization Trait Tests with Dependencies")
 struct ParallelizationTraitTestsWithDependencies {
   func dependency() throws -> ParallelizationTrait.Dependency.Kind {
@@ -109,7 +108,6 @@ struct ParallelizationTraitTestsWithDependencies {
     }
   }
 }
-#endif
 
 // MARK: - Fixtures
 
