@@ -162,6 +162,7 @@ extension Test {
     displayName: String? = nil,
     traits: [any TestTrait],
     sourceBounds: __SourceBounds,
+    isInheritable: Bool = false,
     parameters: [__Parameter] = [],
     testFunction: @escaping @Sendable () async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable {
@@ -173,7 +174,7 @@ extension Test {
       nil
     }
     let caseGenerator = { @Sendable in Case.Generator(testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: [])
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: [], isInheritable: isInheritable)
   }
 }
 
@@ -247,6 +248,7 @@ extension Test {
     traits: [any TestTrait],
     arguments collection: @escaping @Sendable () async throws -> C,
     sourceBounds: __SourceBounds,
+    isInheritable: Bool = false,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element: Sendable {
@@ -257,7 +259,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters, isInheritable: isInheritable)
   }
 }
 
@@ -394,6 +396,7 @@ extension Test {
     traits: [any TestTrait],
     arguments collection1: @escaping @Sendable () async throws -> C1, _ collection2: @escaping @Sendable () async throws -> C2,
     sourceBounds: __SourceBounds,
+    isInheritable: Bool = false,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
@@ -404,7 +407,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in try await Case.Generator(arguments: collection1(), collection2(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters, isInheritable: isInheritable)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -422,6 +425,7 @@ extension Test {
     traits: [any TestTrait],
     arguments collection: @escaping @Sendable () async throws -> C,
     sourceBounds: __SourceBounds,
+    isInheritable: Bool = false,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
@@ -432,7 +436,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters, isInheritable: isInheritable)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -453,6 +457,7 @@ extension Test {
     traits: [any TestTrait],
     arguments dictionary: @escaping @Sendable () async throws -> Dictionary<Key, Value>,
     sourceBounds: __SourceBounds,
+    isInheritable: Bool = false,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, Key: Sendable, Value: Sendable {
@@ -463,7 +468,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await dictionary(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters, isInheritable: isInheritable)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -478,6 +483,7 @@ extension Test {
     traits: [any TestTrait],
     arguments zippedCollections: @escaping @Sendable () async throws -> Zip2Sequence<C1, C2>,
     sourceBounds: __SourceBounds,
+    isInheritable: Bool = false,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
@@ -492,7 +498,7 @@ extension Test {
         try await testFunction($0, $1)
       }
     }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters, isInheritable: isInheritable)
   }
 }
 
@@ -618,4 +624,36 @@ public func __invokeXCTestMethod<T>(
   )
   issue.record()
   return true
+}
+
+/// The current subclass to use for inherited test functions.
+@TaskLocal var currentSubclass: AnyClass?
+
+/// Set the current subclass to use for inherited test functions.
+///
+/// - Parameters:
+///   - test: The test to treat as polymorphic.
+///   - body: A function to run while the current subclass is set.
+///   
+/// - Returns: Whatever is returned by `body`.
+///
+/// - Throws: Whatever is thrown by `body`.
+func withCurrentSubclassIfNeeded<R>(for test: Test, _ body: () async throws -> R) async rethrows -> R {
+  guard test.isInheritable, let subclass = test.containingTypeInfo?.class else {
+    return try await body()
+  }
+  return try await $currentSubclass.withValue(subclass) {
+    try await body()
+  }
+}
+
+public func __currentSubclass<C>(of baseClass: C.Type) throws -> C.Type where C: AnyObject {
+  if let currentSubclass {
+    guard let result = currentSubclass as? C.Type else {
+      throw SystemError(description: "Expected a subclass of '\(baseClass)' to instantiate for the current test, but found '\(currentSubclass)' instead")
+    }
+    return result
+  } else {
+    throw SystemError(description: "Expected a subclass of '\(baseClass)' to instantiate for the current test, but no class was configured")
+  }
 }

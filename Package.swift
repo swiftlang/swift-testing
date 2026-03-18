@@ -159,7 +159,9 @@ let package = Package(
         "_Testing_WinSDK",
         "MemorySafeTestingTests",
       ],
-      swiftSettings: .packageSettings(isTestTarget: true),
+      swiftSettings: .packageSettings(isTestTarget: true) + [
+        .define("SWIFT_TESTING_EXPERIMENTAL_TEST_INHERITANCE_ENABLED"),
+      ],
       linkerSettings: [
         .linkedLibrary("util", .when(platforms: [.openbsd]))
       ]

@@ -292,7 +292,7 @@ extension DiscoverableAsTestContent {
     return SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
       stride(from: 0, to: sb.buffer.count, by: SWTTypeMetadataRecordByteCount).lazy
         .map { sb.buffer.baseAddress! + $0 }
-        .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifNameContains: typeNameHint) }
+        .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifClassOnly: false, ifNameContains: typeNameHint) }
         .map { unsafeBitCast($0, to: Any.Type.self) }
         .compactMap(loader)
         .filter { $0.kind == kind }
@@ -300,4 +300,19 @@ extension DiscoverableAsTestContent {
     }
   }
 }
+
+#if !hasFeature(Embedded)
+/// Get a sequence of all known, non-generic class types in the current process.
+///
+/// - Returns: A sequence of classes.
+package func allClasses() -> some Sequence<AnyClass> {
+  SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
+    stride(from: 0, to: sb.buffer.count, by: SWTTypeMetadataRecordByteCount).lazy
+      .map { sb.buffer.baseAddress! + $0 }
+      .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifClassOnly: true, ifNameContains: "") }
+      .map { unsafeBitCast($0, to: Any.Type.self) }
+      .compactMap { $0 as? AnyClass }
+  }
+}
+#endif
 #endif

@@ -49,6 +49,14 @@ public struct TypeInfo: Sendable {
     return nil
   }
 
+  var `class`: AnyClass? {
+    if case let .type(type) = _kind {
+      // FIXME: casting `any (~).Type` to `AnyClass` warns that it always fails
+      return unsafeBitCast(type, to: Any.Type.self) as? AnyClass
+    }
+    return nil
+  }
+
   /// Initialize an instance of this type with the specified names.
   ///
   /// - Parameters:

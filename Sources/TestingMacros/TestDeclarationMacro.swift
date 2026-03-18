@@ -86,9 +86,9 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     // Only one @Test attribute is supported.
-    let suiteAttributes = function.attributes(named: "Test")
-    if suiteAttributes.count > 1 {
-      diagnostics.append(.multipleAttributesNotSupported(suiteAttributes, on: declaration))
+    let testAttributes = function.attributes(named: "Test")
+    if testAttributes.count > 1 {
+      diagnostics.append(.multipleAttributesNotSupported(testAttributes, on: declaration))
     }
 
     let parameterList = function.signature.parameterClause.parameters
@@ -128,6 +128,14 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
           diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: parameter, on: function))
         }
       }
+    }
+
+    // Check if the declaration has the `override` keyword applied to it. The
+    // effect of that keyword is ambiguous.
+    if let modifiedDecl = declaration.asProtocol((any WithModifiersSyntax).self),
+       let overrideModifier = modifiedDecl.overrideModifier,
+        isTestInheritanceEnabled(in: context) {
+      context.diagnose(.overrideModifier(overrideModifier, isAmbiguousWhenAppliedTo: modifiedDecl, using: testAttribute))
     }
 
     return !diagnostics.lazy.map(\.severity).contains(.error)
@@ -253,6 +261,10 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       }
     }
 
+    // Should the thunk be declared generic over subclasses of `typeName`?
+    let isInheritable = functionDecl.isInheritableTestDeclaration(in: context)
+    lazy var genericSubclassName = context.makeUniqueName(thunking: functionDecl)
+
     // Generate a thunk function that invokes the actual function.
     var thunkBody: CodeBlockItemListSyntax
     if functionDecl.availability(when: .unavailable).first(where: { $0.platformVersion == nil }) != nil {
@@ -263,10 +275,15 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       if functionDecl.isStaticOrClass {
         thunkBody = "_ = \(forwardCall("\(typeName).\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))"
       } else {
-        let instanceName = context.makeUniqueName("")
+        let instanceName = context.makeUniqueName("subclass")
         let varOrLet = functionDecl.isMutating ? "var" : "let"
+        let initExpr: ExprSyntax = if isInheritable {
+          "\(genericSubclassName).init()"
+        } else {
+          "\(typeName)()"
+        }
         thunkBody = """
-        \(raw: varOrLet) \(raw: instanceName) = \(forwardInit("\(typeName)()"))
+        \(raw: varOrLet) \(raw: instanceName) = \(forwardInit(initExpr))
         _ = \(forwardCall("\(raw: instanceName).\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))
         """
 
@@ -280,10 +297,24 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
           // matches the indexer's heuristic when discovering XCTest functions.
           let sourceLocationExpr = createSourceLocationExpr(of: functionDecl.name, context: context)
 
+          let classExpr: ExprSyntax = if isInheritable {
+            "\(genericSubclassName)"
+          } else {
+            "\(typeName).self"
+          }
           thunkBody = """
-          if try await Testing.__invokeXCTestMethod(\(selectorExpr), onInstanceOf: \(typeName).self, sourceLocation: \(sourceLocationExpr)) {
+          if try await Testing.__invokeXCTestMethod(\(selectorExpr), onInstanceOf: \(classExpr), sourceLocation: \(sourceLocationExpr)) {
             return
           }
+          \(thunkBody)
+          """
+        }
+
+        // If this function is inherited by subclasses, acquire the appropriate
+        // metatype value to initialize.
+        if isInheritable {
+          thunkBody = """
+          let \(genericSubclassName) = try Testing.__currentSubclass(of: \(typeName).self)
           \(thunkBody)
           """
         }
@@ -306,7 +337,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       // Get a unique name for this secondary thunk. We don't need it to be
       // uniqued against functionDecl because it's interior to the "real" thunk,
       // so its name can't conflict with any other names visible in this scope.
-      let isolationThunkName = context.makeUniqueName("")
+      let isolationThunkName = context.makeUniqueName("isolation")
 
       // Insert a (defaulted) isolated argument. If we emit a closure (or inner
       // function) that captured the arguments to the "real" thunk, the compiler

@@ -209,7 +209,7 @@ extension Test {
   ///
   /// - Returns: The name of this test, suitable for display to the user.
   func humanReadableName(withVerbosity verbosity: Int = 0) -> String {
-    switch displayName {
+    var result = switch displayName {
     case let .some(displayName) where verbosity > 0:
       #""\#(displayName)" (aka '\#(name)')"#
     case let .some(displayName):
@@ -217,6 +217,19 @@ extension Test {
     default:
       name
     }
+    if isInheritable, let clazz = containingTypeInfo {
+      let className = if verbosity > 0 {
+        clazz.fullyQualifiedName
+      } else {
+        clazz.unqualifiedName
+      }
+      if isInherited {
+        result = "\(result) (inherited by '\(className)')"
+      } else {
+        result = "\(result) (implemented in '\(className)')"
+      }
+    }
+    return result
   }
 }
 

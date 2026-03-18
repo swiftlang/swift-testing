@@ -8,6 +8,12 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if _runtime(_ObjC)
+private import ObjectiveC
+#else
+private import _TestDiscovery
+#endif
+
 extension Runner {
   /// A type describing a runner plan.
   public struct Plan: Sendable {
@@ -123,6 +129,116 @@ extension Runner {
 // MARK: - Constructing a new runner plan
 
 extension Runner.Plan {
+#if !_runtime(_ObjC)
+  /// A dictionary keyed by classes whose values are arrays of all known
+  /// subclasses of those classes.
+  ///
+  /// This dictionary is constructed in reverse by walking all known classes in
+  /// the current process and recursively querying each one for its immediate
+  /// superclass. This is less efficient than the Objective-C-based
+  /// implementation (which can avoid realizing classes that aren't of
+  /// interest to us).
+  private static let _allSubtypeInfo: [TypeInfo: [TypeInfo]] = {
+    var result = [TypeInfo: [TypeInfo]]()
+
+    for clazz in allClasses() {
+      let hierarchy = sequence(first: clazz, next: _getSuperclass)
+      var subclass: AnyClass? = nil
+      for clazz in hierarchy {
+        defer {
+          subclass = clazz
+        }
+
+        let typeInfo = TypeInfo(describing: clazz)
+        if let subclass {
+          result[typeInfo, default: []].append(TypeInfo(describing: subclass))
+        } else {
+          result[typeInfo, default: []].reserveCapacity(1)
+        }
+      }
+    }
+
+    return result
+  }()
+#endif
+
+  /// Add `open` test functions in base classes to their corresponding
+  /// subclasses.
+  ///
+  /// - Parameters:
+  ///   - testGraph: The graph of tests to modify.
+  private static func _inheritTestFunctions(in testGraph: inout Graph<String, Test?>) {
+    // First, recursively mark tests as inheritable if they're contained in
+    // inheritable suites.
+    func makeInheritableIfNeeded(_ inheritable: Bool, in testGraph: inout Graph<String, Test?>, wasSomethingInheritable: inout Bool) {
+      // Inherit the inheritable flag (yes, really).
+      if inheritable {
+        testGraph.value?.isInheritable = true
+      }
+      let inheritable = inheritable || (true == testGraph.value?.isInheritable)
+
+      // Track whether anything is inheritable. If at the end of this recursion
+      // nothing was inheritable, then we don't need to walk the graph again.
+      wasSomethingInheritable = wasSomethingInheritable || inheritable
+
+      testGraph.children = testGraph.children.mapValues { child in
+        var child = child
+        // Inheritance doesn't descend into nested types, so clear the
+        // inheritable flag when recursing into a child suite.
+        let inheritableByChild = inheritable && (true != child.value?.isSuite)
+        makeInheritableIfNeeded(inheritableByChild, in: &child, wasSomethingInheritable: &wasSomethingInheritable)
+        return child
+      }
+    }
+
+    var wasSomethingInheritable = false
+    makeInheritableIfNeeded(false, in: &testGraph, wasSomethingInheritable: &wasSomethingInheritable)
+    guard wasSomethingInheritable else {
+      // No inheritable tests, so we can exit early.
+      return
+    }
+
+    // Now go through the graph again and find all tests that are marked as
+    // inheritable.
+    let inheritableTests: [Test] = testGraph.compactMap { _, test in
+      guard let test, test.isInheritable else {
+        return nil
+      }
+      return test
+    }
+
+    // For each of the discovered, inheritable tests, find the type it's applied
+    // to (which, by definition, must be a class) and find all subclasses
+    // thereof.
+    var allSubtypeInfo: [TypeInfo: [TypeInfo]]
+#if _runtime(_ObjC)
+    allSubtypeInfo = Dictionary(
+      uniqueKeysWithValues: inheritableTests
+        .compactMap { $0.test.containingTypeInfo?.class }
+        .reduce(into: Set<TypeInfo>()) { baseTypeInfo, clazz in
+          baseTypeInfo.insert(TypeInfo(describing: clazz))
+        }.compactMap { typeInfo in
+          let subtypeInfo = objc_enumerateClasses(subclassing: typeInfo.class!).map { TypeInfo(describing: $0) }
+          return (typeInfo, subtypeInfo)
+        }
+    )
+#else
+    allSubtypeInfo = _allSubtypeInfo
+#endif
+
+    // For each of the discovered, inheritable tests, make copies of that test
+    // for each known subclass and insert them into the test graph.
+    for test in inheritableTests {
+      for subtypeInfo in allSubtypeInfo[test.containingTypeInfo!]! {
+        var testCopy = test
+        testCopy.containingTypeInfo = subtypeInfo
+        testCopy.isSynthesized = true
+        testCopy.isInherited = true
+        testGraph.insertValue(testCopy, at: testCopy.id.keyPathRepresentation)
+      }
+    }
+  }
+
   /// Recursively apply eligible traits from a test suite to its children in a
   /// graph.
   ///
@@ -314,17 +430,20 @@ extension Runner.Plan {
       Backtrace.flushThrownErrorCache()
     }
 
-    // Convert the list of test into a graph of steps. The actions for these
-    // steps will all be .run() *unless* an error was thrown while examining
-    // them, in which case it will be .recordIssue().
+    // Convert the list of test into a graph of steps.
     let runAction = _runAction
     var testGraph = Graph<String, Test?>()
-    var actionGraph = Graph<String, Action>(value: runAction)
     for test in tests {
-      let idComponents = test.id.keyPathRepresentation
-      testGraph.insertValue(test, at: idComponents)
-      actionGraph.insertValue(runAction, at: idComponents, intermediateValue: runAction)
+      testGraph.insertValue(test, at: test.id.keyPathRepresentation)
     }
+
+    // Synthesize test functions inherited by subclasses.
+    _inheritTestFunctions(in: &testGraph)
+
+    // Generate the initial action graph. The actions for these steps will all
+    // be .run() *unless* an error was thrown while examining them, in which
+    // case they will be .recordIssue().
+    var actionGraph = testGraph.mapValues { _, _ in runAction }
 
     // Remove any tests that should be filtered out per the runner's
     // configuration. The action graph is not modified here: actions that lose

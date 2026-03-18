@@ -313,7 +313,8 @@ extension Test {
         testCases: { () -> Test.Case.Generator<CollectionOfOne<Void>> in
           throw APIMisuseError(description: "This instance of 'Test' was synthesized at runtime and cannot be run directly.")
         },
-        parameters: parameters ?? []
+        parameters: parameters ?? [],
+        isInheritable: false
       )
     }
   }

@@ -178,6 +178,11 @@ struct AttributeInfo {
 
     arguments.append(Argument(label: "sourceBounds", expression: sourceBounds))
 
+    if let modifiedDecl = declaration.asProtocol((any WithModifiersSyntax).self),
+       modifiedDecl.isInheritableTestDeclaration(in: context) {
+      arguments.append(Argument(label: "isInheritable", expression: BooleanLiteralExprSyntax(true)))
+    }
+
     return LabeledExprListSyntax(arguments)
   }
 }

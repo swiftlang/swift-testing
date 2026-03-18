@@ -60,7 +60,7 @@ struct TestDeclarationMacroTests {
       "@Suite func f() {}":
         "Attribute 'Suite' cannot be applied to a function",
       "@Suite extension X {}":
-        "Attribute 'Suite' has no effect when applied to an extension",
+        "Attribute 'Suite' has no effect when applied to this extension",
       "@Test macro m()":
         "Attribute 'Test' cannot be applied to a macro",
       "@Test struct S {}":

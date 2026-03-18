@@ -418,10 +418,10 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - decl: The extension declaration in question.
   ///
   /// - Returns: A diagnostic message.
-  static func attributeHasNoEffect(_ attribute: AttributeSyntax, on decl: ExtensionDeclSyntax) -> Self {
+  static func attributeHasNoEffect(_ attribute: AttributeSyntax, on decl: some DeclSyntaxProtocol) -> Self {
     Self(
       syntax: Syntax(decl),
-      message: "Attribute \(_macroName(attribute)) has no effect when applied to an extension",
+      message: "Attribute \(_macroName(attribute)) has no effect when applied to \(_kindString(for: decl, includeA: true))",
       severity: .error,
       fixIts: [
         FixIt(
@@ -727,6 +727,33 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
         FixIt(
           message: MacroExpansionFixItMessage("Rename '\(decl.name.textWithoutBackticks)'"),
           changes: [.replace(oldNode: Syntax(decl.name), newNode: Syntax(EditorPlaceholderExprSyntax("name")))]
+        ),
+      ]
+    )
+  }
+
+  /// Create a diagnostic message stating that the `override` modifier is
+  /// ambiguous on a test function.
+  ///
+  /// - Parameters:
+  ///   - decl: The declaration that has the modifier.
+  ///   - modifier: The unsupported modifier.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///
+  /// - Returns: A diagnostic message.
+  static func overrideModifier(
+    _ modifier: DeclModifierSyntax,
+    isAmbiguousWhenAppliedTo decl: some WithModifiersSyntax,
+    using attribute: AttributeSyntax
+  ) -> Self {
+    Self(
+      syntax: Syntax(modifier),
+      message: "Modifier '\(modifier.name.trimmed)' is ambiguous when applied to \(_kindString(for: decl, includeA: true)) with attribute \(_macroName(attribute))",
+      severity: .warning,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove '\(modifier.name.trimmed)'"),
+          changes: [.replace(oldNode: Syntax(modifier), newNode: Syntax("" as ExprSyntax))]
         ),
       ]
     )

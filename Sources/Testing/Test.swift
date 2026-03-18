@@ -37,6 +37,8 @@ public struct Test: Sendable {
     var testCasesState: TestCasesState?
     var parameters: [Parameter]?
     var isSynthesized: Bool
+    var isInheritable: Bool
+    var isInherited: Bool
 #if DEBUG
     var mutationCount = 0
 #endif
@@ -300,6 +302,27 @@ public struct Test: Sendable {
     }
   }
 
+  /// Whether or not this instance should be copied and inherited by subclasses
+  /// of ``containingTypeInfo``.
+  var isInheritable: Bool {
+    get {
+      _properties.value.isInheritable
+    }
+    set {
+      _setValue(newValue, forKeyPath: \.isInheritable)
+    }
+  }
+
+  /// Whether or not this instance was inherited from a superclass.
+  var isInherited: Bool {
+    get {
+      _properties.value.isInherited
+    }
+    set {
+      _setValue(newValue, forKeyPath: \.isInherited)
+    }
+  }
+
 #if DEBUG
   /// The number of times any property on this instance of ``Test`` has been
   /// mutated after initialization.
@@ -329,7 +352,9 @@ public struct Test: Sendable {
       traits: traits,
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
-      isSynthesized: isSynthesized
+      isSynthesized: isSynthesized,
+      isInheritable: false,
+      isInherited: false
     )
     _properties = Allocated(properties)
   }
@@ -343,7 +368,8 @@ public struct Test: Sendable {
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
     testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
-    parameters: [Parameter]
+    parameters: [Parameter],
+    isInheritable: Bool
   ) {
     let properties = _Properties(
       name: name,
@@ -354,7 +380,9 @@ public struct Test: Sendable {
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCasesState: .unevaluated { try await testCases() },
       parameters: parameters,
-      isSynthesized: false
+      isSynthesized: false,
+      isInheritable: isInheritable,
+      isInherited: false
     )
     _properties = Allocated(properties)
   }
@@ -368,7 +396,8 @@ public struct Test: Sendable {
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
     testCases: Test.Case.Generator<S>,
-    parameters: [Parameter]
+    parameters: [Parameter],
+    isInheritable: Bool
   ) {
     let properties = _Properties(
       name: name,
@@ -379,7 +408,9 @@ public struct Test: Sendable {
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCasesState: .evaluated(testCases),
       parameters: parameters,
-      isSynthesized: false
+      isSynthesized: false,
+      isInheritable: isInheritable,
+      isInherited: false
     )
     _properties = Allocated(properties)
   }
