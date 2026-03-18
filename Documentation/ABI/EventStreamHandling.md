@@ -82,12 +82,10 @@ stream:
 
 ```swift
 func handleJSONRecord(_ json: Data) throws {
-  // Get the ABI version number from the JSON object.
-  let versionNumber = json.withUnsafeBytes { ABI.VersionNumber(fromRecordJSON: $0) }
-  guard let versionNumber else {
-    // Failed to decode the version number. The JSON object is malformed.
-    throw ...
-  }
+  // Get the ABI version number from the JSON object. Note that this initializer
+  // takes an UnsafeRawBufferPointer rather than a Data.
+  let versionNumber = try json.withUnsafeBytes { try ABI.VersionNumber(fromRecordJSON: $0) }
+
   guard let abi = ABI.version(forVersionNumber: versionNumber) else {
     // There is no Swift Testing ABI version associated with the version number
     // provided. Either the JSON object is malformed or the version number is
