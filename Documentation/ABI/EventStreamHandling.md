@@ -1,4 +1,4 @@
-# Using `ABI.Record`
+# Working with the JSON event stream in Swift
 
 <!--
 This source file is part of the Swift.org open source project
@@ -58,8 +58,7 @@ The JSON event stream Swift Testing produces at runtime is defined in
 [JSON.md](JSON.md). An instance of the Swift type `JSON.Record` represents an
 `<output-record>` value as defined in that file. `JSON.Record` itself is generic
 over some type conforming to `ABI.Version`; that type provides `JSON.Record`
-with the information it needs to correctly encode and decode the JSON event
-stream.
+with the information it needs to correctly encode and decode JSON objects.
 
 > [!NOTE]
 > If you are writing your tools using a language other than Swift, you can
@@ -70,7 +69,8 @@ stream.
 ### Decoding a JSON event record
 
 To decode an instance of `ABI.Record`, you'll first need to know what ABI
-version it was encoded with.
+version it was encoded with. We sometimes refer to this version as the JSON
+event stream's _schema version_.
 
 To get the appropriate `ABI.Version`-conforming type for a known version number,
 you can use `ABI.version(forVersionNumber:)`. If you have a JSON object from the
