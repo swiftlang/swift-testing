@@ -39,13 +39,13 @@ struct TimeValue: Sendable, RawRepresentable {
   init(rawValue: Duration) {
     (seconds, attoseconds) = rawValue.components
   }
-
-  init(_ components: (seconds: Int64, attoseconds: Int64)) {
-    (seconds, attoseconds) = components
-  }
 #else
   var rawValue: Duration
 #endif
+
+  init(_ components: (seconds: Int64, attoseconds: Int64)) {
+    self.init(rawValue: Duration(secondsComponent: components.seconds, attosecondsComponent: components.attoseconds))
+  }
 }
 
 #if !SWT_NO_SNAPSHOT_TYPES
