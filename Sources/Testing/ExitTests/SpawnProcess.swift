@@ -198,7 +198,7 @@ func spawnExecutable(
 #warning("Platform-specific implementation missing: cannot close unused file descriptors")
 #endif
 
-#if SWT_TARGET_OS_APPLE && DEBUG
+#if SWT_TARGET_OS_APPLE
       // Start the process suspended so we can attach a debugger if needed.
       flags |= CShort(POSIX_SPAWN_START_SUSPENDED)
 #endif
@@ -229,7 +229,7 @@ func spawnExecutable(
       guard 0 == processSpawned else {
         throw CError(rawValue: processSpawned)
       }
-#if SWT_TARGET_OS_APPLE && DEBUG
+#if SWT_TARGET_OS_APPLE
       // Resume the process.
       _ = kill(pid, SIGCONT) // ignore-unacceptable-language
 #endif
@@ -314,10 +314,9 @@ func spawnExecutable(
       let workingDirectoryPath = rootDirectoryPath
 
       var flags = DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT)
-#if DEBUG
+
       // Start the process suspended so we can attach a debugger if needed.
       flags |= DWORD(CREATE_SUSPENDED)
-#endif
 
       return try environ.withCString(encodedAs: UTF16.self) { environ in
         try workingDirectoryPath.withCString(encodedAs: UTF16.self) { workingDirectoryPath in
@@ -338,10 +337,8 @@ func spawnExecutable(
             throw Win32Error(rawValue: GetLastError())
           }
 
-#if DEBUG
           // Resume the process.
           _ = ResumeThread(processInfo.hThread!)
-#endif
 
           _ = CloseHandle(processInfo.hThread)
           return processInfo.hProcess!
