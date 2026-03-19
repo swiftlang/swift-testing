@@ -82,9 +82,6 @@ extension Runner {
   private struct _Context: Sendable {
     /// A serializer used to reduce parallelism among test cases.
     var testCaseSerializer: Serializer<Void>?
-
-    /// The current plan-level iteration (if using legacy plan-level iteration behavior).
-    var planLevelIteration: Int?
   }
 
   /// Apply the custom scope for any test scope providers of the traits
@@ -408,21 +405,16 @@ extension Runner {
     within step: Plan.Step,
     context: _Context
   ) async {
-    if let iteration = context.planLevelIteration {
-      var testCase = testCase
-      testCase.iteration = iteration
+    if _configuration.shouldUseLegacyPlanLevelRepetition {
       await _runSingleTestCaseIteration(testCase, within: step)
     } else {
-      await _applyRepetitionPolicy { iteration in
-        var testCase = testCase
-        testCase.iteration = iteration
+      await _applyRepetitionPolicy {
         await _runSingleTestCaseIteration(testCase, within: step)
       }
     }
   }
 
-  /// Run a single iteration of a test case. The test case's ``Test/Case/iteration`` must be set when
-  /// this is called.
+  /// Run a single iteration of a test case.
   ///
   /// - Parameters:
   ///   - testCase: The test case to run.
@@ -431,7 +423,6 @@ extension Runner {
   /// This function sets ``Test/Case/current``, then invokes the test case's
   /// body closure.
   private static func _runSingleTestCaseIteration(_ testCase: Test.Case, within step: Plan.Step) async {
-    precondition(testCase.iteration != nil)
     let configuration = _configuration
 
     Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
@@ -471,12 +462,11 @@ extension Runner {
   ///
   /// - Note: This function updates ``Configuration/current`` before invoking the test body.
   private static func _applyRepetitionPolicy(
-    perform body: (Int) async -> Void
+    perform body: () async -> Void
   ) async {
-    var config = _configuration
-
-    for iteration in 1...config.repetitionPolicy.maximumIterationCount {
+    for iteration in 1..._configuration.repetitionPolicy.maximumIterationCount {
       let issueRecorded = Atomic(false)
+      var config = _configuration
       config.eventHandler = { [eventHandler = config.eventHandler] event, context in
         if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
           issueRecorded.store(true, ordering: .sequentiallyConsistent)
@@ -484,8 +474,10 @@ extension Runner {
         eventHandler(event, context)
       }
 
-      await Configuration.withCurrent(config) {
-        await body(iteration)
+      await Test.withCurrentIteration(iteration) {
+        await Configuration.withCurrent(config) {
+          await body()
+        }
       }
 
       // Determine if the test plan should iterate again.
@@ -553,9 +545,15 @@ extension Runner {
       }
 
       if runner.configuration.shouldUseLegacyPlanLevelRepetition {
-        await _applyRepetitionPolicy { [runner] iteration in
-          var context = context
-          context.planLevelIteration = iteration
+        await _applyRepetitionPolicy { [runner] in
+          let iteration = Test.currentIteration ?? 1
+
+          // Legacy clients expect these values to be zero-indexed.
+          let iterationIndex = iteration - 1
+          Event.post(.iterationStarted(iterationIndex), configuration: runner.configuration)
+          defer {
+            Event.post(.iterationEnded(iterationIndex), configuration: runner.configuration)
+          }
           await runner.runAll(context: context)
         }
       } else {

@@ -228,9 +228,6 @@ extension Test {
       }
     }
 
-    /// The current iteration of this test case.
-    public var iteration: Int?
-
     /// The body closure of this test case.
     ///
     /// Do not invoke this closure directly. Always use a ``Runner`` to invoke a

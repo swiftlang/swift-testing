@@ -29,6 +29,9 @@ extension Runner {
     /// The test case that is running on the current task, if any.
     var testCase: Test.Case?
 
+    /// The current iteration of the test repetition policy.
+    var iteration: Int?
+
     /// The runtime state related to the runner running on the current task,
     /// if any.
     @TaskLocal
@@ -231,6 +234,27 @@ extension Test {
     runtimeState.testCase = nil
     return try await Runner.RuntimeState.$current.withValue(runtimeState) {
       try await test.withCancellationHandling(body)
+    }
+  }
+
+  static var currentIteration: Int? {
+    Runner.RuntimeState.current?.iteration
+  }
+
+  /// Call a function while the value of ``Test/currentIteration`` is set.
+  ///
+  /// - Parameters:
+  ///   - iteration: The new value to set for ``Test/currentIteration``.
+  ///   - body: A function to call.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`.
+  static func withCurrentIteration<R>(_ iteration: Int?, perform body: () async throws -> R) async rethrows -> R {
+    var runtimeState = Runner.RuntimeState.current ?? .init()
+    runtimeState.iteration = iteration
+    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
+      try await body()
     }
   }
 }
