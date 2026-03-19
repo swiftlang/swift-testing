@@ -21,6 +21,7 @@ In Swift 6.3 and later, running `swift test --swift-sdk <wasm_swift_sdk_id>`
 builds and runs your tests. Use `jq` to extract the Swift SDK ID automatically
 to build and test in a single command:
 
+```sh
 swift test --swift-sdk \
   "$(swiftc -print-target-info | jq -r '.swiftCompilerTag')_wasm"
 ```
