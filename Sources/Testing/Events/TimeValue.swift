@@ -42,7 +42,9 @@ struct TimeValue: Sendable, RawRepresentable {
 #else
   var rawValue: Duration
 #endif
+}
 
+extension TimeValue {
   init(_ components: (seconds: Int64, attoseconds: Int64)) {
     self.init(rawValue: Duration(secondsComponent: components.seconds, attosecondsComponent: components.attoseconds))
   }
