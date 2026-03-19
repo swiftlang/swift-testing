@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(ForToolsIntegrationOnly) @testable import Testing
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) @testable import Testing
 
 struct `Polymorphic test function tests` {
   @Test func `Polymorphic functions are discovered and run`() async throws {
