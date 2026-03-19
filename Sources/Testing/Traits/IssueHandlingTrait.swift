@@ -100,7 +100,7 @@ extension IssueHandlingTrait: TestScoping {
   /// issue.
   func provideScope(performing function: @Sendable () async throws -> Void) async throws {
     guard var configuration = Configuration.current else {
-      preconditionFailure("Configuration.current is nil when calling \(#function). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      preconditionFailure(reportBugMessage("Configuration.current is nil when calling \(#function)."))
     }
 
     configuration.eventHandler = { [oldConfiguration = configuration] event, context in

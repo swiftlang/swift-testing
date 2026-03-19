@@ -141,7 +141,7 @@ private func _createAvailabilityTraitExpr(
     }
 
   default:
-    fatalError("Unsupported keyword \(whenKeyword) passed to \(#function). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+    fatalError(reportBugMessage("Unsupported keyword \(whenKeyword) passed to \(#function)."))
   }
 }
 

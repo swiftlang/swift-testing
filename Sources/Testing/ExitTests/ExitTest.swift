@@ -294,7 +294,7 @@ extension ExitTest {
 
     // Set ExitTest.current before the test body runs.
     Self._current.withLock { current in
-      precondition(current == nil, "Set the current exit test twice in the same process. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      precondition(current == nil, reportBugMessage("Set the current exit test twice in the same process."))
       current = self.unsafeCopy()
     }
 
@@ -1095,7 +1095,7 @@ extension ExitTest {
     }
     let capturedValuesJSON = try fileHandle.readToEnd()
     let capturedValuesJSONLines = capturedValuesJSON.split(whereSeparator: \.isASCIINewline)
-    assert(capturedValues.count == capturedValuesJSONLines.count, "Expected to decode \(capturedValues.count) captured value(s) for the current exit test, but received \(capturedValuesJSONLines.count). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+    assert(capturedValues.count == capturedValuesJSONLines.count, reportBugMessage("Expected to decode \(capturedValues.count) captured value(s) for the current exit test, but received \(capturedValuesJSONLines.count)."))
 
     // Walk the list of captured values' types, map them to their JSON blobs,
     // and decode them.

@@ -53,7 +53,7 @@ public struct _AttachableURLWrapper: Sendable {
   ///   thrown if a file descriptor to `url` or `copyURL` cannot be created.
   init(url: URL, copiedToFileAt copyURL: URL? = nil, isCompressedDirectory: Bool) throws {
     if isCompressedDirectory && copyURL == nil {
-      preconditionFailure("When attaching a directory to a test, the URL to its compressed copy must be supplied. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      preconditionFailure(reportBugMessage("When attaching a directory to a test, the URL to its compressed copy must be supplied."))
     }
     self.url = url
     self.data = try Data(contentsOf: copyURL ?? url, options: [.mappedIfSafe])
