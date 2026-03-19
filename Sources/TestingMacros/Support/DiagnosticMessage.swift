@@ -124,6 +124,8 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       result = ("enumeration", "an")
     case .actorDecl:
       result = ("actor", "an")
+    case .extensionDecl:
+      result = ("extension", "an")
     case .variableDecl:
       // This string could be "variable" in some contexts but none we're
       // currently looking at.
@@ -234,6 +236,30 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       syntax: Syntax(decl),
       message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true))",
       severity: .error
+    )
+  }
+
+  /// Create a diagnostic message stating that the given attribute cannot be
+  /// applied to the given declaration because it requires the presence of
+  /// another attribute.
+  ///
+  /// - Parameters:
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///   - decl: The declaration in question.
+  ///
+  /// - Returns: A diagnostic message.
+  static func attributeNotSupported(_ attribute: AttributeSyntax, withoutAttribute requiredAttribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
+    let combinedAttributes: AttributeSyntax = "\(attribute) \(requiredAttribute)"
+    return Self(
+      syntax: Syntax(decl),
+      message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) without also applying attribute \(_macroName(attribute))",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Add \(_macroName(attribute))"),
+          changes: [.replace(oldNode: Syntax(attribute), newNode: Syntax(combinedAttributes)),]
+        ),
+      ]
     )
   }
 
@@ -411,11 +437,11 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   }
 
   /// Create a diagnostic message stating that the given attribute has no effect
-  /// when applied to the given extension declaration.
+  /// when applied to the given declaration.
   ///
   /// - Parameters:
   ///   - attribute: The `@Test` or `@Suite` attribute.
-  ///   - decl: The extension declaration in question.
+  ///   - decl: The declaration in question.
   ///
   /// - Returns: A diagnostic message.
   static func attributeHasNoEffect(_ attribute: AttributeSyntax, on decl: some DeclSyntaxProtocol) -> Self {
@@ -427,6 +453,33 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
         FixIt(
           message: MacroExpansionFixItMessage("Remove attribute \(_macroName(attribute))"),
           changes: [.replace(oldNode: Syntax(attribute), newNode: Syntax("" as ExprSyntax))]
+        ),
+      ]
+    )
+  }
+
+  /// Create a diagnostic message stating that the given attribute has no effect
+  /// when applied to the given declaration due to the presence of a modifier.
+  ///
+  /// - Parameters:
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///   - modifier: The modifier that makes `attribute` have no effect.
+  ///   - decl: The declaration in question.
+  ///
+  /// - Returns: A diagnostic message.
+  static func attributeHasNoEffect(_ attribute: AttributeSyntax, becauseOf modifier: DeclModifierSyntax, on decl: some DeclSyntaxProtocol) -> Self {
+    Self(
+      syntax: Syntax(decl),
+      message: "Attribute \(_macroName(attribute)) has no effect when applied to \(_kindString(for: decl)) with modifier '\(modifier.name.trimmed)'",
+      severity: .warning,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove attribute \(_macroName(attribute))"),
+          changes: [.replace(oldNode: Syntax(attribute), newNode: Syntax("" as ExprSyntax))]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove modifier '\(modifier.name.trimmed)'"),
+          changes: [.replace(oldNode: Syntax(modifier), newNode: Syntax("" as ExprSyntax))]
         ),
       ]
     )
@@ -727,33 +780,6 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
         FixIt(
           message: MacroExpansionFixItMessage("Rename '\(decl.name.textWithoutBackticks)'"),
           changes: [.replace(oldNode: Syntax(decl.name), newNode: Syntax(EditorPlaceholderExprSyntax("name")))]
-        ),
-      ]
-    )
-  }
-
-  /// Create a diagnostic message stating that the `override` modifier is
-  /// ambiguous on a test function.
-  ///
-  /// - Parameters:
-  ///   - decl: The declaration that has the modifier.
-  ///   - modifier: The unsupported modifier.
-  ///   - attribute: The `@Test` or `@Suite` attribute.
-  ///
-  /// - Returns: A diagnostic message.
-  static func overrideModifier(
-    _ modifier: DeclModifierSyntax,
-    isAmbiguousWhenAppliedTo decl: some WithModifiersSyntax,
-    using attribute: AttributeSyntax
-  ) -> Self {
-    Self(
-      syntax: Syntax(modifier),
-      message: "Modifier '\(modifier.name.trimmed)' is ambiguous when applied to \(_kindString(for: decl, includeA: true)) with attribute \(_macroName(attribute))",
-      severity: .warning,
-      fixIts: [
-        FixIt(
-          message: MacroExpansionFixItMessage("Remove '\(modifier.name.trimmed)'"),
-          changes: [.replace(oldNode: Syntax(modifier), newNode: Syntax("" as ExprSyntax))]
         ),
       ]
     )

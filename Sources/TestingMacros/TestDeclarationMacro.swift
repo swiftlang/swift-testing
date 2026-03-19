@@ -130,14 +130,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       }
     }
 
-    // Check if the declaration has the `override` keyword applied to it. The
-    // effect of that keyword is ambiguous.
-    if let modifiedDecl = declaration.asProtocol((any WithModifiersSyntax).self),
-       let overrideModifier = modifiedDecl.overrideModifier,
-        isTestInheritanceEnabled(in: context) {
-      context.diagnose(.overrideModifier(overrideModifier, isAmbiguousWhenAppliedTo: modifiedDecl, using: testAttribute))
-    }
-
     return !diagnostics.lazy.map(\.severity).contains(.error)
   }
 
@@ -262,8 +254,20 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     // Should the thunk be declared generic over subclasses of `typeName`?
-    let isInheritable = functionDecl.isInheritableTestDeclaration(in: context)
-    lazy var genericSubclassName = context.makeUniqueName(thunking: functionDecl)
+    var isPolymorphicSuiteClass = false
+    var mayBePolymorphicSuiteExtension = false
+    if let containingTypeDecl = context.lexicalContext.first?.asProtocol((any WithAttributesSyntax).self) {
+      switch containingTypeDecl.kind {
+      case .classDecl, .actorDecl:
+        if !containingTypeDecl.attributes(named: "polymorphic").isEmpty {
+          isPolymorphicSuiteClass = true
+        }
+      case .extensionDecl:
+        mayBePolymorphicSuiteExtension = true
+      default:
+        break
+      }
+    }
 
     // Generate a thunk function that invokes the actual function.
     var thunkBody: CodeBlockItemListSyntax
@@ -277,13 +281,18 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       } else {
         let instanceName = context.makeUniqueName("subclass")
         let varOrLet = functionDecl.isMutating ? "var" : "let"
-        let initExpr: ExprSyntax = if isInheritable {
-          "\(genericSubclassName).init()"
+        var initExpr: ExprSyntax = "\(typeName)()"
+        if isPolymorphicSuiteClass || mayBePolymorphicSuiteExtension {
+          initExpr = """
+          try await Testing.__initialize {
+            \(forwardInit(initExpr))
+          }
+          """
         } else {
-          "\(typeName)()"
+          initExpr = forwardInit(initExpr)
         }
         thunkBody = """
-        \(raw: varOrLet) \(raw: instanceName) = \(forwardInit(initExpr))
+        \(raw: varOrLet) \(raw: instanceName) = \(initExpr)
         _ = \(forwardCall("\(raw: instanceName).\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))
         """
 
@@ -297,24 +306,10 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
           // matches the indexer's heuristic when discovering XCTest functions.
           let sourceLocationExpr = createSourceLocationExpr(of: functionDecl.name, context: context)
 
-          let classExpr: ExprSyntax = if isInheritable {
-            "\(genericSubclassName)"
-          } else {
-            "\(typeName).self"
-          }
           thunkBody = """
-          if try await Testing.__invokeXCTestMethod(\(selectorExpr), onInstanceOf: \(classExpr), sourceLocation: \(sourceLocationExpr)) {
+          if try await Testing.__invokeXCTestMethod(\(selectorExpr), onInstanceOf: \(typeName).self, sourceLocation: \(sourceLocationExpr)) {
             return
           }
-          \(thunkBody)
-          """
-        }
-
-        // If this function is inherited by subclasses, acquire the appropriate
-        // metatype value to initialize.
-        if isInheritable {
-          thunkBody = """
-          let \(genericSubclassName) = try Testing.__currentSubclass(of: \(typeName).self)
           \(thunkBody)
           """
         }

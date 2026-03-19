@@ -217,13 +217,13 @@ extension Test {
     default:
       name
     }
-    if isInheritable, let clazz = containingTypeInfo {
+    if isPolymorphic, let clazz = containingTypeInfo {
       let className = if verbosity > 0 {
         clazz.fullyQualifiedName
       } else {
         clazz.unqualifiedName
       }
-      if isInherited {
+      if wasInherited {
         result = "\(result) (inherited by '\(className)')"
       } else {
         result = "\(result) (implemented in '\(className)')"

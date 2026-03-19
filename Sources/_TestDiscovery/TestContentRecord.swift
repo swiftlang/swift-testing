@@ -142,7 +142,7 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   /// Invoke an accessor function to load a test content record.
   ///
   /// - Parameters:
-  /// 	- accessor: The accessor function to call.
+  ///   - accessor: The accessor function to call.
   ///   - typeAddress: A pointer to the type of test content record.
   ///   - hint: An optional hint value.
   ///

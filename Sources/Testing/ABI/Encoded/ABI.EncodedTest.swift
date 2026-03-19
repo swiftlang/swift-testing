@@ -290,7 +290,8 @@ extension Test {
         traits: traits,
         sourceLocation: sourceLocation,
         containingTypeInfo: typeInfo,
-        isSynthesized: true
+        isSynthesized: true,
+        isPolymorphic: false
       )
     case .function:
       let parameters = test._parameters.map { parameters in
@@ -313,8 +314,7 @@ extension Test {
         testCases: { () -> Test.Case.Generator<CollectionOfOne<Void>> in
           throw APIMisuseError(description: "This instance of 'Test' was synthesized at runtime and cannot be run directly.")
         },
-        parameters: parameters ?? [],
-        isInheritable: false
+        parameters: parameters ?? []
       )
     }
   }

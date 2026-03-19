@@ -175,7 +175,7 @@ extension Runner {
   ///   - body: The function to invoke.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  private static func _forEach<E>(
+  private nonisolated(nonsending) static func _forEach<E>(
     in sequence: some Sequence<E>,
     namingTasksWith taskNamer: (borrowing E) -> (taskName: String, action: String?)?,
     _ body: @Sendable @escaping (borrowing E) async throws -> Void
@@ -370,7 +370,7 @@ extension Runner {
   private static func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step, context: _Context) async {
     let configuration = _configuration
 
-    await withCurrentSubclassIfNeeded(for: step.test) {
+    await withCurrentPolymorphicSubclassIfNeeded(for: step.test) {
       // Apply the configuration's test case filter.
       let testCaseFilter = configuration.testCaseFilter
       let testCases = testCases.lazy.filter { testCase in

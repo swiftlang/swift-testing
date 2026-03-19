@@ -162,83 +162,6 @@ extension Runner.Plan {
   }()
 #endif
 
-  /// Add `open` test functions in base classes to their corresponding
-  /// subclasses.
-  ///
-  /// - Parameters:
-  ///   - testGraph: The graph of tests to modify.
-  private static func _inheritTestFunctions(in testGraph: inout Graph<String, Test?>) {
-    // First, recursively mark tests as inheritable if they're contained in
-    // inheritable suites.
-    func makeInheritableIfNeeded(_ inheritable: Bool, in testGraph: inout Graph<String, Test?>, wasSomethingInheritable: inout Bool) {
-      // Inherit the inheritable flag (yes, really).
-      if inheritable {
-        testGraph.value?.isInheritable = true
-      }
-      let inheritable = inheritable || (true == testGraph.value?.isInheritable)
-
-      // Track whether anything is inheritable. If at the end of this recursion
-      // nothing was inheritable, then we don't need to walk the graph again.
-      wasSomethingInheritable = wasSomethingInheritable || inheritable
-
-      testGraph.children = testGraph.children.mapValues { child in
-        var child = child
-        // Inheritance doesn't descend into nested types, so clear the
-        // inheritable flag when recursing into a child suite.
-        let inheritableByChild = inheritable && (true != child.value?.isSuite)
-        makeInheritableIfNeeded(inheritableByChild, in: &child, wasSomethingInheritable: &wasSomethingInheritable)
-        return child
-      }
-    }
-
-    var wasSomethingInheritable = false
-    makeInheritableIfNeeded(false, in: &testGraph, wasSomethingInheritable: &wasSomethingInheritable)
-    guard wasSomethingInheritable else {
-      // No inheritable tests, so we can exit early.
-      return
-    }
-
-    // Now go through the graph again and find all tests that are marked as
-    // inheritable.
-    let inheritableTests: [Test] = testGraph.compactMap { _, test in
-      guard let test, test.isInheritable else {
-        return nil
-      }
-      return test
-    }
-
-    // For each of the discovered, inheritable tests, find the type it's applied
-    // to (which, by definition, must be a class) and find all subclasses
-    // thereof.
-    var allSubtypeInfo: [TypeInfo: [TypeInfo]]
-#if _runtime(_ObjC)
-    allSubtypeInfo = Dictionary(
-      uniqueKeysWithValues: inheritableTests
-        .compactMap { $0.test.containingTypeInfo?.class }
-        .reduce(into: Set<TypeInfo>()) { baseTypeInfo, clazz in
-          baseTypeInfo.insert(TypeInfo(describing: clazz))
-        }.compactMap { typeInfo in
-          let subtypeInfo = objc_enumerateClasses(subclassing: typeInfo.class!).map { TypeInfo(describing: $0) }
-          return (typeInfo, subtypeInfo)
-        }
-    )
-#else
-    allSubtypeInfo = _allSubtypeInfo
-#endif
-
-    // For each of the discovered, inheritable tests, make copies of that test
-    // for each known subclass and insert them into the test graph.
-    for test in inheritableTests {
-      for subtypeInfo in allSubtypeInfo[test.containingTypeInfo!]! {
-        var testCopy = test
-        testCopy.containingTypeInfo = subtypeInfo
-        testCopy.isSynthesized = true
-        testCopy.isInherited = true
-        testGraph.insertValue(testCopy, at: testCopy.id.keyPathRepresentation)
-      }
-    }
-  }
-
   /// Recursively apply eligible traits from a test suite to its children in a
   /// graph.
   ///
@@ -301,12 +224,94 @@ extension Runner.Plan {
         // source location, so we use the source location of a close descendant
         // test. We do this instead of falling back to some "unknown"
         // placeholder in an attempt to preserve the correct sort ordering.
-        graph.value = Test(traits: [], sourceLocation: sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+        graph.value = Test(traits: [], sourceLocation: sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true, isPolymorphic: false)
       }
     }
 
     var sourceLocation: SourceLocation?
     synthesizeSuites(in: &graph, sourceLocation: &sourceLocation)
+  }
+
+  /// Add copies of test functions in `@polymorphic` suites to all known
+  /// subclasses of said suites.
+  ///
+  /// - Parameters:
+  ///   - testGraph: The graph of tests to modify.
+  private static func _synthesizePolymorphicTests(in testGraph: inout Graph<String, Test?>) {
+    // First, recursively mark tests as polymorphic if they're contained in
+    // polymorphic suites.
+    var polymorphicTests = [Test]()
+    func makePolymorphicIfNeeded(_ makePolymorphic: Bool, in testGraph: inout Graph<String, Test?>) {
+      var makeChildrenPolymorphic = false
+      if var test = testGraph.value.take() {
+        if test.isSuite {
+          // If this test is a polymorphic suite, mark all its child test
+          // functions (and not nested suites!) as polymorphic too.
+          makeChildrenPolymorphic = test.isPolymorphic
+        } else {
+          if makePolymorphic {
+            // This is a test function and the parent wants to make its children
+            // polymorphic, so set the flag.
+            test.isPolymorphic = true
+          }
+        }
+
+        // Gather polymorphic tests as we go. If at the end of this recursion
+        // there were no polymorphic tests found, then we don't need to walk the
+        // graph again and the transformations below become no-ops.
+        if test.isPolymorphic {
+          polymorphicTests.append(test)
+        }
+        testGraph.value = test
+      } else {
+        // This node is sparse, so propagate the makePolymorphic flag down
+        // through it (this is generally expected).
+        makeChildrenPolymorphic = makePolymorphic
+      }
+
+      testGraph.children = testGraph.children.mapValues { child in
+        var child = child
+        makePolymorphicIfNeeded(makeChildrenPolymorphic, in: &child)
+        return child
+      }
+    }
+    makePolymorphicIfNeeded(false, in: &testGraph)
+
+    // For each of the discovered, polymorphic tests, find the type it's applied
+    // to (which, by definition, must be a class) and find all subclasses
+    // thereof.
+    var allSubtypeInfo: [TypeInfo: [TypeInfo]]
+#if _runtime(_ObjC)
+    allSubtypeInfo = Dictionary(
+      uniqueKeysWithValues: polymorphicTests
+        .compactMap { $0.test.containingTypeInfo?.class }
+        .reduce(into: Set<TypeInfo>()) { baseTypeInfo, clazz in
+          baseTypeInfo.insert(TypeInfo(describing: clazz))
+        }.compactMap { typeInfo in
+          let clazz: AnyClass = typeInfo.class!
+          let subtypeInfo = objc_enumerateClasses(subclassing: clazz)
+            .map { TypeInfo(describing: $0) }
+          return (typeInfo, subtypeInfo)
+        }
+    )
+#else
+    allSubtypeInfo = _allSubtypeInfo
+#endif
+
+    // For each of the discovered, polymorphic tests, make copies of that test
+    // for each known subclass and insert them into the test graph.
+    for test in polymorphicTests {
+      for subtypeInfo in allSubtypeInfo[test.containingTypeInfo!]! {
+        var testCopy = test
+        testCopy.containingTypeInfo = subtypeInfo
+        if testCopy.isSuite {
+          testCopy.name = subtypeInfo.unqualifiedName
+        }
+        testCopy.isSynthesized = true
+        testCopy.wasInherited = true
+        testGraph.insertValue(testCopy, at: testCopy.id.keyPathRepresentation)
+      }
+    }
   }
 
   /// Given an array of tests, synthesize any containing suites that are not
@@ -437,14 +442,6 @@ extension Runner.Plan {
       testGraph.insertValue(test, at: test.id.keyPathRepresentation)
     }
 
-    // Synthesize test functions inherited by subclasses.
-    _inheritTestFunctions(in: &testGraph)
-
-    // Generate the initial action graph. The actions for these steps will all
-    // be .run() *unless* an error was thrown while examining them, in which
-    // case they will be .recordIssue().
-    var actionGraph = testGraph.mapValues { _, _ in runAction }
-
     // Remove any tests that should be filtered out per the runner's
     // configuration. The action graph is not modified here: actions that lose
     // their corresponding tests are effectively filtered out by the call to
@@ -464,6 +461,15 @@ extension Runner.Plan {
 
     // Synthesize suites for nodes in the test graph for which they are missing.
     _recursivelySynthesizeSuites(in: &testGraph)
+
+    // Synthesize test functions inherited by subclasses of polymorphic test
+    // suites.
+    _synthesizePolymorphicTests(in: &testGraph)
+
+    // Generate the initial action graph. The actions for these steps will all
+    // be .run() *unless* an error was thrown while examining them, in which
+    // case they will be .recordIssue().
+    var actionGraph = testGraph.mapValues { _, _ in runAction }
 
     // Recursively apply all recursive suite traits to children.
     //

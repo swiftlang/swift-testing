@@ -107,10 +107,11 @@ extension Test {
     _ containingType: S.Type,
     displayName: String? = nil,
     traits: [any SuiteTrait],
-    sourceBounds: __SourceBounds
+    sourceBounds: __SourceBounds,
+    isPolymorphic: Bool = false
   ) -> Self where S: ~Copyable & ~Escapable {
     let containingTypeInfo = TypeInfo(describing: containingType)
-    return Self(displayName: displayName, traits: traits, sourceLocation: sourceBounds.lowerBound, containingTypeInfo: containingTypeInfo)
+    return Self(displayName: displayName, traits: traits, sourceLocation: sourceBounds.lowerBound, containingTypeInfo: containingTypeInfo, isPolymorphic: isPolymorphic)
   }
 }
 
@@ -162,7 +163,6 @@ extension Test {
     displayName: String? = nil,
     traits: [any TestTrait],
     sourceBounds: __SourceBounds,
-    isInheritable: Bool = false,
     parameters: [__Parameter] = [],
     testFunction: @escaping @Sendable () async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable {
@@ -174,7 +174,7 @@ extension Test {
       nil
     }
     let caseGenerator = { @Sendable in Case.Generator(testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: [], isInheritable: isInheritable)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: [])
   }
 }
 
@@ -248,7 +248,6 @@ extension Test {
     traits: [any TestTrait],
     arguments collection: @escaping @Sendable () async throws -> C,
     sourceBounds: __SourceBounds,
-    isInheritable: Bool = false,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element: Sendable {
@@ -259,7 +258,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters, isInheritable: isInheritable)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
 
@@ -396,7 +395,6 @@ extension Test {
     traits: [any TestTrait],
     arguments collection1: @escaping @Sendable () async throws -> C1, _ collection2: @escaping @Sendable () async throws -> C2,
     sourceBounds: __SourceBounds,
-    isInheritable: Bool = false,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
@@ -407,7 +405,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in try await Case.Generator(arguments: collection1(), collection2(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters, isInheritable: isInheritable)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -425,7 +423,6 @@ extension Test {
     traits: [any TestTrait],
     arguments collection: @escaping @Sendable () async throws -> C,
     sourceBounds: __SourceBounds,
-    isInheritable: Bool = false,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
@@ -436,7 +433,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters, isInheritable: isInheritable)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -457,7 +454,6 @@ extension Test {
     traits: [any TestTrait],
     arguments dictionary: @escaping @Sendable () async throws -> Dictionary<Key, Value>,
     sourceBounds: __SourceBounds,
-    isInheritable: Bool = false,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, Key: Sendable, Value: Sendable {
@@ -468,7 +464,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await dictionary(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters, isInheritable: isInheritable)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -483,7 +479,6 @@ extension Test {
     traits: [any TestTrait],
     arguments zippedCollections: @escaping @Sendable () async throws -> Zip2Sequence<C1, C2>,
     sourceBounds: __SourceBounds,
-    isInheritable: Bool = false,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
@@ -498,7 +493,7 @@ extension Test {
         try await testFunction($0, $1)
       }
     }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters, isInheritable: isInheritable)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
 
@@ -542,9 +537,9 @@ extension Test {
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-@_lifetime(copy value)
+@_lifetime(immortal)
 @inlinable public func __requiringTry<T>(_ value: consuming T) throws -> T where T: ~Copyable & ~Escapable {
-  value
+  _overrideLifetime(value, copying: ())
 }
 
 /// A function that abstracts away whether or not the `await` keyword is needed
@@ -552,9 +547,9 @@ extension Test {
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-@_lifetime(copy value)
+@_lifetime(immortal)
 @inlinable public func __requiringAwait<T>(_ value: consuming T, isolation: isolated (any Actor)? = #isolation) async -> T where T: ~Copyable & ~Escapable {
-  value
+  _overrideLifetime(value, copying: ())
 }
 
 /// A function that abstracts away whether or not the `unsafe` keyword is needed
@@ -562,9 +557,9 @@ extension Test {
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-@_lifetime(copy value)
+@_lifetime(immortal)
 @unsafe @inlinable public func __requiringUnsafe<T>(_ value: consuming T) -> T where T: ~Copyable & ~Escapable {
-  value
+  _overrideLifetime(value, copying: ())
 }
 
 /// The current default isolation context.
@@ -626,8 +621,70 @@ public func __invokeXCTestMethod<T>(
   return true
 }
 
+// MARK: - Test inheritance
+
+public protocol __PolymorphicSuite: AnyObject & SendableMetatype {
+  init() async throws
+}
+
+/// An attribute that marks a test suite as being polymorphic.
+///
+/// When you apply this attribute to a class that you're using as a test suite,
+/// the testing library looks up all subclasses of that class at runtime, makes
+/// copies of all test functions in the test suite, and adds them to each of
+/// those subclasses as distinct test functions.
+///
+/// - Note A polymorphic test suite must be a class, and you must also apply the
+///   ``Suite(_:_:)`` attribute to it.
+///
+/// You can use this attribute when you want to share test functions among
+/// multiple suites. The testing library will automatically create copies of any
+/// test functions in the suite for all non-generic subclasses, subclasses of
+/// subclasses, and so on. For example:
+///
+/// ```swift
+/// @polymorphic @Suite class IngredientTests {
+///   open var ingredient: (any Ingredient)? { nil }
+///
+///   @Test func `This ingredient is fresh`() throws {
+///     guard let ingredient = self.ingredient else {
+///       try Test.cancel()
+///     }
+///     #expect(ingredient.expirationDate > .now)
+///   }
+/// }
+///
+/// final class LettuceTests: IngredientTests {
+///   override var ingredient: (any Ingredient)? { Lettuce() }
+/// }
+///
+/// class CheeseTests: IngredientTests {}
+///
+/// final class CheddarCheeseTests: IngredientTests {
+///   override var ingredient: (any Ingredient)? { CheddarCheese() }
+/// }
+///
+/// final class SwissCheeseTests: IngredientTests {
+///   override var ingredient: (any Ingredient)? { SwissCheese() }
+/// }
+/// ```
+///
+/// When you run this test target, the testing library will run the
+/// \``This ingredient is fresh`\` test function on an instance of
+/// `IngredientTests`, `LettuceTests`, `CheeseTests`, `CheddarCheeseTests`, and
+/// `SwissCheeseTests`.
+///
+/// In this example, we have configured the test function to cancel itself when
+/// the value of the `ingredient` property is `nil`.
+///
+/// - Important: If you subclass a polymorphic test suite with a generic
+///   subclass, the testing library ignores that subclass when you run your
+///   tests.
+@_spi(Experimental)
+@attached(extension, conformances: __PolymorphicSuite) public macro polymorphic() = #externalMacro(module: "TestingMacros", type: "PolymorphicSuiteMacro")
+
 /// The current subclass to use for inherited test functions.
-@TaskLocal var currentSubclass: AnyClass?
+@TaskLocal private var _currentPolymorphicSubclass: (any __PolymorphicSuite.Type)?
 
 /// Set the current subclass to use for inherited test functions.
 ///
@@ -638,22 +695,54 @@ public func __invokeXCTestMethod<T>(
 /// - Returns: Whatever is returned by `body`.
 ///
 /// - Throws: Whatever is thrown by `body`.
-func withCurrentSubclassIfNeeded<R>(for test: Test, _ body: () async throws -> R) async rethrows -> R {
-  guard test.isInheritable, let subclass = test.containingTypeInfo?.class else {
+nonisolated(nonsending) func withCurrentPolymorphicSubclassIfNeeded<R>(for test: Test, _ body: nonisolated(nonsending) () async throws -> R) async rethrows -> R {
+  guard test.isPolymorphic,
+        let clazz = test.containingTypeInfo?.class,
+        let polymorphicClass = clazz as? any __PolymorphicSuite.Type else {
     return try await body()
   }
-  return try await $currentSubclass.withValue(subclass) {
+  return try await $_currentPolymorphicSubclass.withValue(polymorphicClass) {
     try await body()
   }
 }
 
-public func __currentSubclass<C>(of baseClass: C.Type) throws -> C.Type where C: AnyObject {
-  if let currentSubclass {
-    guard let result = currentSubclass as? C.Type else {
-      throw SystemError(description: "Expected a subclass of '\(baseClass)' to instantiate for the current test, but found '\(currentSubclass)' instead")
+/// Initialize an instance of a type to be used as the `self` argument of a test
+/// function.
+///
+/// - Parameters:
+/// 	- initExpr: A closure to invoke that creates an instance of the type `T`.
+///
+/// - Returns: An instance of the type `T` returned from `initExpr`.
+///
+/// - Throws: Whatever is thrown by `initExpr`.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not call
+///   it directly.
+@_lifetime(immortal)
+public nonisolated(nonsending) func __initialize<T>(_ initExpr: nonisolated(nonsending) () async throws -> T) async throws -> T where T: ~Copyable & ~Escapable {
+  try await _overrideLifetime(initExpr(), copying: ())
+}
+
+/// Initialize an instance of a subclass of some class `T` to be used as the
+/// `self` argument of a polymorphic test function.
+///
+/// - Parameters:
+///   - initExpr: Unused.
+///
+/// - Returns: An instance of the current subclass of class `T` (or `T` itself).
+///
+/// - Throws: Any error that prevented instantiating a subclass of `T`.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not call
+///   it directly.
+@_spi(Experimental)
+public nonisolated(nonsending) func __initialize<C>(_ initExpr: nonisolated(nonsending) () async throws -> C) async throws -> C where C: __PolymorphicSuite {
+  if let _currentPolymorphicSubclass {
+    guard let result = _currentPolymorphicSubclass as? C.Type else {
+      throw SystemError(description: "Expected a subclass of '\(C.self)' to instantiate for the current test, but found '\(_currentPolymorphicSubclass)' instead")
     }
-    return result
+    return try await result.init()
   } else {
-    throw SystemError(description: "Expected a subclass of '\(baseClass)' to instantiate for the current test, but no class was configured")
+    throw SystemError(description: "Expected a subclass of '\(C.self)' to instantiate for the current test, but no class was configured")
   }
 }

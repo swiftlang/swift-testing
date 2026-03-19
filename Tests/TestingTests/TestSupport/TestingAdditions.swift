@@ -179,7 +179,7 @@ extension Test {
   ) {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: [], isInheritable: false)
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: [])
   }
 
   /// Initialize an instance of this type with a function or closure to call,
@@ -211,7 +211,7 @@ extension Test {
   ) where C: Collection & Sendable, C.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters, isInheritable: false)
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
   init<C>(
@@ -230,7 +230,7 @@ extension Test {
     let caseGenerator = { @Sendable in
       Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction)
     }
-    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters, isInheritable: false)
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Initialize an instance of this type with a function or closure to call,
@@ -263,7 +263,7 @@ extension Test {
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: collection1, collection2, parameters: parameters, testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters, isInheritable: false)
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Initialize an instance of this type with a function or closure to call,
@@ -291,7 +291,7 @@ extension Test {
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: zippedCollections, parameters: parameters, testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters, isInheritable: false)
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 }
 

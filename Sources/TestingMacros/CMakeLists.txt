@@ -84,6 +84,7 @@ endif()
 target_sources(TestingMacros PRIVATE
   ConditionMacro.swift
   ExitTestCapturedValueMacro.swift
+  PolymorphicSuiteMacro.swift
   PragmaMacro.swift
   SourceLocationMacro.swift
   SuiteDeclarationMacro.swift
@@ -97,7 +98,6 @@ target_sources(TestingMacros PRIVATE
   Support/Additions/TypeSyntaxProtocolAdditions.swift
   Support/Additions/VersionTupleSyntaxAdditions.swift
   Support/Additions/WithAttributesSyntaxAdditions.swift
-  Support/Additions/WithModifiersSyntaxAdditions.swift
   Support/Argument.swift
   Support/AttributeDiscovery.swift
   Support/AvailabilityGuards.swift

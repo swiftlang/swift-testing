@@ -542,7 +542,7 @@ extension AttachmentTests {
       case couldNotCreateCGGradient
       case couldNotCreateCGImage
     }
-
+    
 #if canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)
     static let cgImage = Result<CGImage, any Error> {
       let size = CGSize(width: 32.0, height: 32.0)
@@ -581,7 +581,7 @@ extension AttachmentTests {
       }
       return image
     }
-
+    
     @Test func attachCGImage() throws {
       let image = try Self.cgImage.get()
       let attachment = Attachment(image, named: "diamond")
@@ -591,7 +591,7 @@ extension AttachmentTests {
       }
       Attachment.record(attachment)
     }
-
+    
     @Test func attachCGImageDirectly() async throws {
       await confirmation("Attachment detected") { valueAttached in
         var configuration = Configuration()
@@ -600,14 +600,14 @@ extension AttachmentTests {
             valueAttached()
           }
         }
-
+        
         await Test {
           let image = try Self.cgImage.get()
           Attachment.record(image, named: "diamond.jpg")
         }.run(configuration: configuration)
       }
     }
-
+    
     @Test(arguments: [Float(0.0).nextUp, 0.25, 0.5, 0.75, 1.0], [.png as UTType?, .jpeg, .gif, .image, nil])
     func attachCGImage(quality: Float, type: UTType?) throws {
       let image = try Self.cgImage.get()
@@ -621,7 +621,7 @@ extension AttachmentTests {
         #expect(attachment.preferredName == ("diamond" as NSString).appendingPathExtension(ext))
       }
     }
-
+    
     @Test(arguments: [AttachableImageFormat.png, .jpeg, .jpeg(withEncodingQuality: 0.5), .init(contentType: .tiff)])
     func attachCGImage(format: AttachableImageFormat) throws {
       let image = try Self.cgImage.get()
@@ -634,7 +634,7 @@ extension AttachmentTests {
         #expect(attachment.preferredName == ("diamond" as NSString).appendingPathExtension(ext))
       }
     }
-
+    
     @Test func attachCGImageWithCustomUTType() throws {
       let contentType = try #require(UTType(tag: "derived-from-jpeg", tagClass: .filenameExtension, conformingTo: .jpeg))
       let format = AttachableImageFormat(contentType: contentType)
@@ -648,7 +648,7 @@ extension AttachmentTests {
         #expect(attachment.preferredName == ("diamond" as NSString).appendingPathExtension(ext))
       }
     }
-
+    
     @Test func attachCGImageWithUnsupportedImageType() throws {
       let contentType = try #require(UTType(tag: "unsupported-image-format", tagClass: .filenameExtension, conformingTo: .image))
       let format = AttachableImageFormat(contentType: contentType)
@@ -659,7 +659,7 @@ extension AttachmentTests {
         try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
       }
     }
-
+    
 #if !SWT_NO_EXIT_TESTS
     @Test func cannotAttachCGImageWithNonImageType() async {
       await #expect(processExitsWith: .failure) {
@@ -669,7 +669,7 @@ extension AttachmentTests {
       }
     }
 #endif
-
+    
 #if canImport(CoreImage) && canImport(_Testing_CoreImage)
     @Test func attachCIImage() throws {
       let image = CIImage(cgImage: try Self.cgImage.get())
@@ -680,7 +680,7 @@ extension AttachmentTests {
       }
     }
 #endif
-
+    
 #if canImport(AppKit) && canImport(_Testing_AppKit)
     static var nsImage: NSImage {
       get throws {
@@ -689,7 +689,7 @@ extension AttachmentTests {
         return NSImage(cgImage: cgImage, size: size)
       }
     }
-
+    
     @Test func attachNSImage() throws {
       let image = try Self.nsImage
       let attachment = Attachment(image, named: "diamond.jpg")
@@ -698,7 +698,7 @@ extension AttachmentTests {
         #expect(buffer.count > 32)
       }
     }
-
+    
     @Test func attachNSImageWithCustomRep() throws {
       let image = NSImage(size: NSSize(width: 32.0, height: 32.0), flipped: false) { rect in
         NSColor.red.setFill()
@@ -711,7 +711,7 @@ extension AttachmentTests {
         #expect(buffer.count > 32)
       }
     }
-
+    
     @Test func attachNSImageWithSubclassedNSImage() throws {
       let image = MyImage(size: NSSize(width: 32.0, height: 32.0))
       image.addRepresentation(NSCustomImageRep(size: image.size, flipped: false) { rect in
@@ -719,7 +719,7 @@ extension AttachmentTests {
         rect.fill()
         return true
       })
-
+      
       let attachment = Attachment(image, named: "diamond.jpg")
       #expect(attachment.attachableValue === image)
       #expect(attachment.attachableValue.size == image.size) // NSImage makes a copy
@@ -727,11 +727,11 @@ extension AttachmentTests {
         #expect(buffer.count > 32)
       }
     }
-
+    
     @Test func attachNSImageWithSubclassedRep() throws {
       let image = NSImage(size: NSSize(width: 32.0, height: 32.0))
       image.addRepresentation(MyImageRep<Int>())
-
+      
       let attachment = Attachment(image, named: "diamond.jpg")
       #expect(attachment.attachableValue.size == image.size) // NSImage makes a copy
       let firstRep = try #require(attachment.attachableValue.representations.first)
@@ -741,7 +741,7 @@ extension AttachmentTests {
       }
     }
 #endif
-
+    
 #if canImport(UIKit) && canImport(_Testing_UIKit)
     @Test func attachUIImage() throws {
       let image = UIImage(cgImage: try Self.cgImage.get())
@@ -754,65 +754,65 @@ extension AttachmentTests {
     }
 #endif
 #endif
-
+    
 #if canImport(WinSDK) && canImport(_Testing_WinSDK)
     private func copyHICON() throws -> HICON {
       try #require(LoadIconA(nil, swt_IDI_SHIELD()))
     }
-
+    
     @MainActor @Test func attachHICON() throws {
       let icon = try copyHICON()
       defer {
         DestroyIcon(icon)
       }
-
+      
       let attachment = Attachment(icon, named: "diamond.jpeg")
       try attachment.withUnsafeBytes { buffer in
         #expect(buffer.count > 32)
       }
     }
-
+    
     private func copyHBITMAP() throws -> HBITMAP {
       let (width, height) = (GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON))
-
+      
       let icon = try copyHICON()
       defer {
         DestroyIcon(icon)
       }
-
+      
       let screenDC = try #require(GetDC(nil))
       defer {
         ReleaseDC(nil, screenDC)
       }
-
+      
       let dc = try #require(CreateCompatibleDC(nil))
       defer {
         DeleteDC(dc)
       }
-
+      
       let bitmap = try #require(CreateCompatibleBitmap(screenDC, width, height))
       let oldSelectedObject = SelectObject(dc, bitmap)
       defer {
         _ = SelectObject(dc, oldSelectedObject)
       }
       DrawIcon(dc, 0, 0, icon)
-
+      
       return bitmap
     }
-
+    
     @MainActor @Test func attachHBITMAP() throws {
       let bitmap = try copyHBITMAP()
       defer {
         DeleteObject(bitmap)
       }
-
+      
       let attachment = Attachment(bitmap, named: "diamond.png")
       try attachment.withUnsafeBytes { buffer in
         #expect(buffer.count > 32)
       }
       Attachment.record(attachment)
     }
-
+    
     @MainActor @Test func attachHBITMAPAsJPEG() throws {
       let bitmap = try copyHBITMAP()
       defer {
@@ -820,7 +820,7 @@ extension AttachmentTests {
       }
       let hiFi = Attachment(bitmap, named: "hifi", as: .jpeg(withEncodingQuality: 1.0))
       let loFi = Attachment(bitmap, named: "lofi", as: .jpeg(withEncodingQuality: 0.1))
-
+      
       try hiFi.withUnsafeBytes { hiFi in
         try loFi.withUnsafeBytes { loFi in
           #expect(hiFi.count > loFi.count)
@@ -828,18 +828,18 @@ extension AttachmentTests {
       }
       Attachment.record(loFi)
     }
-
+    
     private func copyIWICBitmap() throws -> UnsafeMutablePointer<IWICBitmap> {
       let factory = try IWICImagingFactory.create()
       defer {
         _ = factory.pointee.lpVtbl.pointee.Release(factory)
       }
-
+      
       let bitmap = try copyHBITMAP()
       defer {
         DeleteObject(bitmap)
       }
-
+      
       var wicBitmap: UnsafeMutablePointer<IWICBitmap>?
       let rCreate = factory.pointee.lpVtbl.pointee.CreateBitmapFromHBITMAP(factory, bitmap, nil, WICBitmapUsePremultipliedAlpha, &wicBitmap)
       guard rCreate == S_OK, let wicBitmap else {
@@ -847,60 +847,60 @@ extension AttachmentTests {
       }
       return wicBitmap
     }
-
+    
     @MainActor @Test func attachIWICBitmap() throws {
       let wicBitmap = try copyIWICBitmap()
       defer {
         _ = wicBitmap.pointee.lpVtbl.pointee.Release(wicBitmap)
       }
-
+      
       let attachment = Attachment(wicBitmap, named: "diamond.png")
       try attachment.withUnsafeBytes { buffer in
         #expect(buffer.count > 32)
       }
       Attachment.record(attachment)
     }
-
+    
     @MainActor @Test func attachIWICBitmapSource() throws {
       let wicBitmapSource = try copyIWICBitmap().cast(to: IWICBitmapSource.self)
       defer {
         _ = wicBitmapSource.pointee.lpVtbl.pointee.Release(wicBitmapSource)
       }
-
+      
       let attachment = Attachment(wicBitmapSource, named: "diamond.png")
       try attachment.withUnsafeBytes { buffer in
         #expect(buffer.count > 32)
       }
       Attachment.record(attachment)
     }
-
+    
     @MainActor @Test func pathExtensionAndCLSID() {
       let pngCLSID = AttachableImageFormat.png.encoderCLSID
       let pngFilename = AttachableImageFormat.appendPathExtension(for: pngCLSID, to: "example")
       #expect(pngFilename == "example.png")
-
+      
       let jpegCLSID = AttachableImageFormat.jpeg.encoderCLSID
       let jpegFilename = AttachableImageFormat.appendPathExtension(for: jpegCLSID, to: "example")
       #expect(jpegFilename == "example.jpeg")
-
+      
       let pngjpegFilename = AttachableImageFormat.appendPathExtension(for: jpegCLSID, to: "example.png")
       #expect(pngjpegFilename == "example.png.jpeg")
-
+      
       let jpgjpegFilename = AttachableImageFormat.appendPathExtension(for: jpegCLSID, to: "example.jpg")
       #expect(jpgjpegFilename == "example.jpg")
     }
 #endif
-
+    
 #if (canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)) || (canImport(WinSDK) && canImport(_Testing_WinSDK))
     @Test func imageFormatFromPathExtension() {
       let format = AttachableImageFormat(pathExtension: "png")
       #expect(format != nil)
       #expect(format == .png)
-
+      
       let badFormat = AttachableImageFormat(pathExtension: "no-such-image-format")
       #expect(badFormat == nil)
     }
-
+    
     @Test func imageFormatEquatableConformance() {
       let format1 = AttachableImageFormat.png
       let format2 = AttachableImageFormat.jpeg
@@ -915,7 +915,7 @@ extension AttachmentTests {
       #expect(format1 != format2)
       #expect(format2 != format3)
       #expect(format1 != format3)
-
+      
       #expect(format1.hashValue == format1.hashValue)
       #expect(format2.hashValue == format2.hashValue)
       #expect(format3.hashValue == format3.hashValue)
@@ -923,7 +923,7 @@ extension AttachmentTests {
       #expect(format2.hashValue != format3.hashValue)
       #expect(format1.hashValue != format3.hashValue)
     }
-
+    
     @Test func imageFormatStringification() {
       let format: AttachableImageFormat = AttachableImageFormat.png
 #if canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)
@@ -934,7 +934,7 @@ extension AttachmentTests {
       #expect(String(reflecting: format) == "PNG format (27949969-876a-41d7-9447-568f6a35a4dc) at quality 1.0")
 #endif
     }
-
+    
     @Test func imageFormatStringificationWithQuality() {
       let format: AttachableImageFormat = AttachableImageFormat.jpeg(withEncodingQuality: 0.5)
 #if canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)

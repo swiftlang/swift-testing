@@ -61,9 +61,9 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - fullyQualifiedNameComponents: The fully-qualified name components of
-  ///   	the type.
+  ///     the type.
   ///   - unqualifiedName: The unqualified name of the type. If `nil`, the last
-  ///   	string in `fullyQualifiedNameComponents` is used instead.
+  ///     string in `fullyQualifiedNameComponents` is used instead.
   ///   - mangled: The mangled name of the type, if available.
   init(fullyQualifiedNameComponents: [String], unqualifiedName: String? = nil, mangledName: String? = nil) {
     let unqualifiedName = unqualifiedName ?? fullyQualifiedNameComponents.last ?? fullyQualifiedNameComponents.joined(separator: ".")
