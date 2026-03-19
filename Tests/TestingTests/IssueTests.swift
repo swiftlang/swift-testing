@@ -1721,7 +1721,7 @@ struct IssueCodingTests {
     Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .init("abc"), isPassing: true, isRequired: true, sourceLocation: #_sourceLocation)),
     Issue.Kind.knownIssueNotRecorded,
     Issue.Kind.system,
-    Issue.Kind.timeLimitExceeded(timeLimit: .seconds(123)),
+    Issue.Kind.timeLimitExceeded(timeLimitComponents: (123, 0)),
     Issue.Kind.unconditional,
   ]
 
