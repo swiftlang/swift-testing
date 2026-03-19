@@ -68,6 +68,7 @@ struct TestCaseIterationTests {
         var configuration = Configuration()
         configuration.eventHandler = { event, context in
           guard let iteration = context.iteration else { return }
+          #expect(context.iteration == context.testCase?.iteration)
           if case .testCaseStarted = event.kind {
             iterations.store(iteration, ordering: .sequentiallyConsistent)
             started()
@@ -121,6 +122,7 @@ struct TestCaseIterationTests {
     let iterationWithoutIssue = 5
 
     var configuration = Configuration()
+    configuration.shouldUseLegacyPlanLevelRepetition = false
     configuration.eventHandler = { event, context in
       guard
         let test = context.test,

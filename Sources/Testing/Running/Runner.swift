@@ -82,6 +82,9 @@ extension Runner {
   private struct _Context: Sendable {
     /// A serializer used to reduce parallelism among test cases.
     var testCaseSerializer: Serializer<Void>?
+
+    /// The current plan-level iteration (if using legacy plan-level iteration behavior).
+    var planLevelIteration: Int?
   }
 
   /// Apply the custom scope for any test scope providers of the traits
@@ -254,7 +257,7 @@ extension Runner {
     defer {
       if let step = stepGraph.value {
         if shouldSendTestEnded {
-          Event.post(.testEnded, for: (step.test, nil), iteration: 1, configuration: configuration)
+          Event.post(.testEnded, for: (step.test, nil), configuration: configuration)
         }
         Event.post(.planStepEnded(step), for: (step.test, nil), configuration: configuration)
       }
@@ -397,37 +400,62 @@ extension Runner {
   /// - Parameters:
   ///   - testCase: The test case to run.
   ///   - step: The runner plan step associated with this test case.
-  ///   - context: Context for the test run.
   ///
   /// This function sets ``Test/Case/current``, then invokes the test case's
   /// body closure.
-  private static func _runTestCase(_ testCase: Test.Case, within step: Plan.Step, context: _Context) async {
-    await _applyRepetitionPolicy(test: step.test, testCase: testCase) { iteration in
-      let configuration = _configuration
-
-      Event.post(.testCaseStarted, for: (step.test, testCase), iteration: iteration, configuration: configuration)
-      defer {
-        Event.post(.testCaseEnded, for: (step.test, testCase), iteration: iteration, configuration: configuration)
+  private static func _runTestCase(
+    _ testCase: Test.Case,
+    within step: Plan.Step,
+    context: _Context
+  ) async {
+    if let iteration = context.planLevelIteration {
+      var testCase = testCase
+      testCase.iteration = iteration
+      await _runSingleTestCaseIteration(testCase, within: step)
+    } else {
+      await _applyRepetitionPolicy { iteration in
+        var testCase = testCase
+        testCase.iteration = iteration
+        await _runSingleTestCaseIteration(testCase, within: step)
       }
+    }
+  }
 
-      await Test.Case.withCurrent(testCase) {
-        let sourceLocation = step.test.sourceLocation
-        await Issue.withErrorRecording(at: sourceLocation, configuration: configuration) {
-          // Exit early if the task has already been cancelled.
-          try Task.checkCancellation()
+  /// Run a single iteration of a test case. The test case's ``Test/Case/iteration`` must be set when
+  /// this is called.
+  ///
+  /// - Parameters:
+  ///   - testCase: The test case to run.
+  ///   - step: The runner plan step associated with this test case.
+  ///
+  /// This function sets ``Test/Case/current``, then invokes the test case's
+  /// body closure.
+  private static func _runSingleTestCaseIteration(_ testCase: Test.Case, within step: Plan.Step) async {
+    precondition(testCase.iteration != nil)
+    let configuration = _configuration
 
-          try await withTimeLimit(for: step.test, configuration: configuration) {
-            try await _applyScopingTraits(for: step.test, testCase: testCase) {
-              try await testCase.body()
-            }
-          } timeoutHandler: { timeLimit in
-            let issue = Issue(
-              kind: .timeLimitExceeded(timeLimit: timeLimit),
-              comments: [],
-              sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
-            )
-            issue.record(configuration: configuration)
+    Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
+    defer {
+      Event.post(.testCaseEnded, for: (step.test, testCase), configuration: configuration)
+    }
+
+    await Test.Case.withCurrent(testCase) {
+      let sourceLocation = step.test.sourceLocation
+      await Issue.withErrorRecording(at: sourceLocation, configuration: configuration) {
+        // Exit early if the task has already been cancelled.
+        try Task.checkCancellation()
+
+        try await withTimeLimit(for: step.test, configuration: configuration) {
+          try await _applyScopingTraits(for: step.test, testCase: testCase) {
+            try await testCase.body()
           }
+        } timeoutHandler: { timeLimit in
+          let issue = Issue(
+            kind: .timeLimitExceeded(timeLimit: timeLimit),
+            comments: [],
+            sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
+          )
+          issue.record(configuration: configuration)
         }
       }
     }
@@ -443,8 +471,6 @@ extension Runner {
   ///
   /// - Note: This function updates ``Configuration/current`` before invoking the test body.
   private static func _applyRepetitionPolicy(
-    test: Test,
-    testCase: Test.Case,
     perform body: (Int) async -> Void
   ) async {
     var config = _configuration
@@ -526,12 +552,24 @@ extension Runner {
         Event.post(.runEnded, for: (nil, nil), configuration: runner.configuration)
       }
 
-      await withTaskGroup { [runner] taskGroup in
-        _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: nil)) {
-          try? await _runStep(atRootOf: runner.plan.stepGraph, context: context)
+      if runner.configuration.shouldUseLegacyPlanLevelRepetition {
+        await _applyRepetitionPolicy { [runner] iteration in
+          var context = context
+          context.planLevelIteration = iteration
+          await runner.runAll(context: context)
         }
-        await taskGroup.waitForAll()
+      } else {
+        await runner.runAll(context: context)
       }
+    }
+  }
+
+  private func runAll(context: _Context) async {
+    await withTaskGroup { taskGroup in
+      _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: nil)) {
+        try? await Self._runStep(atRootOf: plan.stepGraph, context: context)
+      }
+      await taskGroup.waitForAll()
     }
   }
 }
