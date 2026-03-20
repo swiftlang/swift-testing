@@ -8,12 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if _runtime(_ObjC)
-private import ObjectiveC
-#else
-private import _TestDiscovery
-#endif
-
 extension Runner {
   /// A type describing a runner plan.
   public struct Plan: Sendable {
@@ -129,39 +123,6 @@ extension Runner {
 // MARK: - Constructing a new runner plan
 
 extension Runner.Plan {
-#if !_runtime(_ObjC)
-  /// A dictionary keyed by classes whose values are arrays of all known
-  /// subclasses of those classes.
-  ///
-  /// This dictionary is constructed in reverse by walking all known classes in
-  /// the current process and recursively querying each one for its immediate
-  /// superclass. This is less efficient than the Objective-C-based
-  /// implementation (which can avoid realizing classes that aren't of
-  /// interest to us).
-  private static let _allSubtypeInfo: [TypeInfo: [TypeInfo]] = {
-    var result = [TypeInfo: [TypeInfo]]()
-
-    for clazz in allClasses() {
-      let hierarchy = sequence(first: clazz, next: _getSuperclass)
-      var subclass: AnyClass? = nil
-      for clazz in hierarchy {
-        defer {
-          subclass = clazz
-        }
-
-        let typeInfo = TypeInfo(describing: clazz)
-        if let subclass {
-          result[typeInfo, default: []].append(TypeInfo(describing: subclass))
-        } else {
-          result[typeInfo, default: []].reserveCapacity(1)
-        }
-      }
-    }
-
-    return result
-  }()
-#endif
-
   /// Recursively apply eligible traits from a test suite to its children in a
   /// graph.
   ///
@@ -238,79 +199,61 @@ extension Runner.Plan {
   /// - Parameters:
   ///   - testGraph: The graph of tests to modify.
   private static func _synthesizePolymorphicTests(in testGraph: inout Graph<String, Test?>) {
-    // First, recursively mark tests as polymorphic if they're contained in
-    // polymorphic suites.
-    var polymorphicTests = [Test]()
-    func makePolymorphicIfNeeded(_ makePolymorphic: Bool, in testGraph: inout Graph<String, Test?>) {
-      var makeChildrenPolymorphic = false
+    // First, recursively find all classes associated with polymorphic test
+    // suites (as determined at macro expansion time).
+    var subclassCache = SubclassCache(
+      testGraph
+        .compactMap { $0.value }
+        .filter(\.isPolymorphic)
+        .compactMap { $0.containingTypeInfo?.class }
+    )
+
+    // The set of all copied tests we created while recursing through the graph.
+    var testCopies = [Test]()
+
+    // Recursively walk through the graph looking for test functions that are
+    // associated with classes in the set we created above. Any such test
+    // functions are implicitly polymorphic themselves.
+    func makePolymorphicCopies(in testGraph: inout Graph<String, Test?>) {
       if var test = testGraph.value.take() {
-        if test.isSuite {
-          // If this test is a polymorphic suite, mark all its child test
-          // functions (and not nested suites!) as polymorphic too.
-          makeChildrenPolymorphic = test.isPolymorphic
-        } else {
-          if makePolymorphic {
-            // This is a test function and the parent wants to make its children
-            // polymorphic, so set the flag.
-            test.isPolymorphic = true
-          }
+        defer {
+          testGraph.value = test
         }
 
-        // Gather polymorphic tests as we go. If at the end of this recursion
-        // there were no polymorphic tests found, then we don't need to walk the
-        // graph again and the transformations below become no-ops.
-        if test.isPolymorphic {
-          polymorphicTests.append(test)
+        // If this test is a test function and its type is marked polymorphic,
+        // mark the test function as polymorphic too and make copies of it to
+        // insert into the graph after recursion is complete.
+        if !test.isSuite,
+           let clazz = test.containingTypeInfo?.class,
+           subclassCache.contains(clazz) {
+          test.isPolymorphic = true
+          testCopies += subclassCache.subclasses(of: clazz).lazy
+            .map { subclass in
+              let subtypeInfo = TypeInfo(describing: subclass)
+              var testCopy = test
+              testCopy.containingTypeInfo = subtypeInfo
+              if testCopy.isSuite {
+                testCopy.name = subtypeInfo.unqualifiedName
+              }
+              testCopy.isSynthesized = true
+              testCopy.wasInherited = true
+              return testCopy
+            }
         }
-        testGraph.value = test
-      } else {
-        // This node is sparse, so propagate the makePolymorphic flag down
-        // through it (this is generally expected).
-        makeChildrenPolymorphic = makePolymorphic
       }
 
+      // Recurse into child nodes.
       testGraph.children = testGraph.children.mapValues { child in
         var child = child
-        makePolymorphicIfNeeded(makeChildrenPolymorphic, in: &child)
+        makePolymorphicCopies(in: &child)
         return child
       }
     }
-    makePolymorphicIfNeeded(false, in: &testGraph)
+    makePolymorphicCopies(in: &testGraph)
 
-    // For each of the discovered, polymorphic tests, find the type it's applied
-    // to (which, by definition, must be a class) and find all subclasses
-    // thereof.
-    var allSubtypeInfo: [TypeInfo: [TypeInfo]]
-#if _runtime(_ObjC)
-    allSubtypeInfo = Dictionary(
-      uniqueKeysWithValues: polymorphicTests
-        .compactMap { $0.test.containingTypeInfo?.class }
-        .reduce(into: Set<TypeInfo>()) { baseTypeInfo, clazz in
-          baseTypeInfo.insert(TypeInfo(describing: clazz))
-        }.compactMap { typeInfo in
-          let clazz: AnyClass = typeInfo.class!
-          let subtypeInfo = objc_enumerateClasses(subclassing: clazz)
-            .map { TypeInfo(describing: $0) }
-          return (typeInfo, subtypeInfo)
-        }
-    )
-#else
-    allSubtypeInfo = _allSubtypeInfo
-#endif
-
-    // For each of the discovered, polymorphic tests, make copies of that test
-    // for each known subclass and insert them into the test graph.
-    for test in polymorphicTests {
-      for subtypeInfo in allSubtypeInfo[test.containingTypeInfo!]! {
-        var testCopy = test
-        testCopy.containingTypeInfo = subtypeInfo
-        if testCopy.isSuite {
-          testCopy.name = subtypeInfo.unqualifiedName
-        }
-        testCopy.isSynthesized = true
-        testCopy.wasInherited = true
-        testGraph.insertValue(testCopy, at: testCopy.id.keyPathRepresentation)
-      }
+    // Insert the copied tests into the graph.
+    for testCopy in testCopies {
+      testGraph.insertValue(testCopy, at: testCopy.id.keyPathRepresentation)
     }
   }
 

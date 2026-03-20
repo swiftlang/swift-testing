@@ -62,11 +62,11 @@ struct `Polymorphic test function tests` {
   required init() {}
 
   class DoesNotInheritBaseClass {
-    @Test func `This function should not be inherited`() {
+    @Test(.hidden) func `This function should not be inherited`() {
       Issue.record("Should not have run this function.")
     }
 
-    @Suite final class DoesNotInheritDerivedClass: DoesNotInheritBaseClass {}
+    @Suite(.hidden) final class DoesNotInheritDerivedClass: DoesNotInheritBaseClass {}
   }
 
   class DerivedClass: PolymorphicBaseClass {}
