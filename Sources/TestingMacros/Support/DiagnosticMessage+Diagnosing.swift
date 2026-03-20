@@ -286,7 +286,7 @@ func makeGenericGuardDecl(
 /// its known subclasses `XCTestCase` and `XCTestSuite`.
 ///
 /// - Parameters:
-///   - decl: The declaration to examine.
+/// 	- decl: The declaration to examine.
 ///
 /// - Returns: Whether or not `decl` inherits from `XCTest.XCTest`. If the
 ///   result could not be determined from the available syntax, returns `nil`.

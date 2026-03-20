@@ -17,7 +17,7 @@ import SwiftSyntaxMacros
 /// Get the effect keyword corresponding to a given syntax node, if any.
 ///
 /// - Parameters:
-///   - expr: The syntax node that may represent an effectful expression.
+/// 	- expr: The syntax node that may represent an effectful expression.
 ///
 /// - Returns: The effect keyword corresponding to `expr`, if any.
 private func _effectKeyword(for expr: ExprSyntax) -> Keyword? {
@@ -164,7 +164,7 @@ private func _makeCallToEffectfulThunk(_ thunkName: TokenSyntax, passing expr: s
 ///   - effectfulKeywords: The effectful keywords to apply.
 ///   - expr: The expression to apply the keywords and thunk functions to.
 ///   - insertThunkCalls: Whether or not to also insert calls to thunks to
-///     ensure the inserted keywords do not generate warnings. If you aren't
+///   	ensure the inserted keywords do not generate warnings. If you aren't
 ///     sure whether thunk calls are needed, pass `true`.
 ///
 /// - Returns: A copy of `expr` if no changes are needed, or an expression that
