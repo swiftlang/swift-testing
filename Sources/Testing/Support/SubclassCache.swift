@@ -27,7 +27,7 @@ struct SubclassCache {
   /// the current process and recursively querying each one for its immediate
   /// superclass. This is less efficient than the Objective-C-based
   /// implementation (which can avoid realizing classes that aren't of
-  /// interest to us).
+  /// interest to us). BUG: rdar://172942099
   private static let _allSubclasses: [TypeInfo: [AnyClass]] = {
     var result = [TypeInfo: [AnyClass]]()
 
