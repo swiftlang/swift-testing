@@ -282,6 +282,10 @@ public struct Configuration: Sendable {
   // MARK: - Test selection
 
   /// The test filter to which tests should be filtered when run.
+  ///
+  /// When the value of this property is '.unfiltered', all tests are included in the test run. To restrict which tests are run, assign an instance of ''TestFilter'' constructed with specific test IDs, tags, or patterns.
+  ///
+  /// Note: This property filters at the ''Test'' level. To filter individual test cases within a parameterized test, use ''testCaseFilter'' instead.
   public var testFilter: TestFilter = .unfiltered
 
   // MARK: - Test case selection
