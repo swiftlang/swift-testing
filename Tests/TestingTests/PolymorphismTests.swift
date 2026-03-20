@@ -10,6 +10,10 @@
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) @testable import Testing
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 struct `Polymorphic test function tests` {
   @Test func `Polymorphic functions are discovered and run`() async throws {
     let testPlan = await Runner.Plan(selecting: PolymorphicBaseClass.self)
