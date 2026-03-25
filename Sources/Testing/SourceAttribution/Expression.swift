@@ -56,6 +56,11 @@ public struct __Expression: Sendable {
     self._subexpressions = subexpressions
   }
 
+#if !SWT_NO_SNAPSHOT_TYPES
+  /// Used for Xcode 16 compatibility only.
+  private var isNegated = false
+#endif
+
   /// The source code of the original captured expression.
   @_spi(ForToolsIntegrationOnly)
   public var sourceCode: String {
