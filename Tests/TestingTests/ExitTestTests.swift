@@ -225,6 +225,37 @@ private import _TestingInternals
     }
   }
 
+  @Test("Exit test forwards .apiMisused and .system issues") func forwardsAPIMisusedAndSystemIssues() async {
+    await confirmation(".apiMisused recorded") { apiMisusedRecorded in
+      await confirmation(".system recorded") { systemRecorded in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          guard case let .issueRecorded(issue) = event.kind else {
+            return
+          }
+          switch issue.kind {
+          case .apiMisused:
+            apiMisusedRecorded()
+          case .system:
+            systemRecorded()
+          default:
+            break
+          }
+        }
+        configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+
+        await Test {
+          await #expect(processExitsWith: .success) {
+            Issue(kind: .apiMisused).record()
+          }
+          await #expect(processExitsWith: .failure) {
+            Issue(kind: .system).record()
+          }
+        }.run(configuration: configuration)
+      }
+    }
+  }
+
   @Test("Exit test issues contain expression trees") func expressionsInIssues() async {
     await confirmation("Expectation failed") { expectationFailed in
       var configuration = Configuration()
@@ -483,6 +514,37 @@ private import _TestingInternals
           Issue.record("Issue recorded", severity: .warning)
         }
       }.run(configuration: configuration)
+    }
+  }
+
+  @Test("Known issues")
+  func knownIssues() async {
+    await confirmation("Recorded issue was a known issue") { wasKnown in
+      await confirmation("Recorded issue had the expected known-issue comment") { hadComment in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          guard case let .issueRecorded(issue) = event.kind else {
+            return
+          }
+          if issue.isKnown {
+            wasKnown()
+          }
+          if issue.knownIssueContext?.comment?.rawValue == "ABC 123",
+             issue.comments.count == 1, issue.comments.first == "456 DEF" {
+            hadComment()
+          }
+        }
+
+        // Mock an exit test where the process exits successfully.
+        configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+        await Test {
+          await #expect(processExitsWith: .success) {
+            withKnownIssue("ABC 123") {
+              Issue.record("456 DEF")
+            }
+          }
+        }.run(configuration: configuration)
+      }
     }
   }
 

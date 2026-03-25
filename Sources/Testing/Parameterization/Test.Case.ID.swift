@@ -71,8 +71,8 @@ extension Test.Case.ID: Codable {
   private enum CodingKeys: String, CodingKey {
     /// A coding key for ``Test/Case/ID/argumentIDs``.
     ///
-    /// This case's string value is non-standard because ``legacyArgumentIDs``
-    /// already used "argumentIDs" and this needs to be different.
+    /// This case's string value is non-standard because a previous legacy argument ID
+    /// key used it, and clients have adjusted to this one.
     case argumentIDs = "argIDs"
 
     /// A coding key for ``Test/Case/ID/discriminator``.
@@ -80,57 +80,6 @@ extension Test.Case.ID: Codable {
 
     /// A coding key for ``Test/Case/ID/isStable``.
     case isStable
-
-    /// A coding key for the legacy representation of ``Test/Case/ID/argumentIDs``.
-    ///
-    /// This case's string value is non-standard in order to maintain
-    /// legacy compatibility with its original value.
-    case legacyArgumentIDs = "argumentIDs"
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-
-    if container.contains(.isStable) {
-      // `isStable` is present, so we're decoding an instance encoded using the
-      // newest style: every property can be decoded straightforwardly.
-      try self.init(
-        argumentIDs: container.decodeIfPresent([Test.Case.Argument.ID].self, forKey: .argumentIDs),
-        discriminator: container.decodeIfPresent(Int.self, forKey: .discriminator),
-        isStable: container.decode(Bool.self, forKey: .isStable)
-      )
-    } else if container.contains(.legacyArgumentIDs) {
-      // `isStable` is absent, so we're decoding using the old style. Since the
-      // legacy `argumentIDs` is present, the representation should be
-      // considered stable.
-      let decodedArgumentIDs = try container.decode([Test.Case.Argument.ID].self, forKey: .legacyArgumentIDs)
-      let argumentIDs = decodedArgumentIDs.isEmpty ? nil : decodedArgumentIDs
-
-      // Discriminator should be `nil` for the ID of a non-parameterized test
-      // case, but can default to 0 for the ID of a parameterized test case.
-      let discriminator = argumentIDs == nil ? nil : 0
-
-      self.init(argumentIDs: argumentIDs, discriminator: discriminator, isStable: true)
-    } else {
-      // This is the old style, and since `argumentIDs` is absent, we know this
-      // ID represents a parameterized test case which is non-stable.
-      self.init(argumentIDs: [.init(bytes: [])], discriminator: 0, isStable: false)
-    }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-
-    try container.encode(isStable, forKey: .isStable)
-    try container.encodeIfPresent(discriminator, forKey: .discriminator)
-    try container.encodeIfPresent(argumentIDs, forKey: .argumentIDs)
-
-    // Encode the legacy representation of `argumentIDs`.
-    if argumentIDs == nil {
-      try container.encode([Test.Case.Argument.ID](), forKey: .legacyArgumentIDs)
-    } else if isStable, let argumentIDs = argumentIDs {
-      try container.encode(argumentIDs, forKey: .legacyArgumentIDs)
-    }
   }
 }
 

@@ -49,13 +49,7 @@ public struct Issue: Sendable {
     ///
     /// - Parameters:
     ///   - timeLimitComponents: The time limit reached by the test.
-    ///
-    /// @Comment {
-    ///   - Bug: The associated value of this enumeration case should be an
-    ///     instance of `Duration`, but the testing library's deployment target
-    ///     predates the introduction of that type.
-    /// }
-    indirect case timeLimitExceeded(timeLimit: Duration)
+    indirect case timeLimitExceeded(timeLimitComponents: (seconds: Int64, attoseconds: Int64))
 
     /// A known issue was expected, but was not recorded.
     case knownIssueNotRecorded
@@ -308,8 +302,8 @@ extension Issue.Kind: CustomStringConvertible {
       return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(String(describingForTest: expected)) time(s)"
     case let .errorCaught(error):
       return "Caught error: \(String(describingForTest: error))"
-    case let .timeLimitExceeded(timeLimit):
-      return "Time limit was exceeded: \(TimeValue(rawValue: timeLimit))"
+    case let .timeLimitExceeded(timeLimitComponents):
+      return "Time limit was exceeded: \(TimeValue(timeLimitComponents))"
     case .knownIssueNotRecorded:
       return "Known issue was not recorded"
     case let .valueAttachmentFailed(error):
@@ -491,8 +485,8 @@ extension Issue.Kind {
           .unconditional
       case let .errorCaught(error), let .valueAttachmentFailed(error):
           .errorCaught(ErrorSnapshot(snapshotting: error))
-      case let .timeLimitExceeded(timeLimit):
-          .timeLimitExceeded(timeLimitComponents: timeLimit.components)
+      case let .timeLimitExceeded(timeLimitComponents):
+          .timeLimitExceeded(timeLimitComponents: timeLimitComponents)
       case .knownIssueNotRecorded:
           .knownIssueNotRecorded
       case .apiMisused:

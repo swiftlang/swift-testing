@@ -18,20 +18,27 @@ extension ABI {
   ///
   /// - Warning: Errors are not yet part of the JSON schema.
   struct EncodedError<V>: Sendable where V: ABI.Version {
-    /// The error's description
+    /// The error's description.
     var description: String
 
     /// The domain of the error.
-    var domain: String
+    ///
+    /// The value of this property may be `nil` if the error originated in a
+    /// context other than Swift or Objective-C (where errors may not have
+    /// associated domain strings).
+    var domain: String?
 
     /// The code of the error.
     var code: Int
 
     // TODO: userInfo (partial) encoding
 
-    init(encoding error: some Error, in eventContext: borrowing Event.Context) {
+    init(encoding error: some Error) {
       description = String(describingForTest: error)
       domain = error._domain
+      if domain == Self.unknownDomain {
+        domain = nil
+      }
       code = error._code
     }
   }
@@ -40,8 +47,13 @@ extension ABI {
 // MARK: - Error
 
 extension ABI.EncodedError: Error {
+  /// The domain of decoded errors that did not specify a domain of their own.
+  static var unknownDomain: String {
+    "<unknown>"
+  }
+
   var _domain: String {
-    domain
+    domain ?? Self.unknownDomain
   }
 
   var _code: Int {

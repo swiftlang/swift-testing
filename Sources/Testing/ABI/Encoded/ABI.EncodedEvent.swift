@@ -52,6 +52,10 @@ extension ABI {
     ///
     /// The value of this property is `nil` unless the value of the
     /// ``kind-swift.property`` property is ``Kind-swift.enum/valueAttached``.
+    ///
+    /// To get an instance of ``Attachment`` from an instance of
+    /// ``ABI/EncodedEvent`` of kind ``Kind-swift.enum/valueAttached``, pass the
+    /// encoded event to ``Attachment/init(decoding:)-(ABI.EncodedEvent<V>)``.
     var attachment: EncodedAttachment<V>?
 
     /// Human-readable messages associated with this event that can be presented
@@ -122,7 +126,7 @@ extension ABI {
         issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
       case let .valueAttached(attachment):
         kind = .valueAttached
-        self.attachment = EncodedAttachment(encoding: attachment, in: eventContext)
+        self.attachment = EncodedAttachment(encoding: attachment)
       case .testCaseEnded:
         if eventContext.test?.isParameterized == false {
           return nil
