@@ -220,10 +220,6 @@ struct AttributeInfo {
     for expression: ExprSyntax,
     among testFunctionArguments: [Argument]
   ) -> TypeSyntax? {
-    guard expression.is(ArrayExprSyntax.self) else {
-      return nil
-    }
-
     guard let functionDecl = declaration.as(FunctionDeclSyntax.self) else {
       return nil
     }
@@ -233,29 +229,47 @@ struct AttributeInfo {
       return nil
     }
 
-    if testFunctionArguments.count == parameters.count {
-      let parameter = parameters[index]
-      return TypeSyntax(
-        ArrayTypeSyntax(element: parameter.baseType.trimmed)
-      )
-    }
-
-    if testFunctionArguments.count == 1 {
-      if parameters.count == 1, let parameter = parameters.first {
-        // A single-parameter test expects collection elements of the parameter
-        // type itself, not tuple-shaped elements.
+    if expression.is(ArrayExprSyntax.self) {
+      if testFunctionArguments.count == parameters.count {
+        let parameter = parameters[index]
         return TypeSyntax(
           ArrayTypeSyntax(element: parameter.baseType.trimmed)
         )
       }
-      let elementType = TypeSyntax(
-        TupleTypeSyntax(elements: TupleTypeElementListSyntax {
-          for parameter in parameters {
-            TupleTypeElementSyntax(type: parameter.baseType.trimmed)
-          }
-        })
-      )
-      return TypeSyntax(ArrayTypeSyntax(element: elementType))
+
+      if testFunctionArguments.count == 1 {
+        if parameters.count == 1, let parameter = parameters.first {
+          // A single-parameter test expects collection elements of the parameter
+          // type itself, not tuple-shaped elements.
+          return TypeSyntax(
+            ArrayTypeSyntax(element: parameter.baseType.trimmed)
+          )
+        }
+        let elementType = TypeSyntax(
+          TupleTypeSyntax(elements: TupleTypeElementListSyntax {
+            for parameter in parameters {
+              TupleTypeElementSyntax(type: parameter.baseType.trimmed)
+            }
+          })
+        )
+        return TypeSyntax(ArrayTypeSyntax(element: elementType))
+      }
+    }
+
+    if expression.is(DictionaryExprSyntax.self) {
+      if testFunctionArguments.count == 1, parameters.count == 2 {
+        return TypeSyntax(
+          IdentifierTypeSyntax(
+            name: .identifier("KeyValuePairs"),
+            genericArgumentClause: GenericArgumentClauseSyntax(
+              arguments: GenericArgumentListSyntax {
+                GenericArgumentSyntax(argument: .type(parameters[0].baseType.trimmed))
+                GenericArgumentSyntax(argument: .type(parameters[1].baseType.trimmed))
+              }
+            )
+          )
+        )
+      }
     }
 
     return nil

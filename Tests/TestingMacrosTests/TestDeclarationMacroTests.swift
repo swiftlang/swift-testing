@@ -546,6 +546,13 @@ struct TestDeclarationMacroTests {
         """,
         #"arguments:{[(nil,1),("a",nil),("b",nil)]as[(String?,Int?)]}"#
       ),
+      (
+        """
+        @Test(arguments: ["value": 123])
+        func f(s: String, i: Int) {}
+        """,
+        #"arguments:{["value":123]asKeyValuePairs<String,Int>}"#
+      ),
     ]
   }
 
