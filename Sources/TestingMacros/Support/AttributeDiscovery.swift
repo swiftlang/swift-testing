@@ -185,8 +185,7 @@ struct AttributeInfo {
             )
           )
         }
-        let lazyExpression = expr.trimmed
-        copy.expression = .init(ClosureExprSyntax { lazyExpression })
+        copy.expression = .init(ClosureExprSyntax { expr })
         return copy
       }
     }
