@@ -100,6 +100,7 @@ add_library(Testing
   Support/Graph.swift
   Support/JSON.swift
   Support/Serializer.swift
+  Support/SHA256.swift
   Support/VersionNumber.swift
   Support/Versions.swift
   Discovery+Macro.swift
@@ -130,8 +131,7 @@ add_library(Testing
 target_link_libraries(Testing PRIVATE
   _TestDiscovery
   _TestingInternals
-  _TestingInterop
-  _TestingUtilities)
+  _TestingInterop)
 if(NOT APPLE)
   if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
     target_link_libraries(Testing PUBLIC

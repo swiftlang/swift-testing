@@ -9,7 +9,6 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-import _TestingUtilities
 
 @Suite("Test.Case.Argument.ID Tests")
 struct Test_Case_Argument_IDTests {

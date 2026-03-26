@@ -9,7 +9,6 @@
 
 import CryptoKit
 import Testing
-import _TestingUtilities
 
 @Suite
 struct SHA256Tests {
@@ -21,7 +20,7 @@ struct SHA256Tests {
   ])
   func matchesCryptoKit(data: [UInt8]) {
     let expected = CryptoKit::SHA256.hash(data: data)
-    let ours = _TestingUtilities::SHA256.hash(data)
+    let ours = Testing::SHA256.hash(data)
 
     #expect(expected == ours)
   }
