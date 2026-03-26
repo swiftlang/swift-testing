@@ -43,6 +43,13 @@ endif()
 include(AvailabilityDefinitions)
 include(CompilerSettings)
 
+# Rebuild _TestingUtilities as part of this project so that TestingMacros can
+# import it. In the main build, _TestingUtilities is a separate target, but
+# since TestingMacros is built as an ExternalProject it cannot see targets from
+# the parent build.
+add_library(_TestingUtilities STATIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/../_TestingUtilities/SHA256.swift)
+
 if(SwiftTesting_BuildMacrosAsExecutables)
   # When swift-syntax is built locally, the macro plugin must be built as an
   # executable.
@@ -106,7 +113,6 @@ target_sources(TestingMacros PRIVATE
   Support/DiagnosticMessage.swift
   Support/DiagnosticMessage+Diagnosing.swift
   Support/EffectfulExpressionHandling.swift
-  Support/SHA256.swift
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
   Support/TestContentGeneration.swift
@@ -118,6 +124,7 @@ target_compile_options(TestingMacros PRIVATE
   "SHELL:-Xfrontend -disable-implicit-string-processing-module-import")
 
 target_link_libraries(TestingMacros PRIVATE
+  _TestingUtilities
   SwiftSyntax::SwiftSyntax
   SwiftSyntax::SwiftSyntaxMacroExpansion
   SwiftSyntax::SwiftSyntaxMacros)

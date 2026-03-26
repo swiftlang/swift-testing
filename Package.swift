@@ -135,6 +135,7 @@ let package = Package(
     .target(
       name: "Testing",
       dependencies: [
+        "_TestingUtilities",
         "_TestDiscovery",
         "_TestingInternals",
         "TestingMacros",
@@ -157,6 +158,7 @@ let package = Package(
         "_Testing_Foundation",
         "_Testing_UIKit",
         "_Testing_WinSDK",
+        "_TestingUtilities",
         "MemorySafeTestingTests",
       ],
       swiftSettings: .packageSettings(isTestTarget: true),
@@ -188,6 +190,7 @@ let package = Package(
         .product(name: "SwiftParser", package: "swift-syntax"),
         .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+        "_TestingUtilities",
       ],
       exclude: ["CMakeLists.txt"],
       swiftSettings: .packageSettings() + [
@@ -203,6 +206,11 @@ let package = Package(
 
     // "Support" targets: These targets are not meant to be used directly by
     // test authors.
+    .target(
+      name: "_TestingUtilities",
+      exclude: ["CMakeLists.txt"],
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_TestingUtilities")
+    ),
     .target(
       name: "_TestingInternals",
       exclude: ["CMakeLists.txt"],

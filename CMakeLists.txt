@@ -58,5 +58,5 @@ set(SwiftTesting_INSTALL_SWIFTMODULEDIR "${CMAKE_INSTALL_LIBDIR}/swift$<$<NOT:$<
 
 add_compile_options($<$<COMPILE_LANGUAGE:Swift>:-no-toolchain-stdlib-rpath>)
 
-add_subdirectory(Sources)
 add_subdirectory(cmake/modules)
+add_subdirectory(Sources)

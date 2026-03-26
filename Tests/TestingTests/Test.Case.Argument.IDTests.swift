@@ -9,6 +9,7 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+import _TestingUtilities
 
 @Suite("Test.Case.Argument.ID Tests")
 struct Test_Case_Argument_IDTests {
@@ -23,13 +24,14 @@ struct Test_Case_Argument_IDTests {
     let arguments = try #require(testCase.arguments)
     #expect(arguments.count == 1)
     let argument = try #require(arguments.first)
-    #expect(String(decoding: argument.id.bytes, as: UTF8.self) == "123")
+    #expect(argument.id.bytes == SHA256.hash("123".utf8))
   }
 
   @Test("One CustomTestArgumentEncodable parameter")
   func oneCustomParameter() async throws {
+    let argumentValue = MyCustomTestArgument(x: 123, y: "abc")
     let test = Test(
-      arguments: [MyCustomTestArgument(x: 123, y: "abc")],
+      arguments: [argumentValue],
       parameters: [Test.Parameter(index: 0, firstName: "value", type: MyCustomTestArgument.self)]
     ) { _ in }
     let testCases = try #require(test.testCases)
@@ -38,10 +40,9 @@ struct Test_Case_Argument_IDTests {
     #expect(arguments.count == 1)
     let argument = try #require(arguments.first)
 #if canImport(Foundation)
-    let decodedArgument = try argument.id.bytes.withUnsafeBufferPointer { argumentID in
-      try JSON.decode(MyCustomTestArgument.self, from: .init(argumentID))
+    try JSON.withEncoding(of: _CustomArgumentWrapper(rawValue: argumentValue)) { data in
+      #expect(argument.id.bytes == SHA256.hash(data))
     }
-    #expect(decodedArgument == MyCustomTestArgument(x: 123, y: "abc"))
 #endif
   }
 
@@ -56,7 +57,7 @@ struct Test_Case_Argument_IDTests {
     let arguments = try #require(testCase.arguments)
     #expect(arguments.count == 1)
     let argument = try #require(arguments.first)
-    #expect(String(decoding: argument.id.bytes, as: UTF8.self) == #""abc""#)
+    #expect(argument.id.bytes == SHA256.hash(#""abc""#.utf8))
   }
 
   @Test("One RawRepresentable parameter")
@@ -70,7 +71,7 @@ struct Test_Case_Argument_IDTests {
     let arguments = try #require(testCase.arguments)
     #expect(arguments.count == 1)
     let argument = try #require(arguments.first)
-    #expect(String(decoding: argument.id.bytes, as: UTF8.self) == #""abc""#)
+    #expect(argument.id.bytes == SHA256.hash(#""abc""#.utf8))
   }
 }
 

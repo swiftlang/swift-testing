@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingUtilities
+
 /// A protocol for customizing how arguments passed to parameterized tests are
 /// encoded, which is used to match against when running specific arguments.
 ///
@@ -110,13 +112,16 @@ extension Test.Case.Argument.ID {
   ///
   /// - Throws: Any error encountered during encoding.
   private static func _encode(_ value: some Encodable, parameter: Test.Parameter) throws -> [UInt8] {
-    try JSON.withEncoding(of: value, userInfo: [._testParameterUserInfoKey: parameter], Array.init)
+    /// The encoded representation of an argument is the SHA256 hash of its Codable JSON representation.
+    try JSON.withEncoding(of: value, userInfo: [._testParameterUserInfoKey: parameter]) { buffer in
+      SHA256.hash(buffer)
+    }
   }
 #endif
 }
 
 /// A encodable type which wraps a ``CustomTestArgumentEncodable`` value.
-private struct _CustomArgumentWrapper<T>: RawRepresentable, Encodable where T: CustomTestArgumentEncodable {
+struct _CustomArgumentWrapper<T>: RawRepresentable, Encodable where T: CustomTestArgumentEncodable {
   /// The value this instance wraps, which implements custom test argument
   /// encoding logic.
   var rawValue: T

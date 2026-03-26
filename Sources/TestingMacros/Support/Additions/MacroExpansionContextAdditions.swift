@@ -12,6 +12,7 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import SwiftDiagnostics
+private import _TestingUtilities
 
 extension MacroExpansionContext {
   /// Get the type of the given lexical context.

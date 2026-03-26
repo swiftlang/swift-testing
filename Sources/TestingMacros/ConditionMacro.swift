@@ -12,6 +12,7 @@ import SwiftParser
 public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
+private import _TestingUtilities
 
 /// A protocol containing the common implementation for the expansions of the
 /// `#expect()` and `#require()` macros.
