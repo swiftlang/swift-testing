@@ -10,6 +10,4 @@
 
 /// A standardized message inviting a user to file a bug report at the provided
 /// URL.
-var fileABugMessage: String {
-  "Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new"
-}
+let fileABugMessage = "Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new"
