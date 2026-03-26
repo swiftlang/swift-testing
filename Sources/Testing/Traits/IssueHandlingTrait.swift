@@ -100,7 +100,7 @@ extension IssueHandlingTrait: TestScoping {
   /// issue.
   func provideScope(performing function: @Sendable () async throws -> Void) async throws {
     guard var configuration = Configuration.current else {
-      preconditionFailure(reportBugMessage("Configuration.current is nil when calling \(#function)."))
+      preconditionFailure("Configuration.current is nil when calling \(#function). \(fileABugMessage)")
     }
 
     configuration.eventHandler = { [oldConfiguration = configuration] event, context in

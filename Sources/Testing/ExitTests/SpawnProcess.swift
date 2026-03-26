@@ -129,7 +129,7 @@ func spawnExecutable(
       func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws {
         try fileHandle.withUnsafePOSIXFileDescriptor { fd in
           guard let fd else {
-            throw SystemError(description: reportBugMessage("A child process cannot inherit a file handle without an associated file descriptor."))
+            throw SystemError(description: "A child process cannot inherit a file handle without an associated file descriptor. \(fileABugMessage)")
           }
           if let standardFD, standardFD != fd {
             _ = posix_spawn_file_actions_adddup2(fileActions, fd, standardFD)
@@ -241,7 +241,7 @@ func spawnExecutable(
     func inherit(_ fileHandle: borrowing FileHandle) throws -> HANDLE? {
       try fileHandle.withUnsafeWindowsHANDLE { windowsHANDLE in
         guard let windowsHANDLE else {
-          throw SystemError(description: reportBugMessage("A child process cannot inherit a file handle without an associated Windows handle."))
+          throw SystemError(description: "A child process cannot inherit a file handle without an associated Windows handle. \(fileABugMessage)")
         }
 
         // Ensure the file handle can be inherited by the child process.

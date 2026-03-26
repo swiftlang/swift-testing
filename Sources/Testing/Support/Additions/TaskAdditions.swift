@@ -19,7 +19,7 @@ func decorateTaskName(_ taskName: String?, withAction action: String?) -> String
   let prefix = "[Swift Testing]"
   return taskName.map { taskName in
 #if DEBUG
-    precondition(!taskName.hasPrefix(prefix), reportBugMessage("Applied prefix '\(prefix)' to task name '\(taskName)' twice."))
+    precondition(!taskName.hasPrefix(prefix), "Applied prefix '\(prefix)' to task name '\(taskName)' twice. \(fileABugMessage)")
 #endif
     let action = action.map { " - \($0)" } ?? ""
     return "\(prefix) \(taskName)\(action)"

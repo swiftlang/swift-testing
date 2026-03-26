@@ -44,7 +44,7 @@ let STATUS_SIGNAL_CAUGHT_BITS = {
 #if DEBUG
   assert(
     (result & STATUS_CODE_MASK) == 0,
-    reportBugMessage("Constructed NTSTATUS mask \(String(result, radix: 16)) encroached on code bits.")
+    "Constructed NTSTATUS mask \(String(result, radix: 16)) encroached on code bits. \(fileABugMessage)"
   )
 #endif
 

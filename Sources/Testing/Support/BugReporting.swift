@@ -8,20 +8,40 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// Construct a message describing a problem and inviting a user to file a bug
-/// report.
+/// A standardized message inviting a user to file a bug report at the provided
+/// URL.
+package var fileABugMessage: String {
+  _fileABugMessage(context: "")
+}
+
+/// A standardized message inviting a user to file a bug report at the provided
+/// URL and include the specified contextual information.
 ///
 /// - Parameters:
-///   - message: A description of the problem encountered.
+///   - context: Additional diagnostic information to include with the bug
+///     report message.
+///
+/// - Returns: A string combining a standard request to file a bug report (with
+///   a URL provided) and `context`.
+package func fileABugMessage(context: String) -> String {
+  _fileABugMessage(context: context)
+}
+
+/// Construct a message inviting a user to file a bug report with some optional
+/// context to provide.
+///
+/// - Parameters:
 ///   - context: Optional additional diagnostic information to include with the
-///     bug report request.
+///     bug report message.
 ///
-/// - Returns: A string combining `message` with a standard request to file a
-///   bug report (with a URL provided), optionally followed by `context`.
+/// - Returns: A string combining a standard request to file a bug report (with
+///   a URL provided) and `context`, if provided.
 ///
-/// This function is not part of the public interface of the testing library.
-package func reportBugMessage(_ message: String, context: String? = nil) -> String {
-  var result = "\(message) Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new"
+/// This common implementation function is provided because calling
+/// `fileABugMessage(context:)` directly from the `fileABugMessage` property
+/// getter isn't supported since they have the same base name.
+private func _fileABugMessage(context: String?) -> String {
+  var result = "Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new"
   if let context {
     result += " and include this information: \(context)"
   }

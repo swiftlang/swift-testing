@@ -584,7 +584,7 @@ extension Configuration {
     }
 
     guard case let .valueAttached(attachment) = event.kind else {
-      preconditionFailure(reportBugMessage("Passed the wrong kind of event to \(#function) (expected valueAttached, got \(event.kind))."))
+      preconditionFailure("Passed the wrong kind of event to \(#function) (expected valueAttached, got \(event.kind)). \(fileABugMessage)")
     }
     if attachment.fileSystemPath != nil {
       // Somebody already saved this attachment. This isn't necessarily a logic

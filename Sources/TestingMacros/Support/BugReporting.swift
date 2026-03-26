@@ -8,20 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// Construct a message describing a problem and inviting a user to file a bug
-/// report.
-///
-/// - Parameters:
-///   - message: A description of the problem encountered.
-///   - context: Optional additional diagnostic information to include with the
-///     bug report request.
-///
-/// - Returns: A string combining `message` with a standard request to file a
-///   bug report (with a URL provided), optionally followed by `context`.
-func reportBugMessage(_ message: String, context: String? = nil) -> String {
-  var result = "\(message) Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new"
-  if let context {
-    result += " and include this information: \(context)"
-  }
-  return result
+/// A standardized message inviting a user to file a bug report at the provided
+/// URL.
+var fileABugMessage: String {
+  "Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new"
 }

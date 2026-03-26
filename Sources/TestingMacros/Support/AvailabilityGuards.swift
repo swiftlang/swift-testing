@@ -141,7 +141,7 @@ private func _createAvailabilityTraitExpr(
     }
 
   default:
-    fatalError(reportBugMessage("Unsupported keyword \(whenKeyword) passed to \(#function)."))
+    fatalError("Unsupported keyword \(whenKeyword) passed to \(#function). \(fileABugMessage)")
   }
 }
 
