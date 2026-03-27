@@ -17,9 +17,11 @@ import Testing
 struct SHA256Tests {
   @Test(arguments: [
     [],
+    withUnsafeBytes(of: UInt64.random(in: 0 ..< .max), Array.init),
     Array(0..<20),
     Array("Hello, world".utf8),
-    Array(#"{"key": "value", "key2": 123, "key3": null}"#.utf8)
+    Array(#"{"key": "value", "key2": 123, "key3": null}"#.utf8),
+    (0..<1_024).map { _ in .random(in: 0 ..< .max) }
   ])
   func matchesCryptoKit(data: [UInt8]) {
     let expected = CryptoKit::SHA256.hash(data: data)
