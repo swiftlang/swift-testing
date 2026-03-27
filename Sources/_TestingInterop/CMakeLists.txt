@@ -8,10 +8,19 @@
 
 include(ModuleABIName)
 add_library(_TestingInterop
-  FallbackEventHandler.swift)
+  FallbackEventHandler.cpp)
+if("${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC" OR
+   "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  target_compile_options(_TestingInternals PRIVATE
+    /EHa-c)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+  target_compile_options(_TestingInternals PRIVATE
+    -fno-exceptions -fPIC)
+else()
+  target_compile_options(_TestingInternals PRIVATE
+    -fno-exceptions)
+endif()
 
-target_link_libraries(_TestingInterop PRIVATE
-  _TestingInternals)
 if(NOT BUILD_SHARED_LIBS)
   # When building a static library, tell clients to autolink the internal
   # libraries.

@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
+private import _TestingInternals.InteropOnly
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public enum Interop: Sendable {}
