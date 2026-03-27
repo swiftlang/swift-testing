@@ -21,7 +21,6 @@ struct EventTests {
             Expectation(
               evaluatedExpression: __Expression("SyntaxNode"),
               mismatchedErrorDescription: "Mismatched Error Description",
-              differenceDescription: "Difference Description",
               isPassing: false,
               isRequired: true,
               sourceLocation: SourceLocation(fileID: "M/f.swift", filePath: "/f.swift", line: 1, column: 1)

@@ -212,11 +212,10 @@ extension Issue {
   /// - Returns: The issue representing the caught error, if any error was
   ///   caught, otherwise `nil`.
   @discardableResult
-  static func withErrorRecording(
+  nonisolated(nonsending) static func withErrorRecording(
     at sourceLocation: SourceLocation?,
     configuration: Configuration? = nil,
-    isolation: isolated (any Actor)? = #isolation,
-    _ body: () async throws -> Void
+    _ body: nonisolated(nonsending) () async throws -> Void
   ) async -> (any Error)? {
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.

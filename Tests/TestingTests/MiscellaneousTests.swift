@@ -273,6 +273,11 @@ struct MultiLineSuite {
   _ = try #require(x?[...].last)
 }
 
+@Test(.hidden) func canHaveVariableNamed__ec() throws {
+  let __ec = 1
+  #expect(__ec == 1)
+}
+
 extension Bool {
   func throwingValue() throws -> Bool { self }
 }
