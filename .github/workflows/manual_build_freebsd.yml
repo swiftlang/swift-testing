@@ -1,0 +1,38 @@
+name: Manual FreeBSD Test
+on: workflow_dispatch
+
+jobs:
+  build_and_test:
+    name: Build and Test
+    env:
+      SWIFT_INSTALL_PATH: "/opt/swift-main"
+      SWIFT_WEB_URL: "https://download.swift.org/tmp-ci-nightly/development/freebsd-14_ci_latest.tar.gz"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build in FreeBSD
+        id: build
+        uses: vmactions/freebsd-vm@v1
+        with:
+          envs: 'SWIFT_INSTALL_PATH SWIFT_WEB_URL'
+          release: "14.3"
+          sync: rsync
+          copyback: false
+          usesh: true
+          prepare: |
+            fetch -o /tmp/swift.tar.gz "$SWIFT_WEB_URL"
+            mkdir -p /opt/swift-main
+            tar -xzf /tmp/swift.tar.gz -C /opt/swift-main
+            pkg install -y \
+              sqlite3 \
+              python3 \
+              libuuid \
+              curl \
+              brotli \
+              git
+            git config --global init.defaultBranch 'main'
+            "$SWIFT_INSTALL_PATH/usr/bin/swift" --version
+          run: |
+            export PATH="$SWIFT_INSTALL_PATH/usr/bin:$PATH"
+            swift build
+            swift test
