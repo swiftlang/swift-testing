@@ -878,9 +878,10 @@ extension ExitTest {
       // platform-specific changes.
       var childEnvironment = Environment.get()
 #if SWT_TARGET_OS_APPLE
-      // We need to remove Xcode's environment variables from the child
-      // environment to avoid accidentally accidentally recursing.
-      for key in childEnvironment.keys where key.starts(with: "XCTest") {
+      // We need to remove the XCTest-related environment variables set by Xcode,
+      // except those known to be safe and relevant, from the child environment
+      // to avoid accidentally recursing.
+      for key in childEnvironment.keys where key.starts(with: "XCTest") && key != "XCTestBundlePath" {
         childEnvironment.removeValue(forKey: key)
       }
 #endif

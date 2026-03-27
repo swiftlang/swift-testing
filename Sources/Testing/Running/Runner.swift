@@ -424,7 +424,7 @@ extension Runner {
           }
         } timeoutHandler: { timeLimit in
           let issue = Issue(
-            kind: .timeLimitExceeded(timeLimit: timeLimit),
+            kind: .timeLimitExceeded(timeLimitComponents: timeLimit.components),
             comments: [],
             sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
           )

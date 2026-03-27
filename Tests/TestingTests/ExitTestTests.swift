@@ -225,6 +225,37 @@ private import _TestingInternals
     }
   }
 
+  @Test("Exit test forwards .apiMisused and .system issues") func forwardsAPIMisusedAndSystemIssues() async {
+    await confirmation(".apiMisused recorded") { apiMisusedRecorded in
+      await confirmation(".system recorded") { systemRecorded in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          guard case let .issueRecorded(issue) = event.kind else {
+            return
+          }
+          switch issue.kind {
+          case .apiMisused:
+            apiMisusedRecorded()
+          case .system:
+            systemRecorded()
+          default:
+            break
+          }
+        }
+        configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+
+        await Test {
+          await #expect(processExitsWith: .success) {
+            Issue(kind: .apiMisused).record()
+          }
+          await #expect(processExitsWith: .failure) {
+            Issue(kind: .system).record()
+          }
+        }.run(configuration: configuration)
+      }
+    }
+  }
+
   @Test("Exit test issues contain expression trees") func expressionsInIssues() async {
     await confirmation("Expectation failed") { expectationFailed in
       var configuration = Configuration()
