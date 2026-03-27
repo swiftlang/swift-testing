@@ -27,7 +27,8 @@ struct SHA256Tests {
     let expected = CryptoKit::SHA256.hash(data: data)
     let ours = Testing::SHA256.hash(data)
 
-    #expect(expected == ours)
+    #expect(expected == ours, "Data \(data) did not hash to the same value")
+  }
   }
 }
 
