@@ -71,7 +71,7 @@ extension Test.Case.Argument.ID {
   init?(identifying value: some Sendable, parameter: Test.Parameter) throws {
 #if canImport(Foundation)
     func customArgumentWrapper(for value: some CustomTestArgumentEncodable) -> some Encodable {
-      _CustomArgumentWrapper(rawValue: value)
+      CustomArgumentWrapper(rawValue: value)
     }
 
     let encodableValue: (any Encodable)? = if let customEncodable = value as? any CustomTestArgumentEncodable {
@@ -119,7 +119,7 @@ extension Test.Case.Argument.ID {
 }
 
 /// A encodable type which wraps a ``CustomTestArgumentEncodable`` value.
-struct _CustomArgumentWrapper<T>: RawRepresentable, Encodable where T: CustomTestArgumentEncodable {
+struct CustomArgumentWrapper<T>: RawRepresentable, Encodable where T: CustomTestArgumentEncodable {
   /// The value this instance wraps, which implements custom test argument
   /// encoding logic.
   var rawValue: T

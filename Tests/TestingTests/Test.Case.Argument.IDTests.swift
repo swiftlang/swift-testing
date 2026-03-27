@@ -39,7 +39,7 @@ struct Test_Case_Argument_IDTests {
     #expect(arguments.count == 1)
     let argument = try #require(arguments.first)
 #if canImport(Foundation)
-    try JSON.withEncoding(of: _CustomArgumentWrapper(rawValue: argumentValue)) { data in
+    try JSON.withEncoding(of: CustomArgumentWrapper(rawValue: argumentValue)) { data in
       #expect(argument.id.bytes == SHA256.hash(data))
     }
 #endif
