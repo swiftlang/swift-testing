@@ -82,9 +82,6 @@ extension Runner {
   private struct _Context: Sendable {
     /// A serializer used to reduce parallelism among test cases.
     var testCaseSerializer: Serializer<Void>?
-
-    /// Which iteration of the test plan is being executed.
-    var iteration: Int
   }
 
   /// Apply the custom scope for any test scope providers of the traits
@@ -230,10 +227,10 @@ extension Runner {
       // Determine what kind of event to send for this step based on its action.
       switch step.action {
       case .run:
-        Event.post(.testStarted, for: (step.test, nil), iteration: context.iteration, configuration: configuration)
+        Event.post(.testStarted, for: (step.test, nil), configuration: configuration)
         shouldSendTestEnded = true
       case let .skip(skipInfo):
-        Event.post(.testSkipped(skipInfo), for: (step.test, nil), iteration: context.iteration, configuration: configuration)
+        Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: configuration)
         shouldSendTestEnded = false
       case let .recordIssue(issue):
         // Scope posting the issue recorded event such that issue handling
@@ -257,7 +254,7 @@ extension Runner {
     defer {
       if let step = stepGraph.value {
         if shouldSendTestEnded {
-          Event.post(.testEnded, for: (step.test, nil), iteration: context.iteration, configuration: configuration)
+          Event.post(.testEnded, for: (step.test, nil), configuration: configuration)
         }
         Event.post(.planStepEnded(step), for: (step.test, nil), configuration: configuration)
       }
@@ -400,16 +397,37 @@ extension Runner {
   /// - Parameters:
   ///   - testCase: The test case to run.
   ///   - step: The runner plan step associated with this test case.
-  ///   - context: Context for the test run.
   ///
   /// This function sets ``Test/Case/current``, then invokes the test case's
   /// body closure.
-  private static func _runTestCase(_ testCase: Test.Case, within step: Plan.Step, context: _Context) async {
+  private static func _runTestCase(
+    _ testCase: Test.Case,
+    within step: Plan.Step,
+    context: _Context
+  ) async {
+    if _configuration.shouldUseLegacyPlanLevelRepetition {
+      await _runSingleTestCaseIteration(testCase, within: step)
+    } else {
+      await _applyRepetitionPolicy {
+        await _runSingleTestCaseIteration(testCase, within: step)
+      }
+    }
+  }
+
+  /// Run a single iteration of a test case.
+  ///
+  /// - Parameters:
+  ///   - testCase: The test case to run.
+  ///   - step: The runner plan step associated with this test case.
+  ///
+  /// This function sets ``Test/Case/current``, then invokes the test case's
+  /// body closure.
+  private static func _runSingleTestCaseIteration(_ testCase: Test.Case, within step: Plan.Step) async {
     let configuration = _configuration
 
-    Event.post(.testCaseStarted, for: (step.test, testCase), iteration: context.iteration, configuration: configuration)
+    Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
     defer {
-      Event.post(.testCaseEnded, for: (step.test, testCase), iteration: context.iteration, configuration: configuration)
+      Event.post(.testCaseEnded, for: (step.test, testCase), configuration: configuration)
     }
 
     await Test.Case.withCurrent(testCase) {
@@ -434,6 +452,49 @@ extension Runner {
     }
   }
 
+  /// Applies the repetition policy specified in the current configuration by running the provided test case
+  /// repeatedly until the continuation condition is satisfied.
+  ///
+  /// - Parameters:
+  ///   - test: The test being executed.
+  ///   - testCase: The test case being iterated.
+  ///   - body: The actual body of the function which must ultimately call into the test function.
+  ///
+  /// - Note: This function updates ``Configuration/current`` before invoking the test body.
+  private static func _applyRepetitionPolicy(
+    perform body: () async -> Void
+  ) async {
+    for iteration in 1..._configuration.repetitionPolicy.maximumIterationCount {
+      let issueRecorded = Atomic(false)
+      var config = _configuration
+      config.eventHandler = { [eventHandler = config.eventHandler] event, context in
+        if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
+          issueRecorded.store(true, ordering: .sequentiallyConsistent)
+        }
+        eventHandler(event, context)
+      }
+
+      await Test.withCurrentIteration(iteration) {
+        await Configuration.withCurrent(config) {
+          await body()
+        }
+      }
+
+      // Determine if the test plan should iterate again.
+      let shouldContinue = switch config.repetitionPolicy.continuationCondition {
+      case nil:
+        true
+      case .untilIssueRecorded:
+        !issueRecorded.load(ordering: .sequentiallyConsistent)
+      case .whileIssueRecorded:
+        issueRecorded.load(ordering: .sequentiallyConsistent)
+      }
+      guard shouldContinue else {
+        break
+      }
+    }
+  }
+
   /// Run the tests in this runner's plan.
   public func run() async {
     await Self._run(self)
@@ -454,21 +515,12 @@ extension Runner {
 #endif
     _ = Event.installFallbackEventHandler()
 
-    // Track whether or not any issues were recorded across the entire run.
-    let issueRecorded = Atomic(false)
-    runner.configuration.eventHandler = { [eventHandler = runner.configuration.eventHandler] event, context in
-      if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
-        issueRecorded.store(true, ordering: .sequentiallyConsistent)
-      }
-      eventHandler(event, context)
-    }
-
     // Context to pass into the test run. We intentionally don't pass the Runner
     // itself (implicitly as `self` nor as an argument) because we don't want to
     // accidentally depend on e.g. the `configuration` property rather than the
     // current configuration.
     let context: _Context = {
-      var context = _Context(iteration: 0)
+      var context = _Context()
 
       let maximumParallelizationWidth = runner.configuration.maximumParallelizationWidth
       if maximumParallelizationWidth > 1 && maximumParallelizationWidth < .max {
@@ -492,45 +544,30 @@ extension Runner {
         Event.post(.runEnded, for: (nil, nil), configuration: runner.configuration)
       }
 
-      let repetitionPolicy = runner.configuration.repetitionPolicy
-      let iterationCount = repetitionPolicy.maximumIterationCount
-      for iterationIndex in 0 ..< iterationCount {
-        Event.post(.iterationStarted(iterationIndex), for: (nil, nil), configuration: runner.configuration)
-        defer {
-          Event.post(.iterationEnded(iterationIndex), for: (nil, nil), configuration: runner.configuration)
-        }
+      if runner.configuration.shouldUseLegacyPlanLevelRepetition {
+        await _applyRepetitionPolicy { [runner] in
+          let iteration = Test.currentIteration ?? 1
 
-        await withTaskGroup { [runner] taskGroup in
-          var taskAction: String?
-          if iterationCount > 1 {
-            taskAction = "running iteration #\(iterationIndex + 1)"
+          // Legacy clients expect these values to be zero-indexed.
+          let iterationIndex = iteration - 1
+          Event.post(.iterationStarted(iterationIndex), configuration: runner.configuration)
+          defer {
+            Event.post(.iterationEnded(iterationIndex), configuration: runner.configuration)
           }
-          _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: taskAction)) {
-            var iterationContext = context
-            // `iteration` is one-indexed, so offset that here.
-            iterationContext.iteration = iterationIndex + 1
-            try? await _runStep(atRootOf: runner.plan.stepGraph, context: iterationContext)
-          }
-          await taskGroup.waitForAll()
+          await runner.runAll(context: context)
         }
-
-        // Determine if the test plan should iterate again. (The iteration count
-        // is handled by the outer for-loop.)
-        let shouldContinue = switch repetitionPolicy.continuationCondition {
-        case nil:
-          true
-        case .untilIssueRecorded:
-          !issueRecorded.load(ordering: .sequentiallyConsistent)
-        case .whileIssueRecorded:
-          issueRecorded.load(ordering: .sequentiallyConsistent)
-        }
-        guard shouldContinue else {
-          break
-        }
-
-        // Reset the run-wide "issue was recorded" flag for this iteration.
-        issueRecorded.store(false, ordering: .sequentiallyConsistent)
+      } else {
+        await runner.runAll(context: context)
       }
+    }
+  }
+
+  private func runAll(context: _Context) async {
+    await withTaskGroup { taskGroup in
+      _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: nil)) {
+        try? await Self._runStep(atRootOf: plan.stepGraph, context: context)
+      }
+      await taskGroup.waitForAll()
     }
   }
 }
