@@ -29,7 +29,6 @@ struct SHA256Tests {
 
     #expect(expected == ours, "Data \(data) did not hash to the same value")
   }
-  }
 }
 
 #endif
