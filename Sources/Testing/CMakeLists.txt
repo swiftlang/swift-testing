@@ -101,6 +101,7 @@ add_library(Testing
   Support/Graph.swift
   Support/JSON.swift
   Support/Serializer.swift
+  Support/SHA256.swift
   Support/VersionNumber.swift
   Support/Versions.swift
   Discovery+Macro.swift
