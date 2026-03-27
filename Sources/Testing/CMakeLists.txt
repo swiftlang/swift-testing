@@ -120,6 +120,7 @@ add_library(Testing
   Traits/HiddenTrait.swift
   Traits/IssueHandlingTrait.swift
   Traits/ParallelizationTrait.swift
+  Traits/ReducibleTrait.swift
   Traits/Tags/Tag.Color.swift
   Traits/Tags/Tag.Color+Loading.swift
   Traits/Tags/Tag.List.swift
