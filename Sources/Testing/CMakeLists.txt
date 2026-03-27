@@ -91,6 +91,7 @@ add_library(Testing
   Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
   Support/Allocated.swift
+  Support/BugReporting.swift
   Support/CartesianProduct.swift
   Support/CError.swift
   Support/CustomIssueRepresentable.swift
