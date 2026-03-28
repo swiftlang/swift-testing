@@ -70,7 +70,7 @@ var swiftTestingDirectoryPath: String? {
   if let appDataDirectoryPath = _appDataDirectoryPath {
     return appendPathComponent(swiftTestingDirectoryName, to: appDataDirectoryPath)
   }
-#elseif os(WASI)
+#elseif os(WASI) || os(Emscripten)
   // WASI does not support the concept of a home directory.
 #else
 #warning("Platform-specific implementation missing: .swift-testing directory location unavailable")

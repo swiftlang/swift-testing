@@ -798,7 +798,7 @@ extension Event.ConsoleOutputRecorder.Options {
     // Windows does not set the "TERM" variable, so assume it supports 16-color
     // ANSI escape codes.
     true
-#elseif os(WASI)
+#elseif os(WASI) || os(Emscripten)
     // The "Terminal" under WASI can be assumed to be the browser's JavaScript
     // console, which we don't expect supports color escape codes.
     false
@@ -820,7 +820,7 @@ extension Event.ConsoleOutputRecorder.Options {
     // Windows does not set the "TERM" variable, so assume it supports 256-color
     // ANSI escape codes.
     true
-#elseif os(WASI)
+#elseif os(WASI) || os(Emscripten)
     // The "Terminal" under WASI can be assumed to be the browser's JavaScript
     // console, which we don't expect supports color escape codes.
     false
@@ -842,7 +842,7 @@ extension Event.ConsoleOutputRecorder.Options {
     // Windows does not set the "COLORTERM" variable, so assume it supports
     // true-color ANSI escape codes. SEE: https://github.com/microsoft/terminal/issues/11057
     true
-#elseif os(WASI)
+#elseif os(WASI) || os(Emscripten)
     // The "Terminal" under WASI can be assumed to be the browser's JavaScript
     // console, which we don't expect supports color escape codes.
     false

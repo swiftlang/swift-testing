@@ -85,7 +85,7 @@ public struct Backtrace: Sendable {
       initializedCount = .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
 #elseif os(Windows)
       initializedCount = Int(clamping: RtlCaptureStackBackTrace(0, ULONG(clamping: addresses.count), addresses.baseAddress!, nil))
-#elseif os(WASI)
+#elseif os(WASI) || os(Emscripten)
       // SEE: https://github.com/WebAssembly/WASI/issues/159
       // SEE: https://github.com/swiftlang/swift/pull/31693
 #else
