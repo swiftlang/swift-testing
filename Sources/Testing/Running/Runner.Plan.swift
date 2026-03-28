@@ -185,12 +185,76 @@ extension Runner.Plan {
         // source location, so we use the source location of a close descendant
         // test. We do this instead of falling back to some "unknown"
         // placeholder in an attempt to preserve the correct sort ordering.
-        graph.value = Test(traits: [], sourceLocation: sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+        graph.value = Test(traits: [], sourceLocation: sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true, isPolymorphic: false)
       }
     }
 
     var sourceLocation: SourceLocation?
     synthesizeSuites(in: &graph, sourceLocation: &sourceLocation)
+  }
+
+  /// Add copies of test functions in `@polymorphic` suites to all known
+  /// subclasses of said suites.
+  ///
+  /// - Parameters:
+  ///   - testGraph: The graph of tests to modify.
+  private static func _synthesizePolymorphicTests(in testGraph: inout Graph<String, Test?>) {
+    // First, recursively find all classes associated with polymorphic test
+    // suites (as determined at macro expansion time).
+    var subclassCache = SubclassCache(
+      testGraph
+        .compactMap { $0.value }
+        .filter(\.isPolymorphic)
+        .compactMap { $0.containingTypeInfo?.class }
+    )
+
+    // The set of all copied tests we created while recursing through the graph.
+    var testCopies = [Test]()
+
+    // Recursively walk through the graph looking for test functions that are
+    // associated with classes in the set we created above. Any such test
+    // functions are implicitly polymorphic themselves.
+    func makePolymorphicCopies(in testGraph: inout Graph<String, Test?>) {
+      if var test = testGraph.value.take() {
+        defer {
+          testGraph.value = test
+        }
+
+        // If this test is a test function and its type is marked polymorphic,
+        // mark the test function as polymorphic too and make copies of it to
+        // insert into the graph after recursion is complete.
+        if !test.isSuite,
+           let clazz = test.containingTypeInfo?.class,
+           subclassCache.contains(clazz) {
+          test.isPolymorphic = true
+          testCopies += subclassCache.subclasses(of: clazz).lazy
+            .map { subclass in
+              let subtypeInfo = TypeInfo(describing: subclass)
+              var testCopy = test
+              testCopy.containingTypeInfo = subtypeInfo
+              if testCopy.isSuite {
+                testCopy.name = subtypeInfo.unqualifiedName
+              }
+              testCopy.isSynthesized = true
+              testCopy.wasInherited = true
+              return testCopy
+            }
+        }
+      }
+
+      // Recurse into child nodes.
+      testGraph.children = testGraph.children.mapValues { child in
+        var child = child
+        makePolymorphicCopies(in: &child)
+        return child
+      }
+    }
+    makePolymorphicCopies(in: &testGraph)
+
+    // Insert the copied tests into the graph.
+    for testCopy in testCopies {
+      testGraph.insertValue(testCopy, at: testCopy.id.keyPathRepresentation)
+    }
   }
 
   /// Given an array of tests, synthesize any containing suites that are not
@@ -314,16 +378,11 @@ extension Runner.Plan {
       Backtrace.flushThrownErrorCache()
     }
 
-    // Convert the list of test into a graph of steps. The actions for these
-    // steps will all be .run() *unless* an error was thrown while examining
-    // them, in which case it will be .recordIssue().
+    // Convert the list of test into a graph of steps.
     let runAction = _runAction
     var testGraph = Graph<String, Test?>()
-    var actionGraph = Graph<String, Action>(value: runAction)
     for test in tests {
-      let idComponents = test.id.keyPathRepresentation
-      testGraph.insertValue(test, at: idComponents)
-      actionGraph.insertValue(runAction, at: idComponents, intermediateValue: runAction)
+      testGraph.insertValue(test, at: test.id.keyPathRepresentation)
     }
 
     // Remove any tests that should be filtered out per the runner's
@@ -345,6 +404,15 @@ extension Runner.Plan {
 
     // Synthesize suites for nodes in the test graph for which they are missing.
     _recursivelySynthesizeSuites(in: &testGraph)
+
+    // Synthesize test functions inherited by subclasses of polymorphic test
+    // suites.
+    _synthesizePolymorphicTests(in: &testGraph)
+
+    // Generate the initial action graph. The actions for these steps will all
+    // be .run() *unless* an error was thrown while examining them, in which
+    // case they will be .recordIssue().
+    var actionGraph = testGraph.mapValues { _, _ in runAction }
 
     // Recursively apply all recursive suite traits to children.
     //

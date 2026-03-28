@@ -290,7 +290,8 @@ extension Test {
         traits: traits,
         sourceLocation: sourceLocation,
         containingTypeInfo: typeInfo,
-        isSynthesized: true
+        isSynthesized: true,
+        isPolymorphic: false
       )
     case .function:
       let parameters = test._parameters.map { parameters in

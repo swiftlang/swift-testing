@@ -49,13 +49,25 @@ public struct TypeInfo: Sendable {
     return nil
   }
 
+  /// The described type, if available.
+  ///
+  /// The value of this property is `nil` if the described type is not a class,
+  /// as well as under any conditions where ``type`` is `nil`.
+  var `class`: AnyClass? {
+    if let type {
+      // FIXME: casting `any (~).Type` to `AnyClass` warns that it always fails
+      return unsafeBitCast(type, to: Any.Type.self) as? AnyClass
+    }
+    return nil
+  }
+
   /// Initialize an instance of this type with the specified names.
   ///
   /// - Parameters:
   ///   - fullyQualifiedNameComponents: The fully-qualified name components of
-  ///   	the type.
+  ///     the type.
   ///   - unqualifiedName: The unqualified name of the type. If `nil`, the last
-  ///   	string in `fullyQualifiedNameComponents` is used instead.
+  ///     string in `fullyQualifiedNameComponents` is used instead.
   ///   - mangled: The mangled name of the type, if available.
   init(fullyQualifiedNameComponents: [String], unqualifiedName: String? = nil, mangledName: String? = nil) {
     let unqualifiedName = unqualifiedName ?? fullyQualifiedNameComponents.last ?? fullyQualifiedNameComponents.joined(separator: ".")
