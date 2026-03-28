@@ -57,7 +57,7 @@ extension Test.Case {
     /// - Parameters:
     ///   - testFunction: The test function called by the generated test case.
     init(
-      testFunction: @escaping @Sendable () async throws -> Void
+      testFunction: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
     ) where S == CollectionOfOne<Void> {
       // A beautiful hack to give us the right number of cases: iterate over a
       // collection containing a single Void value.
@@ -85,7 +85,7 @@ extension Test.Case {
     init(
       arguments collection: S,
       parameters: [Test.Parameter],
-      testFunction: @escaping @Sendable (S.Element) async throws -> Void
+      testFunction: nonisolated(nonsending) @escaping @Sendable (S.Element) async throws -> Void
     ) where S: Collection {
       if parameters.count > 1 {
         self.init(sequence: collection) { element in
@@ -124,7 +124,7 @@ extension Test.Case {
     init<C1, C2>(
       arguments collection1: C1, _ collection2: C2,
       parameters: [Test.Parameter],
-      testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
+      testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
     ) where S == CartesianProduct<C1, C2> {
       self.init(sequence: cartesianProduct(collection1, collection2)) { element in
         Test.Case(values: [element.0, element.1], parameters: parameters) {
@@ -154,7 +154,7 @@ extension Test.Case {
     private init<E1, E2>(
       sequence: S,
       parameters: [Test.Parameter],
-      testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
+      testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
     ) where S.Element == (E1, E2), E1: Sendable, E2: Sendable {
       if parameters.count > 1 {
         self.init(sequence: sequence) { element in
@@ -192,7 +192,7 @@ extension Test.Case {
     init<E1, E2>(
       arguments collection: S,
       parameters: [Test.Parameter],
-      testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
+      testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
     ) where S: Collection, S.Element == (E1, E2) {
       self.init(sequence: collection, parameters: parameters, testFunction: testFunction)
     }
@@ -210,7 +210,7 @@ extension Test.Case {
     init<C1, C2>(
       arguments zippedCollections: Zip2Sequence<C1, C2>,
       parameters: [Test.Parameter],
-      testFunction: @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
+      testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
     ) where S == Zip2Sequence<C1, C2>, C1: Collection, C2: Collection {
       self.init(sequence: zippedCollections, parameters: parameters, testFunction: testFunction)
     }
@@ -234,7 +234,7 @@ extension Test.Case {
     init<Key, Value>(
       arguments dictionary: Dictionary<Key, Value>,
       parameters: [Test.Parameter],
-      testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
+      testFunction: nonisolated(nonsending) @escaping @Sendable ((Key, Value)) async throws -> Void
     ) where S == Dictionary<Key, Value> {
       if parameters.count > 1 {
         self.init(sequence: dictionary) { element in
