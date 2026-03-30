@@ -637,4 +637,14 @@ struct MiscellaneousTests {
     }
     #expect(duration < .seconds(1))
   }
+
+  @Test func `Expectation with a non-string literal comment and ambiguous 'Comment' type`() {
+    let comment: Comment = "foo"
+    do {
+      // Declare a custom type whose name conflicts with the testing library's
+      // built-in Comment type.
+      struct Comment {}
+      #expect(true as Bool, comment)
+    }
+  }
 }
