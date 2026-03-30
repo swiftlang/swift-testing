@@ -11,7 +11,7 @@
 #if canImport(CryptoKit)
 
 import CryptoKit
-import Testing
+@testable import Testing
 
 @Suite
 struct SHA256Tests {
