@@ -667,6 +667,34 @@ public func __checkBinaryOperation(
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
 ///
+/// This overload is necessary because collections whose elements are of type
+/// `UInt8` or `Int8` tend to be raw data and diffing them can be very slow
+/// while also not producing useful, readable output.
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkBinaryOperation<T, U>(
+  _ lhs: T, _ op: (T, () -> U) -> Bool, _ rhs: @autoclosure () -> U,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<Void, any Error> where T: Collection, U: Collection, T.Element == U.Element, T.Element: BinaryInteger, T.Element.Magnitude == UInt8 {
+  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
+  return __checkValue(
+    condition,
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(condition, lhs, rhs),
+    difference: nil,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
 /// This overload is necessary because ranges are collections and satisfy the
 /// requirements for the difference-calculating overload above, but it doesn't
 /// make sense to diff them and very large ranges can cause overflows or hangs.
