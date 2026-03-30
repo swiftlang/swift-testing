@@ -13,7 +13,7 @@
 
 /// SHA-256 implementation from Secure Hash Algorithm 2 (SHA-2) set of
 /// cryptographic hash functions (FIPS PUB 180-2).
-package enum SHA256 {
+enum SHA256 {
   /// The length of the output digest (in bits).
   private static let _digestLength = 256
 
