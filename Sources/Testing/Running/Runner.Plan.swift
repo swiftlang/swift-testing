@@ -453,10 +453,25 @@ extension Runner.Plan {
     ///
     /// - Parameters:
     ///   - plan: The original plan to snapshot.
+    @available(*, deprecated, message: "Use init(snapshotting:configuration:)")
     public init(snapshotting plan: borrowing Runner.Plan) {
-      plan.stepGraph.forEach { keyPath, step in
-        let step = step.map(Step.Snapshot.init(snapshotting:))
-        _stepGraph.insertValue(step, at: keyPath)
+      self.init(snapshotting: plan, configuration: .init())
+    }
+
+    /// Initialize an instance of this type by snapshotting the specified plan, with behavior
+    /// specified by the provided ``Configuration``.
+    ///
+    /// - Parameters:
+    ///   - plan: The original plan to snapshot.
+    ///   - configuration: The configuration that specifies the snapshotting behavior.
+    ///   Most likely, this is the configuration that was used to create `plan`.
+    @_spi(ForToolsIntegrationOnly)
+    public init(snapshotting plan: borrowing Runner.Plan, configuration: Configuration) {
+      Configuration.withCurrent(configuration) {
+        plan.stepGraph.forEach { keyPath, step in
+          let step = step.map(Step.Snapshot.init(snapshotting:))
+          _stepGraph.insertValue(step, at: keyPath)
+        }
       }
     }
 

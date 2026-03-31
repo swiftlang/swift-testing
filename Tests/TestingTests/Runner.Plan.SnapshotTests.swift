@@ -22,7 +22,7 @@ struct Runner_Plan_SnapshotTests {
     configuration.setTestFilter(toInclude: [suite.id], includeHiddenTests: true)
 
     let plan = await Runner.Plan(configuration: configuration)
-    let snapshot = Runner.Plan.Snapshot(snapshotting: plan)
+    let snapshot = Runner.Plan.Snapshot(snapshotting: plan, configuration: configuration)
     let decoded = try JSON.encodeAndDecode(snapshot)
 
     try #require(decoded.steps.count == snapshot.steps.count)
@@ -47,6 +47,25 @@ struct Runner_Plan_SnapshotTests {
     }
   }
 #endif
+
+  @Test
+  func `Respects valueReflectionOptions`() async throws {
+    let suite = try #require(await test(for: Runner_Plan_SnapshotFixtures.self))
+
+    var configuration = Configuration()
+    configuration.valueReflectionOptions = nil
+    configuration.setTestFilter(toInclude: [suite.id], includeHiddenTests: true)
+
+    let plan = await Runner.Plan(configuration: configuration)
+    let snapshot = Runner.Plan.Snapshot(snapshotting: plan, configuration: configuration)
+
+    for step in snapshot.steps {
+      guard let testCases = step.test.testCases else { continue }
+      for testCase in testCases {
+        #expect(testCase.arguments.allSatisfy { $0.value.children == nil })
+      }
+    }
+  }
 }
 
 // MARK: - Fixture tests
@@ -66,5 +85,8 @@ private struct Runner_Plan_SnapshotFixtures {
 
   @Test(.hidden, .enabled(if: try _erroneousCondition(), "To demonstrate recordIssue action"))
   func erroneousTest() {}
+
+  @Test(arguments: [0, 2, 3 as Optional])
+  func withArguments(_ x: Int?) {}
 }
 #endif
