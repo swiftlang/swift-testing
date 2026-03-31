@@ -177,7 +177,7 @@ extension ConditionMacro {
         // the resulting comment array.
         checkArguments.append(Argument(
           label: "comments",
-          expression: #"(\#(commentsArrayExpr) as [Comment?]).compactMap(\.self)"#
+          expression: #"(\#(commentsArrayExpr) as [Testing.Comment?]).compactMap(\.self)"#
         ))
       } else {
         checkArguments.append(Argument(label: "comments", expression: commentsArrayExpr))
