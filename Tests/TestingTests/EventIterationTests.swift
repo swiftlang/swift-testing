@@ -51,9 +51,9 @@ struct EventIterationTests {
   private static func matchesTestLifetimeEventKind(_ expected: Event.Kind, _ actual: Event.Kind) -> Bool {
     switch (expected, actual) {
     case (.testStarted, .testStarted),
-         (.testEnded, .testEnded),
-         (.testCaseStarted, .testCaseStarted),
-         (.testCaseEnded, .testCaseEnded):
+      (.testEnded, .testEnded),
+      (.testCaseStarted, .testCaseStarted),
+      (.testCaseEnded, .testCaseEnded):
       return true
     default:
       return false
