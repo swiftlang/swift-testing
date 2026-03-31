@@ -397,11 +397,11 @@ public struct RequireThrowsMacro: RefinedConditionMacro {
     let arguments = argumentList(of: macro, in: context)
     let errorExpr = arguments.first { $0.label?.tokenKind == .identifier("throws") }?.expression
 
-    if let errorExpr {
-      let argumentTokens: [String] = errorExpr.tokens(viewMode: .fixedUp).lazy
-        .filter { $0.tokenKind != .period }
-        .map(\.textWithoutBackticks)
-      if argumentTokens == ["Swift", "Never", "self"] || argumentTokens == ["Never", "self"] {
+    if let errorExpr = errorExpr?.as(MemberAccessExprSyntax.self),
+       errorExpr.declName.argumentNames == nil,
+       errorExpr.declName.baseName.tokenKind == .keyword(.self) {
+      let errorType = "\(errorExpr.base)" as TypeSyntax
+      if errorType.isNamed("Never", inModuleNamed: "Swift") {
         context.diagnose(.requireThrowsNeverIsRedundant(errorExpr, in: macro))
       }
     }

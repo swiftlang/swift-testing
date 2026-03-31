@@ -784,7 +784,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - expr: The error type expression.
   ///
   /// - Returns: A diagnostic message.
-  static func requireThrowsNeverIsRedundant(_ expr: ExprSyntax, in macro: some FreestandingMacroExpansionSyntax) -> Self {
+  static func requireThrowsNeverIsRedundant(_ expr: some ExprSyntaxProtocol, in macro: some FreestandingMacroExpansionSyntax) -> Self {
     // We do not provide fix-its because we cannot see the leading "try" keyword
     // so we can't provide a valid fix-it to remove the macro either. We can
     // provide a fix-it to add "as Optional", but only providing that fix-it may
