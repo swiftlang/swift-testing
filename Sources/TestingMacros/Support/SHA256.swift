@@ -69,62 +69,63 @@ enum SHA256 {
 
   /// Process and compute hash from a block.
   private static func _process(_ block: ArraySlice<UInt8>, hash: inout [UInt32]) {
-
     // Compute message schedule.
-    var W = [UInt32](repeating: 0, count: _konstants.count)
-    for t in 0..<W.count {
-      switch t {
-      case 0...15:
-        let index = block.startIndex.advanced(by: t * 4)
-        // Put 4 bytes in each message.
+    withUnsafeTemporaryAllocation(of: UInt32.self, capacity: _konstants.count) { W in
+      // Load the 16 message words from the block.
+      let base = block.startIndex
+      for t in 0..<16 {
+        let index = base + t * 4
         W[t]  = UInt32(block[index + 0]) << 24
         W[t] |= UInt32(block[index + 1]) << 16
         W[t] |= UInt32(block[index + 2]) << 8
         W[t] |= UInt32(block[index + 3])
-      default:
+      }
+
+      // Extend to 64 words.
+      for t in 16..<64 {
         let σ1 = W[t-2].rotateRight(by: 17) ^ W[t-2].rotateRight(by: 19) ^ (W[t-2] >> 10)
         let σ0 = W[t-15].rotateRight(by: 7) ^ W[t-15].rotateRight(by: 18) ^ (W[t-15] >> 3)
         W[t] = σ1 &+ W[t-7] &+ σ0 &+ W[t-16]
       }
+
+      var a = hash[0]
+      var b = hash[1]
+      var c = hash[2]
+      var d = hash[3]
+      var e = hash[4]
+      var f = hash[5]
+      var g = hash[6]
+      var h = hash[7]
+
+      // Run the main algorithm.
+      for t in 0..<_konstants.count {
+        let Σ1 = e.rotateRight(by: 6) ^ e.rotateRight(by: 11) ^ e.rotateRight(by: 25)
+        let ch = (e & f) ^ (~e & g)
+        let t1 = h &+ Σ1 &+ ch &+ _konstants[t] &+ W[t]
+
+        let Σ0 = a.rotateRight(by: 2) ^ a.rotateRight(by: 13) ^ a.rotateRight(by: 22)
+        let maj = (a & b) ^ (a & c) ^ (b & c)
+        let t2 = Σ0 &+ maj
+
+        h = g
+        g = f
+        f = e
+        e = d &+ t1
+        d = c
+        c = b
+        b = a
+        a = t1 &+ t2
+      }
+
+      hash[0] = a &+ hash[0]
+      hash[1] = b &+ hash[1]
+      hash[2] = c &+ hash[2]
+      hash[3] = d &+ hash[3]
+      hash[4] = e &+ hash[4]
+      hash[5] = f &+ hash[5]
+      hash[6] = g &+ hash[6]
+      hash[7] = h &+ hash[7]
     }
-
-    var a = hash[0]
-    var b = hash[1]
-    var c = hash[2]
-    var d = hash[3]
-    var e = hash[4]
-    var f = hash[5]
-    var g = hash[6]
-    var h = hash[7]
-
-    // Run the main algorithm.
-    for t in 0..<_konstants.count {
-      let Σ1 = e.rotateRight(by: 6) ^ e.rotateRight(by: 11) ^ e.rotateRight(by: 25)
-      let ch = (e & f) ^ (~e & g)
-      let t1 = h &+ Σ1 &+ ch &+ _konstants[t] &+ W[t]
-
-      let Σ0 = a.rotateRight(by: 2) ^ a.rotateRight(by: 13) ^ a.rotateRight(by: 22)
-      let maj = (a & b) ^ (a & c) ^ (b & c)
-      let t2 = Σ0 &+ maj
-
-      h = g
-      g = f
-      f = e
-      e = d &+ t1
-      d = c
-      c = b
-      b = a
-      a = t1 &+ t2
-    }
-
-    hash[0] = a &+ hash[0]
-    hash[1] = b &+ hash[1]
-    hash[2] = c &+ hash[2]
-    hash[3] = d &+ hash[3]
-    hash[4] = e &+ hash[4]
-    hash[5] = f &+ hash[5]
-    hash[6] = g &+ hash[6]
-    hash[7] = h &+ hash[7]
   }
 
   /// Pad the given byte array to be a multiple of 512 bits.

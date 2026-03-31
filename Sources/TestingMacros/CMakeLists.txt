@@ -100,6 +100,7 @@ target_sources(TestingMacros PRIVATE
   Support/Argument.swift
   Support/AttributeDiscovery.swift
   Support/AvailabilityGuards.swift
+  Support/BugReporting.swift
   Support/ClosureCaptureListParsing.swift
   Support/CommentParsing.swift
   Support/ConditionArgumentParsing.swift

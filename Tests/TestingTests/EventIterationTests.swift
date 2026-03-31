@@ -24,14 +24,14 @@ struct EventIterationTests {
     testBody: @escaping @Sendable (Int) -> Void,
     location: SourceLocation = #_sourceLocation
   ) async {
-    let recordedIteration = Mutex<Int>(0)
+    let recordedIteration = Atomic<Int>(0)
 
     await confirmation("Events received", expectedCount: expectedIterations * eventKinds.count, sourceLocation: location) { eventReceived in
       var configuration = Configuration()
       configuration.eventHandler = { event, context in
         if eventKinds.contains(where: { Self.matchesTestLifetimeEventKind($0, event.kind) }) {
           if let iteration = context.iteration {
-            recordedIteration.withLock { $0 = iteration }
+            recordedIteration.store(iteration, ordering: .sequentiallyConsistent)
           }
           eventReceived()
         }
@@ -39,11 +39,11 @@ struct EventIterationTests {
       configuration.repetitionPolicy = repetitionPolicy
 
       await Test {
-        testBody(recordedIteration.rawValue)
+        testBody(recordedIteration.load(ordering: .sequentiallyConsistent))
       }.run(configuration: configuration)
 
       // Verify all expected iterations were recorded
-      let iteration = recordedIteration.rawValue
+      let iteration = recordedIteration.load(ordering: .sequentiallyConsistent)
       #expect(iteration == expectedIterations, "Final observed iteration did not match expected number of iterations", sourceLocation: location)
     }
   }

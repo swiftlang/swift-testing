@@ -44,7 +44,7 @@ let STATUS_SIGNAL_CAUGHT_BITS = {
 #if DEBUG
   assert(
     (result & STATUS_CODE_MASK) == 0,
-    "Constructed NTSTATUS mask \(String(result, radix: 16)) encroached on code bits. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new"
+    "Constructed NTSTATUS mask \(String(result, radix: 16)) encroached on code bits. \(fileABugMessage)"
   )
 #endif
 

@@ -232,8 +232,14 @@ extension SourceLocation: Codable {
   }
 
   /// The name of the ersatz Swift module used for synthesized file IDs.
-  static var synthesizedModuleName: String {
+  @_spi(ForToolsIntegrationOnly)
+  public static var synthesizedModuleName: String {
     "__C"
+  }
+
+  /// An instance of this type representing an unknown source location.
+  static var unknown: Self {
+    Self(fileID: "<unknown>/<unknown>", filePath: "<unknown>", line: 1, column: 1)
   }
 
   /// Synthesize a file ID from the given file path and module name.
