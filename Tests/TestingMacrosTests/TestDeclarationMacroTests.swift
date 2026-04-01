@@ -13,6 +13,7 @@ import Testing
 
 import SwiftBasicFormat
 import SwiftDiagnostics
+import SwiftIfConfig
 import SwiftParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
@@ -348,6 +349,26 @@ struct TestDeclarationMacroTests {
           Issue.record("Change \(change) differs from expected change \(expectedChange)")
         }
       }
+    }
+  }
+
+  @Test("Error diagnostics emitted dependent on language mode",
+    arguments: [
+      ("@Suite<T> struct S {}", "Generic argument clause of attribute 'Suite' is unsupported; this is an error in the Swift 7 language mode", 6, DiagnosticSeverity.warning),
+      ("@Suite<T> struct S {}", "Generic argument clause of attribute 'Suite' is unsupported", 7, DiagnosticSeverity.error),
+      ("@Test<T> func f() {}", "Generic argument clause of attribute 'Test' is unsupported; this is an error in the Swift 7 language mode", 6, DiagnosticSeverity.warning),
+      ("@Test<T> func f() {}", "Generic argument clause of attribute 'Test' is unsupported", 7, DiagnosticSeverity.error),
+      ("extension Tag { @Tag<T> static var f: Self }", "Generic argument clause of attribute 'Tag' is unsupported; this is an error in the Swift 7 language mode", 6, DiagnosticSeverity.warning),
+      ("extension Tag { @Tag<T> static var f: Self }", "Generic argument clause of attribute 'Tag' is unsupported", 7, DiagnosticSeverity.error),
+    ]
+  )
+  func languageModeDependentDiagnostics(input: String, expectedMessage: String, languageMode: Int, severity: DiagnosticSeverity) throws {
+    let (_, diagnostics) = try parse(input, languageMode: VersionTuple(languageMode))
+
+    #expect(diagnostics.count > 0)
+    for diagnostic in diagnostics {
+      #expect(diagnostic.diagMessage.severity == severity)
+      #expect(diagnostic.message == expectedMessage)
     }
   }
 
