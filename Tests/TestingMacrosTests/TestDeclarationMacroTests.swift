@@ -559,13 +559,21 @@ struct TestDeclarationMacroTests {
       #"@Test(.tags(.f)) func f() {}"#,
       #"@Test(Tag.List.tags(.f)) func f() {}"#,
       #"@Test(Testing.Tag.List.tags(.f)) func f() {}"#,
+      #"@Test(Testing::Tag.List.tags(.f)) func f() {}"#,
+      #"@Test(Testing::Testing.Tag.List.tags(.f)) func f() {}"#,
       #"@Test(.tags("abc")) func f() {}"#,
       #"@Test(Tag.List.tags("abc")) func f() {}"#,
       #"@Test(Testing.Tag.List.tags("abc")) func f() {}"#,
+      #"@Test(Testing::Tag.List.tags("abc")) func f() {}"#,
+      #"@Test(Testing::Testing.Tag.List.tags("abc")) func f() {}"#,
       #"@Test(.tags(Tag.f)) func f() {}"#,
       #"@Test(.tags(Testing.Tag.f)) func f() {}"#,
+      #"@Test(.tags(Testing::Tag.f)) func f() {}"#,
+      #"@Test(.tags(Testing::Testing.Tag.f)) func f() {}"#,
       #"@Test(.tags(.Foo.Bar.f)) func f() {}"#,
       #"@Test(.tags(Testing.Tag.Foo.Bar.f)) func f() {}"#,
+      #"@Test(.tags(Testing::Tag.Foo.Bar.f)) func f() {}"#,
+      #"@Test(.tags(Testing::Testing.Tag.Foo.Bar.f)) func f() {}"#,
     ]
   )
   func validTagExpressions(input: String) throws {

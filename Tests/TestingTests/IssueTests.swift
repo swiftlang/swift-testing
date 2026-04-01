@@ -539,10 +539,14 @@ final class IssueTests: XCTestCase {
         throw MyParameterizedError(index: randomNumber)
       }
       #expect(throws: Never.self) {}
+      #expect(throws: Swift::Never.self) {}
+      #expect(throws: Swift::Swift.Never.self) {}
       func genericExpectThrows(_ type: (some Error).Type) {
         #expect(throws: type) {}
       }
       genericExpectThrows(Never.self)
+      genericExpectThrows(Swift::Never.self)
+      genericExpectThrows(Swift::Swift.Never.self)
       func nonVoidReturning() throws -> Int { throw MyError() }
       #expect(throws: MyError.self) {
         try nonVoidReturning()
