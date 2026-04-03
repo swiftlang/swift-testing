@@ -215,42 +215,13 @@ extension Test {
   /// - Returns: On success, an instance of ``TypeInfo`` describing the suite
   ///   type containing or equalling `test`. On failure, `nil`.
   private static func _makeTypeInfo<V>(for test: ABI.EncodedTest<V>) -> TypeInfo? {
-    // Find the module name, which for XCTest compatibility is split from the
-    // rest of the test ID by a period character instead of a slash character.
-    let testID = test.id.stringValue
-    let splitByPeriod = rawIdentifierAwareSplit(testID, separator: ".", maxSplits: 1)
-    var testIDComponents = rawIdentifierAwareSplit(testID, separator: "/")
-    guard let moduleName = splitByPeriod.first,
-          let firstComponent = testIDComponents.first,
-          moduleName.endIndex < firstComponent.endIndex else {
-      // The string wasn't structured as expected for a Swift Testing or XCTest
-      // test ID.
+    guard let (module, suiteComponents, _) = test.decodeComponents() else {
       return nil
-    }
-
-    // Replace the first component string, which is currently shaped like
-    // "ModuleName.TypeName", with ["ModuleName", "TypeName"]
-    let secondTestIDComponent = testID[moduleName.endIndex ..< firstComponent.endIndex].dropFirst()
-    testIDComponents[0] = moduleName
-    testIDComponents.insert(secondTestIDComponent, at: 1)
-
-    if test.kind == .function {
-      if let lastComponent = testIDComponents.last?.utf8,
-         lastComponent.first != UInt8(ascii: "`"),
-         lastComponent.contains(UInt8(ascii: ":")) {
-        // The last component of the test ID (when split by slash characters)
-        // appears to be a source location. Remove it as it's not part of the
-        // suite type.
-        testIDComponents.removeLast()
-      }
-
-      // The last component of the test ID is the name of the test function.
-      // Remove that too.
-      testIDComponents.removeLast()
     }
 
     // Recombine the module name with the rest of the test ID to produce the
     // fully-qualified type name. Join everything by slashes.
+    let testIDComponents = [module] + suiteComponents
     return TypeInfo(fullyQualifiedNameComponents: testIDComponents.map(String.init))
   }
 
@@ -316,5 +287,96 @@ extension Test {
         parameters: parameters ?? []
       )
     }
+  }
+}
+
+@_spi(ForToolsIntegrationOnly)
+extension Test.ID {
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// This uses the test id, test kind, and source location fields to recreate
+  /// the ID.
+  ///
+  /// - Parameters:
+  ///   - test: The encoded test to initialize this instance from.
+  ///
+  public init?<V>(decoding test: ABI.EncodedTest<V>) {
+    guard
+      let (module, suiteComponents, function) = test.decodeComponents(),
+      let sourceLocation = SourceLocation(decoding: test.sourceLocation)
+    else {
+      return nil
+    }
+
+    let nameComponents =
+      if let function {
+        suiteComponents + [function]
+      } else {
+        suiteComponents
+      }
+    self.init(
+      moduleName: String(module), nameComponents: nameComponents.map(String.init),
+      sourceLocation: sourceLocation)
+  }
+}
+
+extension ABI.EncodedTest {
+  /// Extract module and component information from a Test ID description.
+  ///
+  /// If the encoded test is a function:
+  /// * Trim source location if detected from the end of the components. If you
+  /// need the source location information, decode it from the encoded
+  /// `sourceLocation` property directly.
+  /// * Returns the function name as a separate component.
+  ///
+  /// For example:
+  ///   <module>                  <function>
+  ///   vvvvvvvvv                 vvvvvvvvv
+  ///   ModuleFoo.BarLibraryTests/testBaz()/BazTests.swift:10:1
+  ///             ^^^^^^^^^^^^^^^           ^^^^^^^^^^^^^^^^^^^
+  ///             <suiteComponents>             discarded!
+  ///
+  /// - Returns: On success, the module and suite components for the described
+  ///   Test. If the encoded test is a function, extract the function name
+  ///   separately. On failure, `nil`.
+  func decodeComponents() -> (
+    module: String.SubSequence, suiteComponents: [String.SubSequence], function: String.SubSequence?
+  )? {
+    // Find the module name, which for XCTest compatibility is split from the
+    // rest of the test ID by a period character instead of a slash character.
+    let testID = id.stringValue
+    let splitByPeriod = rawIdentifierAwareSplit(testID, separator: ".", maxSplits: 1)
+    var testIDComponents = rawIdentifierAwareSplit(testID, separator: "/")
+    guard let moduleName = splitByPeriod.first,
+      let firstComponent = testIDComponents.first,
+      moduleName.endIndex < firstComponent.endIndex
+    else {
+      // The string wasn't structured as expected for a Swift Testing or XCTest
+      // test ID.
+      return nil
+    }
+
+    // Replace the first component string, which is currently shaped like
+    // "ModuleName.TypeName", with ["TypeName"]
+    // This slice below returns ".TypeName", so dropFirst() to remove the leading dot
+    let secondTestIDComponent = testID[moduleName.endIndex..<firstComponent.endIndex].dropFirst()
+    testIDComponents[0] = secondTestIDComponent
+
+    var function: String.SubSequence?
+    if kind == .function {
+      if let lastComponent = testIDComponents.last?.utf8,
+        lastComponent.first != UInt8(ascii: "`"),
+        lastComponent.contains(UInt8(ascii: ":"))
+      {
+        // The last component of the test ID (when split by slash characters)
+        // appears to be a source location. Remove it as it's not part of the
+        // suite type.
+        testIDComponents.removeLast()
+      }
+
+      function = testIDComponents.removeLast()
+    }
+
+    return (moduleName, testIDComponents, function)
   }
 }
