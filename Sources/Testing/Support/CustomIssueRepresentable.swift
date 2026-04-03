@@ -47,6 +47,14 @@ protocol CustomIssueRepresentable: Error {
 struct SystemError: Error, CustomStringConvertible, CustomIssueRepresentable {
   var description: String
 
+  static var domain: String {
+    "org.swift.testing.SystemError"
+  }
+
+  var _domain: String {
+    Self.domain
+  }
+
   func customize(_ issue: consuming Issue) -> Issue {
     issue.kind = .system
     issue.comments.append("\(self)")
@@ -65,6 +73,14 @@ struct SystemError: Error, CustomStringConvertible, CustomIssueRepresentable {
 /// or by calling ``Issue/record(_:severity:sourceLocation:)``.
 struct APIMisuseError: Error, CustomStringConvertible, CustomIssueRepresentable {
   var description: String
+
+  static var domain: String {
+    "org.swift.testing.APIMisuseError"
+  }
+
+  var _domain: String {
+    Self.domain
+  }
 
   func customize(_ issue: consuming Issue) -> Issue {
     issue.kind = .apiMisused

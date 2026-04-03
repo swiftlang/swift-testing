@@ -30,6 +30,17 @@ extension SourceLocation {
     line: Int = #line,
     column: Int = #column
   ) -> Self {
-    Self(fileID: fileID, filePath: filePath, line: line, column: column)
+    Self(__uncheckedFileID: fileID, filePath: filePath, line: line, column: column)
+  }
+
+  /// Initialize an instance of this type without validating any arguments.
+  ///
+  /// - Warning: This initializer is used to implement the `#_sourceLocation`
+  ///   macro. Do not call it directly.
+  public init(__uncheckedFileID fileID: String, filePath: String, line: Int, column: Int) {
+    self.fileID = fileID
+    self.filePath = filePath
+    self.line = line
+    self.column = column
   }
 }

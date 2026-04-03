@@ -10,6 +10,7 @@
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
 #if SWT_NO_IMAGE_ATTACHMENTS
 @_unavailableInEmbedded
@@ -39,6 +40,7 @@ extension Attachment {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public init<T>(
     _ image: T,
@@ -72,6 +74,7 @@ extension Attachment {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public static func record<T>(
     _ image: T,
@@ -96,6 +99,7 @@ extension Attachment where AttachableValue: AttachableWrapper, AttachableValue.W
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   @_disfavoredOverload public var imageFormat: AttachableImageFormat? {
     // FIXME: no way to express `where AttachableValue == _AttachableImageWrapper<???>` on a property (see rdar://47559973)

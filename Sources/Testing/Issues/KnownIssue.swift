@@ -33,7 +33,7 @@ struct KnownIssueScope: Sendable {
   var matcher: Matcher
 
   /// The number of issues this scope and its ancestors have matched.
-  fileprivate let matchCounter: Allocated<Mutex<Int>>
+  fileprivate let matchCounter: Allocated<Atomic<Int>>
 
   /// Create a new ``KnownIssueScope`` by combining a new issue matcher with
   /// any already-active scope.
@@ -46,7 +46,7 @@ struct KnownIssueScope: Sendable {
   ///   - context: The context to be associated with issues matched by
   ///     `issueMatcher`.
   init(parent: KnownIssueScope? = .current, issueMatcher: @escaping KnownIssueMatcher, context: Issue.KnownIssueContext) {
-    let matchCounter = Allocated(Mutex(0))
+    let matchCounter = Allocated(Atomic(0))
     self.matchCounter = matchCounter
     matcher = { issue in
       let matchedContext = if issueMatcher(issue) {
@@ -55,7 +55,7 @@ struct KnownIssueScope: Sendable {
         parent?.matcher(issue)
       }
       if matchedContext != nil {
-        matchCounter.value.increment()
+        matchCounter.value.add(1, ordering: .sequentiallyConsistent)
       }
       return matchedContext
     }
@@ -110,8 +110,8 @@ private func _matchError(_ error: any Error, in scope: KnownIssueScope, comment:
 ///     function.
 ///   - sourceLocation: The source location to which the issue should be
 ///     attributed.
-private func _handleMiscount(by matchCounter: Allocated<Mutex<Int>>, comment: Comment?, sourceLocation: SourceLocation) {
-  if matchCounter.value.rawValue == 0 {
+private func _handleMiscount(by matchCounter: Allocated<Atomic<Int>>, comment: Comment?, sourceLocation: SourceLocation) {
+  if matchCounter.value.load(ordering: .sequentiallyConsistent) == 0 {
     let issue = Issue(
       kind: .knownIssueNotRecorded,
       comments: Array(comment),

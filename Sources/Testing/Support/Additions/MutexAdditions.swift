@@ -22,16 +22,10 @@ internal import Synchronization
 /// replicates the interface of that type but is implemented differently (using
 /// heap-allocated storage for the underlying lock and the value it guards).
 ///
-/// **Q:** When should I use `Mutex<T>` vs. `Allocated<Mutex<T>>`?
+/// ## See Also
 ///
-/// **A (short):** Whenever the compiler lets you use `Mutex<T>`, use that.
-///
-/// **A (long):** Mutexes can generally be locally allocated when they are
-///   function-local, global, or `static`. If your mutex is an instance member
-///   of a reference type (a class or actor), you again generally won't need
-///   `Allocated`. If, however, you need a mutex to be an instance member of a
-///   copyable value type (a structure or enumeration), then it _must_ be boxed
-///   with `Allocated` (or something else that moves its storage onto the heap).
+/// - ``Allocated``
+/// - ``Atomic``
 struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
   /// The underlying lock type.
 #if !SWT_NO_OS_UNFAIR_LOCK
@@ -40,32 +34,48 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
   private typealias _Lock = pthread_mutex_t
 #endif
 
+  /// Storage for both the lock and value.
+  private nonisolated(unsafe) let _baseAddress: UnsafeMutableRawPointer
+
+  /// The offset of `_lockAddress` from `_baseAddress`.
+  private static var _lockOffset: Int {
+    let p = UnsafeRawPointer(bitPattern: MemoryLayout<Value>.stride)!
+    return Int(bitPattern: p.alignedUp(for: _Lock.self))
+  }
+
   /// Storage for the underlying lock.
-  private nonisolated(unsafe) let _lockAddress: UnsafeMutablePointer<_Lock>
+  private var _lockAddress: UnsafeMutablePointer<_Lock> {
+    (_baseAddress + Self._lockOffset).assumingMemoryBound(to: _Lock.self)
+  }
 
   /// Storage for the value this instance guards.
-  private nonisolated(unsafe) let _valueAddress: UnsafeMutablePointer<Value>
+  private var _valueAddress: UnsafeMutablePointer<Value> {
+    _baseAddress.assumingMemoryBound(to: Value.self)
+  }
 
-  public init(_ initialValue: consuming sending Value) {
-    _lockAddress = .allocate(capacity: 1)
+
+  init(_ initialValue: consuming sending Value) {
+    _baseAddress = .allocate(
+      byteCount: Self._lockOffset + MemoryLayout<_Lock>.stride,
+      alignment: max(MemoryLayout<Value>.alignment, MemoryLayout<_Lock>.alignment)
+    )
+
 #if !SWT_NO_OS_UNFAIR_LOCK
     _lockAddress.initialize(to: .init())
 #else
     _ = pthread_mutex_init(_lockAddress, nil)
 #endif
-    _valueAddress = .allocate(capacity: 1)
     _valueAddress.initialize(to: initialValue)
   }
 
   deinit {
     _valueAddress.deinitialize(count: 1)
-    _valueAddress.deallocate()
 #if !SWT_NO_OS_UNFAIR_LOCK
     _lockAddress.deinitialize(count: 1)
 #else
     _ = pthread_mutex_destroy(_lockAddress)
 #endif
-    _lockAddress.deallocate()
+    _baseAddress.deallocate()
   }
 
   /// Acquire the lock.
@@ -121,42 +131,6 @@ extension Mutex where Value: Copyable {
 }
 
 // MARK: - Additions
-
-extension Mutex where Value: AdditiveArithmetic & Sendable {
-  /// Add something to the current wrapped value of this instance.
-  ///
-  /// - Parameters:
-  ///   - addend: The value to add.
-  ///
-  /// - Returns: The sum of ``rawValue`` and `addend`.
-  @discardableResult func add(_ addend: Value) -> Value {
-    withLock { rawValue in
-      let result = rawValue + addend
-      rawValue = result
-      return result
-    }
-  }
-}
-
-extension Mutex where Value: Numeric & Sendable {
-  /// Increment the current wrapped value of this instance.
-  ///
-  /// - Returns: The sum of ``rawValue`` and `1`.
-  ///
-  /// This function is exactly equivalent to `add(1)`.
-  @discardableResult func increment() -> Value {
-    add(1)
-  }
-
-  /// Decrement the current wrapped value of this instance.
-  ///
-  /// - Returns: The sum of ``rawValue`` and `-1`.
-  ///
-  /// This function is exactly equivalent to `add(-1)`.
-  @discardableResult func decrement() -> Value {
-    add(-1)
-  }
-}
 
 extension Mutex where Value: ~Copyable {
   /// Initialize an instance of this type with a raw value of `nil`.

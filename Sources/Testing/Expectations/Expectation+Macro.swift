@@ -195,7 +195,7 @@ public macro expect<E, R>(
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () throws -> R
-) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error
+) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectThrowsMacro") where E: Error
 
 /// Check that an expression always throws an error of a given type.
 ///
@@ -259,7 +259,7 @@ public macro expect<E, R>(
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () async throws -> R
-) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error
+) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectThrowsMacro") where E: Error
 
 /// Check that an expression always throws an error of a given type, and throw
 /// an error if it does not.
@@ -441,7 +441,7 @@ public macro expect<E, R>(
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () throws -> R
-) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error & Equatable
+) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectThrowsMacro") where E: Error & Equatable
 
 /// Check that an expression always throws a specific error.
 ///
@@ -481,7 +481,7 @@ public macro expect<E, R>(
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () async throws -> R
-) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error & Equatable
+) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectThrowsMacro") where E: Error & Equatable
 
 /// Check that an expression always throws a specific error, and throw an error
 /// if it does not.
@@ -527,7 +527,7 @@ public macro require<E, R>(
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () throws -> R
-) -> E = #externalMacro(module: "TestingMacros", type: "RequireMacro") where E: Error & Equatable
+) -> E = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro") where E: Error & Equatable
 
 /// Check that an expression always throws a specific error, and throw an error
 /// if it does not.
@@ -571,7 +571,7 @@ public macro require<E, R>(
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () async throws -> R
-) -> E = #externalMacro(module: "TestingMacros", type: "RequireMacro") where E: Error & Equatable
+) -> E = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro") where E: Error & Equatable
 
 // MARK: - Arbitrary error matching
 
@@ -637,7 +637,7 @@ public macro expect<R>(
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () throws -> R,
   throws errorMatcher: (any Error) throws -> Bool
-) -> (any Error)? = #externalMacro(module: "TestingMacros", type: "ExpectMacro")
+) -> (any Error)? = #externalMacro(module: "TestingMacros", type: "ExpectThrowsMacro")
 
 /// Check that an expression always throws an error matching some condition.
 ///
@@ -699,7 +699,7 @@ public macro expect<R>(
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () async throws -> R,
   throws errorMatcher: (any Error) async throws -> Bool
-) -> (any Error)? = #externalMacro(module: "TestingMacros", type: "ExpectMacro")
+) -> (any Error)? = #externalMacro(module: "TestingMacros", type: "ExpectThrowsMacro")
 
 /// Check that an expression always throws an error matching some condition, and
 /// throw an error if it does not.
@@ -770,7 +770,7 @@ public macro require<R>(
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () throws -> R,
   throws errorMatcher: (any Error) throws -> Bool
-) -> any Error = #externalMacro(module: "TestingMacros", type: "RequireMacro")
+) -> any Error = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro")
 
 /// Check that an expression always throws an error matching some condition, and
 /// throw an error if it does not.
@@ -839,7 +839,7 @@ public macro require<R>(
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () async throws -> R,
   throws errorMatcher: (any Error) async throws -> Bool
-) -> any Error = #externalMacro(module: "TestingMacros", type: "RequireMacro")
+) -> any Error = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro")
 
 // MARK: - Exit tests
 

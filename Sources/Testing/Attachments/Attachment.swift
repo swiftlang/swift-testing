@@ -181,6 +181,17 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
 #endif
 }
 
+extension Attachment<AnyAttachable> {
+  init(_ attachment: Attachment<some Attachable & Sendable & ~Copyable>) {
+    self.init(
+      AnyAttachable(copy attachment),
+      named: attachment._preferredName,
+      sourceLocation: attachment.sourceLocation
+    )
+    fileSystemPath = attachment.fileSystemPath
+  }
+}
+
 #if !SWT_NO_FILE_CLONING
 extension AnyAttachable: FileClonable {}
 #endif
@@ -264,12 +275,7 @@ extension Attachment where AttachableValue: Sendable & ~Copyable {
   /// }
   @_documentation(visibility: private)
   public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
-    var attachmentCopy = Attachment<AnyAttachable>(
-      AnyAttachable(copy attachment),
-      named: attachment._preferredName,
-      sourceLocation: sourceLocation
-    )
-    attachmentCopy.fileSystemPath = attachment.fileSystemPath
+    let attachmentCopy = Attachment<AnyAttachable>(attachment)
     Event.post(.valueAttached(attachmentCopy))
   }
 
@@ -432,10 +438,9 @@ extension Attachable where Self: ~Copyable {
 #endif
 
     try withUnsafeBytes(for: attachment) { buffer in
-      // Note "x" in the mode string which indicates that the file should be
-      // created and opened exclusively. The underlying `fopen()` call will thus
-      // fail with `EEXIST` if a file exists at `filePath`.
-      let file = try FileHandle(atPath: filePath, mode: "wxeb")
+      // The underlying `fopen()` call should fail with `EEXIST` if a file
+      // exists at `filePath`.
+      let file = try FileHandle(atPath: filePath, options: [.writeAccess, .creationRequired])
       try file.write(buffer)
     }
   }
@@ -579,7 +584,7 @@ extension Configuration {
     }
 
     guard case let .valueAttached(attachment) = event.kind else {
-      preconditionFailure("Passed the wrong kind of event to \(#function) (expected valueAttached, got \(event.kind)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      preconditionFailure("Passed the wrong kind of event to \(#function) (expected valueAttached, got \(event.kind)). \(fileABugMessage)")
     }
     if attachment.fileSystemPath != nil {
       // Somebody already saved this attachment. This isn't necessarily a logic

@@ -26,6 +26,10 @@
 #define SWT_IMPORT_FROM_STDLIB SWT_EXTERN
 #endif
 
+/// A macro that helps when concatenating two parts of a symbol name.
+#define __SWT_CONCAT(A, B) A ## B
+#define SWT_CONCAT(A, B) __SWT_CONCAT(A, B)
+
 /// An attribute that marks some value as being `Sendable` in Swift.
 #define SWT_SENDABLE __attribute__((swift_attr("@Sendable")))
 
