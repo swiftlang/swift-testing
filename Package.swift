@@ -264,7 +264,7 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_CoreTransferable",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreTransferable")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreTransferable")
     ),
     .target(
       name: "_Testing_Foundation",
