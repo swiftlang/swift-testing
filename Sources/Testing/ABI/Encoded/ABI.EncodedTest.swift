@@ -215,13 +215,13 @@ extension Test {
   /// - Returns: On success, an instance of ``TypeInfo`` describing the suite
   ///   type containing or equalling `test`. On failure, `nil`.
   private static func _makeTypeInfo<V>(for test: ABI.EncodedTest<V>) -> TypeInfo? {
-    guard let (module, suiteComponents, _) = test.decodeComponents() else {
+    guard let (module, suiteComponents, _) = test.decodeIDComponents() else {
       return nil
     }
 
     // Recombine the module name with the rest of the test ID to produce the
     // fully-qualified type name. Join everything by slashes.
-    let testIDComponents = [module] + suiteComponents
+    let testIDComponents = CollectionOfOne(module) + suiteComponents
     return TypeInfo(fullyQualifiedNameComponents: testIDComponents.map(String.init))
   }
 
@@ -294,26 +294,23 @@ extension Test {
 extension Test.ID {
   /// Initialize an instance of this type from the given value.
   ///
-  /// This uses the test id, test kind, and source location fields to recreate
+  /// This uses the test ID, test kind, and source location fields to recreate
   /// the ID.
   ///
   /// - Parameters:
   ///   - test: The encoded test to initialize this instance from.
-  ///
   public init?<V>(decoding test: ABI.EncodedTest<V>) {
     guard
-      let (module, suiteComponents, function) = test.decodeComponents(),
+      let (module, suiteComponents, function) = test.decodeIDComponents(),
       let sourceLocation = SourceLocation(decoding: test.sourceLocation)
     else {
       return nil
     }
 
-    let nameComponents =
-      if let function {
-        suiteComponents + [function]
-      } else {
-        suiteComponents
-      }
+    var nameComponents = suiteComponents
+    if let function {
+      nameComponents.append(function)
+    }
     self.init(
       moduleName: String(module), nameComponents: nameComponents.map(String.init),
       sourceLocation: sourceLocation)
@@ -322,6 +319,10 @@ extension Test.ID {
 
 extension ABI.EncodedTest {
   /// Extract module and component information from a Test ID description.
+  ///
+  /// - Returns: On success, the module and suite components for the described
+  ///   test. If the encoded test is a function, extract the function name
+  ///   separately. On failure, `nil`.
   ///
   /// If the encoded test is a function:
   /// * Trim source location if detected from the end of the components. If you
@@ -335,12 +336,10 @@ extension ABI.EncodedTest {
   ///   ModuleFoo.BarLibraryTests/testBaz()/BazTests.swift:10:1
   ///             ^^^^^^^^^^^^^^^           ^^^^^^^^^^^^^^^^^^^
   ///             <suiteComponents>             discarded!
-  ///
-  /// - Returns: On success, the module and suite components for the described
-  ///   Test. If the encoded test is a function, extract the function name
-  ///   separately. On failure, `nil`.
-  func decodeComponents() -> (
-    module: String.SubSequence, suiteComponents: [String.SubSequence], function: String.SubSequence?
+  func decodeIDComponents() -> (
+    module: Substring,
+    suiteComponents: [Substring],
+    function: Substring?
   )? {
     // Find the module name, which for XCTest compatibility is split from the
     // rest of the test ID by a period character instead of a slash character.
@@ -357,12 +356,12 @@ extension ABI.EncodedTest {
     }
 
     // Replace the first component string, which is currently shaped like
-    // "ModuleName.TypeName", with ["TypeName"]
-    // This slice below returns ".TypeName", so dropFirst() to remove the leading dot
+    // "ModuleName.TypeName", with ["TypeName"]. This slice below returns
+    // ".TypeName", so dropFirst() to remove the leading dot.
     let secondTestIDComponent = testID[moduleName.endIndex..<firstComponent.endIndex].dropFirst()
     testIDComponents[0] = secondTestIDComponent
 
-    var function: String.SubSequence?
+    var function: Substring?
     if kind == .function {
       if let lastComponent = testIDComponents.last?.utf8,
         lastComponent.first != UInt8(ascii: "`"),

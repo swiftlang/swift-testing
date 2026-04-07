@@ -34,7 +34,7 @@ private import Foundation
     var test = fixture
     test.id = try testID("Module.FooTests/testFunc()")
 
-    let (module, components, function) = try #require(test.decodeComponents())
+    let (module, components, function) = try #require(test.decodeIDComponents())
     #expect(module == "Module")
     #expect(components == ["FooTests"])
     #expect(function == "testFunc()")
@@ -45,7 +45,7 @@ private import Foundation
     test.kind = .suite
     test.id = try testID("Module.FooTests")
 
-    let (module, components, function) = try #require(test.decodeComponents())
+    let (module, components, function) = try #require(test.decodeIDComponents())
     #expect(module == "Module")
     #expect(components == ["FooTests"])
     #expect(function == nil)
@@ -55,7 +55,7 @@ private import Foundation
     var test = fixture
     test.id = try testID("Module.FooTests/testFunc()/FooTests.swift:1:10")
 
-    let (_, components, _) = try #require(test.decodeComponents())
+    let (_, components, _) = try #require(test.decodeIDComponents())
     #expect(components == ["FooTests"])
   }
 
@@ -66,24 +66,24 @@ private import Foundation
       ["`foo.swift:1:1`"], "`test foo.swift:1:1`()"
     ),
   ]) func `Handles raw identifiers`(
-    id: String, components: [String.SubSequence], function: String.SubSequence
+    id: String, components: [Substring], function: Substring
   ) throws {
     var test = fixture
     test.id = try testID(id)
 
-    let actual = try #require(test.decodeComponents())
+    let actual = try #require(test.decodeIDComponents())
     #expect(actual == ("Module", components, .some(function)))
   }
 
   @Test(arguments: [
     ("Module.ImNot.AModule/Foo", ["ImNot.AModule", "Foo"]),  // Dotted components are allowed
     ("Module.", [""]),  // Module specified with empty components
-  ]) func `Weird but supported formats`(id: String, components: [String.SubSequence]) throws {
+  ]) func `Weird but supported formats`(id: String, components: [Substring]) throws {
     var test = fixture
     test.kind = .suite
     test.id = try testID(id)
 
-    let actual = try #require(test.decodeComponents())
+    let actual = try #require(test.decodeIDComponents())
     #expect(actual == ("Module", components, nil))
   }
 
@@ -96,6 +96,6 @@ private import Foundation
     test.kind = .suite
     test.id = try testID(invalidTestID)
 
-    #expect(test.decodeComponents() == nil)
+    #expect(test.decodeIDComponents() == nil)
   }
 }
