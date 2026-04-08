@@ -591,18 +591,12 @@ extension Event.HumanReadableOutputRecorder {
         // issues whose severity is error or greater.
         if issue.severity >= .error {
           // Extract detailed failure message
-          let description: String
-          if case let .expectationFailed(expectation) = issue.kind {
-            // Use expandedDebugDescription only when verbose, otherwise use expandedDescription
-            description = if verbosity > 0 {
-              expectation.evaluatedExpression.expandedDebugDescription()
-            } else {
-              expectation.evaluatedExpression.expandedDescription()
-            }
+          let description = if case let .expectationFailed(expectation) = issue.kind {
+            expectation.evaluatedExpression.expandedDescription(verbose: verbosity > 0)
           } else if let comment = issue.comments.first {
-            description = comment.rawValue
+            comment.rawValue
           } else {
-            description = "Test failed"
+            "Test failed"
           }
 
           let issueInfo = Context.TestData.IssueInfo(
