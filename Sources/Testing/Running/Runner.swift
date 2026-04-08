@@ -443,7 +443,7 @@ extension Runner {
   /// running.
   private enum _FinishedItem: Sendable, Equatable, Hashable {
     case test(Test.ID)
-    case testCase(Test.Case.ID)
+    case testCase(Test.ID, Test.Case.ID)
   }
 
   /// Run the tests in a runner's plan with a given configuration.
@@ -463,18 +463,38 @@ extension Runner {
 
     // Track whether or not an issue is recorded after its test ends.
     let finishedItems = Allocated(Mutex<Set<_FinishedItem>>([]))
-    runner.configuration.eventHandler = { [eventHandler = runner.configuration.eventHandler] event, context in
+    runner.configuration.eventHandler = { [oldEventHandler = runner.configuration.eventHandler] event, context in
+      defer {
+        oldEventHandler(event, context)
+      }
+      
+      guard let testID = event.testID, let testCaseID = event.testCaseID else {
+        return
+      }
+      
       switch event.kind {
       case .testEnded:
         finishedItems.value.withLock { finishedItems in
-          _ = finishedItems.insert(.test(event.testID!))
+          _ = finishedItems.insert(.test(testID))
         }
       case .testCaseEnded:
         finishedItems.value.withLock { finishedItems in
-          _ = finishedItems.insert(.testCase(event.testCaseID!))
+          _ = finishedItems.insert(.testCase(testID, testCaseID))
         }
       case .issueRecorded(let issue):
         guard !issue.isLate else { break }
+        
+        let shouldRecordIssue = finishedItems.value.withLock { finishedItems in
+          let testCaseFinished = finishedItems.contains(
+            .testCase(testID, testCaseID)
+          )
+          let testFinished = finishedItems.contains(.test(testID))
+          return testCaseFinished || testFinished
+        }
+         
+        guard shouldRecordIssue else {
+          break
+        }
         
         var lateRecordedIssue = Issue(
           kind: .apiMisused,
@@ -487,20 +507,10 @@ extension Runner {
           sourceContext: issue.sourceContext
         )
         lateRecordedIssue.isLate = true
-        
-        let finishedItems = finishedItems.value.rawValue
-        if let testCaseID = event.testCaseID,
-           finishedItems.contains(.testCase(testCaseID)) {
-          Event.post(.issueRecorded(lateRecordedIssue))
-          
-        } else if let testID = event.testID,
-                  finishedItems.contains(.test(testID)) {
-          Event.post(.issueRecorded(lateRecordedIssue))
-        }
+        Event.post(.issueRecorded(lateRecordedIssue))
       default:
         break
       }
-      eventHandler(event, context)
     }
 
     // Track whether or not any issues were recorded across the entire run.

@@ -536,7 +536,7 @@ struct EventRecorderTests {
     await Test {
       recordIssueLateTask.withLock {
         $0 = Task {
-          try? await Task.sleep(for: .milliseconds(1))
+          try? await Task.sleep(for: .milliseconds(10))
           Issue.record("Late")
         }
       }
@@ -546,8 +546,9 @@ struct EventRecorderTests {
     await lateTask?.value
 
     let issues = recordedIssues.rawValue
-    let originalIssue = issues[1], lateIssue = issues[0]
     #expect(issues.count == 2)
+    let lateIssue = try #require(issues.first)
+    let originalIssue = try #require(issues.last)
     guard case .unconditional = originalIssue.kind else {
       Issue.record(
         "Unexpected issue kind \(originalIssue.kind)"
