@@ -127,3 +127,8 @@ if(SwiftTesting_BuildMacrosAsExecutables)
   target_link_libraries(TestingMacros PRIVATE
     SwiftSyntax::SwiftCompilerPlugin)
 endif()
+
+# Makes SwiftTesting_MACRO_DIR available after find_package(SwiftTestingMacros)
+file(GENERATE
+  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/cmake/modules/SwiftTestingMacrosConfig.cmake"
+  CONTENT "get_filename_component(SwiftTesting_MACRO_DIR \"$<TARGET_FILE:TestingMacros>\" DIRECTORY)\n")

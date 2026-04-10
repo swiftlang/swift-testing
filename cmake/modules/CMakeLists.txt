@@ -6,6 +6,7 @@
 # See https://swift.org/LICENSE.txt for license information
 # See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
+set(SwiftTesting_BUILD_DIR "${CMAKE_BINARY_DIR}") # Exported by SwiftTestingConfig
 set(SwiftTesting_EXPORTS_FILE ${CMAKE_CURRENT_BINARY_DIR}/SwiftTestingExports.cmake)
 
 configure_file(SwiftTestingConfig.cmake.in
