@@ -426,15 +426,6 @@ extension ExitTest {
       }
     }
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-    // Call the legacy lookup function that discovers tests embedded in types.
-    for record in Record.allTypeMetadataBasedTestContentRecords() {
-      if let exitTest = record.load(withHint: id)?.makeExitTest() {
-        return exitTest
-      }
-    }
-#endif
-
     return nil
   }
 }

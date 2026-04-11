@@ -412,7 +412,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_IMAGE_ATTACHMENTS", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android]))),
       .define("SWT_NO_FILE_CLONING", .whenEmbedded(or: .when(platforms: [.openbsd, .wasi, .android]))),
 
-      .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
 
@@ -503,7 +502,6 @@ extension Array where Element == PackageDescription.CXXSetting {
       .define("SWT_NO_IMAGE_ATTACHMENTS", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android]))),
       .define("SWT_NO_FILE_CLONING", .whenEmbedded(or: .when(platforms: [.openbsd, .wasi, .android]))),
 
-      .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
 

@@ -84,45 +84,18 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   ///   with interfaces such as `dlsym()` that expect such a pointer.
   public private(set) nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
-  /// A type defining storage for the underlying test content record.
-  private enum _RecordStorage: BitwiseCopyable {
-    /// The test content record is stored by address.
-    case atAddress(UnsafePointer<_TestContentRecord>)
-
-    /// The test content record is stored in-place.
-    case inline(_TestContentRecord)
-  }
-
-  /// Storage for `_record`.
-  private nonisolated(unsafe) var _recordStorage: _RecordStorage
-
-  /// The underlying test content record.
-  private var _record: _TestContentRecord {
-    _read {
-      switch _recordStorage {
-      case let .atAddress(recordAddress):
-        yield recordAddress.pointee
-      case let .inline(record):
-        yield record
-      }
-    }
-  }
+  /// The address at which the record is located.
+  private nonisolated(unsafe) var _recordAddress: UnsafePointer<_TestContentRecord>
 
   fileprivate init(imageAddress: UnsafeRawPointer?, recordAddress: UnsafePointer<_TestContentRecord>) {
     precondition(recordAddress.pointee.kind == T.testContentKind.rawValue)
     self.imageAddress = imageAddress
-    self._recordStorage = .atAddress(recordAddress)
-  }
-
-  fileprivate init(imageAddress: UnsafeRawPointer?, record: _TestContentRecord) {
-    precondition(record.kind == T.testContentKind.rawValue)
-    self.imageAddress = imageAddress
-    self._recordStorage = .inline(record)
+    self._recordAddress = recordAddress
   }
 
   /// The kind of this test content record.
   public var kind: TestContentKind {
-    TestContentKind(rawValue: _record.kind)
+    TestContentKind(rawValue: _recordAddress.pointee.kind)
   }
 
   /// The type of the ``context`` property.
@@ -131,7 +104,7 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   /// The context of this test content record.
   public var context: Context {
     T.validateMemoryLayout()
-    return withUnsafeBytes(of: _record.context) { context in
+    return withUnsafeBytes(of: _recordAddress.pointee.context) { context in
       context.load(as: Context.self)
     }
   }
@@ -181,7 +154,7 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   /// than once on the same instance, the testing library calls the underlying
   /// test content record's accessor function each time.
   public func load(withHint hint: Hint? = nil) -> T? {
-    guard let accessor = _record.accessor else {
+    guard let accessor = _recordAddress.pointee.accessor else {
       return nil
     }
 
@@ -214,16 +187,11 @@ extension TestContentRecord: CustomStringConvertible {
 #else
     let typeName = "TestContentRecord"
 #endif
-    switch _recordStorage {
-    case let .atAddress(recordAddress):
-      let recordAddress = imageAddress.map { imageAddress in
-        let recordAddressDelta = UnsafeRawPointer(recordAddress) - imageAddress
-        return "\(imageAddress)+0x\(String(recordAddressDelta, radix: 16))"
-      } ?? "\(recordAddress)"
-      return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(context) }"
-    case .inline:
-      return "<\(typeName)> { kind: \(kind), context: \(context) }"
-    }
+    let recordAddress = imageAddress.map { imageAddress in
+      let recordAddressDelta = UnsafeRawPointer(_recordAddress) - imageAddress
+      return "\(imageAddress)+0x\(String(recordAddressDelta, radix: 16))"
+    } ?? "\(_recordAddress)"
+    return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(context) }"
   }
 }
 
@@ -251,53 +219,3 @@ extension DiscoverableAsTestContent {
     }
   }
 }
-
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-// MARK: - Legacy test content discovery
-
-private import _TestingInternals
-
-extension DiscoverableAsTestContent {
-  /// Get all test content of this type known to Swift and found in the current
-  /// process using the legacy discovery mechanism.
-  ///
-  /// - Parameters:
-  ///   - baseType: The type which all discovered container types must
-  ///     conform to or subclass.
-  ///   - loader: A function that is called once per type conforming to or
-  ///     subclassing `baseType`. This function should load the corresponding
-  ///     test content record into the buffer passed to it.
-  ///
-  /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
-  ///   content records matching this ``TestContent`` type's requirements are
-  ///   included in the sequence.
-  @available(swift, deprecated: 100000.0, message: "Do not adopt this functionality in new code. It will be removed in a future release.")
-  public static func allTypeMetadataBasedTestContentRecords(
-    loadingWith loader: @escaping @Sendable (Any.Type, UnsafeMutableRawBufferPointer) -> Bool
-  ) -> some Sequence<TestContentRecord<Self>> {
-    validateMemoryLayout()
-
-    let typeNameHint = _testContentTypeNameHint
-    let kind = testContentKind.rawValue
-    let loader: @Sendable (Any.Type) -> _TestContentRecord? = { type in
-      withUnsafeTemporaryAllocation(of: _TestContentRecord.self, capacity: 1) { buffer in
-        // Load the record from the container type.
-        guard loader(type, .init(buffer)) else {
-          return nil
-        }
-        return buffer.baseAddress!.move()
-      }
-    }
-
-    return SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
-      stride(from: 0, to: sb.buffer.count, by: SWTTypeMetadataRecordByteCount).lazy
-        .map { sb.buffer.baseAddress! + $0 }
-        .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifNameContains: typeNameHint) }
-        .map { unsafeBitCast($0, to: Any.Type.self) }
-        .compactMap(loader)
-        .filter { $0.kind == kind }
-        .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, record: $0) }
-    }
-  }
-}
-#endif
