@@ -44,7 +44,7 @@ public struct Backtrace: Sendable {
     self.addresses = addresses.map { Address(UInt(bitPattern: $0)) }
   }
 
-#if os(Android) && !SWT_NO_DYNAMIC_LINKING
+#if compiler(<6.3) && os(Android)
   /// The `backtrace()` function.
   ///
   /// This function was added to Android with API level 33, which is higher than
@@ -76,7 +76,13 @@ public struct Backtrace: Sendable {
 #if SWT_TARGET_OS_APPLE
       initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
 #elseif os(Android)
-#if !SWT_NO_DYNAMIC_LINKING
+#if compiler(>=6.3)
+      if #available(Android 33, *) {
+        initializedCount = addresses.withMemoryRebound(to: UnsafeMutableRawPointer.self) { addresses in
+          .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
+        }
+      }
+#else
       if let _backtrace {
         initializedCount = .init(clamping: _backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
       }
