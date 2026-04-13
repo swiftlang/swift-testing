@@ -8,8 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
-
 /// A type representing a test content record's `kind` field.
 ///
 /// Test content kinds are 32-bit unsigned integers and are stored as such when
@@ -81,23 +79,41 @@ extension TestContentKind: CustomStringConvertible {
   /// This test content type's kind value as an ASCII string (of the form
   /// `"abcd"`) if it looks like it might be a [FourCC](https://en.wikipedia.org/wiki/FourCC)
   /// value, or `nil` if not.
-  private var _fourCCValue: String? {
+  package var fourCharacterCodeValue: String? {
     withUnsafeBytes(of: rawValue.bigEndian) { bytes in
-      let allPrintableASCII = bytes.allSatisfy { byte in
-        Unicode.ASCII.isASCII(byte) && 0 != isprint(CInt(byte))
+      // All printable ASCII characters are in the range 0x20 ..< 0x7F.
+      func isPrintableASCII(_ byte: UInt8) -> Bool {
+        Unicode.ASCII.isASCII(byte) && byte >= 0x20 && byte < 0x7F
       }
-      if allPrintableASCII {
-        return String(decoding: bytes, as: Unicode.ASCII.self)
+
+      guard bytes.allSatisfy(isPrintableASCII) else {
+        return nil
       }
-      return nil
+      return String(decoding: bytes, as: Unicode.ASCII.self)
     }
   }
 
   public var description: String {
     let hexValue = "0x" + String(rawValue, radix: 16)
-    if let fourCCValue = _fourCCValue {
-      return "'\(fourCCValue)' (\(hexValue))"
+    if let fourCharacterCodeValue {
+      return "'\(fourCharacterCodeValue)' (\(hexValue))"
     }
     return hexValue
   }
+}
+
+// MARK: - Constants
+
+// NOTE: The set of constants in this extension should be a subset of the
+// constants specified in Documentation/ABI/TestContent.md.
+
+extension TestContentKind {
+  /// A test or suite declaration.
+  package static var testDeclaration: Self { "test" }
+
+  /// An exit test.
+  package static var exitTest: Self { "exit" }
+
+  /// A Swift playground.
+  package static var playground: Self { "play" }
 }
