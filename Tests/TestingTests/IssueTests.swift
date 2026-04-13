@@ -1101,6 +1101,7 @@ final class IssueTests: XCTestCase {
       XCTAssertFalse(issue.isKnown)
       XCTAssertNotNil(event.testID)
       XCTAssertEqual(event.testID, test.id)
+      dump(issue)
       issueRecorded.fulfill()
     }
 
