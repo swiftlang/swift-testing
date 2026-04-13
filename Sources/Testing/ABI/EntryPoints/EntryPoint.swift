@@ -53,6 +53,10 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     }
     configuration.verbosity = args.verbosity
 
+    // Opt in to per-test-case repetition
+    configuration.repetitionPolicy = .repeating(.whileIssueRecorded, maximumIterationCount: 3)
+    configuration.shouldUseLegacyPlanLevelRepetition = false
+
 #if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
     if configuration.verbosity > .min {
