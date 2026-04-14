@@ -18,7 +18,7 @@ extension TestContentKind {
   /// a [FourCC](https://en.wikipedia.org/wiki/FourCC) value, or empty trivia if
   /// not.
   fileprivate var commentRepresentation: Trivia {
-    guard let fourCharacterCodeValue, !fourCharacterCodeValue.contains("*/") else {
+    guard let fourCharacterCodeValue, !fourCharacterCodeValue.contains(/\*\//) else {
       return []
     }
     return .blockComment("/* '\(fourCharacterCodeValue)' */")
