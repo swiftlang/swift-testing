@@ -177,7 +177,7 @@ extension ConditionMacro {
         // the resulting comment array.
         checkArguments.append(Argument(
           label: "comments",
-          expression: #"(\#(commentsArrayExpr) as [Comment?]).compactMap(\.self)"#
+          expression: #"(\#(commentsArrayExpr) as [Testing.Comment?]).compactMap(\.self)"#
         ))
       } else {
         checkArguments.append(Argument(label: "comments", expression: commentsArrayExpr))
@@ -397,11 +397,11 @@ public struct RequireThrowsMacro: RefinedConditionMacro {
     let arguments = argumentList(of: macro, in: context)
     let errorExpr = arguments.first { $0.label?.tokenKind == .identifier("throws") }?.expression
 
-    if let errorExpr {
-      let argumentTokens: [String] = errorExpr.tokens(viewMode: .fixedUp).lazy
-        .filter { $0.tokenKind != .period }
-        .map(\.textWithoutBackticks)
-      if argumentTokens == ["Swift", "Never", "self"] || argumentTokens == ["Never", "self"] {
+    if let errorExpr = errorExpr?.as(MemberAccessExprSyntax.self),
+       errorExpr.declName.argumentNames == nil,
+       errorExpr.declName.baseName.tokenKind == .keyword(.self) {
+      let errorType = "\(errorExpr.base)" as TypeSyntax
+      if errorType.isNamed("Never", inModuleNamed: "Swift") {
         context.diagnose(.requireThrowsNeverIsRedundant(errorExpr, in: macro))
       }
     }
@@ -460,7 +460,7 @@ extension ExitTestConditionMacro {
     var arguments = argumentList(of: macro, in: context)
     let trailingClosureIndex = arguments.firstIndex { $0.label?.tokenKind == _trailingClosureLabel.tokenKind }
     guard let trailingClosureIndex else {
-      fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      fatalError("Could not find the body argument to this exit test. \(fileABugMessage)")
     }
 
     let conditionExpr = arguments.first { $0.label?.tokenKind == .identifier("processExitsWith") }?.expression
@@ -536,26 +536,11 @@ extension ExitTestConditionMacro {
         in: context
       )
 
-      // Create another local type for legacy test discovery.
-      var recordDecl: DeclSyntax?
-#if compiler(<6.3)
-      let legacyEnumName = context.makeUniqueName("__🟡$")
-      recordDecl = """
-      enum \(legacyEnumName): Testing.__TestContentRecordContainer {
-        nonisolated static var __testContentRecord: Testing.__TestContentRecord6_2 {
-          unsafe \(enumName).testContentRecord
-        }
-      }
-      """
-#endif
-
       decls.append(
         """
         @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
         enum \(enumName) {
           \(testContentRecordDecl)
-
-          \(recordDecl)
         }
         """
       )

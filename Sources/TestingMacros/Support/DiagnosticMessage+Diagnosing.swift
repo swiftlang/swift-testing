@@ -9,6 +9,7 @@
 //
 
 import SwiftDiagnostics
+import SwiftIfConfig
 import SwiftParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
@@ -25,9 +26,9 @@ extension AttributeInfo {
          let calledExpr = functionCallExpr.calledExpression.as(MemberAccessExprSyntax.self) {
         // Check for .tags() traits.
         switch calledExpr.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined() {
-        case ".tags", "Tag.List.tags", "Testing.Tag.List.tags":
+        case ".tags", "Tag.List.tags", "Testing.Tag.List.tags", "Testing::Tag.List.tags", "Testing::Testing.Tag.List.tags":
           _diagnoseIssuesWithTagsTrait(functionCallExpr, addedTo: self, in: context)
-        case ".bug", "Bug.bug", "Testing.Bug.bug":
+        case ".bug", "Bug.bug", "Testing.Bug.bug", "Testing::Bug.bug", "Testing::Testing.Bug.bug":
           _diagnoseIssuesWithBugTrait(functionCallExpr, addedTo: self, in: context)
         default:
           // This is not a trait we can parse.
@@ -35,7 +36,7 @@ extension AttributeInfo {
         }
       } else if let memberAccessExpr = traitExpr.as(MemberAccessExprSyntax.self) {
         switch memberAccessExpr.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined() {
-        case ".serialized", "ParallelizationTrait.serialized", "Testing.ParallelizationTrait.serialized":
+        case ".serialized", "ParallelizationTrait.serialized", "Testing.ParallelizationTrait.serialized", "Testing::ParallelizationTrait.serialized", "Testing::Testing.ParallelizationTrait.serialized":
           _diagnoseIssuesWithParallelizationTrait(memberAccessExpr, addedTo: self, in: context)
         default:
           // This is not a trait we can parse.
@@ -60,7 +61,7 @@ private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, a
       // String literals are supported tags.
     } else if let tagExpr = tagExpr.as(MemberAccessExprSyntax.self) {
       let joinedTokens = tagExpr.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined()
-      if joinedTokens.hasPrefix(".") || joinedTokens.hasPrefix("Tag.") || joinedTokens.hasPrefix("Testing.Tag.") {
+      if joinedTokens.hasPrefix(".") || joinedTokens.hasPrefix("Tag.") || joinedTokens.hasPrefix("Testing.Tag.") || joinedTokens.hasPrefix("Testing::Tag.") || joinedTokens.hasPrefix("Testing::Testing.Tag.") {
         // These prefixes are all allowed as they specify a member access
         // into the Tag type.
       } else {
@@ -313,4 +314,35 @@ func declarationInheritsFromXCTestClass(_ decl: some DeclSyntaxProtocol) -> Bool
 
   // We couldn't tell either way.
   return nil
+}
+
+// MARK: -
+
+/// Check if the given macro is being expanded in one of the testing library's
+/// production targets.
+///
+/// - Parameters:
+///   - macro: The macro being expanded.
+///   - context: The macro context in which the expression is being parsed.
+///
+/// If `macro` is being expanded in one of our production targets (as opposed to
+/// test targets), a diagnostic is emitted.
+///
+/// This function has no effect in release builds.
+func diagnoseExpansionInLibraryTarget(of macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) {
+#if DEBUG
+  guard let buildConfiguration = context.buildConfiguration,
+        let isBuildingSwiftTestingContent = try? buildConfiguration.isCustomConditionSet(name: "SWT_BUILDING_SWIFT_TESTING_CONTENT"),
+        isBuildingSwiftTestingContent else {
+    return
+  }
+
+  var targetName = "<unknown>"
+  if let location = context.location(of: macro, at: .afterLeadingTrivia, filePathMode: .fileID),
+     let fileID = location.file.as(StringLiteralExprSyntax.self)?.representedLiteralValue,
+     let slashIndex = fileID.firstIndex(of: "/") {
+    targetName = String(fileID[..<slashIndex])
+  }
+  context.diagnose(.macroExpansionNotAllowed(macro, inLibraryTargetNamed: targetName))
+#endif
 }

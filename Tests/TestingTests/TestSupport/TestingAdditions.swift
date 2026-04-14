@@ -18,6 +18,10 @@ import XCTest
 import Foundation
 #endif
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// The ABI name of the testing library's main module.
 ///
 /// This can be different than the target name ("Testing") whenever the module
@@ -305,6 +309,24 @@ extension Test {
     let runner = await Runner(testing: [self], configuration: configuration)
     await runner.run()
   }
+
+  /// Run a single test, returning all `.issueRecorded` event types that it
+  /// encountered while running.
+  func runCapturingIssues() async -> [Issue] {
+    let issues = Mutex<[Issue]>()
+
+    var issueCapturingConfig = Configuration()
+    issueCapturingConfig.eventHandler = { event, _ in
+      if case .issueRecorded(let issue) = event.kind {
+        issues.withLock { $0.append(issue) }
+      }
+    }
+
+    let runner = await Runner(testing: [self], configuration: issueCapturingConfig)
+    await runner.run()
+
+    return issues.rawValue
+  }
 }
 
 extension Test.ID {
@@ -398,6 +420,11 @@ extension Configuration {
 /// library.
 let testsWithSignificantIOAreEnabled = Environment.flag(named: "SWT_ENABLE_TESTS_WITH_SIGNIFICANT_IO") == true
 
+/// Whether or not to enable performance tests. These tests may be subject to scheduling differences,
+/// so they are not enabled in CI. When doing any sort of performance work on Swift Testing, you
+/// should enable these tests.
+let performanceTestsEnabled = Environment.flag(named: "SWT_ENABLE_PERFORMANCE_TESTS") == true
+
 extension JSON {
   /// Round-trip a value through JSON encoding/decoding.
   ///
@@ -465,5 +492,15 @@ extension SourceContext {
 
   init(sourceLocation: SourceLocation?) {
     self.init(backtrace: .current(), sourceLocation: sourceLocation)
+  }
+}
+
+@Suite struct TestingAdditionsTests {
+  @Test func `Demonstrate runCapturingIssues usage`() async {
+    let issues = await Test {
+      #expect(Bool(false))
+    }.runCapturingIssues()
+
+    #expect(issues.count == 1)
   }
 }

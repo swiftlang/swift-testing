@@ -28,6 +28,15 @@ private import Foundation
 
 @Sendable func freeSyncFunctionParameterized2(_ i: Int, _ j: String) {}
 
+struct SuiteTypeWithModuleSelector {}
+
+extension TestingTests::SuiteTypeWithModuleSelector {
+  @Test(.hidden) func withModuleSelector() {}
+  @Suite(.hidden) struct NestedType {
+    @Test(.hidden) func nestedFunction() {}
+  }
+}
+
 // This type ensures the parser can correctly infer that f() is a member
 // function even though @Test is preceded by another attribute or is embedded in
 // a #if statement.
@@ -636,5 +645,15 @@ struct MiscellaneousTests {
       }
     }
     #expect(duration < .seconds(1))
+  }
+
+  @Test func `Expectation with a non-string literal comment and ambiguous 'Comment' type`() {
+    let comment: Comment = "foo"
+    do {
+      // Declare a custom type whose name conflicts with the testing library's
+      // built-in Comment type.
+      struct Comment {}
+      #expect(true as Bool, comment)
+    }
   }
 }

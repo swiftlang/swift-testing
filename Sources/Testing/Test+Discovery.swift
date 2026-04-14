@@ -21,7 +21,7 @@ extension Test {
   /// directly conform to protocols.
   fileprivate struct Generator: DiscoverableAsTestContent, RawRepresentable {
     static var testContentKind: TestContentKind {
-      "test"
+      .testDeclaration
     }
 
     var rawValue: @Sendable () async -> Test

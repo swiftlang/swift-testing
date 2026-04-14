@@ -360,6 +360,11 @@ extension Event.HumanReadableOutputRecorder {
       }
     }
 
+    // A helper function for displaying test durations.
+    func descriptionOfDuration(from start: Test.Clock.Instant, to end: Test.Clock.Instant) -> String {
+      String(describing: TimeValue(rawValue: end.suspending.rawValue - start.suspending.rawValue))
+    }
+
     // Finally, produce any messages for the event.
     switch event.kind {
     case .testDiscovered:
@@ -429,7 +434,7 @@ extension Event.HumanReadableOutputRecorder {
       let testDataGraph = context.testData.subgraph(at: keyPath)
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
-      let duration = testData.startInstant.descriptionOfDuration(to: instant)
+      let duration = descriptionOfDuration(from: testData.startInstant, to: instant)
       let testCasesCount = if test.isParameterized, let testDataGraph {
         " with \(testDataGraph.children.count.counting("test case"))"
       } else {
@@ -579,7 +584,7 @@ extension Event.HumanReadableOutputRecorder {
       let testDataGraph = context.testData.subgraph(at: keyPath)
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
-      let duration = testData.startInstant.descriptionOfDuration(to: instant)
+      let duration = descriptionOfDuration(from: testData.startInstant, to: instant)
 
       var cancellationComment = "."
       let (symbol, verbed): (Event.Symbol, String)
@@ -608,7 +613,7 @@ extension Event.HumanReadableOutputRecorder {
       guard let iterationStartInstant = context.iterationStartInstant else {
         break
       }
-      let duration = iterationStartInstant.descriptionOfDuration(to: instant)
+      let duration = descriptionOfDuration(from: iterationStartInstant, to: instant)
 
       return [
         Message(
@@ -622,7 +627,7 @@ extension Event.HumanReadableOutputRecorder {
       let suiteCount = context.suiteCount
       let issues = _issueCounts(in: context.testData)
       let runStartInstant = context.runStartInstant ?? instant
-      let duration = runStartInstant.descriptionOfDuration(to: instant)
+      let duration = descriptionOfDuration(from: runStartInstant, to: instant)
 
       return if issues.errorIssueCount > 0 {
         [

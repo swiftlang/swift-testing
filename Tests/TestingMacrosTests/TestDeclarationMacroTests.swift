@@ -13,6 +13,7 @@ import Testing
 
 import SwiftBasicFormat
 import SwiftDiagnostics
+import SwiftIfConfig
 import SwiftParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
@@ -351,6 +352,26 @@ struct TestDeclarationMacroTests {
     }
   }
 
+  @Test("Error diagnostics emitted dependent on language mode",
+    arguments: [
+      ("@Suite<T> struct S {}", "Generic argument clause of attribute 'Suite' is unsupported; this is an error in the Swift 7 language mode", 6, DiagnosticSeverity.warning),
+      ("@Suite<T> struct S {}", "Generic argument clause of attribute 'Suite' is unsupported", 7, DiagnosticSeverity.error),
+      ("@Test<T> func f() {}", "Generic argument clause of attribute 'Test' is unsupported; this is an error in the Swift 7 language mode", 6, DiagnosticSeverity.warning),
+      ("@Test<T> func f() {}", "Generic argument clause of attribute 'Test' is unsupported", 7, DiagnosticSeverity.error),
+      ("extension Tag { @Tag<T> static var f: Self }", "Generic argument clause of attribute 'Tag' is unsupported; this is an error in the Swift 7 language mode", 6, DiagnosticSeverity.warning),
+      ("extension Tag { @Tag<T> static var f: Self }", "Generic argument clause of attribute 'Tag' is unsupported", 7, DiagnosticSeverity.error),
+    ]
+  )
+  func languageModeDependentDiagnostics(input: String, expectedMessage: String, languageMode: Int, severity: DiagnosticSeverity) throws {
+    let (_, diagnostics) = try parse(input, languageMode: VersionTuple(languageMode))
+
+    #expect(diagnostics.count > 0)
+    for diagnostic in diagnostics {
+      #expect(diagnostic.diagMessage.severity == severity)
+      #expect(diagnostic.message == expectedMessage)
+    }
+  }
+
   @Test("Raw identifier is detected")
   func rawIdentifier() {
     #expect(TokenSyntax.identifier("`hello`").rawIdentifier == nil)
@@ -502,13 +523,8 @@ struct TestDeclarationMacroTests {
   func differentFunctionTypes(input: String, expectedTypeName: String?, otherCode: String?) throws {
     let (output, _) = try parse(input)
 
-#if compiler(>=6.3)
     #expect(output.contains("@section"))
     #expect(!output.contains("__TestContentRecordContainer"))
-#else
-    #expect(!output.contains("@section"))
-    #expect(output.contains("__TestContentRecordContainer"))
-#endif
     if let expectedTypeName {
       #expect(output.contains(expectedTypeName))
     }
@@ -543,13 +559,21 @@ struct TestDeclarationMacroTests {
       #"@Test(.tags(.f)) func f() {}"#,
       #"@Test(Tag.List.tags(.f)) func f() {}"#,
       #"@Test(Testing.Tag.List.tags(.f)) func f() {}"#,
+      #"@Test(Testing::Tag.List.tags(.f)) func f() {}"#,
+      #"@Test(Testing::Testing.Tag.List.tags(.f)) func f() {}"#,
       #"@Test(.tags("abc")) func f() {}"#,
       #"@Test(Tag.List.tags("abc")) func f() {}"#,
       #"@Test(Testing.Tag.List.tags("abc")) func f() {}"#,
+      #"@Test(Testing::Tag.List.tags("abc")) func f() {}"#,
+      #"@Test(Testing::Testing.Tag.List.tags("abc")) func f() {}"#,
       #"@Test(.tags(Tag.f)) func f() {}"#,
       #"@Test(.tags(Testing.Tag.f)) func f() {}"#,
+      #"@Test(.tags(Testing::Tag.f)) func f() {}"#,
+      #"@Test(.tags(Testing::Testing.Tag.f)) func f() {}"#,
       #"@Test(.tags(.Foo.Bar.f)) func f() {}"#,
       #"@Test(.tags(Testing.Tag.Foo.Bar.f)) func f() {}"#,
+      #"@Test(.tags(Testing::Tag.Foo.Bar.f)) func f() {}"#,
+      #"@Test(.tags(Testing::Testing.Tag.Foo.Bar.f)) func f() {}"#,
     ]
   )
   func validTagExpressions(input: String) throws {

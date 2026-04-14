@@ -9,6 +9,7 @@
 //
 
 import SwiftDiagnostics
+import SwiftIfConfig
 public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
@@ -83,6 +84,11 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
       }
     }
 
+    // @Suite should not use a generic argument clause.
+    if let genericArgumentClause = suiteAttribute.genericArgumentClause {
+      diagnostics.append(.genericAttributeNotSupported(suiteAttribute, on: declaration, becauseOf: genericArgumentClause, languageMode: context.buildConfiguration?.languageVersion))
+    }
+
     return !diagnostics.lazy.map(\.severity).contains(.error)
   }
 
@@ -149,21 +155,6 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
         in: context
       )
     )
-
-#if compiler(<6.3)
-    // Emit a type that contains a reference to the test content record.
-    let enumName = context.makeUniqueName("__🟡$")
-    result.append(
-      """
-      @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      enum \(enumName): Testing.__TestContentRecordContainer {
-        nonisolated static var __testContentRecord: Testing.__TestContentRecord6_2 {
-          unsafe \(testContentRecordName)
-        }
-      }
-      """
-    )
-#endif
 
     return result
   }

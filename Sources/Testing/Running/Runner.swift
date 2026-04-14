@@ -81,7 +81,7 @@ extension Runner {
   /// type at runtime, it may be better-suited for ``Configuration`` instead.
   private struct _Context: Sendable {
     /// A serializer used to reduce parallelism among test cases.
-    var testCaseSerializer: Serializer?
+    var testCaseSerializer: Serializer<Void>?
 
     /// Which iteration of the test plan is being executed.
     var iteration: Int
@@ -424,7 +424,7 @@ extension Runner {
           }
         } timeoutHandler: { timeLimit in
           let issue = Issue(
-            kind: .timeLimitExceeded(timeLimitComponents: timeLimit),
+            kind: .timeLimitExceeded(timeLimitComponents: timeLimit.components),
             comments: [],
             sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
           )
@@ -452,6 +452,7 @@ extension Runner {
 #if !SWT_NO_FILE_IO
     runner.configureAttachmentHandling()
 #endif
+    _ = Event.installFallbackEventHandler()
 
     // Track whether or not any issues were recorded across the entire run.
     let issueRecorded = Atomic(false)
