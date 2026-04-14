@@ -327,10 +327,22 @@ extension BuildSettingCondition {
   /// - Returns: A build setting condition that evaluates to `isApple` for Apple
   ///   platforms.
   static func whenApple(_ isApple: Bool = true) -> Self {
+    .when(platforms: .applePlatforms(isApple))
+  }
+}
+
+extension Array where Element == PackageDescription.Platform {
+  /// An array representing all Apple or non-Apple platforms.
+  ///
+  /// - Parameters:
+  ///   - isApple: Whether or not the result represents Apple platforms.
+  ///
+  /// - Returns: An array containing the requested platforms.
+  static func applePlatforms(_ isApple: Bool = true) -> Self {
     if isApple {
-      .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])
+      [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS]
     } else {
-      .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android])
+      [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android]
     }
   }
 }
@@ -380,7 +392,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_TARGET_OS_APPLE", .whenApple()),
     ]
 
-    result.appendEmbeddedRelatedDefines()
+    result.appendFeatureFlags()
 
     return result
   }
@@ -459,7 +471,7 @@ extension Array where Element == PackageDescription.CXXSetting {
       ]
     }
 
-    result.appendEmbeddedRelatedDefines()
+    result.appendFeatureFlags()
 
     // Capture the testing library's commit info as C++ constants.
     if let git {
@@ -478,33 +490,40 @@ extension Array where Element == PackageDescription.CXXSetting {
 }
 
 extension Array where Element: _LanguageBuildSetting {
-  /// Append defines which are conditionalized for the Embedded language mode.
-  mutating func appendEmbeddedRelatedDefines() {
-    // The list of Embedded-related defines to set.
-    let defines: [String: BuildSettingCondition?] = [
-      "SWT_NO_EXIT_TESTS": .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]),
-      "SWT_NO_PROCESS_SPAWNING": .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]),
-      "SWT_NO_SNAPSHOT_TYPES": .whenApple(false),
-      "SWT_NO_DYNAMIC_LINKING": .when(platforms: [.wasi]),
-      "SWT_NO_PIPES": .when(platforms: [.wasi]),
-      "SWT_NO_FOUNDATION_FILE_COORDINATION": .whenApple(false),
-      "SWT_NO_IMAGE_ATTACHMENTS": .when(platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android]),
-      "SWT_NO_FILE_CLONING": .when(platforms: [.openbsd, .wasi, .android]),
+  /// Append defines for feature flags.
+  mutating func appendFeatureFlags() {
+    // The list of defines to set. Each may have associated conditions:
+    //
+    // - platforms: The list of platforms, if any, to include in a build setting
+    //   condition for this define.
+    // - embedded: Whether this define should be set unconditionally when
+    //   building for Embedded. (This is not currently expressible as a build
+    //   setting conditional.)
+    let defines: [String: (platforms: [Platform]?, embedded: Bool)] = [
+      "SWT_NO_EXIT_TESTS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
+      "SWT_NO_PROCESS_SPAWNING": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
+      "SWT_NO_SNAPSHOT_TYPES": (platforms: .applePlatforms(false), embedded: true),
+      "SWT_NO_DYNAMIC_LINKING": (platforms: [.wasi], embedded: true),
+      "SWT_NO_PIPES": (platforms: [.wasi], embedded: true),
+      "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .applePlatforms(false), embedded: true),
+      "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
+      "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
 
-      "SWT_NO_LEGACY_TEST_DISCOVERY": nil,
-      "SWT_NO_LIBDISPATCH": nil,
+      "SWT_NO_LEGACY_TEST_DISCOVERY": (platforms: .none, embedded: true),
+      "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),
     ]
 
-    for (name, condition) in defines {
+    for (name, details) in defines {
       if !buildingForEmbedded {
-        if let condition {
-          append(.define(name, condition))
+        if let platforms = details.platforms {
+          append(.define(name, .when(platforms: platforms)))
         } else {
           // Since there was no condition and we're not building for Embedded,
           // the intention was to never match so don't append this define.
         }
-      } else {
-        // Since we're building for Embedded, append this define unconditionally.
+      } else if details.embedded {
+        // Since we're building for Embedded and this define is supposed to be
+        // included unconditionally when building as such, append it.
         append(.define(name, nil))
       }
     }
