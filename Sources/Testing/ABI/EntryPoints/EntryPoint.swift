@@ -43,6 +43,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
     // Configure the test runner.
     var configuration = try configurationForEntryPoint(from: args)
+    configuration.shouldUseLegacyPlanLevelRepetition = false
 
     // Set up the event handler.
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
@@ -52,10 +53,6 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       oldEventHandler(event, context)
     }
     configuration.verbosity = args.verbosity
-
-    // Opt in to per-test-case repetition
-    configuration.repetitionPolicy = .repeating(.whileIssueRecorded, maximumIterationCount: 3)
-    configuration.shouldUseLegacyPlanLevelRepetition = false
 
 #if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
@@ -537,9 +534,13 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // Set up the iteration policy for the test run.
   if let repetitions = args.argumentValue(forLabel: "--repetitions").flatMap(Int.init) {
     result.repetitions = repetitions
+  } else {
+    result.repetitions = 3
   }
   if let repeatUntil = args.argumentValue(forLabel: "--repeat-until") {
     result.repeatUntil = repeatUntil
+  } else {
+    result.repeatUntil = "pass"
   }
 
   return result
