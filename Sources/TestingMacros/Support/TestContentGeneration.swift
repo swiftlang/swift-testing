@@ -15,10 +15,11 @@ import SwiftSyntaxMacros
 
 extension TestContentKind {
   /// This kind value as a comment (`/* 'abcd' */`) if it looks like it might be
-  /// a [FourCC](https://en.wikipedia.org/wiki/FourCC) value, or `nil` if not.
+  /// a [FourCC](https://en.wikipedia.org/wiki/FourCC) value, or empty trivia if
+  /// not.
   fileprivate var commentRepresentation: Trivia {
-    guard let fourCharacterCodeValue else {
-      return .spaces(0)
+    guard let fourCharacterCodeValue, !fourCharacterCodeValue.contains("*/") else {
+      return []
     }
     return .blockComment("/* '\(fourCharacterCodeValue)' */")
   }
