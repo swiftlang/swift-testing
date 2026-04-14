@@ -71,17 +71,36 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   ///
   /// | Platform | Pointer Type |
   /// |-|-|
-  /// | macOS, iOS, watchOS, tvOS, visionOS | `UnsafePointer<mach_header_64>` |
-  /// | Linux, FreeBSD, Android | `UnsafePointer<ElfW(Ehdr)>` |
-  /// | OpenBSD | `UnsafePointer<Elf_Ehdr>` |
-  /// | Windows | `HMODULE` |
+  /// | macOS, iOS, watchOS, tvOS, visionOS | [`UnsafePointer<mach_header_64>`](https://developer.apple.com/documentation/kernel/mach_header_64) |
+  /// | Linux, FreeBSD, Android | [`UnsafePointer<ElfW(Ehdr)>`](https://www.kernel.org/doc/man-pages/online/pages/man5/elf.5.html) |
+  /// | OpenBSD | [`UnsafePointer<Elf_Ehdr>`](https://man.openbsd.org/elf.3) |
+  /// | Windows | [`HMODULE`](https://learn.microsoft.com/en-us/windows/win32/winprog/windows-data-types) |
   ///
   /// On platforms such as WASI that statically link to the testing library, the
   /// value of this property is always `nil`.
   ///
-  /// - Note: The value of this property is distinct from the pointer returned
-  ///   by `dlopen()` (on platforms that have that function) and cannot be used
-  ///   with interfaces such as `dlsym()` that expect such a pointer.
+  /// The value of this property is distinct from the pointer returned by
+  /// [`dlopen(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlopen.3.html)
+  /// (on platforms that have that function). You cannot use this value with
+  /// interfaces such as [`dlsym(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlsym.3.html)
+  /// that expect such a pointer.
+  ///
+  /// To get the [`dlopen(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlopen.3.html)
+  /// handle corresponding to the value of this property, use [`dladdr(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dladdr.3.html)
+  /// to get the image name and pass that name to [`dlopen(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlopen.3.html):
+  ///
+  /// ```swift
+  /// var info = Dl_info()
+  /// if 0 != dladdr(imageAddress, &info),
+  ///       let dli_fname = info.dli_fname,
+  ///       let handle = dlopen(dli_fname, RTLD_NOLOAD) {
+  ///   // ...
+  /// }
+  /// ```
+  ///
+  /// - Important: You are responsible for calling [`dlclose(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlclose.3.html)
+  ///   when you are done using the handle that [`dlopen(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlopen.3.html)
+  ///   returns.
   public private(set) nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
   /// A type defining storage for the underlying test content record.
