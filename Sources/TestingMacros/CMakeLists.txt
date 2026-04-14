@@ -111,6 +111,7 @@ target_sources(TestingMacros PRIVATE
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
   Support/TestContentGeneration.swift
+  Support/TestContentKind.swift
   TagMacro.swift
   TestDeclarationMacro.swift
   TestingMacrosMain.swift)
