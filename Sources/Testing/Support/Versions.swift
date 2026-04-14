@@ -88,9 +88,10 @@ let operatingSystemVersion: String = {
       return result
     }
   }
-#elseif os(WASI)
+#elseif os(WASI) || os(Emscripten)
   // WASI does not have an API to get the current WASI or Wasm version.
   // wasi-libc does have uname(3), but it's stubbed out.
+  // Emscripten's uname(3) is similarly limited.
 #else
 #warning("Platform-specific implementation missing: OS version unavailable")
 #endif
