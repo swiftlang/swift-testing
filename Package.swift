@@ -327,24 +327,16 @@ extension BuildSettingCondition {
   /// - Returns: A build setting condition that evaluates to `isApple` for Apple
   ///   platforms.
   static func whenApple(_ isApple: Bool = true) -> Self {
-    .when(platforms: .applePlatforms(isApple))
+    .when(platforms: isApple ? .applePlatforms : .nonApplePlatforms)
   }
 }
 
 extension Array where Element == PackageDescription.Platform {
-  /// An array representing all Apple or non-Apple platforms.
-  ///
-  /// - Parameters:
-  ///   - isApple: Whether or not the result represents Apple platforms.
-  ///
-  /// - Returns: An array containing the requested platforms.
-  static func applePlatforms(_ isApple: Bool = true) -> Self {
-    if isApple {
-      [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS]
-    } else {
-      [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android]
-    }
-  }
+  /// All Apple platforms.
+  static let applePlatforms: Self = [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS]
+
+  /// All non-Apple platforms.
+  static let nonApplePlatforms: Self = [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android]
 }
 
 extension Array where Element == PackageDescription.SwiftSetting {
@@ -502,10 +494,10 @@ extension Array where Element: _LanguageBuildSetting {
     let defines: [String: (platforms: [Platform]?, embedded: Bool)] = [
       "SWT_NO_EXIT_TESTS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
       "SWT_NO_PROCESS_SPAWNING": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
-      "SWT_NO_SNAPSHOT_TYPES": (platforms: .applePlatforms(false), embedded: true),
+      "SWT_NO_SNAPSHOT_TYPES": (platforms: .nonApplePlatforms, embedded: true),
       "SWT_NO_DYNAMIC_LINKING": (platforms: [.wasi], embedded: true),
       "SWT_NO_PIPES": (platforms: [.wasi], embedded: true),
-      "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .applePlatforms(false), embedded: true),
+      "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .nonApplePlatforms, embedded: true),
       "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
       "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
 
