@@ -34,6 +34,9 @@ jobs:
       enable_wasm_sdk_build: true
       wasm_sdk_versions: '["nightly-main", "nightly-6.3"]'
       enable_android_sdk_build: true
+      enable_freebsd_checks: true
+      freebsd_swift_versions: '["nightly-main", "nightly-6.3"]'
+      freebsd_os_versions: '["14.3"]'
   soundness:
     name: Soundness
     uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.10
