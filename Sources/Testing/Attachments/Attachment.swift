@@ -584,7 +584,7 @@ extension Configuration {
     }
 
     guard case let .valueAttached(attachment) = event.kind else {
-      preconditionFailure("Passed the wrong kind of event to \(#function) (expected valueAttached, got \(event.kind)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      preconditionFailure("Passed the wrong kind of event to \(#function) (expected valueAttached, got \(event.kind)). \(fileABugMessage)")
     }
     if attachment.fileSystemPath != nil {
       // Somebody already saved this attachment. This isn't necessarily a logic

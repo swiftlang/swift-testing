@@ -92,8 +92,17 @@ extension ABI {
         if let backtrace = issue.sourceContext.backtrace {
           _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
         }
-        if let error = issue.error {
-          _error = EncodedError(encoding: error)
+        _error = if let error = issue.error {
+          EncodedError(encoding: error)
+        } else {
+          switch issue.kind {
+          case .apiMisused:
+            EncodedError(encoding: APIMisuseError(description: ""))
+          case .system:
+            EncodedError(encoding: SystemError(description: ""))
+          default:
+            nil
+          }
         }
         if case let .expectationFailed(expectation) = issue.kind {
           _expression = EncodedExpression(encoding: expectation.evaluatedExpression)
@@ -138,7 +147,14 @@ extension Issue {
   init?<V>(decoding issue: ABI.EncodedIssue<V>) {
     let issueKind: Issue.Kind
     if let error = issue._error {
-      issueKind = .errorCaught(error)
+      switch error.domain {
+      case APIMisuseError.domain:
+        issueKind = .apiMisused
+      case SystemError.domain:
+        issueKind = .system
+      default:
+        issueKind = .errorCaught(error)
+      }
     } else if let expression = issue._expression.flatMap(__Expression.init(decoding:)),
               let sourceLocation = issue.sourceLocation.flatMap(SourceLocation.init) {
       let expectation = Expectation(

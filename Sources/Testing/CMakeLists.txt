@@ -91,6 +91,7 @@ add_library(Testing
   Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
   Support/Allocated.swift
+  Support/BugReporting.swift
   Support/CartesianProduct.swift
   Support/CError.swift
   Support/CustomIssueRepresentable.swift
@@ -100,6 +101,7 @@ add_library(Testing
   Support/Graph.swift
   Support/JSON.swift
   Support/Serializer.swift
+  Support/SHA256.swift
   Support/SubclassCache.swift
   Support/VersionNumber.swift
   Support/Versions.swift

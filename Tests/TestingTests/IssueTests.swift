@@ -539,10 +539,14 @@ final class IssueTests: XCTestCase {
         throw MyParameterizedError(index: randomNumber)
       }
       #expect(throws: Never.self) {}
+      #expect(throws: Swift::Never.self) {}
+      #expect(throws: Swift::Swift.Never.self) {}
       func genericExpectThrows(_ type: (some Error).Type) {
         #expect(throws: type) {}
       }
       genericExpectThrows(Never.self)
+      genericExpectThrows(Swift::Never.self)
+      genericExpectThrows(Swift::Swift.Never.self)
       func nonVoidReturning() throws -> Int { throw MyError() }
       #expect(throws: MyError.self) {
         try nonVoidReturning()
@@ -1721,7 +1725,7 @@ struct IssueCodingTests {
     Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .init("abc"), isPassing: true, isRequired: true, sourceLocation: #_sourceLocation)),
     Issue.Kind.knownIssueNotRecorded,
     Issue.Kind.system,
-    Issue.Kind.timeLimitExceeded(timeLimit: .seconds(123)),
+    Issue.Kind.timeLimitExceeded(timeLimitComponents: (123, 0)),
     Issue.Kind.unconditional,
   ]
 

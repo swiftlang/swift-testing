@@ -346,6 +346,8 @@ struct ConditionMacroTests {
       "#expect(x as! T!)", "#require(x as! T!)",
       "#expect(x as! Optional<T>)", "#require(x as! Optional<T>)",
       "#expect(x as! Swift.Optional<T>)", "#require(x as! Swift.Optional<T>)",
+      "#expect(x as! Swift::Optional<T>)", "#require(x as! Swift::Optional<T>)",
+      "#expect(x as! Swift::Swift.Optional<T>)", "#require(x as! Swift::Swift.Optional<T>)",
     ]
   )
   func asExclamationMarkSuppressedForBoolAndOptional(input: String) throws {
@@ -424,6 +426,8 @@ struct ConditionMacroTests {
   @Test("#require(throws: Never.self) produces a diagnostic",
     arguments: [
       "#requireThrows(throws: Swift.Never.self)",
+      "#requireThrows(throws: Swift::Never.self)",
+      "#requireThrows(throws: Swift::Swift.Never.self)",
       "#requireThrows(throws: Never.self)",
       "#requireThrowsNever(throws: Never.self)",
     ]

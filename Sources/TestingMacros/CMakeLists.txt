@@ -101,6 +101,7 @@ target_sources(TestingMacros PRIVATE
   Support/Argument.swift
   Support/AttributeDiscovery.swift
   Support/AvailabilityGuards.swift
+  Support/BugReporting.swift
   Support/ClosureCaptureListParsing.swift
   Support/CommentParsing.swift
   Support/ConditionArgumentParsing.swift
@@ -111,6 +112,7 @@ target_sources(TestingMacros PRIVATE
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
   Support/TestContentGeneration.swift
+  Support/TestContentKind.swift
   TagMacro.swift
   TestDeclarationMacro.swift
   TestingMacrosMain.swift)
@@ -127,3 +129,8 @@ if(SwiftTesting_BuildMacrosAsExecutables)
   target_link_libraries(TestingMacros PRIVATE
     SwiftSyntax::SwiftCompilerPlugin)
 endif()
+
+# Makes SwiftTesting_MACRO_DIR available after find_package(SwiftTestingMacros)
+file(GENERATE
+  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/cmake/modules/SwiftTestingMacrosConfig.cmake"
+  CONTENT "get_filename_component(SwiftTesting_MACRO_DIR \"$<TARGET_FILE:TestingMacros>\" DIRECTORY)\n")

@@ -243,7 +243,11 @@ struct TagTests {
     .hidden,
     Tag.List.tags(.fromFunctionPartiallyQualified),
     Testing.Tag.List.tags(.fromFunctionFullyQualified),
-    .tags(.namedConstant, .NestedType.deeperTag, Testing.Tag.anotherConstant)
+    Testing::Tag.List.tags(.fromFunctionFullyQualified),
+    Testing::Testing.Tag.List.tags(.fromFunctionFullyQualified),
+    .tags(.namedConstant, .NestedType.deeperTag, Testing.Tag.anotherConstant),
+    .tags(.namedConstant, .NestedType.deeperTag, Testing::Tag.anotherConstant),
+    .tags(.namedConstant, .NestedType.deeperTag, Testing::Testing.Tag.anotherConstant)
   )
   func variations() async throws {}
 }

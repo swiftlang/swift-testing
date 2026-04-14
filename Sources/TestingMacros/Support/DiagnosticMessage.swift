@@ -9,6 +9,7 @@
 //
 
 import SwiftDiagnostics
+import SwiftIfConfig
 import SwiftParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
@@ -94,8 +95,19 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// - Returns: The name of the macro as understood by a developer, such as
   ///   `"'@Test'"`. Include single quotes.
   private static func _macroName(_ attribute: AttributeSyntax) -> String {
+    var attributeName = attribute.attributeName
+    if let type = attributeName.as(IdentifierTypeSyntax.self) {
+      attributeName = TypeSyntax(type.with(\.genericArgumentClause, nil))
+    } else if let type = attributeName.as(MemberTypeSyntax.self) {
+      attributeName = TypeSyntax(type.with(\.genericArgumentClause, nil))
+    }
+    let attributeNameText = attributeName
+      .tokens(viewMode: .fixedUp)
+      .map(\.textWithoutBackticks)
+      .joined()
+
     // SEE: https://github.com/swiftlang/swift/blob/main/docs/Diagnostics.md?plain=1#L44
-    "'\(attribute.attributeNameText)'"
+    return "'\(attributeNameText)'"
   }
 
   /// Get a string corresponding to the specified syntax node (for instance,
@@ -195,6 +207,39 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
         syntax: syntax,
         message: "Attribute \(_macroName(attribute)) cannot be applied to a generic \(_kindString(for: decl))",
         severity: .error
+      )
+    }
+  }
+
+  /// Create a diagnostic message stating that the given attribute has an unused
+  /// generic argument clause (e.g. `@Test<T>`).
+  ///
+  /// - Parameters:
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///   - decl: The generic declaration in question.
+  ///   - genericClause: The child node on `attribute` that makes it generic.
+  ///
+  /// - Returns: A diagnostic message.
+  static func genericAttributeNotSupported(_ attribute: AttributeSyntax, on decl: some SyntaxProtocol, becauseOf genericClause: some SyntaxProtocol, languageMode: VersionTuple?) -> Self {
+    let fixIts: [FixIt] = [
+      FixIt(
+        message: MacroExpansionFixItMessage("Remove generic attribute clause from \(_macroName(attribute))"),
+        changes: [.replace(oldNode: Syntax(genericClause), newNode: Syntax("" as ExprSyntax))]
+      ),
+    ]
+    if let languageMode, languageMode >= .init(7, 0) {
+      return Self(
+        syntax: Syntax(genericClause),
+        message: "Generic argument clause of attribute \(_macroName(attribute)) is unsupported",
+        severity: .error,
+        fixIts: fixIts
+      )
+    } else {
+      return Self(
+        syntax: Syntax(genericClause),
+        message: "Generic argument clause of attribute \(_macroName(attribute)) is unsupported; this is an error in the Swift 7 language mode",
+        severity: .warning,
+        fixIts: fixIts
       )
     }
   }
@@ -837,7 +882,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - expr: The error type expression.
   ///
   /// - Returns: A diagnostic message.
-  static func requireThrowsNeverIsRedundant(_ expr: ExprSyntax, in macro: some FreestandingMacroExpansionSyntax) -> Self {
+  static func requireThrowsNeverIsRedundant(_ expr: some ExprSyntaxProtocol, in macro: some FreestandingMacroExpansionSyntax) -> Self {
     // We do not provide fix-its because we cannot see the leading "try" keyword
     // so we can't provide a valid fix-it to remove the macro either. We can
     // provide a fix-it to add "as Optional", but only providing that fix-it may

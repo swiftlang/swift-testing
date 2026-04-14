@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import SwiftIfConfig
 public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
@@ -46,11 +47,21 @@ public struct TagMacro: PeerMacro, AccessorMacro, Sendable {
       return _fallbackAccessorDecls
     }
 
+    if let genericArgumentClause = node.genericArgumentClause {
+      context.diagnose(.genericAttributeNotSupported(node, on: declaration, becauseOf: genericArgumentClause, languageMode: context.buildConfiguration?.languageVersion))
+    }
+
     // Check that the tag is declared within Tag's namespace.
     let typeNameTokens: [String] = type.tokens(viewMode: .fixedUp).lazy
       .filter { $0.tokenKind != .period }
       .map(\.textWithoutBackticks)
-    guard typeNameTokens.first == "Tag" || typeNameTokens.starts(with: ["Testing", "Tag"]) else {
+    let validTypeNameTokens = [
+      ["Tag"],
+      ["Testing", "Tag"],
+      ["Testing", "::", "Tag"],
+      ["Testing", "::", "Testing", "Tag"],
+    ]
+    guard validTypeNameTokens.contains(where: typeNameTokens.starts(with:)) else {
       context.diagnose(.attributeNotSupportedOutsideTagExtension(node, on: variableDecl))
       return _fallbackAccessorDecls
     }
