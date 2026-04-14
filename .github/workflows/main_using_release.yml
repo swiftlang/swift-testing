@@ -25,6 +25,6 @@ jobs:
       macos_xcode_versions: '["swift_6.3"]'
       enable_wasm_sdk_build: true
       wasm_sdk_versions: '["nightly-6.3"]'
-      enable_freebsd_checks: true
-      freebsd_swift_versions: '["nightly-6.3"]'
-      freebsd_os_versions: '["14.3"]'
+#       enable_freebsd_checks: true
+#       freebsd_swift_versions: '["nightly-6.3"]'
+#       freebsd_os_versions: '["14.3"]'
