@@ -83,12 +83,6 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     }
 #endif
 
-    // If the client has requested repetitions via CLI flags, turn off plan-level repetition
-    // and use test-case-level repetition instead.
-    if args.repetitions != nil || args.repeatUntil != nil {
-      configuration.shouldUseLegacyPlanLevelRepetition = false
-    }
-
     // If the caller specified an alternate event handler, hook it up too.
     if let eventHandler {
       configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
@@ -339,6 +333,8 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value of the `--repeat-until` argument.
   public var repeatUntil: String?
 
+  var usePerTestCaseRepetition: Bool = false
+
   /// The value of the `--attachments-path` argument.
   public var attachmentsPath: String?
 }
@@ -543,6 +539,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   if let repeatUntil = args.argumentValue(forLabel: "--repeat-until") {
     result.repeatUntil = repeatUntil
   }
+  if args.contains("--experimental-per-test-case-repetition") {
+    result.usePerTestCaseRepetition = true
+  }
 
   return result
 }
@@ -670,6 +669,9 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     }
   }
   configuration.repetitionPolicy = repetitionPolicy
+
+  // Opt in to per-test-case repetition
+  configuration.shouldUseLegacyPlanLevelRepetition = !args.usePerTestCaseRepetition
 
 #if !SWT_NO_EXIT_TESTS
   // Enable exit test handling via __swiftPMEntryPoint().
