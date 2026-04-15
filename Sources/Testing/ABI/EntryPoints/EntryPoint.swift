@@ -83,6 +83,12 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     }
 #endif
 
+    // If the client has requested repetitions via CLI flags, turn off plan-level repetition
+    // and use test-case-level repetition instead.
+    if args.repetitions != nil || args.repeatUntil != nil {
+      configuration.shouldUseLegacyPlanLevelRepetition = false
+    }
+
     // If the caller specified an alternate event handler, hook it up too.
     if let eventHandler {
       configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
