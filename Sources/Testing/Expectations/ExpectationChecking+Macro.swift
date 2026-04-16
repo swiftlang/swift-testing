@@ -607,6 +607,7 @@ public func __checkPropertyAccess<T, U>(
 ) -> Result<Void, any Error> where T: BidirectionalCollection, T.Element: Equatable {
   let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
   func difference() -> String? {
+#if SWT_COLLECTION_DIFFING_ENABLED
     guard let rhs else {
       return nil
     }
@@ -623,6 +624,9 @@ public func __checkPropertyAccess<T, U>(
     case (false, false):
       return ""
     }
+#else
+    return nil
+#endif
   }
 
   return __checkValue(
