@@ -53,7 +53,7 @@ names prefixed with `SWT_`.
 | `SWT_CAPTURED_VALUES` | `CInt`/`HANDLE` | A file descriptor (handle on Windows) containing captured values passed to the exit test. |
 | `SWT_CLOSEFROM` | `CInt` | Used on OpenBSD to emulate `posix_spawn_file_actions_addclosefrom_np()`. |
 | `SWT_EXIT_TEST_ID` | `String` (JSON) | Specifies which exit test to run. |
-| `SWT_START_CHILDREN_SUSPENDED` | `Bool` | Start child processes (such as those for exit tests) in a suspended state where supported (Apple platforms and Windows). |
+| `SWT_START_CHILD_PROCESSES_SUSPENDED` | `Bool` | Start child processes (such as those for exit tests) in a suspended state where supported (Apple platforms and Windows). |
 | `XCTestBundlePath`\* | `String` | Used on Apple platforms to determine if Xcode is hosting the test run. |
 
 ## Miscellaneous

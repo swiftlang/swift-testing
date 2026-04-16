@@ -44,7 +44,7 @@ private let _posix_spawn_file_actions_addclosefrom_np = symbol(named: "posix_spa
 /// To resume a child process, send the `SIGCONT` signal to its process ID. On
 /// Windows, call [`ResumeThread()`](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-resumethread)
 /// and pass it a handle to the child process' main thread.
-private let _startChildrenSuspended = Environment.flag(named: "SWT_START_CHILDREN_SUSPENDED") ?? false
+private let _startChildProcessesSuspended = Environment.flag(named: "SWT_START_CHILD_PROCESSES_SUSPENDED") ?? false
 
 /// Spawn a child process.
 ///
@@ -209,7 +209,7 @@ func spawnExecutable(
 #if SWT_TARGET_OS_APPLE
       // Start the process suspended so we can attach a debugger if needed. We
       // always start the child process in a suspended state even if the
-      // "SWT_START_CHILDREN_SUSPENDED" environment variable isn't set so that
+      // "SWT_START_CHILD_PROCESSES_SUSPENDED" environment variable isn't set so that
       // the debugger has a chance to attach to the child.
       flags |= CShort(POSIX_SPAWN_START_SUSPENDED)
 #endif
@@ -241,7 +241,7 @@ func spawnExecutable(
         throw CError(rawValue: processSpawned)
       }
 #if SWT_TARGET_OS_APPLE
-      if !_startChildrenSuspended {
+      if !_startChildProcessesSuspended {
         // Resume the process.
         _ = kill(pid, SIGCONT) // ignore-unacceptable-language
       }
@@ -330,7 +330,7 @@ func spawnExecutable(
 
       // Start the process suspended so we can attach a debugger if needed. We
       // always start the child process in a suspended state even if the
-      // "SWT_START_CHILDREN_SUSPENDED" environment variable isn't set so that
+      // "SWT_START_CHILD_PROCESSES_SUSPENDED" environment variable isn't set so that
       // the debugger has a chance to attach to the child.
       flags |= DWORD(CREATE_SUSPENDED)
 
@@ -353,7 +353,7 @@ func spawnExecutable(
             throw Win32Error(rawValue: GetLastError())
           }
 
-          if !_startChildrenSuspended {
+          if !_startChildProcessesSuspended {
             // Resume the process.
             _ = ResumeThread(processInfo.hThread!)
           }
