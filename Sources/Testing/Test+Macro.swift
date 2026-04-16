@@ -623,6 +623,11 @@ public func __invokeXCTestMethod<T>(
 
 // MARK: - Test inheritance
 
+/// A protocol applied automatically to suite types with the `@polymorphic`
+/// attribute.
+///
+/// - Warning: This function is used to implement the `@Suite` macro. Do not
+///   call it directly.
 public protocol __PolymorphicSuite: AnyObject & SendableMetatype {
   init() async throws
 }
@@ -716,8 +721,9 @@ nonisolated(nonsending) func withCurrentPolymorphicSubclassIfNeeded<R>(for test:
 ///
 /// - Throws: Whatever is thrown by `initExpr`.
 ///
-/// - Warning: This function is used to implement the `@Test` macro. Do not call
-///   it directly.
+/// - Warning: This function is used to implement the `@Suite` macro. Do not
+///   call it directly.
+@_spi(Experimental)
 @_lifetime(immortal)
 public nonisolated(nonsending) func __initialize<T>(_ initExpr: nonisolated(nonsending) () async throws -> T) async throws -> T where T: ~Copyable & ~Escapable {
   try await _overrideLifetime(initExpr(), copying: ())
@@ -733,8 +739,8 @@ public nonisolated(nonsending) func __initialize<T>(_ initExpr: nonisolated(nons
 ///
 /// - Throws: Any error that prevented instantiating a subclass of `T`.
 ///
-/// - Warning: This function is used to implement the `@Test` macro. Do not call
-///   it directly.
+/// - Warning: This function is used to implement the `@Suite` macro. Do not
+///   call it directly.
 @_spi(Experimental)
 public nonisolated(nonsending) func __initialize<C>(_ initExpr: nonisolated(nonsending) () async throws -> C) async throws -> C where C: __PolymorphicSuite {
   if let _currentPolymorphicSubclass {
