@@ -333,6 +333,7 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value of the `--repeat-until` argument.
   public var repeatUntil: String?
 
+  /// Whether or not to use the per-test-case repetition mode.
   var usePerTestCaseRepetition: Bool = false
 
   /// The value of the `--attachments-path` argument.

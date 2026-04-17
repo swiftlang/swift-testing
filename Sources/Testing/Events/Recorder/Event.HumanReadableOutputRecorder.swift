@@ -572,16 +572,13 @@ extension Event.HumanReadableOutputRecorder {
       guard let test, let testCase else { break }
       let iteration = eventContext.iteration ?? 1
 
-      let shouldShowMessage = testCase.isParameterized || iteration > 1
-
-      guard shouldShowMessage else {
-        break
-      }
-
-      var message = if testCase.isParameterized, let arguments = testCase.arguments {
-        "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started"
+      var message: String
+      if testCase.isParameterized, let arguments = testCase.arguments {
+        message = "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started"
+      } else if iteration > 1 {
+        message = testStartedMessage(for: test)
       } else {
-        testStartedMessage(for: test)
+        break
       }
 
       if iteration > 1 {

@@ -385,9 +385,9 @@ extension Runner {
       if let testCaseSerializer = context.testCaseSerializer {
         // Note that if .serialized is applied to an inner scope, we still use
         // this serializer (if set) so that we don't overcommit.
-        await testCaseSerializer.run { await _runTestCase(testCase, within: step, context: context) }
+        await testCaseSerializer.run { await _runTestCase(testCase, within: step) }
       } else {
-        await _runTestCase(testCase, within: step, context: context)
+        await _runTestCase(testCase, within: step)
       }
     }
   }
@@ -402,8 +402,7 @@ extension Runner {
   /// body closure.
   private static func _runTestCase(
     _ testCase: Test.Case,
-    within step: Plan.Step,
-    context: _Context
+    within step: Plan.Step
   ) async {
     if _configuration.shouldUseLegacyPlanLevelRepetition {
       await _runSingleTestCaseIteration(testCase, within: step)
@@ -456,8 +455,6 @@ extension Runner {
   /// repeatedly until the continuation condition is satisfied.
   ///
   /// - Parameters:
-  ///   - test: The test being executed.
-  ///   - testCase: The test case being iterated.
   ///   - body: The actual body of the function which must ultimately call into the test function.
   ///
   /// - Note: This function updates ``Configuration/current`` before invoking the test body.
@@ -554,15 +551,15 @@ extension Runner {
           defer {
             Event.post(.iterationEnded(iterationIndex), configuration: runner.configuration)
           }
-          await runner.runAll(context: context)
+          await runner._runAllTests(context: context)
         }
       } else {
-        await runner.runAll(context: context)
+        await runner._runAllTests(context: context)
       }
     }
   }
 
-  private func runAll(context: _Context) async {
+  private func _runAllTests(context: _Context) async {
     await withTaskGroup { taskGroup in
       _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: nil)) {
         try? await Self._runStep(atRootOf: plan.stepGraph, context: context)

@@ -29,7 +29,7 @@ extension Runner {
     /// The test case that is running on the current task, if any.
     var testCase: Test.Case?
 
-    /// The current iteration of the test repetition policy.
+    /// The current iteration of the test repetition policy, if any.
     var iteration: Int?
 
     /// The runtime state related to the runner running on the current task,
@@ -201,7 +201,7 @@ extension Configuration {
   }
 }
 
-// MARK: - Current test and test case
+// MARK: - Current test, test case, and iteration
 
 extension Test {
   /// The test that is running on the current task, if any.
@@ -237,6 +237,7 @@ extension Test {
     }
   }
 
+  /// The current iteration of the currently-running test case, if any.
   static var currentIteration: Int? {
     Runner.RuntimeState.current?.iteration
   }

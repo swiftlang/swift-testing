@@ -134,6 +134,7 @@ public struct Configuration: Sendable {
 
   /// Whether to perform test repetition at the plan level or on a per-test-
   /// case basis.
+  @_spi(Experimental)
   public var shouldUseLegacyPlanLevelRepetition: Bool = true
 
   /// Whether or not, and how, to iterate the test plan repeatedly.

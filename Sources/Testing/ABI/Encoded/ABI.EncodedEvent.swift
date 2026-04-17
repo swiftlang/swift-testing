@@ -117,6 +117,9 @@ extension ABI {
       case .testStarted:
         kind = .testStarted
       case .testCaseStarted:
+        // For non-parameterized tests, we elide `testCaseStarted` calls because it would be
+        // redundant. However, for multiple iterations of a test case within a non-parameterized
+        // function, we need to emit another `testStarted` event.
         if eventContext.test?.isParameterized == false {
           if let iteration = eventContext.iteration, iteration > 1 {
             kind = .testStarted
