@@ -40,14 +40,16 @@ SWT_EXTERN const size_t SWTTypeMetadataRecordByteCount;
 ///
 /// - Parameters:
 ///   - recordAddress: The address of the Swift type metadata record.
+///   - classesOnly: Whether or not to only return class types.
 ///   - nameSubstring: A string which the names of matching types contain.
 ///
 /// - Returns: A Swift metatype (as `const void *`) or `nullptr` if it wasn't a
 ///   usable type metadata record or its name did not contain `nameSubstring`.
 SWT_EXTERN const void *_Nullable swt_getTypeFromTypeMetadataRecord(
   const void *recordAddress,
+  bool classesOnly,
   const char *nameSubstring
-) SWT_SWIFT_NAME(swt_getType(fromTypeMetadataRecord:ifNameContains:));
+) SWT_SWIFT_NAME(swt_getType(fromTypeMetadataRecord:ifClassOnly:ifNameContains:));
 
 SWT_ASSUME_NONNULL_END
 

@@ -129,6 +129,11 @@ public:
   bool isGeneric(void) const& {
     return (_flags & 0x80u) != 0;
   }
+
+  bool isClass(void) const& {
+    // SEE: ContextDescriptorFlags and ContextDescriptorKind::Class
+    return (_flags & 0x1Fu) == 16;
+  }
 };
 
 /// A type representing a relative pointer to a type descriptor.
@@ -161,7 +166,7 @@ public:
 
 const size_t SWTTypeMetadataRecordByteCount = sizeof(SWTTypeMetadataRecord);
 
-const void *swt_getTypeFromTypeMetadataRecord(const void *recordAddress, const char *nameSubstring) {
+const void *swt_getTypeFromTypeMetadataRecord(const void *recordAddress, bool classesOnly, const char *nameSubstring) {
   auto record = reinterpret_cast<const SWTTypeMetadataRecord *>(recordAddress);
   auto contextDescriptor = record->getContextDescriptor();
   if (!contextDescriptor) {
@@ -174,12 +179,18 @@ const void *swt_getTypeFromTypeMetadataRecord(const void *recordAddress, const c
     return nullptr;
   }
 
-  // Check that the type's name passes. This will be more expensive than the
-  // checks above, but should be cheaper than realizing the metadata.
-  const char *typeName = contextDescriptor->getName();
-  bool nameOK = typeName && nullptr != std::strstr(typeName, nameSubstring);
-  if (!nameOK) {
+  if (classesOnly && !contextDescriptor->isClass()) {
     return nullptr;
+  }
+
+  if (nameSubstring[0] != '\0') {
+    // Check that the type's name passes. This will be more expensive than the
+    // checks above, but should be cheaper than realizing the metadata.
+    const char *typeName = contextDescriptor->getName();
+    bool nameOK = typeName && nullptr != std::strstr(typeName, nameSubstring);
+    if (!nameOK) {
+      return nullptr;
+    }
   }
 
   if (void *typeMetadata = contextDescriptor->getMetadata()) {

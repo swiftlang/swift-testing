@@ -445,17 +445,17 @@ struct ConditionMacroTests {
       "struct S<T> { func f() { #expectExitTest(processExitsWith: x) {} } }":
         "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic structure 'S'",
       "extension S where T: U { func f() { #expectExitTest(processExitsWith: x) {} } }":
-        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic extension",
       "extension [T] { func f() { #expectExitTest(processExitsWith: x) {} } }":
-        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic extension",
       "extension [T:U] { func f() { #expectExitTest(processExitsWith: x) {} } }":
-        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic extension",
       "extension T? { func f() { #expectExitTest(processExitsWith: x) {} } }":
-        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic extension",
       "extension T! { func f() { #expectExitTest(processExitsWith: x) {} } }":
-        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic extension",
       "extension [1 of T] { func f() { #expectExitTest(processExitsWith: x) {} } }":
-        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic extension",
       "func f<T>() { #expectExitTest(processExitsWith: x) {} }":
         "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic function 'f()'",
       "func f() where T: U { #expectExitTest(processExitsWith: x) {} }":
