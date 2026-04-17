@@ -333,6 +333,9 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value of the `--repeat-until` argument.
   public var repeatUntil: String?
 
+  /// Whether or not to use the per-test-case repetition mode.
+  var usePerTestCaseRepetition: Bool = false
+
   /// The value of the `--attachments-path` argument.
   public var attachmentsPath: String?
 }
@@ -537,6 +540,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   if let repeatUntil = args.argumentValue(forLabel: "--repeat-until") {
     result.repeatUntil = repeatUntil
   }
+  if args.contains("--experimental-per-test-case-repetition") {
+    result.usePerTestCaseRepetition = true
+  }
 
   return result
 }
@@ -664,6 +670,9 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     }
   }
   configuration.repetitionPolicy = repetitionPolicy
+
+  // Opt in to per-test-case repetition
+  configuration.shouldUseLegacyPlanLevelRepetition = !args.usePerTestCaseRepetition
 
 #if !SWT_NO_EXIT_TESTS
   // Enable exit test handling via __swiftPMEntryPoint().

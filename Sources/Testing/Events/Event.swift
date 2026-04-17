@@ -238,7 +238,6 @@ public struct Event: Sendable {
   static func post(
     _ kind: Kind,
     for testAndTestCase: (Test?, Test.Case?) = currentTestAndTestCase(),
-    iteration: Int? = nil,
     instant: Test.Clock.Instant = .now,
     configuration: Configuration? = nil
   ) {
@@ -262,7 +261,12 @@ public struct Event: Sendable {
       }
     }
     let event = Event(kind, testID: test?.id, testCaseID: testCase?.id, instant: instant)
-    let context = Event.Context(test: test, testCase: testCase, iteration: iteration, configuration: nil)
+    let context = Event.Context(
+      test: test,
+      testCase: testCase,
+      iteration: Test.currentIteration,
+      configuration: nil
+    )
     event._post(in: context, configuration: configuration)
   }
 }
@@ -327,8 +331,6 @@ extension Event {
       iteration: Int?,
       configuration: Configuration?
     ) {
-      // Ensure that if `iteration` is specified, the test is also specified.
-      precondition(iteration == nil || (iteration != nil && test != nil))
       self.test = test
       self.testCase = testCase
       self.iteration = iteration
