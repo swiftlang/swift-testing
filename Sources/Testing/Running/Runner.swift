@@ -213,6 +213,14 @@ extension Runner {
   /// This function does _not_ post the `planStepStarted` and `planStepEnded`
   /// events.
   private static func _postingTestStartedAndEndedEvents<R>(for step: Plan.Step, configuration: Configuration, context: _Context, _ body: @Sendable () async throws -> R) async throws -> R {
+#if DEBUG
+    // This function should only be called when the caller has already set the
+    // current test to the one represented by `step`.
+    let currentTestID = Test.current?.id
+    let expectedTestID = step.test.id
+    precondition(currentTestID == expectedTestID, "Called \(#function) without first setting the current test (was '\(currentTestID as Any)', expected '\(expectedTestID)')")
+#endif
+
     // Whether to send a `.testEnded` event at the end of running this step.
     // Some steps' actions may not require a final event to be sent — for
     // example, a skip event only sends `.testSkipped`.
@@ -232,13 +240,11 @@ extension Runner {
       // has an issue handling trait _and_ some other trait which caused an
       // issue to be recorded, the issue handling trait can process the issue
       // even though it wasn't recorded by the test function.
-      try await Test.withCurrent(step.test) {
-        try await _applyIssueHandlingTraits(for: step.test) {
-          // Don't specify `configuration` when posting this issue so that
-          // traits can provide scope and potentially customize the
-          // configuration.
-          Event.post(.issueRecorded(issue), for: (step.test, nil))
-        }
+      try await _applyIssueHandlingTraits(for: step.test) {
+        // Don't specify `configuration` when posting this issue so that
+        // traits can provide scope and potentially customize the
+        // configuration.
+        Event.post(.issueRecorded(issue), for: (step.test, nil))
       }
       shouldSendTestEnded = false
     }

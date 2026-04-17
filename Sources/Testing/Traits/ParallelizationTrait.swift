@@ -204,7 +204,7 @@ extension ParallelizationTrait: TestScoping {
 extension ParallelizationTrait {
   /// Whether or not ``Trait/serialized`` (with no arguments) applies globally
   /// (i.e. is equivalent to ``Trait/serialized(for:)-(Self.Dependency.Unbounded)``).
-  static let isSerializedWithoutArgumentsAppliedGlobally = Environment.flag(named: "SWT_SERIALIZED_TRAIT_APPLIES_GLOBALLY") ?? false
+  static let isSerializedWithoutArgumentsAppliedGlobally = Environment.flag(named: "SWT_EXPERIMENTAL_SERIALIZED_TRAIT_APPLIES_GLOBALLY") ?? false
 }
 
 extension Trait where Self == ParallelizationTrait {
