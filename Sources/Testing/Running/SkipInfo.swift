@@ -78,6 +78,25 @@ extension SkipInfo {
   }
 }
 
+// MARK: - Conversion to/from ABI types
+
+extension SkipInfo {
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - event: The encoded event to initialize this instance from.
+  ///
+  /// Reconstructs ``SkipInfo`` from the comments and
+  /// source location stored in the encoded event.
+  init<V>(decoding event: ABI.EncodedEvent<V>) {
+    // Typically only a single comment is expected for SkipInfo.
+    let comment = event._comments?.first.map(Comment.init(rawValue:))
+    let sourceLocation = event._sourceLocation.flatMap(SourceLocation.init(decoding:))
+    let sourceContext = SourceContext(backtrace: nil, sourceLocation: sourceLocation)
+    self.init(comment: comment, sourceContext: sourceContext)
+  }
+}
+
 // MARK: - Deprecated
 
 extension SkipInfo {

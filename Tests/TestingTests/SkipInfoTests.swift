@@ -9,6 +9,9 @@
 //
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
+#if canImport(Foundation)
+import Foundation
+#endif
 
 @Suite("SkipInfo Tests")
 struct SkipInfoTests {
@@ -28,4 +31,27 @@ struct SkipInfoTests {
     skipInfo.sourceLocation = sourceLocation2
     #expect(skipInfo.sourceLocation == sourceLocation2)
   }
+
+#if canImport(Foundation)
+  @Test("Decode from event") func roundTrip() throws {
+    var json = #"""
+      {
+        "kind": "testCancelled",
+        "instant": { "since1970": 0, "absolute": 0 },
+        "messages": [],
+        "_comments": ["Skipped Test"],
+        "_sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
+      }
+      """#
+    let event = try json.withUTF8 { json in
+      try JSON.decode(ABI.EncodedEvent<ABI.CurrentVersion>.self, from: UnsafeRawBufferPointer(json))
+    }
+
+    let info = SkipInfo(decoding: event)
+    let expected = SkipInfo(
+      comment: "Skipped Test",
+      sourceContext: .init(backtrace: nil, sourceLocation: .init(SourceLocation(fileIDSynthesizingIfNeeded: nil, filePath: "/a/b/c", line: 12345, column: 67890))))
+    #expect(info == expected)
+  }
+#endif
 }
