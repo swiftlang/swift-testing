@@ -11,6 +11,10 @@
 #if !defined(SWT_DEFINES_H)
 #define SWT_DEFINES_H
 
+#if __has_feature(modules)
+export module _TestingInternals;
+#endif
+
 #define SWT_ASSUME_NONNULL_BEGIN _Pragma("clang assume_nonnull begin")
 #define SWT_ASSUME_NONNULL_END _Pragma("clang assume_nonnull end")
 
