@@ -9,7 +9,7 @@
 //
 
 #if !defined(SWT_NO_INTEROP)
-#include "FallbackEventHandler.h"
+#include "../_TestingInternals/include/FallbackEventHandler.h"
 
 #include <atomic>
 
