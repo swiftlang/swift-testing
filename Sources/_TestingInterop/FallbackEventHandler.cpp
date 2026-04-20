@@ -16,12 +16,12 @@
 /// Storage for the fallback event handler.
 static std::atomic<SWTFallbackEventHandler> fallbackEventHandler { nullptr };
 
-bool _swift_testing_installFallbackEventHandler(SWTFallbackEventHandler handler) {
+bool _swift_testing_installFallbackEventHandler(SWTFallbackEventHandler SWT_SENDABLE handler) {
   SWTFallbackEventHandler nullptrValue = nullptr;
   return fallbackEventHandler.compare_exchange_strong(nullptrValue, handler, std::memory_order_seq_cst, std::memory_order_relaxed);
 }
 
-SWTFallbackEventHandler _swift_testing_getFallbackEventHandler(void) {
+SWTFallbackEventHandler SWT_SENDABLE _swift_testing_getFallbackEventHandler(void) {
   return fallbackEventHandler.load(std::memory_order_seq_cst);
 }
 #endif

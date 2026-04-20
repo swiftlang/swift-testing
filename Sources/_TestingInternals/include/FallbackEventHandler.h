@@ -19,7 +19,6 @@ SWT_ASSUME_NONNULL_BEGIN
 
 /// A type describing a fallback event handler that testing API can invoke as an
 /// alternate method of reporting test events to the current test runner.
-/// Shadows the type with the same name in _TestingInterop.
 ///
 /// - Parameters:
 ///   - recordJSONSchemaVersionNumber: The JSON schema version used to encode
@@ -27,10 +26,12 @@ SWT_ASSUME_NONNULL_BEGIN
 ///   - recordJSONBaseAddress: A pointer to the first byte of the encoded event.
 ///   - recordJSONByteCount: The size of the encoded event in bytes.
 ///   - reserved: Reserved for future use.
-typedef void (* SWTFallbackEventHandler)(const char *recordJSONSchemaVersionNumber,
-                                      const void *recordJSONBaseAddress,
-                                      size_t recordJSONByteCount,
-                                      const void *_Nullable reserved);
+typedef void (* SWT_SENDABLE SWTFallbackEventHandler)(
+  const char *recordJSONSchemaVersionNumber,
+  const void *recordJSONBaseAddress,
+  size_t recordJSONByteCount,
+  const void *_Nullable reserved
+);
 
 /// Set the current fallback event handler if one has not already been set.
 ///
@@ -42,13 +43,13 @@ typedef void (* SWTFallbackEventHandler)(const char *recordJSONSchemaVersionNumb
 /// The fallback event handler can only be installed once per process, typically
 /// by the first testing library to run. If this function has already been
 /// called and the handler set, it does not replace the previous handler.
-SWT_EXTERN bool _swift_testing_installFallbackEventHandler(SWTFallbackEventHandler handler);
+SWT_EXTERN bool _swift_testing_installFallbackEventHandler(SWTFallbackEventHandler SWT_SENDABLE handler);
 
 /// Get the current fallback event handler.
 /// Shadows the function with the same name in _TestingInterop.
 ///
 /// - Returns: The currently-set handler function, if any.
-SWT_EXTERN SWTFallbackEventHandler _Nullable _swift_testing_getFallbackEventHandler(void);
+SWT_EXTERN SWTFallbackEventHandler SWT_SENDABLE _Nullable _swift_testing_getFallbackEventHandler(void);
 
 SWT_ASSUME_NONNULL_END
 
