@@ -572,7 +572,7 @@ struct TestDeclarationMacroTests {
         @Test(arguments: ["value": 123])
         func f(s: String, i: Int) {}
         """,
-        #"arguments:{["value":123]asKeyValuePairs<String,Int>}"#
+        #"arguments:{["value":123]asSwift.KeyValuePairs<String,Int>}"#
       ),
     ]
   }

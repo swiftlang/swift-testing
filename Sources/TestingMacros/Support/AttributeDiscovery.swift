@@ -257,7 +257,8 @@ struct AttributeInfo {
     } else if expression.is(DictionaryExprSyntax.self) {
       if testFunctionArguments.count == 1, parameters.count == 2 {
         return TypeSyntax(
-          IdentifierTypeSyntax(
+          MemberTypeSyntax(
+            baseType: IdentifierTypeSyntax(name: .identifier("Swift")),
             name: .identifier("KeyValuePairs"),
             genericArgumentClause: GenericArgumentClauseSyntax(
               arguments: GenericArgumentListSyntax {
