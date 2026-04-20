@@ -254,9 +254,7 @@ struct AttributeInfo {
         )
         return TypeSyntax(ArrayTypeSyntax(element: elementType))
       }
-    }
-
-    if expression.is(DictionaryExprSyntax.self) {
+    } else if expression.is(DictionaryExprSyntax.self) {
       if testFunctionArguments.count == 1, parameters.count == 2 {
         return TypeSyntax(
           IdentifierTypeSyntax(
