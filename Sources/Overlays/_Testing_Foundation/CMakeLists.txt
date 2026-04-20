@@ -41,4 +41,3 @@ target_compile_options(_Testing_Foundation PRIVATE
   -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_Testing_Foundation,Swift_MODULE_DIRECTORY>/_Testing_Foundation.swiftinterface)
 
 _swift_testing_install_target(_Testing_Foundation)
-_swift_testing_install_swiftmodule(_Testing_Foundation)

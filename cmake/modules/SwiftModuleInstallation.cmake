@@ -8,27 +8,12 @@
 ## See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 ##
 
-# Install the specified module's platform build products (executables,
-# libraries, etc.)
-#
-# The files this function installs are sufficient for Swift programs to link to
-# the given module at runtime, but not to build against them. To ensure SDK
-# content is emitted for the module, you must also call
-# _swift_testing_install_swiftmodule().
 function(_swift_testing_install_target module)
   install(TARGETS ${module}
     ARCHIVE DESTINATION "${SwiftTesting_INSTALL_LIBDIR}"
     LIBRARY DESTINATION "${SwiftTesting_INSTALL_LIBDIR}"
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-endfunction()
 
-# Install the specified module's .swiftmodule, .swiftdoc, and .swiftinterface
-# products into the appropriate directory.
-#
-# This function does not install the module's platform build products such as
-# .dylib or .exe files. Call _swift_testing_install_target() to ensure those
-# files are installed.
-function(_swift_testing_install_swiftmodule module)
   get_target_property(type ${module} TYPE)
   if(type STREQUAL EXECUTABLE)
     return()
