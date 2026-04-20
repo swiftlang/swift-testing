@@ -11,13 +11,13 @@ add_library(_TestingInterop
   FallbackEventHandler.cpp)
 if("${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC" OR
    "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-  target_compile_options(_TestingInternals PRIVATE
+  target_compile_options(_TestingInterop PRIVATE
     /EHa-c)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
-  target_compile_options(_TestingInternals PRIVATE
+  target_compile_options(_TestingInterop PRIVATE
     -fno-exceptions -fPIC)
 else()
-  target_compile_options(_TestingInternals PRIVATE
+  target_compile_options(_TestingInterop PRIVATE
     -fno-exceptions)
 endif()
 
@@ -25,7 +25,7 @@ if(NOT BUILD_SHARED_LIBS)
   # When building a static library, tell clients to autolink the internal
   # libraries.
   target_compile_options(_TestingInterop PRIVATE
-    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals")
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInterop")
 endif()
 target_compile_options(_TestingInterop PRIVATE
   -enable-library-evolution
