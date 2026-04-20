@@ -178,7 +178,7 @@ struct ParameterizedTests {
   @Test(.hidden, arguments: ["value": 123])
   func oneDictionaryElementTupleParameter(x: (key: String, value: Int)) {}
 
-  @Test<KeyValuePairs<String, Int?>>(.hidden, arguments: [
+  @Test(.hidden, arguments: [
     "value1": nil,
     "value2": 123,
   ])
