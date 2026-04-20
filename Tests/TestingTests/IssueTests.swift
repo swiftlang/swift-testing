@@ -539,10 +539,14 @@ final class IssueTests: XCTestCase {
         throw MyParameterizedError(index: randomNumber)
       }
       #expect(throws: Never.self) {}
+      #expect(throws: Swift::Never.self) {}
+      #expect(throws: Swift::Swift.Never.self) {}
       func genericExpectThrows(_ type: (some Error).Type) {
         #expect(throws: type) {}
       }
       genericExpectThrows(Never.self)
+      genericExpectThrows(Swift::Never.self)
+      genericExpectThrows(Swift::Swift.Never.self)
       func nonVoidReturning() throws -> Int { throw MyError() }
       #expect(throws: MyError.self) {
         try nonVoidReturning()
@@ -1243,6 +1247,7 @@ final class IssueTests: XCTestCase {
     }
   }
 
+#if SWT_COLLECTION_DIFFING_ENABLED
   func testCollectionDifference() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -1315,6 +1320,7 @@ final class IssueTests: XCTestCase {
       #expect(range_int64 == 0...0, "both incorrect")
     }.run(configuration: configuration)
   }
+#endif
 
   func testNegatedExpressions() async {
     var configuration = Configuration()

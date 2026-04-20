@@ -33,7 +33,7 @@ private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
       case .init(CLD_KILLED), .init(CLD_DUMPED):
         return .signal(siginfo.si_status)
       default:
-        throw SystemError(description: "Unexpected siginfo_t value. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new and include this information: \(String(reflecting: siginfo))")
+        throw SystemError(description: "Unexpected siginfo_t value. \(fileABugMessage(context: String(reflecting: siginfo)))")
       }
     } else if case let errorCode = swt_errno(), errorCode != EINTR {
       throw CError(rawValue: errorCode)
@@ -247,7 +247,7 @@ func wait(for pid: consuming pid_t) async throws -> ExitStatus {
       // we add this continuation to the dictionary, then it will simply loop
       // and report the status again.
       let oldContinuation = childProcessContinuations.updateValue(continuation, forKey: pid)
-      assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). \(fileABugMessage)")
 
       // Wake up the waiter thread if it is waiting for more child processes.
       _ = pthread_cond_signal(_waitThreadNoChildrenCondition)

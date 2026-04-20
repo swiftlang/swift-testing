@@ -101,6 +101,8 @@ extension Event {
           .init(rawValue: xctestWarningMessage)
         ], sourceContext: issue.sourceContext)
 
+    // Unconditionally downgrade interop issues to warning for limited interop mode.
+    // Otherwise, preserve the issue severity.
     switch Interop.Mode.current {
     case .none: return  // no-op
     case .limited:
@@ -108,11 +110,9 @@ extension Event {
       issue.record()
       warnForXCTestUsageIssue.record()
     case .complete:
-      issue.severity = .error
       issue.record()
       warnForXCTestUsageIssue.record()
     case .strict:
-      issue.severity = .error
       issue.record()
       fatalError(
         "\(xctestWarningMessage) This is a fatal error because strict interop mode is active (\(Interop.Mode.interopModeEnvKey)=strict)",
