@@ -169,7 +169,7 @@ struct ParameterizedTests {
     (nil, 123),
     ("value1", nil),
     ("value2", nil),
-  ])
+  ] as [(String?, Int?)])
   func contextualArrayLiteral(x: String?, y: Int?) {}
 
   @Test(.hidden, arguments: ["value": 123])
@@ -181,7 +181,7 @@ struct ParameterizedTests {
   @Test(.hidden, arguments: [
     "value1": nil,
     "value2": 123,
-  ])
+  ] as KeyValuePairs<String, Int?>)
   func contextualDictionaryLiteral(key: String, value: Int?) {}
 
   @Test(.disabled(), arguments: [1, 2, 3]) func disabled(x: Int) {}
