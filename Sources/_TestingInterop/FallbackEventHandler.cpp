@@ -9,7 +9,9 @@
 //
 
 #if !defined(SWT_NO_INTEROP)
-#include "../_TestingInternals/include/FallbackEventHandler.h"
+#if !defined(__APPLE__)
+#pragma clang module import _TestingInternals.InteropOnly
+#endif
 
 #include <atomic>
 
