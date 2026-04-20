@@ -9,6 +9,8 @@
 include(ModuleABIName)
 add_library(_TestingInterop
   FallbackEventHandler.cpp)
+target_include_directories(_TestingInterop PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/include)
 if("${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC" OR
    "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   target_compile_options(_TestingInterop PRIVATE
@@ -27,9 +29,6 @@ if(NOT BUILD_SHARED_LIBS)
   target_compile_options(_TestingInterop PRIVATE
     "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInterop")
 endif()
-target_compile_options(_TestingInterop PRIVATE
-  -enable-library-evolution
-  -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_TestingInterop,Swift_MODULE_DIRECTORY>/_TestingInterop.swiftinterface)
 
 _swift_testing_install_target(_TestingInterop)
 
