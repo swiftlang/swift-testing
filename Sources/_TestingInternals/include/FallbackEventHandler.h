@@ -8,6 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !defined(SWT_FALLBACK_EVENT_HANDLER_H)
+#define SWT_FALLBACK_EVENT_HANDLER_H
+
 #if !defined(SWT_NO_INTEROP)
 #include "Defines.h"
 #include "Includes.h"
@@ -49,4 +52,5 @@ SWT_EXTERN SWTFallbackEventHandler _Nullable _swift_testing_getFallbackEventHand
 
 SWT_ASSUME_NONNULL_END
 
+#endif
 #endif
