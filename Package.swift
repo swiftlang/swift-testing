@@ -329,30 +329,6 @@ package.targets.append(contentsOf: [
 #endif
 
 extension BuildSettingCondition {
-  /// Creates a build setting condition that evaluates to `true` for Embedded
-  /// Swift.
-  ///
-  /// - Parameters:
-  ///   - nonEmbeddedCondition: The value to return if the target is not
-  ///     Embedded Swift. If `nil`, the build condition evaluates to `false`.
-  ///
-  /// - Returns: A build setting condition that evaluates to `true` for Embedded
-  ///   Swift or is equal to `nonEmbeddedCondition` for non-Embedded Swift.
-  static func whenEmbedded(or nonEmbeddedCondition: @autoclosure () -> Self? = nil) -> Self? {
-    if !buildingForEmbedded {
-      if let nonEmbeddedCondition = nonEmbeddedCondition() {
-        nonEmbeddedCondition
-      } else {
-        // The caller did not supply a fallback. Specify a non-existent platform
-        // to ensure this condition never matches.
-        .when(platforms: [.custom("DoesNotExist")])
-      }
-    } else {
-      // Enable unconditionally because the target is Embedded Swift.
-      nil
-    }
-  }
-
   /// A build setting condition representing all Apple or non-Apple platforms.
   ///
   /// - Parameters:
@@ -361,12 +337,16 @@ extension BuildSettingCondition {
   /// - Returns: A build setting condition that evaluates to `isApple` for Apple
   ///   platforms.
   static func whenApple(_ isApple: Bool = true) -> Self {
-    if isApple {
-      .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])
-    } else {
-      .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android])
-    }
+    .when(platforms: isApple ? .applePlatforms : .nonApplePlatforms)
   }
+}
+
+extension Array where Element == PackageDescription.Platform {
+  /// All Apple platforms.
+  static let applePlatforms: Self = [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS]
+
+  /// All non-Apple platforms.
+  static let nonApplePlatforms: Self = [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android]
 }
 
 extension Array where Element == PackageDescription.SwiftSetting {
@@ -412,19 +392,9 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
 
       .define("SWT_TARGET_OS_APPLE", .whenApple()),
-
-      .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
-      .define("SWT_NO_PROCESS_SPAWNING", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
-      .define("SWT_NO_SNAPSHOT_TYPES", .whenEmbedded(or: .whenApple(false))),
-      .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
-      .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
-      .define("SWT_NO_FOUNDATION_FILE_COORDINATION", .whenEmbedded(or: .whenApple(false))),
-      .define("SWT_NO_IMAGE_ATTACHMENTS", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android]))),
-      .define("SWT_NO_FILE_CLONING", .whenEmbedded(or: .when(platforms: [.openbsd, .wasi, .android]))),
-
-      .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
-      .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
+
+    result.appendFeatureFlags()
 
     return result
   }
@@ -504,19 +474,7 @@ extension Array where Element == PackageDescription.CXXSetting {
       ]
     }
 
-    result += [
-      .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
-      .define("SWT_NO_PROCESS_SPAWNING", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
-      .define("SWT_NO_SNAPSHOT_TYPES", .whenEmbedded(or: .whenApple(false))),
-      .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
-      .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
-      .define("SWT_NO_FOUNDATION_FILE_COORDINATION", .whenEmbedded(or: .whenApple(false))),
-      .define("SWT_NO_IMAGE_ATTACHMENTS", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android]))),
-      .define("SWT_NO_FILE_CLONING", .whenEmbedded(or: .when(platforms: [.openbsd, .wasi, .android]))),
-
-      .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
-      .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
-    ]
+    result.appendFeatureFlags()
 
     // Capture the testing library's commit info as C++ constants.
     if let git {
@@ -531,5 +489,69 @@ extension Array where Element == PackageDescription.CXXSetting {
     }
 
     return result
+  }
+}
+
+extension Array where Element: _LanguageBuildSetting {
+  /// Append defines for feature flags.
+  mutating func appendFeatureFlags() {
+    // The list of defines to set. Each may have associated conditions:
+    //
+    // - platforms: The list of platforms, if any, to include in a build setting
+    //   condition for this define.
+    // - embedded: Whether this define should be set unconditionally when
+    //   building for Embedded. (This is not currently expressible as a build
+    //   setting conditional.)
+    let defines: [String: (platforms: [Platform]?, embedded: Bool)] = [
+      "SWT_NO_EXIT_TESTS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
+      "SWT_NO_PROCESS_SPAWNING": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
+      "SWT_NO_SNAPSHOT_TYPES": (platforms: .nonApplePlatforms, embedded: true),
+      "SWT_NO_DYNAMIC_LINKING": (platforms: [.wasi], embedded: true),
+      "SWT_NO_PIPES": (platforms: [.wasi], embedded: true),
+      "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .nonApplePlatforms, embedded: true),
+      "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
+      "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
+
+      "SWT_NO_LEGACY_TEST_DISCOVERY": (platforms: .none, embedded: true),
+      "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),
+    ]
+
+    for (name, details) in defines {
+      if !buildingForEmbedded {
+        if let platforms = details.platforms {
+          append(.define(name, .when(platforms: platforms)))
+        } else {
+          // Since there was no condition and we're not building for Embedded,
+          // the intention was to never match so don't append this define.
+        }
+      } else if details.embedded {
+        // Since we're building for Embedded and this define is supposed to be
+        // included unconditionally when building as such, append it.
+        append(.define(name, nil))
+      }
+    }
+  }
+}
+
+/// A protocol representing a setting for a package target.
+///
+/// This abstraction facilitates utilities which simplify specifying common
+/// settings across targets of different language types.
+private protocol _LanguageBuildSetting {
+  /// Defines a value for a macro.
+  ///
+  /// - Parameters:
+  ///   - name: The name of the macro.
+  ///   - condition: A condition that restricts the application of the build
+  ///     setting.
+  ///
+  /// - Returns: An instance of this setting.
+  static func define(_ name: String, _ condition: BuildSettingCondition?) -> Self
+}
+
+extension PackageDescription.SwiftSetting: _LanguageBuildSetting {}
+extension PackageDescription.CXXSetting: _LanguageBuildSetting {
+  static func define(_ name: String, _ condition: BuildSettingCondition?) -> Self {
+    .define(name, to: nil, condition)
   }
 }

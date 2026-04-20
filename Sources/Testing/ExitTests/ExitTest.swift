@@ -317,7 +317,7 @@ extension ExitTest {
   /// A type representing an exit test as a test content record.
   fileprivate struct Record: Sendable, DiscoverableAsTestContent {
     static var testContentKind: TestContentKind {
-      "exit"
+      .exitTest
     }
 
     typealias TestContentAccessorHint = ID
