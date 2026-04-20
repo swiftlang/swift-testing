@@ -165,7 +165,7 @@ struct ParameterizedTests {
   @Test(.hidden, arguments: [("value", 123)])
   func one2TupleParameter(x: (String, Int)) {}
 
-  @Test<[(String?, Int?)]>(.hidden, arguments: [
+  @Test(.hidden, arguments: [
     (nil, 123),
     ("value1", nil),
     ("value2", nil),
