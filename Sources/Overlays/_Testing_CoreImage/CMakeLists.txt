@@ -21,4 +21,5 @@ if(APPLE)
     -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_Testing_CoreImage,Swift_MODULE_DIRECTORY>/_Testing_CoreImage.swiftinterface)
 
   _swift_testing_install_target(_Testing_CoreImage)
+  _swift_testing_install_swiftmodule(_Testing_CoreImage)
 endif()
