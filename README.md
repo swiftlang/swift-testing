@@ -110,10 +110,11 @@ for various platforms:
 | ---------------- | ------------------ | ---------------------- |
 | Apple platforms  | Supported          | Automated              |
 | Linux            | Supported          | Automated              |
+| FreeBSD          | Supported          | Automated              |
 | Windows          | Supported          | Automated              |
 | Wasm             | Experimental       | Automated (Build Only) |
 | Android          | Experimental       | Automated (Build Only) |
-| FreeBSD, OpenBSD | Experimental       | Manual                 |
+| OpenBSD          | Experimental       | [Manual](https://github.com/swiftlang/swift-testing/actions/workflows/manual_build_openbsd.yml) |
 
 [^1]:
     Most platforms have "Automated" qualification, where continuous integration
