@@ -222,7 +222,11 @@ let package = Package(
       dependencies: ["_TestingInternals",],
       path: "Sources/_TestingInterop",
       exclude: ["CMakeLists.txt"],
-      cxxSettings: .packageSettings(),
+      cxxSettings: .packageSettings() + [
+        .unsafeFlags([
+          "-fno-cxx-modules",
+        ]),
+      ],
       swiftSettings: .packageSettings() + .moduleABIName("_TestingInterop")
     ),
 
