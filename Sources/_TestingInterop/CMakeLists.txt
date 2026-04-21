@@ -23,13 +23,6 @@ else()
     -fno-exceptions)
 endif()
 
-if(NOT BUILD_SHARED_LIBS)
-  # When building a static library, tell clients to autolink the internal
-  # libraries.
-  target_compile_options(_TestingInterop PRIVATE
-    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInterop")
-endif()
-
 _swift_testing_install_target(_TestingInterop)
 
 set_property(GLOBAL APPEND PROPERTY SwiftTesting_EXPORTS _TestingInterop)
