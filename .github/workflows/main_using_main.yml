@@ -28,7 +28,3 @@ jobs:
       enable_freebsd_checks: true
       freebsd_swift_versions: '["nightly-main"]'
       freebsd_os_versions: '["14.3"]'
-      enable_android_sdk_build: true
-      android_sdk_versions: '["nightly-main"]'
-      android_ndk_versions: '["r28c", "r29"]'
-      android_sdk_triples: '["aarch64-unknown-linux-android33", "x86_64-unknown-linux-android28"]'
