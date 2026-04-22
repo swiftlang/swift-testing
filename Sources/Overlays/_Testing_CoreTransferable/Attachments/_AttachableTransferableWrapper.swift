@@ -21,6 +21,10 @@ import UniformTypeIdentifiers
 /// You do not need to use this type directly. Instead, initialize an instance
 /// of ``Attachment`` using an instance of a type conforming to the [`Transferable`](https://developer.apple.com/documentation/coretransferable/transferable)
 /// protocol.
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.4)
+/// }
 @available(_transferableAPI, *)
 public struct _AttachableTransferableWrapper<T>: Sendable where T: Transferable {
   /// The transferable value.
@@ -47,16 +51,28 @@ public struct _AttachableTransferableWrapper<T>: Sendable where T: Transferable 
 
 // MARK: -
 
+/// @Metadata {
+///   @Available(Swift, introduced: 6.4)
+/// }
 @available(_transferableAPI, *)
 extension _AttachableTransferableWrapper: AttachableWrapper {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.4)
+  /// }
   public var wrappedValue: T {
     _transferableValue
   }
 
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.4)
+  /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try _bytes.withUnsafeBytes(body)
   }
 
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.4)
+  /// }
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     let baseName = _transferableValue.suggestedFilename ?? suggestedName
     return (baseName as NSString).appendingPathExtension(for: _contentType)

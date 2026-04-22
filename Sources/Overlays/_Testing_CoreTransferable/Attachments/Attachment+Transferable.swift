@@ -14,6 +14,9 @@ public import CoreTransferable
 
 public import UniformTypeIdentifiers
 
+/// @Metadata {
+///   @Available(Swift, introduced: 6.4)
+/// }
 @available(_transferableAPI, *)
 extension Attachment {
   /// Initialize an instance of this type that encloses the given transferable
@@ -49,6 +52,10 @@ extension Attachment {
   /// calls [`exported(as:)`](https://developer.apple.com/documentation/coretransferable/transferable/exported(as:))
   /// on that value. This operation may take some time, so this initializer
   /// suspends the calling task until it is complete.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.4)
+  /// }
   public init<T>(
     exporting transferableValue: T,
     as contentType: UTType? = nil,
