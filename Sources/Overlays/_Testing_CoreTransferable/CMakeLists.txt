@@ -7,15 +7,14 @@
 # See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-include(ModuleABIName)
+  include(ModuleABIName)
   add_library(_Testing_CoreTransferable
     Attachments/_AttachableTransferableWrapper.swift
     Attachments/Attachment+Transferable.swift
     ReexportTesting.swift)
 
   target_link_libraries(_Testing_CoreTransferable PUBLIC
-    Testing
-    _Testing_CoreGraphics)
+    Testing)
 
   target_compile_options(_Testing_CoreTransferable PRIVATE
     -enable-library-evolution
