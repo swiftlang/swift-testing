@@ -21,7 +21,6 @@ import UniformTypeIdentifiers
 /// You do not need to use this type directly. Instead, initialize an instance
 /// of ``Attachment`` using an instance of a type conforming to the [`Transferable`](https://developer.apple.com/documentation/coretransferable/transferable)
 /// protocol.
-@_spi(Experimental)
 @available(_transferableAPI, *)
 public struct _AttachableTransferableWrapper<T>: Sendable where T: Transferable {
   /// The transferable value.
@@ -48,7 +47,6 @@ public struct _AttachableTransferableWrapper<T>: Sendable where T: Transferable 
 
 // MARK: -
 
-@_spi(Experimental)
 @available(_transferableAPI, *)
 extension _AttachableTransferableWrapper: AttachableWrapper {
   public var wrappedValue: T {

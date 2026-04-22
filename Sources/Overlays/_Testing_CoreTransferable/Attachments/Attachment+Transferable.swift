@@ -14,7 +14,6 @@ public import CoreTransferable
 
 public import UniformTypeIdentifiers
 
-@_spi(Experimental)
 @available(_transferableAPI, *)
 extension Attachment {
   /// Initialize an instance of this type that encloses the given transferable
