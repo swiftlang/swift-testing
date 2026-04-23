@@ -1053,30 +1053,32 @@ extension ExitTest {
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
-    guard case let .event(event) = record.kind else {
+    guard case let .event(encodedEvent) = record.kind,
+      let event = Event(decoding: encodedEvent)
+    else {
       return
     }
 
     // Translate the event back into a "real" event (such as "issue recorded")
     // and post it in the parent process. This translation is, of course, lossy
     // due to the process boundary, but we make a best effort.
-    if var issue = Issue(decoding: event) {
-      // A backtrace from the child process will have the wrong address space,
-      // so remove the backtrace if present before recording it.
+    //
+    // Events containing a backtrace from the child process will have the wrong
+    // address space, so remove the backtrace if present before recording it.
+
+    switch event.kind {
+    case .issueRecorded(var issue):
       issue.sourceContext.backtrace = nil
       issue.record()
-    } else if let attachment = Attachment(decoding: event) {
+    case .valueAttached(let attachment):
       Attachment.record(attachment, sourceLocation: attachment.sourceLocation)
-    } else if case .testCancelled = event.kind {
-      let comment = event._comments?.lazy
-        .map(Comment.init(rawValue:))
-        .first
-      let sourceContext = SourceContext(
-        backtrace: nil, // A backtrace from the child process will have the wrong address space.
-        sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)
-      )
-      let skipInfo = SkipInfo(comment: comment, sourceContext: sourceContext)
+    case .testCancelled(var skipInfo), .testCaseCancelled(var skipInfo), .testSkipped(var skipInfo):
+      // In practice, an exit test won't receive .testSkipped events because
+      // they would happen before the exit test body starts running.
+      skipInfo.sourceContext.backtrace = nil
       _ = try? Test.cancel(with: skipInfo)
+    default:
+      break
     }
   }
 
