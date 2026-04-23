@@ -9,9 +9,6 @@
 //
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
-#if canImport(Foundation)
-import Foundation
-#endif
 
 @Suite("SkipInfo Tests")
 struct SkipInfoTests {
