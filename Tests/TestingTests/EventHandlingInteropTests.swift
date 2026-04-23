@@ -270,6 +270,60 @@ struct EventHandlingInteropTests {
       )
     }
   }
+
+  // MARK: - Preserve issue severity = warning across interop boundary
+
+  /// Interop mode normally turns test issues into errors.
+  /// However, we don't want to clobber anything naturally reported as a warning.
+  @Test func `Interop send: warning issue stays as warning`() async throws {
+    await #expect(processExitsWith: .success) {
+      Configuration.removeAll()
+      Self.setInteropMode(.complete)
+      try #require(
+        _swift_testing_installFallbackEventHandler(Self.capturingHandler),
+        "Installation of fallback handler should succeed")
+
+      await Task.detached {
+        Event.post(.issueRecorded(Issue(kind: .system, severity: .warning)), configuration: nil)
+      }.value
+
+      // Assert that the issue stays as a warning
+      try Self.handlerContents.withLock {
+        let contents = try #require(
+          $0, "Fallback should have been called with non nil contents")
+        let recordData = try #require(contents.record?.data(using: .utf8))
+        let record = try JSONDecoder().decode(ABI.Record<ABI.v6_3>.self, from: recordData)
+        guard case .event(let event) = record.kind else {
+          Issue.record("Wrong type of record: \(record)")
+          return
+        }
+
+        #expect(event.issue?.severity == .warning)
+      }
+    }
+  }
+
+  /// Interop mode normally turns test issues into errors.
+  /// However, we don't want to clobber anything naturally reported as a warning.
+  @Test func `Interop receive: warning issue stays as warning`() async throws {
+    await #expect(processExitsWith: .success) {
+      Self.enableExperimentalInterop()
+      Self.setInteropMode(.complete)
+      try #require(Event.installFallbackEventHandler())
+
+      // Run the test, which should record two issues in response to the interop one
+      let issues = await Test {
+        try _FakeXCTFail(severity: .warning)
+      }.runCapturingIssues()
+
+      #expect(issues.map(\.severity) == [.warning, .warning])
+      #expect(issues.map(\.description).sorted() == [
+          "An API was misused (warning): XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead.",
+          "Issue recorded (warning)"
+        ]
+      )
+    }
+  }
 }
 #endif
 
@@ -277,7 +331,7 @@ struct EventHandlingInteropTests {
 /// This always forwards a test failure through the fallback event handler if it can find one.
 /// It is an error to call this when a handler hasn't been installed yet.
 /// - Parameter payload: Optional payload to use instead of generating a standard one.
-private func _FakeXCTFail(payload: Data? = nil) throws {
+private func _FakeXCTFail(payload: Data? = nil, severity: Issue.Severity = .error) throws {
   // A fallback event handler must be installed ahead of time
   let currentHandler = try #require(_swift_testing_getFallbackEventHandler())
 
@@ -289,7 +343,7 @@ private func _FakeXCTFail(payload: Data? = nil) throws {
     return try JSONEncoder().encode(encodedEvent)
   }
 
-  let encodedIssue = try payload ?? wrapInEncodedEvent(issue: .init(kind: .unconditional))
+  let encodedIssue = try payload ?? wrapInEncodedEvent(issue: .init(kind: .unconditional, severity: severity))
 
   encodedIssue.withUnsafeBytes { ptr in
     let vers = String(describing: ABI.CurrentVersion.versionNumber)
