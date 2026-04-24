@@ -26,7 +26,7 @@ import UniformTypeIdentifiers
 ///   @Available(Swift, introduced: 6.4)
 /// }
 @available(_transferableAPI, *)
-public struct _AttachableTransferableWrapper<T>: Sendable where T: Transferable {
+public struct _AttachableTransferableWrapper<T>: Sendable where T: Transferable & Sendable {
   /// The transferable value.
   private var _transferableValue: T
 
