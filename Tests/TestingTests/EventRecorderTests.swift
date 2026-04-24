@@ -523,6 +523,66 @@ struct EventRecorderTests {
     )
   }
 
+  @Test("An additional late issue is recorded for issues recorded after test case end")
+  func lateIssueRecordedAfterTestCaseEnd() async throws {
+    var configuration = Configuration()
+    let recordedIssues = Mutex<[Issue]>([])
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else { return }
+      recordedIssues.withLock {
+        $0.append(issue)
+      }
+    }
+
+    let recordIssueLateTask = Mutex<Task<Void, Never>?>(nil)
+    await Test {
+      recordIssueLateTask.withLock {
+        $0 = Task {
+          try? await Task.sleep(for: .milliseconds(10))
+          Issue.record("Late")
+        }
+      }
+    }.run(configuration: configuration)
+
+    let lateTask = recordIssueLateTask.withLock { $0 }
+    await lateTask?.value
+
+    let issues = recordedIssues.rawValue
+    #expect(issues.count == 2)
+    let lateIssue = try #require(issues.first)
+    let originalIssue = try #require(issues.last)
+    guard case .unconditional = originalIssue.kind else {
+      Issue.record(
+        "Unexpected issue kind \(originalIssue.kind)"
+      )
+      return
+    }
+    
+    guard case .apiMisused = lateIssue.kind else {
+      Issue.record(
+        "Unexpected issue kind \(originalIssue.kind)"
+      )
+      return
+    }
+    
+    let lateIssueFirstComment = try #require(
+      lateIssue.comments.first,
+      "Late issue should have a comment"
+    )
+    
+    #expect(lateIssueFirstComment.rawValue ==
+          """
+          An issue was recorded after its associated test ended. Ensure \
+          asynchronous work has completed before your test ends.
+          """
+    )
+
+    let originalIssueSnapshot = Issue.Snapshot(snapshotting: originalIssue)
+    let lateIssueSnapshot = Issue.Snapshot(snapshotting: lateIssue)
+    #expect(originalIssueSnapshot.sourceContext == lateIssueSnapshot.sourceContext)
+    #expect(originalIssueSnapshot.sourceLocation == lateIssueSnapshot.sourceLocation)
+  }
+
   @Test("JUnitXMLRecorder counts issues without associated tests")
   func junitRecorderCountsIssuesWithoutTests() async throws {
     let issue = Issue(kind: .unconditional)
