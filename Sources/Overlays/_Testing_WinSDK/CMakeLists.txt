@@ -28,4 +28,5 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_Testing_WinSDK,Swift_MODULE_DIRECTORY>/_Testing_WinSDK.swiftinterface)
 
   _swift_testing_install_target(_Testing_WinSDK)
+  _swift_testing_install_swiftmodule(_Testing_WinSDK)
 endif()

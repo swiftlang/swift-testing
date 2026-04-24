@@ -23,6 +23,7 @@ target_compile_options(_TestDiscovery PRIVATE
 set(CMAKE_STATIC_LIBRARY_PREFIX_Swift "lib")
 
 _swift_testing_install_target(_TestDiscovery)
+_swift_testing_install_swiftmodule(_TestDiscovery)
 
 if(NOT BUILD_SHARED_LIBS)
   # When building a static library, install the internal library archive
