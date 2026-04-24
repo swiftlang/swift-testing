@@ -76,44 +76,6 @@ extension SalesReport: Encodable, Attachable {}
   your test target imports the [Foundation](https://developer.apple.com/documentation/foundation)
   module.
 
-### Attach transferable values
-
-If you have a value you want to save as an attachment that conforms to
-[`Transferable`](https://developer.apple.com/documentation/CoreTransferable/Transferable),
-you can create an instance of ``Attachment`` from it when you import the
-[Core Transferable](https://developer.apple.com/documentation/coretransferable)
-module.
-
-```swift
-import Testing
-import CoreTransferable
-
-struct SalesReport { ... }
-extension SalesReport: Encodable, Attachable {}
-
-@Test func `sales report adds up`() async throws {
-  let salesReport = await generateSalesReport()
-  try salesReport.validate()
-  let attachment = try await Attachment(exporting: salesReport)
-  Attachment.record(attachment)
-}
-```
-
-- Important: The testing library provides this ``Attachment`` initializer only
-  if your test target imports the [Core Transferable](https://developer.apple.com/documentation/coretransferable)
-  module.
-
-When you create an attachment from a transferable value, the testing library
-calls the value's [`exported(as:)`](https://developer.apple.com/documentation/coretransferable/transferable/exported(as:))
-function. By default, the testing library calls the value's [`exportedContentTypes(_:)`](https://developer.apple.com/documentation/coretransferable/transferable/exportedcontenttypes(_:))
-function and uses the first returned content type that conforms to [`UTType.data`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/data).
-If you want to use a different format for the attachment, you can pass another
-content type supported by the attachable value when you create the attachment.
-
-```swift
-let attachment = try await Attachment(exporting: salesReport, as: .pdf)
-```
-
 ### Attach files and directories
 
 If you have a file you want to save as an attachment, you can attach it using
