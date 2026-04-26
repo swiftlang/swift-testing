@@ -16,7 +16,7 @@ extension ABI {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
-  struct EncodedMessage<V>: Sendable where V: ABI.Version {
+  public struct EncodedMessage<V>: Sendable where V: ABI.Version {
     /// A type implementing the JSON encoding of ``Event/Symbol`` for the ABI
     /// entry point and event stream output.
     ///
@@ -62,7 +62,7 @@ extension ABI {
     var symbol: Symbol
 
     /// The human-readable, unformatted text associated with this message.
-    var text: String
+    public var text: String
 
     /// How much to indent this message when presenting it.
     ///

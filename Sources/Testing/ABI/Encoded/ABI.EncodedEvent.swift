@@ -60,7 +60,7 @@ extension ABI {
 
     /// Human-readable messages associated with this event that can be presented
     /// to the user.
-    var messages: [EncodedMessage<V>]
+    public var messages: [EncodedMessage<V>]
 
     /// The ID of the test associated with this event, if any.
     var testID: EncodedTest<V>.ID?
