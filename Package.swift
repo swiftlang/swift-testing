@@ -364,6 +364,11 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     if buildingForEmbedded {
       result.append(.enableExperimentalFeature("Embedded"))
+
+      // Swift's concurrency module is not implicitly imported when building for
+      // Embedded, so we must explicitly import it since this project uses
+      // async and other concurrency-related language features.
+      result.append(.unsafeFlags(["-Xfrontend", "-import-module", "-Xfrontend", "_Concurrency"]))
     }
 
     // Define a compiler condition so we can discover at macro expansion time if
