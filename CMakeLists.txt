@@ -24,15 +24,8 @@ set(SWT_SOURCE_ROOT_DIR ${CMAKE_SOURCE_DIR})
 project(SwiftTesting
   LANGUAGES CXX Swift)
 
-if(CMAKE_VERSION VERSION_LESS 3.31)
-  if(CMAKE_SYSTEM_NAME STREQUAL "Generic" AND CMAKE_SYSTEM_PROCESSOR MATCHES "wasm32")
-    set(CMAKE_SYSTEM_NAME WASI)
-    set(WASI 1)
-  endif()
-endif()
-
 if(NOT APPLE)
-  if(NOT WASI)
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
     find_package(dispatch CONFIG)
   endif()
   find_package(Foundation CONFIG)
