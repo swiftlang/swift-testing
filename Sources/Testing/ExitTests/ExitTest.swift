@@ -600,7 +600,7 @@ extension ExitTest {
     let firstBarrierByte = barrierValue[0]
 
     // If the buffer is too small to contain the barrier value, exit early.
-    guard buffer.count > barrierValue.count else {
+    guard buffer.count >= barrierValue.count else {
       return buffer
     }
 
