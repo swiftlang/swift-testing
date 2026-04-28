@@ -409,6 +409,14 @@ private import _TestingInternals
     #expect(!result.standardErrorContent.contains(ExitTest.barrierValue))
   }
 
+  @Test("Empty stdout/stderr stream is actually empty")
+  func exitTestEmptyStreamIsActuallyEmpty() async throws {
+    let result = try await #require(processExitsWith: .success, observing: [\.standardErrorContent]) {
+      _Exit(EXIT_SUCCESS)
+    }
+    #expect(result.standardErrorContent.isEmpty)
+  }
+
   @Test("Arguments to the macro are not captured during expansion (do not need to be literals/const)")
   func argumentsAreNotCapturedDuringMacroExpansion() async throws {
     let unrelatedSourceLocation = #_sourceLocation
