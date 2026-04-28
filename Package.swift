@@ -430,7 +430,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static func enableLibraryEvolution(_ condition: BuildSettingCondition? = nil) -> Self {
     var result = [PackageDescription.SwiftSetting]()
 
-    if buildingForDevelopment {
+    if buildingForDevelopment && !buildingForEmbedded {
       result.append(.unsafeFlags(["-enable-library-evolution"], condition))
     }
 
