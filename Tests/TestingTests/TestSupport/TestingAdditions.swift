@@ -14,10 +14,6 @@
 import XCTest
 #endif
 
-#if canImport(Foundation)
-import Foundation
-#endif
-
 #if canImport(Synchronization)
 private import Synchronization
 #endif
@@ -425,6 +421,7 @@ let testsWithSignificantIOAreEnabled = Environment.flag(named: "SWT_ENABLE_TESTS
 /// should enable these tests.
 let performanceTestsEnabled = Environment.flag(named: "SWT_ENABLE_PERFORMANCE_TESTS") == true
 
+#if !SWT_NO_CODABLE
 extension JSON {
   /// Round-trip a value through JSON encoding/decoding.
   ///
@@ -439,25 +436,8 @@ extension JSON {
       try JSON.decode(T.self, from: data)
     }
   }
-
-#if canImport(Foundation)
-  /// Decode a value from JSON data.
-  ///
-  /// - Parameters:
-  ///   - type: The type of value to decode.
-  ///   - jsonRepresentation: Data of the JSON encoding of the value to decode.
-  ///
-  /// - Returns: An instance of `T` decoded from `jsonRepresentation`.
-  ///
-  /// - Throws: Whatever is thrown by the decoding process.
-  @_disfavoredOverload
-  static func decode<T>(_ type: T.Type, from jsonRepresentation: Data) throws -> T where T: Decodable {
-    try jsonRepresentation.withUnsafeBytes { bytes in
-      try JSON.decode(type, from: bytes)
-    }
-  }
-#endif
 }
+#endif
 
 extension Trait where Self == TimeLimitTrait {
   /// Construct a time limit trait that causes a test to time out if it runs for

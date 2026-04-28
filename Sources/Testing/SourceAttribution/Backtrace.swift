@@ -102,6 +102,7 @@ public struct Backtrace: Sendable {
 
 extension Backtrace: Equatable, Hashable {}
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 // Explicitly implement Codable support by encoding and decoding the addresses
@@ -117,6 +118,7 @@ extension Backtrace: Codable {
     try addresses.encode(to: encoder)
   }
 }
+#endif
 
 // MARK: - Backtraces for thrown errors
 

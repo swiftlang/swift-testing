@@ -12,6 +12,7 @@
 
 @Suite("Test.Case.Argument.ID Tests")
 struct Test_Case_Argument_IDTests {
+#if !SWT_NO_CODABLE
   @Test("One Codable parameter")
   func oneCodableParameter() async throws {
     let test = Test(
@@ -38,12 +39,11 @@ struct Test_Case_Argument_IDTests {
     let arguments = try #require(testCase.arguments)
     #expect(arguments.count == 1)
     let argument = try #require(arguments.first)
-#if canImport(Foundation)
     try JSON.withEncoding(of: CustomArgumentWrapper(rawValue: argumentValue)) { data in
       #expect(argument.id.bytes == SHA256.hash(data))
     }
-#endif
   }
+#endif
 
   @Test("One Identifiable parameter")
   func oneIdentifiableParameter() async throws {
@@ -74,6 +74,7 @@ struct Test_Case_Argument_IDTests {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Fixture parameter types
 
 private struct MyCustomTestArgument: CustomTestArgumentEncodable, Equatable {
@@ -95,6 +96,7 @@ extension MyCustomTestArgument: Decodable {}
 
 @available(*, unavailable, message: "Intentionally not Encodable")
 extension MyCustomTestArgument: Encodable {}
+#endif
 
 private struct MyIdentifiableArgument: Identifiable {
   var id: String

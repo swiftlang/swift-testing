@@ -9,7 +9,7 @@
 //
 
 #if canImport(Foundation)
-private import Foundation
+private import Foundation // for Data (Base64 and file mapping)
 #endif
 
 extension ABI {
@@ -49,6 +49,7 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedAttachment: Codable {
@@ -157,6 +158,7 @@ extension ABI.EncodedAttachment: Codable {
     }
   }
 }
+#endif
 
 // MARK: - Attachable
 

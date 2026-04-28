@@ -64,9 +64,11 @@ extension ABI.EncodedError: Error {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedError: Codable {}
+#endif
 
 // MARK: - CustomTestStringConvertible
 

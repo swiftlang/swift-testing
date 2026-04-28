@@ -12,6 +12,12 @@
 private import Foundation
 #endif
 
+#if !SWT_NO_CODABLE
+#if !canImport(Foundation)
+#error("Platform-specific misconfiguration: support for JSON encoding and decoding requires the 'Foundation' module")
+#endif
+#endif
+
 enum JSON {
   /// Whether or not pretty-printed JSON is enabled for this process.
   ///
@@ -19,6 +25,7 @@ enum JSON {
   /// testing library to improve the readability of JSON output.
   private static let _prettyPrintingEnabled = Environment.flag(named: "SWT_PRETTY_PRINT_JSON") == true
 
+#if !SWT_NO_CODABLE
   /// Encode a value as JSON.
   ///
   /// - Parameters:
@@ -30,7 +37,6 @@ enum JSON {
   ///
   /// - Throws: Whatever is thrown by `body` or by the encoding process.
   static func withEncoding<R>(of value: some Encodable, userInfo: [CodingUserInfoKey: any Sendable] = [:], _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-#if canImport(Foundation)
     let encoder = JSONEncoder()
 
     // Keys must be sorted to ensure deterministic matching of encoded data.
@@ -45,10 +51,8 @@ enum JSON {
 
     let data = try encoder.encode(value)
     return try data.withUnsafeBytes(body)
-#else
-    throw SystemError(description: "JSON encoding requires Foundation which is not available in this environment.")
-#endif
   }
+#endif
 
   /// Post-process encoded JSON and write it to a file.
   ///
@@ -74,6 +78,7 @@ enum JSON {
     }
   }
 
+#if !SWT_NO_CODABLE
   /// Decode a value from JSON data.
   ///
   /// - Parameters:
@@ -84,7 +89,6 @@ enum JSON {
   ///
   /// - Throws: Whatever is thrown by the decoding process.
   static func decode<T>(_ type: T.Type, from jsonRepresentation: UnsafeRawBufferPointer) throws -> T where T: Decodable {
-#if canImport(Foundation)
     try withExtendedLifetime(jsonRepresentation) {
       let byteCount = jsonRepresentation.count
       let data = if byteCount > 0 {
@@ -98,8 +102,6 @@ enum JSON {
       }
       return try JSONDecoder().decode(type, from: data)
     }
-#else
-    throw SystemError(description: "JSON decoding requires Foundation which is not available in this environment.")
-#endif
   }
+#endif
 }

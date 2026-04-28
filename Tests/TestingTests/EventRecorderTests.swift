@@ -11,7 +11,7 @@
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 #if canImport(Foundation)
-import Foundation
+import Foundation // for XML API
 #endif
 #if canImport(FoundationXML)
 import FoundationXML

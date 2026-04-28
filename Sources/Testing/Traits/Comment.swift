@@ -131,11 +131,12 @@ extension Comment: ExpressibleByStringInterpolation {
 
 extension Comment: Equatable, Hashable {}
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension Comment: Codable {}
-
 extension Comment.Kind: Codable {}
+#endif
 
 // MARK: - Trait, TestTrait, SuiteTrait
 

@@ -279,10 +279,12 @@ extension Test {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension Test.Parameter: Codable {}
 extension Test.Case.Argument.ID: Codable {}
+#endif
 
 // MARK: - Equatable, Hashable
 

@@ -8,10 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-import Foundation
 #if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
 import Synchronization
 #endif

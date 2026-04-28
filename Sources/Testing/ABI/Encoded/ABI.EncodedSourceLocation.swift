@@ -52,6 +52,7 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedSourceLocation: Codable {
@@ -63,6 +64,7 @@ extension ABI.EncodedSourceLocation: Codable {
     case column
   }
 }
+#endif
 
 // MARK: - Conversion to/from library types
 

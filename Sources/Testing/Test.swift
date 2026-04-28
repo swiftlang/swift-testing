@@ -400,6 +400,10 @@ extension Test: Equatable, Hashable {
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
 
+#if SWT_NO_CODABLE
+#error("Platform-specific misconfiguration: support for snapshot types requires support for 'Codable'")
+#endif
+
 extension Test {
   /// A serializable snapshot of a ``Test`` instance.
   @_spi(ForToolsIntegrationOnly)

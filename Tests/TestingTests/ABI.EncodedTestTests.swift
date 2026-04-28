@@ -10,10 +10,6 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if canImport(Foundation)
-private import Foundation
-#endif
-
 @Suite struct `ABI.EncodedTestTests` {
   let fixture = ABI.EncodedTest<ABI.CurrentVersion>(
     kind: .function,
@@ -21,13 +17,15 @@ private import Foundation
     sourceLocation: .init(),
     id: .init(encoding: .init([])))  // Blank placeholder; should be set in each test case
 
+#if !SWT_NO_CODABLE
   /// Creates an EncodedTest.ID from a string.
   ///
   /// It doesn't really "decode" anything and just stores the string, so this
   /// should never throw in practice.
   func testID<V: ABI.Version>(_ string: String) throws -> ABI.EncodedTest<V>.ID {
-    let data = try JSONEncoder().encode(string)
-    return try JSONDecoder().decode(ABI.EncodedTest<V>.ID.self, from: data)
+    try JSON.withEncoding(of: string) { data in
+      try JSON.decode(ABI.EncodedTest<V>.ID.self, from: data)
+    }
   }
 
   @Test func `Decode test components`() throws {
@@ -98,4 +96,5 @@ private import Foundation
 
     #expect(test.decodeIDComponents() == nil)
   }
+#endif
 }
