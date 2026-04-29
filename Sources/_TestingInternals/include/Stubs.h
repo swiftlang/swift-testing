@@ -60,6 +60,14 @@ static int swt_errno(void) {
   return errno;
 }
 
+/// Print a description of the given time value.
+///
+/// This function is provided because Embedded Swift does not support creating
+/// `va_list` arguments to pass to variadic C functions.
+static void swt_printTimeValue(char *buffer, size_t count, long long seconds, int milliseconds) {
+  snprintf(buffer, count, "%lld.%03d seconds", seconds, milliseconds);
+}
+
 #if !SWT_NO_FILE_IO
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)

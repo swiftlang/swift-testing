@@ -57,7 +57,9 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // Configure the event recorder to write events to stderr.
     if configuration.verbosity > .min {
       // Check for experimental console output flag
-      if Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true {
+      var useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
+#if !SWT_NO_ABI_JSON_SCHEMA
+      if useExperimentalConsoleOutput {
         // Use experimental AdvancedConsoleOutputRecorder
         var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>.Options()
         advancedOptions.base = .for(.stderr)
@@ -70,7 +72,10 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
           eventRecorder.record(event, in: context)
           oldEventHandler(event, context)
         }
-      } else {
+      }
+#endif
+
+      if !useExperimentalConsoleOutput {
         // Use the standard console output recorder (default behavior)
         let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
           try? FileHandle.stderr.write(string)
@@ -606,7 +611,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     configuration.attachmentsPath = attachmentsPath
   }
 
-#if !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
   // Event stream output
   if let eventStreamOutputPath = args.eventStreamOutputPath {
     let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
@@ -692,7 +697,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   return configuration
 }
 
-#if (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT) && !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
 /// Create an event handler that streams events to the given file using the
 /// specified ABI version.
 ///
