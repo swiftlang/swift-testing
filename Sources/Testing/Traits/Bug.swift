@@ -46,9 +46,11 @@ extension Bug: Equatable, Hashable {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension Bug: Codable {}
+#endif
 
 // MARK: - Trait, TestTrait, SuiteTrait
 

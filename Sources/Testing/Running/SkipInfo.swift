@@ -50,9 +50,11 @@ extension SkipInfo: Error {}
 
 extension SkipInfo: Equatable, Hashable {}
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension SkipInfo: Codable {}
+#endif
 
 // MARK: -
 

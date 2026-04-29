@@ -185,6 +185,8 @@ extension Event.Symbol {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension Event.Symbol: Codable {}
+#endif

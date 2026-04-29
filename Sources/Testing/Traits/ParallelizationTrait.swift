@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && _runtime(_ObjC)
+#if _runtime(_ObjC)
 private import ObjectiveC
 #endif
 

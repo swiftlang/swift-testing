@@ -42,20 +42,12 @@ extension ABI {
 
     /// A type implementing the JSON encoding of ``Test/ID`` for the ABI entry
     /// point and event stream output.
-    struct ID: Codable {
+    struct ID {
       /// The string value representing the corresponding test ID.
       var stringValue: String
 
       init(encoding testID: borrowing Test.ID) {
         stringValue = String(describing: copy testID)
-      }
-
-      func encode(to encoder: any Encoder) throws {
-        try stringValue.encode(to: encoder)
-      }
-
-      init(from decoder: any Decoder) throws {
-        stringValue = try String(from: decoder)
       }
     }
 
@@ -76,7 +68,7 @@ extension ABI {
     /// A type describing a parameter to a parameterized test function.
     ///
     /// - Warning: Parameter info is not yet part of the JSON schema.
-    struct Parameter: Sendable, Codable {
+    struct Parameter: Sendable {
       /// The name of the parameter, if known.
       var name: String?
 
@@ -148,11 +140,24 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedTest: Codable {}
 extension ABI.EncodedTest.Kind: Codable {}
+extension ABI.EncodedTest.Parameter: Codable {}
 extension ABI.EncodedTestCase: Codable {}
+
+extension ABI.EncodedTest.ID: Codable {
+  func encode(to encoder: any Encoder) throws {
+    try stringValue.encode(to: encoder)
+  }
+
+  init(from decoder: any Decoder) throws {
+    stringValue = try String(from: decoder)
+  }
+}
+#endif
 
 // MARK: - Conversion to/from library types
 

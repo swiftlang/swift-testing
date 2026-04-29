@@ -9,7 +9,8 @@
 //
 
 #if canImport(Foundation)
-private import Foundation
+private import struct Foundation.Data
+private import struct Foundation.URL
 #endif
 
 extension ABI {
@@ -49,6 +50,7 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedAttachment: Codable {
@@ -157,6 +159,7 @@ extension ABI.EncodedAttachment: Codable {
     }
   }
 }
+#endif
 
 // MARK: - Attachable
 

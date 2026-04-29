@@ -11,9 +11,6 @@
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
-#if canImport(Foundation)
-import Foundation
-#endif
 #if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
 import Synchronization
 #endif
@@ -25,7 +22,7 @@ let interopHandlerMayBeInstalled = Environment.variable(named: "XCTestSessionIde
 let interopHandlerMayBeInstalled = false
 #endif
 
-#if !SWT_NO_EXIT_TESTS && !SWT_NO_INTEROP && canImport(Foundation)
+#if !SWT_NO_EXIT_TESTS && !SWT_NO_INTEROP
 @Suite(.disabled(if: interopHandlerMayBeInstalled))
 struct EventHandlingInteropTests {
   static let handlerContents = Mutex<(version: String, record: String?)?>()
@@ -33,9 +30,8 @@ struct EventHandlingInteropTests {
   private static let capturingHandler: SWTFallbackEventHandler = {
     schemaVersion, recordJSONBaseAddress, recordJSONByteCount, _ in
     let version = String(cString: schemaVersion)
-    let record = String(
-      data: Data(bytes: recordJSONBaseAddress, count: recordJSONByteCount),
-      encoding: .utf8)
+    let recordJSON = UnsafeRawBufferPointer(start: recordJSONBaseAddress, count: recordJSONByteCount)
+    let record = String(decoding: recordJSON, as: UTF8.self)
     Self.handlerContents.withLock {
       $0 = (version: version, record: record)
     }
@@ -165,7 +161,7 @@ struct EventHandlingInteropTests {
 
       // Pass an invalid record JSON to the event handler
       let issues = await Test {
-        let emptyJSON = "{}".data(using: .utf8)!
+        let emptyJSON = Array("{}".utf8)
         try _FakeXCTFail(payload: emptyJSON)
       }.runCapturingIssues()
 
@@ -291,8 +287,10 @@ struct EventHandlingInteropTests {
       try Self.handlerContents.withLock {
         let contents = try #require(
           $0, "Fallback should have been called with non nil contents")
-        let recordData = try #require(contents.record?.data(using: .utf8))
-        let record = try JSONDecoder().decode(ABI.Record<ABI.v6_3>.self, from: recordData)
+        let recordData = try #require(contents.record.map(\.utf8).map(Array.init))
+        let record = try recordData.withUnsafeBytes { recordData in
+          try JSON.decode(ABI.Record<ABI.v6_3>.self, from: recordData)
+        }
         guard case .event(let event) = record.kind else {
           Issue.record("Wrong type of record: \(record)")
           return
@@ -325,22 +323,21 @@ struct EventHandlingInteropTests {
     }
   }
 }
-#endif
 
 /// Simulates the behaviour of XCTFail when called in a Swift Testing test.
 /// This always forwards a test failure through the fallback event handler if it can find one.
 /// It is an error to call this when a handler hasn't been installed yet.
 /// - Parameter payload: Optional payload to use instead of generating a standard one.
-private func _FakeXCTFail(payload: Data? = nil, severity: Issue.Severity = .error) throws {
+private func _FakeXCTFail(payload: [UInt8]? = nil, severity: Issue.Severity = .error) throws {
   // A fallback event handler must be installed ahead of time
   let currentHandler = try #require(_swift_testing_getFallbackEventHandler())
 
-  func wrapInEncodedEvent(issue: Issue) throws -> Data {
+  func wrapInEncodedEvent(issue: Issue) throws -> [UInt8] {
     let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil, instant: .now)
     let encodedEvent = ABI.Record<ABI.CurrentVersion>(
       encoding: event, in: .init(test: nil, testCase: nil, iteration: nil, configuration: nil),
       messages: [])
-    return try JSONEncoder().encode(encodedEvent)
+    return try JSON.withEncoding(of: encodedEvent) { Array($0) }
   }
 
   let encodedIssue = try payload ?? wrapInEncodedEvent(issue: .init(kind: .unconditional, severity: severity))
@@ -350,3 +347,4 @@ private func _FakeXCTFail(payload: Data? = nil, severity: Issue.Severity = .erro
     currentHandler(vers, ptr.baseAddress!, ptr.count, nil)
   }
 }
+#endif

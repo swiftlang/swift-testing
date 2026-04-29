@@ -156,6 +156,8 @@ extension Test.ID: CustomStringConvertible {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension Test.ID: Codable {}
+#endif

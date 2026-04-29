@@ -187,6 +187,7 @@ extension SourceLocation: CustomStringConvertible, CustomDebugStringConvertible 
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension SourceLocation: Codable {
@@ -220,11 +221,16 @@ extension SourceLocation: Codable {
     // For simplicity's sake, we won't be picky about which key contains the
     // file path.
     let filePath = try container.decodeIfPresent(String.self, forKey: .filePath)
-      ?? container.decode(String.self, forKey: ._filePath)
+    ?? container.decode(String.self, forKey: ._filePath)
 
     self.init(fileID: fileID, filePath: filePath, line: line, column: column)
   }
+}
+#endif
 
+// MARK: - File ID synthesis
+
+extension SourceLocation {
   init(fileIDSynthesizingIfNeeded fileID: String?, filePath: String, line: Int, column: Int) {
     // Synthesize the file ID if needed.
     let fileID = fileID ?? Self._synthesizeFileID(fromFilePath: filePath)

@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_CODABLE
 /// A protocol for customizing how arguments passed to parameterized tests are
 /// encoded, which is used to match against when running specific arguments.
 ///
@@ -42,6 +43,7 @@ public protocol CustomTestArgumentEncodable: Sendable {
   /// documentation for [`Encodable`](https://developer.apple.com/documentation/swift/encodable).
   func encodeTestArgument(to encoder: some Encoder) throws
 }
+#endif
 
 extension Test.Case.Argument.ID {
   /// Initialize an ID instance with the specified test argument value.
@@ -69,7 +71,7 @@ extension Test.Case.Argument.ID {
   ///
   /// - ``CustomTestArgumentEncodable``
   init?(identifying value: some Sendable, parameter: Test.Parameter) throws {
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
     func customArgumentWrapper(for value: some CustomTestArgumentEncodable) -> some Encodable {
       CustomArgumentWrapper(rawValue: value)
     }
@@ -95,8 +97,10 @@ extension Test.Case.Argument.ID {
     nil
 #endif
   }
+}
 
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
+extension Test.Case.Argument.ID {
   /// Encode the specified test argument value and store its encoded
   /// representation as an array of bytes suitable for storing in an instance of
   /// ``Test/Case/Argument/ID-swift.struct``.
@@ -115,7 +119,6 @@ extension Test.Case.Argument.ID {
       SHA256.hash(buffer)
     }
   }
-#endif
 }
 
 /// A encodable type which wraps a ``CustomTestArgumentEncodable`` value.
@@ -153,3 +156,4 @@ extension Encoder {
     userInfo[._testParameterUserInfoKey] as? Test.Parameter
   }
 }
+#endif

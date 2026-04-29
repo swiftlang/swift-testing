@@ -387,6 +387,7 @@ struct AttachmentTests {
   }
 #endif
 
+#if !SWT_NO_CODABLE
   struct CodableAttachmentArguments: Sendable, CustomTestArgumentEncodable, CustomTestStringConvertible {
     var forSecureCoding: Bool
     var pathExtension: String?
@@ -489,6 +490,7 @@ struct AttachmentTests {
       try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
     }
   }
+#endif
 #endif
 
 #if canImport(CoreTransferable) && canImport(_Testing_CoreTransferable)
@@ -991,7 +993,7 @@ extension AttachmentTests {
 #endif
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
 #if !SWT_NO_FILE_IO
   @Test("Decoding an encoded attachment with path")
   func decodingAnEncodedAttachmentWithPath() throws {
@@ -1147,9 +1149,11 @@ struct MyBadTransferable: Transferable, Equatable {
 #endif
 
 #if canImport(Foundation) && canImport(_Testing_Foundation)
+#if !SWT_NO_CODABLE
 struct MyCodableAttachable: Codable, Attachable, Sendable {
   var string: String
 }
+#endif
 
 final class MySecureCodingAttachable: NSObject, NSSecureCoding, Attachable, Sendable {
   let string: String
@@ -1171,6 +1175,7 @@ final class MySecureCodingAttachable: NSObject, NSSecureCoding, Attachable, Send
   }
 }
 
+#if !SWT_NO_CODABLE
 final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCoding, Attachable, Sendable {
   let string: String
 
@@ -1186,6 +1191,7 @@ final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCodin
     string = (coder.decodeObject(of: NSString.self, forKey: "string") as? String) ?? ""
   }
 }
+#endif
 #endif
 
 #if canImport(AppKit) && canImport(_Testing_AppKit)

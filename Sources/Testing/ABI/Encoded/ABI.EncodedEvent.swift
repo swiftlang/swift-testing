@@ -176,10 +176,12 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedEvent: Codable {}
 extension ABI.EncodedEvent.Kind: Codable {}
+#endif
 
 // MARK: - Conversion to/from library types
 

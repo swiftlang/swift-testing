@@ -8,13 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
+#if !SWT_NO_ABI_ENTRY_POINT
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
-
-#if canImport(Foundation)
-private import Foundation
-#endif
 
 #if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
 import Synchronization
@@ -144,7 +140,6 @@ struct ABIEntryPointTests {
     return try await abiEntryPoint(.init(argumentsJSON), recordHandler)
   }
 
-#if canImport(Foundation)
   @Test func decodeEmptyConfiguration() throws {
     let emptyBuffer = UnsafeRawBufferPointer(start: nil, count: 0)
     #expect(throws: DecodingError.self) {
@@ -184,7 +179,6 @@ struct ABIEntryPointTests {
       }
     }
   }
-#endif
 
   @Test(arguments: [
     (VersionNumber(-1, 0), "-1"),

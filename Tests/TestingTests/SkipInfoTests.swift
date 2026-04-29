@@ -29,7 +29,7 @@ struct SkipInfoTests {
     #expect(skipInfo.sourceLocation == sourceLocation2)
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
   @Test(
     "Decode from event",
     arguments: [

@@ -58,6 +58,7 @@ extension ABI.Record {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.Record: Codable {
@@ -121,3 +122,4 @@ extension ABI.Record: Codable {
     }
   }
 }
+#endif

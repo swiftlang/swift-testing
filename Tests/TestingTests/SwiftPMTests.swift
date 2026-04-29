@@ -11,15 +11,12 @@
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
-#if canImport(Foundation)
-private import Foundation
-#endif
-
 private func configurationForEntryPoint(withArguments args: [String]) throws -> Configuration {
   let args = try parseCommandLineArguments(from: args)
   return try configurationForEntryPoint(from: args)
 }
 
+#if !SWT_NO_CODABLE
 /// Reads event stream output from the provided file matching event stream
 /// version `V`.
 private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String) throws -> [ABI.Record<V>] {
@@ -31,6 +28,7 @@ private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String
       }
     }
 }
+#endif
 
 @Suite("Swift Package Manager Integration Tests")
 struct SwiftPMTests {
@@ -230,7 +228,6 @@ struct SwiftPMTests {
     #expect(fileContents.contains(UInt8(ascii: ">")))
   }
 
-#if canImport(Foundation)
   @Test("--configuration-path argument", arguments: [
     "--configuration-path", "--experimental-configuration-path",
   ])
@@ -328,6 +325,7 @@ struct SwiftPMTests {
   }
 #endif
 
+#if !SWT_NO_CODABLE
   @Test("Severity and isFailure fields included in version 6.3")
   func validateEventStreamContents() async throws {
     let tempDirPath = try temporaryDirectory()

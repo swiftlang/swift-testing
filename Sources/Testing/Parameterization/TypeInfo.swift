@@ -449,6 +449,7 @@ extension TypeInfo: Hashable {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension TypeInfo: Codable {
@@ -479,6 +480,7 @@ extension TypeInfo: Codable {
 }
 
 extension TypeInfo.EncodedForm: Codable {}
+#endif
 
 // MARK: - Custom casts
 

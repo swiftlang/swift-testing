@@ -112,10 +112,12 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedIssue: Codable {}
 extension ABI.EncodedIssue.Severity: Codable {}
+#endif
 
 // MARK: - Conversion to/from library types
 

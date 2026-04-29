@@ -29,6 +29,9 @@ private import CrashReporterSupport // NOTE: depends on Core Foundation!
 #if SWT_NO_PROCESS_SPAWNING
 #error("Platform-specific misconfiguration: support for exit tests requires support for process spawning")
 #endif
+#if SWT_NO_CODABLE
+#error("Platform-specific misconfiguration: support for exit tests requires support for 'Codable'")
+#endif
 #endif
 
 /// A type describing an exit test.
@@ -57,7 +60,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// time. Instances of this type are only guaranteed to be decodable by the
   /// same version of the testing library that encoded them.
   @_spi(ForToolsIntegrationOnly)
-  public struct ID: Sendable, Equatable, Codable {
+  public struct ID: Sendable, Equatable {
     /// Storage for the underlying bits of the ID.
     ///
     /// - Note: On Apple platforms, we deploy to OS versions that do not include
@@ -155,6 +158,12 @@ public struct ExitTest: Sendable, ~Copyable {
 }
 
 #if !SWT_NO_EXIT_TESTS
+#if !SWT_NO_CODABLE
+// MARK: - Codable
+
+extension ExitTest.ID: Codable {}
+#endif
+
 // MARK: - Current
 
 extension ExitTest {
