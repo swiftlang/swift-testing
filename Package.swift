@@ -364,6 +364,11 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     if buildingForEmbedded {
       result.append(.enableExperimentalFeature("Embedded"))
+
+      // Swift's concurrency module is not implicitly imported when building for
+      // Embedded, so we must explicitly import it since this project uses
+      // async and other concurrency-related language features.
+      result.append(.unsafeFlags(["-Xfrontend", "-import-module", "-Xfrontend", "_Concurrency"]))
     }
 
     // Define a compiler condition so we can discover at macro expansion time if
@@ -425,7 +430,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static func enableLibraryEvolution(_ condition: BuildSettingCondition? = nil) -> Self {
     var result = [PackageDescription.SwiftSetting]()
 
-    if buildingForDevelopment {
+    if buildingForDevelopment && !buildingForEmbedded {
       result.append(.unsafeFlags(["-enable-library-evolution"], condition))
     }
 
