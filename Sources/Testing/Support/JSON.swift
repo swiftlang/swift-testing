@@ -8,24 +8,22 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_CODABLE
 #if canImport(Foundation)
 private import Foundation
-#endif
-
-#if !SWT_NO_CODABLE
-#if !canImport(Foundation)
+#else
 #error("Platform-specific misconfiguration: support for JSON encoding and decoding requires the 'Foundation' module")
 #endif
 #endif
 
 enum JSON {
+#if !SWT_NO_CODABLE
   /// Whether or not pretty-printed JSON is enabled for this process.
   ///
   /// This is a debugging tool that can be used by developers working on the
   /// testing library to improve the readability of JSON output.
   private static let _prettyPrintingEnabled = Environment.flag(named: "SWT_PRETTY_PRINT_JSON") == true
 
-#if !SWT_NO_CODABLE
   /// Encode a value as JSON.
   ///
   /// - Parameters:
