@@ -9,7 +9,8 @@
 //
 
 #if canImport(Foundation)
-private import Foundation // for Data (Base64 and file mapping)
+private import struct Foundation.Data
+private import struct Foundation.URL
 #endif
 
 extension ABI {

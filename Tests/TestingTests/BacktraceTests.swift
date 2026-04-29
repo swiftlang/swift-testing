@@ -10,7 +10,7 @@
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 #if SWT_TARGET_OS_APPLE && canImport(Foundation)
-import Foundation // for NSError
+private import class Foundation.NSError
 #endif
 
 struct BacktracedError: Error {}
