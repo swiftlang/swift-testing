@@ -287,7 +287,7 @@ struct EventHandlingInteropTests {
       try Self.handlerContents.withLock {
         let contents = try #require(
           $0, "Fallback should have been called with non nil contents")
-        let recordData = try #require(contents.record?.utf8CString)
+        let recordData = try #require(contents.record.map(\.utf8).map(Array.init))
         let record = try recordData.withUnsafeBytes { recordData in
           try JSON.decode(ABI.Record<ABI.v6_3>.self, from: recordData)
         }
