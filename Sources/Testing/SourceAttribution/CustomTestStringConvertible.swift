@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A protocol describing types with a custom string representation when
 /// presented as part of a test's output.
 ///
@@ -34,6 +36,7 @@ extension String {
   /// - ``CustomTestStringConvertible``
   @_unavailableInEmbedded
   public init(describingForTest value: some Any) {
+#if !hasFeature(Embedded)
     // The mangled type name SPI doesn't handle generic types very well, so we
     // ask for the dynamic type of `value` (type(of:)) instead of just T.self.
     lazy var valueTypeInfo = TypeInfo(describingTypeOf: value)
@@ -62,6 +65,9 @@ extension String {
       // Use the generic description of the value.
       self.init(describing: value)
     }
+#else
+    swt_unreachable()
+#endif
   }
 
 #if hasFeature(Embedded)
@@ -75,6 +81,22 @@ extension String {
   /// - ``CustomTestStringConvertible``
   public init(describingForTest value: some CustomTestStringConvertible) {
     self = value.testDescription
+  }
+
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  @_disfavoredOverload
+  @available(*, deprecated, message: "String representations of arbitrary values are not supported in Embedded Swift")
+  @usableFromInline
+  init(describingForTest value: borrowing some ~Copyable & ~Escapable) {
+    // FIXME: need some sort of description functionality for arbitrary values
+    self = "<unknown value>"
   }
 
   /// Initialize this instance so that it can be presented in a test's output.
