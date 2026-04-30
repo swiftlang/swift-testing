@@ -83,8 +83,9 @@ extension Trait where Self == Bug {
   ///   - title: Optionally, the human-readable title of the bug.
   ///
   /// - Returns: An instance of ``Bug`` that represents the specified bug.
+  @_unavailableInEmbedded
   public static func bug(_ url: _const String? = nil, id: some Numeric, _ title: Comment? = nil) -> Self {
-    Self(url: url, id: String(describing: id), title: title)
+    Self(url: url, id: String(describingForTest: id), title: title)
   }
 
   /// Constructs a bug to track with a test.

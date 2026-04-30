@@ -32,6 +32,7 @@ extension String {
   /// ## See Also
   ///
   /// - ``CustomTestStringConvertible``
+  @_unavailableInEmbedded
   public init(describingForTest value: some Any) {
     // The mangled type name SPI doesn't handle generic types very well, so we
     // ask for the dynamic type of `value` (type(of:)) instead of just T.self.
@@ -62,6 +63,38 @@ extension String {
       self.init(describing: value)
     }
   }
+
+#if hasFeature(Embedded)
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  public init(describingForTest value: some CustomTestStringConvertible) {
+    self = value.testDescription
+  }
+
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  init(describingForTest value: (some ~Copyable & ~Escapable).Type) {
+    // FIXME: need some sort of description functionality for types
+    self = "<unknown type>"
+  }
+
+  init(describingForTest value: any Error) {
+    // FIXME: need some sort of description functionality for errors
+    self = "<unknown error>"
+  }
+#endif
 }
 
 // MARK: - Built-in implementations
