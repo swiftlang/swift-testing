@@ -323,7 +323,7 @@ struct MiscellaneousTests {
   @Test func `Suite type with raw identifier gets a display name`() throws {
     struct `Suite With De Facto Display Name` {}
     let typeInfo = TypeInfo(describing: `Suite With De Facto Display Name`.self)
-    let suite = Test(traits: [], sourceLocation: #_sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+    let suite = Test(traits: [], sourceLocation: #_sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true, isPolymorphic: false)
     #expect(suite.name == "`Suite With De Facto Display Name`")
     let displayName = try #require(suite.displayName)
     #expect(displayName == "Suite With De Facto Display Name")

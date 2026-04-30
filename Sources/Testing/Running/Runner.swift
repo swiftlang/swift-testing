@@ -175,7 +175,7 @@ extension Runner {
   ///   - body: The function to invoke.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  private static func _forEach<E>(
+  private nonisolated(nonsending) static func _forEach<E>(
     in sequence: some Sequence<E>,
     namingTasksWith taskNamer: (borrowing E) -> (taskName: String, action: String?)?,
     _ body: @Sendable @escaping (borrowing E) async throws -> Void
@@ -404,27 +404,29 @@ extension Runner {
   private static func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step, context: _Context) async {
     let configuration = _configuration
 
-    // Apply the configuration's test case filter.
-    let testCaseFilter = configuration.testCaseFilter
-    let testCases = testCases.lazy.filter { testCase in
-      testCaseFilter(testCase, step.test)
-    }
+    await withCurrentPolymorphicSubclassIfNeeded(for: step.test) {
+      // Apply the configuration's test case filter.
+      let testCaseFilter = configuration.testCaseFilter
+      let testCases = testCases.lazy.filter { testCase in
+        testCaseFilter(testCase, step.test)
+      }
 
-    // Figure out how to name child tasks.
-    let testName = "test \(step.test.humanReadableName())"
-    let taskNamer: (Int, Test.Case) -> (String, String?)? = if step.test.isParameterized {
-      { i, _ in (testName, "running test case #\(i + 1)") }
-    } else {
-      { _, _ in (testName, "running") }
-    }
-
-    await _forEach(in: testCases.enumerated(), namingTasksWith: taskNamer) { _, testCase in
-      if let testCaseSerializer = context.testCaseSerializer {
-        // Note that if .serialized is applied to an inner scope, we still use
-        // this serializer (if set) so that we don't overcommit.
-        await testCaseSerializer.run { await _runTestCase(testCase, within: step, context: context) }
+      // Figure out how to name child tasks.
+      let testName = "test \(step.test.humanReadableName())"
+      let taskNamer: (Int, Test.Case) -> (String, String?)? = if step.test.isParameterized {
+        { i, _ in (testName, "running test case #\(i + 1)") }
       } else {
-        await _runTestCase(testCase, within: step, context: context)
+        { _, _ in (testName, "running") }
+      }
+
+      await _forEach(in: testCases.enumerated(), namingTasksWith: taskNamer) { _, testCase in
+        if let testCaseSerializer = context.testCaseSerializer {
+          // Note that if .serialized is applied to an inner scope, we still use
+          // this serializer (if set) so that we don't overcommit.
+          await testCaseSerializer.run { await _runTestCase(testCase, within: step, context: context) }
+        } else {
+          await _runTestCase(testCase, within: step, context: context)
+        }
       }
     }
   }

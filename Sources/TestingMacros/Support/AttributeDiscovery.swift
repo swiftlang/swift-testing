@@ -178,6 +178,11 @@ struct AttributeInfo {
 
     arguments.append(Argument(label: "sourceBounds", expression: sourceBounds))
 
+    if let declaration = declaration.asProtocol((any WithAttributesSyntax).self),
+       !declaration.attributes(named: "polymorphic").isEmpty {
+      arguments.append(Argument(label: "isPolymorphic", expression: BooleanLiteralExprSyntax(true)))
+    }
+
     return LabeledExprListSyntax(arguments)
   }
 }
