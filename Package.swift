@@ -154,6 +154,7 @@ let package = Package(
         "_Testing_AppKit",
         "_Testing_CoreGraphics",
         "_Testing_CoreImage",
+        "_Testing_CoreTransferable",
         "_Testing_Foundation",
         "_Testing_UIKit",
         "_Testing_WinSDK",
@@ -257,6 +258,15 @@ let package = Package(
       swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreImage")
     ),
     .target(
+      name: "_Testing_CoreTransferable",
+      dependencies: [
+        "Testing",
+      ],
+      path: "Sources/Overlays/_Testing_CoreTransferable",
+      exclude: ["CMakeLists.txt"],
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreTransferable")
+    ),
+    .target(
       name: "_Testing_Foundation",
       dependencies: [
         "_TestingInternals",
@@ -354,6 +364,11 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     if buildingForEmbedded {
       result.append(.enableExperimentalFeature("Embedded"))
+
+      // Swift's concurrency module is not implicitly imported when building for
+      // Embedded, so we must explicitly import it since this project uses
+      // async and other concurrency-related language features.
+      result.append(.unsafeFlags(["-Xfrontend", "-import-module", "-Xfrontend", "_Concurrency"]))
     }
 
     // Define a compiler condition so we can discover at macro expansion time if
@@ -399,6 +414,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("AvailabilityMacro=_uttypesAPI:macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0"),
       .enableExperimentalFeature("AvailabilityMacro=_clockAPI:macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0"),
       .enableExperimentalFeature("AvailabilityMacro=_typedThrowsAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_transferableAPI:macOS 15.2, iOS 18.2, watchOS 11.2, tvOS 18.2, visionOS 2.2"),
       .enableExperimentalFeature("AvailabilityMacro=_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
 
       .enableExperimentalFeature("AvailabilityMacro=_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0"),
@@ -414,7 +430,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static func enableLibraryEvolution(_ condition: BuildSettingCondition? = nil) -> Self {
     var result = [PackageDescription.SwiftSetting]()
 
-    if buildingForDevelopment {
+    if buildingForDevelopment && !buildingForEmbedded {
       result.append(.unsafeFlags(["-enable-library-evolution"], condition))
     }
 
@@ -500,6 +516,9 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .nonApplePlatforms, embedded: true),
       "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
       "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
+      "SWT_NO_ABI_ENTRY_POINT": (platforms: .none, embedded: true),
+      "SWT_NO_CODABLE": (platforms: .none, embedded: true),
+      "SWT_NO_INTEROP": (platforms: .none, embedded: true),
 
       "SWT_NO_LEGACY_TEST_DISCOVERY": (platforms: .none, embedded: true),
       "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),

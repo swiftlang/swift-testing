@@ -82,7 +82,9 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedMessage: Codable {}
 extension ABI.EncodedMessage.Symbol: Codable {}
+#endif

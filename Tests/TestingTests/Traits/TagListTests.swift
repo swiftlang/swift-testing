@@ -11,10 +11,6 @@
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
-#if canImport(Foundation)
-private import Foundation
-#endif
-
 @Suite("Tag/Tag List Tests", .tags(.traitRelated))
 struct TagListTests {
   @Test(".tags() factory method with one tag")
@@ -102,7 +98,7 @@ struct TagListTests {
     #expect(Tag(userProvidedStringValue: ".red") == .red)
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
   @Test("Encoding/decoding tags")
   func encodeAndDecodeTags() throws {
     let array: [Tag] = [.red, .orange, Tag("abc123"), Tag(".abc123")]

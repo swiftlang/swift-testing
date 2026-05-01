@@ -176,7 +176,71 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedEvent: Codable {}
 extension ABI.EncodedEvent.Kind: Codable {}
+#endif
+
+// MARK: - Conversion to/from library types
+
+@_spi(ForToolsIntegrationOnly)
+extension Event {
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - event: The encoded event to initialize this instance from.
+  ///
+  /// ``testID`` and ``testCaseID`` are always `nil` because we need information
+  /// from the associated `ABI.EncodedTest` to properly decode those values.
+  public init?<V>(decoding event: ABI.EncodedEvent<V>) {
+    // SkipInfo will only be decoded for skip/cancel event kinds
+    lazy var skipInfo = SkipInfo(decoding: event)
+
+    let kind: Kind
+    switch event.kind {
+    case .runStarted:
+      kind = .runStarted
+    case .testStarted:
+      kind = .testStarted
+    case .testCaseStarted:
+      kind = .testCaseStarted
+    case .issueRecorded:
+      guard let issue = Issue(decoding: event) else {
+        return nil
+      }
+      kind = .issueRecorded(issue)
+    case .valueAttached:
+      guard let attachment = Attachment<AnyAttachable>(decoding: event) else {
+        return nil
+      }
+      kind = .valueAttached(attachment)
+    case .testCaseEnded:
+      kind = .testCaseEnded
+    case .testCaseCancelled:
+      guard let skipInfo else {
+        return nil
+      }
+      kind = .testCaseCancelled(skipInfo)
+    case .testEnded:
+      kind = .testEnded
+    case .testSkipped:
+      guard let skipInfo else {
+        return nil
+      }
+      kind = .testSkipped(skipInfo)
+    case .testCancelled:
+      guard let skipInfo else {
+        return nil
+      }
+      kind = .testCancelled(skipInfo)
+    case .runEnded:
+      kind = .runEnded
+    }
+
+    guard let instant = Test.Clock.Instant(decoding: event.instant) else { return nil }
+
+    self.init(kind, testID: nil, testCaseID: nil, instant: instant)
+  }
+}

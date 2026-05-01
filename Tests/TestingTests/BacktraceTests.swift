@@ -10,7 +10,7 @@
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 #if SWT_TARGET_OS_APPLE && canImport(Foundation)
-import Foundation
+private import class Foundation.NSError
 #endif
 
 struct BacktracedError: Error {}
@@ -141,7 +141,7 @@ struct BacktraceTests {
     #expect(Backtrace(forFirstThrowOf: BacktracedError()) == nil)
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
   @Test("Encoding/decoding")
   func encodingAndDecoding() throws {
     let original = Backtrace.current()

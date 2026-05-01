@@ -65,6 +65,7 @@ extension Test.Case.ID: CustomStringConvertible {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension Test.Case.ID: Codable {
@@ -82,6 +83,7 @@ extension Test.Case.ID: Codable {
     case isStable
   }
 }
+#endif
 
 // MARK: - Equatable, Hashable
 

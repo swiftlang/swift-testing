@@ -44,16 +44,6 @@ public struct Backtrace: Sendable {
     self.addresses = addresses.map { Address(UInt(bitPattern: $0)) }
   }
 
-#if os(Android) && !SWT_NO_DYNAMIC_LINKING
-  /// The `backtrace()` function.
-  ///
-  /// This function was added to Android with API level 33, which is higher than
-  /// our minimum deployment target, so we look it up dynamically at runtime.
-  private static let _backtrace = symbol(named: "backtrace").map {
-    castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<UnsafeMutableRawPointer?>, CInt) -> CInt).self)
-  }
-#endif
-
   /// Get the current backtrace.
   ///
   /// - Parameters:
@@ -76,11 +66,11 @@ public struct Backtrace: Sendable {
 #if SWT_TARGET_OS_APPLE
       initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
 #elseif os(Android)
-#if !SWT_NO_DYNAMIC_LINKING
-      if let _backtrace {
-        initializedCount = .init(clamping: _backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
+      if #available(Android 33, *) {
+        initializedCount = addresses.withMemoryRebound(to: UnsafeMutableRawPointer.self) { addresses in
+          .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
+        }
       }
-#endif
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD)
       initializedCount = .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
 #elseif os(Windows)
@@ -112,6 +102,7 @@ public struct Backtrace: Sendable {
 
 extension Backtrace: Equatable, Hashable {}
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 // Explicitly implement Codable support by encoding and decoding the addresses
@@ -127,6 +118,7 @@ extension Backtrace: Codable {
     try addresses.encode(to: encoder)
   }
 }
+#endif
 
 // MARK: - Backtraces for thrown errors
 

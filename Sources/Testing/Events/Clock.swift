@@ -24,7 +24,7 @@ extension Test {
       fileprivate(set) var suspending = TimeValue(rawValue: SuspendingClock().systemEpoch.duration(to: .now))
 
 #if !SWT_NO_UTC_CLOCK
-      /// The wall-clock time corresponding to this instant.
+      /// The wall-clock time since 1970 corresponding to this instant.
       fileprivate(set) var wall: TimeValue = {
 #if !SWT_NO_TIMESPEC
         var wall = timespec()
@@ -64,6 +64,24 @@ extension SuspendingClock.Instant {
   ///   - testClockInstant: The equivalent instant on ``Test/Clock``.
   public init(_ testClockInstant: Test.Clock.Instant) {
     self = SuspendingClock().systemEpoch + testClockInstant.suspending.rawValue
+  }
+}
+
+@_spi(ForToolsIntegrationOnly)
+extension Test.Clock.Instant {
+  /// Initialize this instant to be exactly equal to an instant from the testing
+  /// library's event stream.
+  ///
+  /// - Note: When the original instant is encoded to the event stream,
+  /// it loses some precision.
+  ///
+  /// - Parameters:
+  ///   - instant: The encoded instant to initialize this instant from.
+  public init?<V>(decoding instant: ABI.EncodedInstant<V>) {
+    suspending = TimeValue(rawValue: .seconds(instant.absolute))
+#if !SWT_NO_UTC_CLOCK
+    wall = TimeValue(rawValue: .seconds(instant.since1970))
+#endif
   }
 }
 

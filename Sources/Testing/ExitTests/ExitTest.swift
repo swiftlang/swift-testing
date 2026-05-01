@@ -29,6 +29,9 @@ private import CrashReporterSupport // NOTE: depends on Core Foundation!
 #if SWT_NO_PROCESS_SPAWNING
 #error("Platform-specific misconfiguration: support for exit tests requires support for process spawning")
 #endif
+#if SWT_NO_CODABLE
+#error("Platform-specific misconfiguration: support for exit tests requires support for 'Codable'")
+#endif
 #endif
 
 /// A type describing an exit test.
@@ -57,7 +60,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// time. Instances of this type are only guaranteed to be decodable by the
   /// same version of the testing library that encoded them.
   @_spi(ForToolsIntegrationOnly)
-  public struct ID: Sendable, Equatable, Codable {
+  public struct ID: Sendable, Equatable {
     /// Storage for the underlying bits of the ID.
     ///
     /// - Note: On Apple platforms, we deploy to OS versions that do not include
@@ -155,6 +158,12 @@ public struct ExitTest: Sendable, ~Copyable {
 }
 
 #if !SWT_NO_EXIT_TESTS
+#if !SWT_NO_CODABLE
+// MARK: - Codable
+
+extension ExitTest.ID: Codable {}
+#endif
+
 // MARK: - Current
 
 extension ExitTest {
@@ -600,7 +609,7 @@ extension ExitTest {
     let firstBarrierByte = barrierValue[0]
 
     // If the buffer is too small to contain the barrier value, exit early.
-    guard buffer.count > barrierValue.count else {
+    guard buffer.count >= barrierValue.count else {
       return buffer
     }
 
@@ -878,6 +887,20 @@ extension ExitTest {
       // platform-specific changes.
       var childEnvironment = Environment.get()
 #if SWT_TARGET_OS_APPLE
+      // If XCTest is hosting tests in an app, it uses DYLD_INSERT_LIBRARIES to
+      // inject its startup code, then strips the injected library path from the
+      // environment variable so as not to affect child processes. We want to
+      // add it back in!
+      if let bundleInjectPath = childEnvironment["XCTestBundleInjectPath"] {
+        let newValue = if let oldValue = childEnvironment["DYLD_INSERT_LIBRARIES"] {
+          "\(oldValue):\(bundleInjectPath)"
+        } else {
+          bundleInjectPath
+        }
+        childEnvironment["DYLD_INSERT_LIBRARIES"] = newValue
+        childEnvironment.removeValue(forKey: "XCTestBundleInjectPath")
+      }
+
       // We need to remove the XCTest-related environment variables set by Xcode,
       // except those known to be safe and relevant, from the child environment
       // to avoid accidentally recursing.
@@ -1053,30 +1076,32 @@ extension ExitTest {
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
-    guard case let .event(event) = record.kind else {
+    guard case let .event(encodedEvent) = record.kind,
+      let event = Event(decoding: encodedEvent)
+    else {
       return
     }
 
     // Translate the event back into a "real" event (such as "issue recorded")
     // and post it in the parent process. This translation is, of course, lossy
     // due to the process boundary, but we make a best effort.
-    if var issue = Issue(decoding: event) {
-      // A backtrace from the child process will have the wrong address space,
-      // so remove the backtrace if present before recording it.
+    //
+    // Events containing a backtrace from the child process will have the wrong
+    // address space, so remove the backtrace if present before recording it.
+
+    switch event.kind {
+    case .issueRecorded(var issue):
       issue.sourceContext.backtrace = nil
       issue.record()
-    } else if let attachment = Attachment(decoding: event) {
+    case .valueAttached(let attachment):
       Attachment.record(attachment, sourceLocation: attachment.sourceLocation)
-    } else if case .testCancelled = event.kind {
-      let comment = event._comments?.lazy
-        .map(Comment.init(rawValue:))
-        .first
-      let sourceContext = SourceContext(
-        backtrace: nil, // A backtrace from the child process will have the wrong address space.
-        sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)
-      )
-      let skipInfo = SkipInfo(comment: comment, sourceContext: sourceContext)
+    case .testCancelled(var skipInfo), .testCaseCancelled(var skipInfo), .testSkipped(var skipInfo):
+      // In practice, an exit test won't receive .testSkipped events because
+      // they would happen before the exit test body starts running.
+      skipInfo.sourceContext.backtrace = nil
       _ = try? Test.cancel(with: skipInfo)
+    default:
+      break
     }
   }
 

@@ -108,6 +108,7 @@ extension ABI.VersionNumber: Equatable, Comparable {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.VersionNumber: Codable {
@@ -156,3 +157,4 @@ extension ABI.VersionNumber: Codable {
     self = try JSON.decode(MinimalRecord.self, from: recordJSON).version
   }
 }
+#endif

@@ -462,6 +462,9 @@ extension Runner.Plan {
   }
 }
 
+#if !SWT_NO_CODABLE
+// MARK: - Codable
+
 extension Runner.Plan.Action.RunOptions: Codable {
   private enum CodingKeys: CodingKey {
     case isParallelizationEnabled
@@ -484,6 +487,7 @@ extension Runner.Plan.Action.RunOptions: Codable {
     try container.encode(false, forKey: .isParallelizationEnabled)
   }
 }
+#endif
 
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting

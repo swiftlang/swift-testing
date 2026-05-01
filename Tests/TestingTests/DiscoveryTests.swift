@@ -10,9 +10,6 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _TestDiscovery
-#if canImport(Foundation)
-private import Foundation
-#endif
 
 @Suite("Runtime Test Discovery Tests")
 struct DiscoveryTests {
@@ -30,13 +27,14 @@ struct DiscoveryTests {
     #expect(String(describing: kind3).lowercased() == "0xff123456")
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
   @Test func testContentKindCodableConformance() throws {
     let kind1: TestContentKind = "moof"
-    let data = try JSONEncoder().encode(kind1)
-    let uint32 = try JSONDecoder().decode(UInt32.self, from: data)
-    let kind2 = try JSONDecoder().decode(TestContentKind.self, from: data)
-    #expect(uint32 == kind2.rawValue)
+    try JSON.withEncoding(of: kind1) { data in
+      let uint32 = try JSON.decode(UInt32.self, from: data)
+      let kind2 = try JSON.decode(TestContentKind.self, from: data)
+      #expect(uint32 == kind2.rawValue)
+    }
   }
 #endif
 

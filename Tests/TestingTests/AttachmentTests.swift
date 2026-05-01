@@ -26,6 +26,10 @@ import CoreGraphics
 import CoreImage
 import _Testing_CoreImage
 #endif
+#if canImport(CoreTransferable) && canImport(_Testing_CoreTransferable)
+import CoreTransferable
+@_spi(Experimental) import _Testing_CoreTransferable
+#endif
 #if canImport(UIKit) && canImport(_Testing_UIKit)
 import UIKit
 import _Testing_UIKit
@@ -258,7 +262,7 @@ struct AttachmentTests {
 
         #expect((attachment.attachableValue as Any) is AnyAttachable.Wrapped)
         #expect(attachment.sourceLocation.fileID == #fileID)
-       valueAttached()
+        valueAttached()
       }
 
       await Test {
@@ -383,6 +387,7 @@ struct AttachmentTests {
   }
 #endif
 
+#if !SWT_NO_CODABLE
   struct CodableAttachmentArguments: Sendable, CustomTestArgumentEncodable, CustomTestStringConvertible {
     var forSecureCoding: Bool
     var pathExtension: String?
@@ -483,6 +488,46 @@ struct AttachmentTests {
     let attachment = Attachment(attachableValue, named: "loremipsum.gif")
     #expect(throws: CocoaError.self) {
       try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
+    }
+  }
+#endif
+#endif
+
+#if canImport(CoreTransferable) && canImport(_Testing_CoreTransferable)
+  @available(_transferableAPI, *)
+  @Test("Attach Transferable-conformant value")
+  func transferable() async throws {
+    let value = MyTransferable()
+    let attachment = try await Attachment(exporting: value, as: .plainText)
+    #expect(value == attachment.attachableValue)
+    try attachment.withUnsafeBytes { bytes in
+      #expect(Array(bytes) == Array(MyTransferable.stringValue.utf8))
+    }
+  }
+
+  @available(_transferableAPI, *)
+  @Test("Attach Transferable-conformant value with a nonsensical type")
+  func transferableWithNonsensicalType() async throws {
+    let value = MyTransferable()
+    await #expect(throws: (any Error).self) {
+      _ = try await Attachment(exporting: value, as: .gif)
+    }
+  }
+
+  @available(_transferableAPI, *)
+  @Test("Preferred name of Transferable-conformant value")
+  func transferablePreferredName() async throws {
+    let value = MyTransferable()
+    let attachment = try await Attachment(exporting: value)
+    #expect(attachment.preferredName == "untitled.txt")
+  }
+
+  @available(_transferableAPI, *)
+  @Test("Attach Transferable-conformant value with no available type")
+  func transferableWithNoAvailableType() async throws {
+    let value = MyBadTransferable()
+    await #expect(throws: (any Error).self) {
+      _ = try await Attachment(exporting: value)
     }
   }
 #endif
@@ -948,7 +993,7 @@ extension AttachmentTests {
 #endif
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
 #if !SWT_NO_FILE_IO
   @Test("Decoding an encoded attachment with path")
   func decodingAnEncodedAttachmentWithPath() throws {
@@ -1083,10 +1128,32 @@ struct MySendableAttachableWithDefaultByteCount: Attachable, Sendable {
   }
 }
 
+#if canImport(CoreTransferable) && canImport(_Testing_CoreTransferable)
+struct MyTransferable: Transferable, Equatable {
+  static let stringValue = "This isn't even my exported form!"
+
+  static var transferRepresentation: some TransferRepresentation {
+    DataRepresentation(exportedContentType: .plainText) { instance in
+      Data(Self.stringValue.utf8)
+    }
+  }
+}
+
+struct MyBadTransferable: Transferable, Equatable {
+  static var transferRepresentation: some TransferRepresentation {
+    DataRepresentation(exportedContentType: .directory) { _ in
+      throw MyError()
+    }
+  }
+}
+#endif
+
 #if canImport(Foundation) && canImport(_Testing_Foundation)
+#if !SWT_NO_CODABLE
 struct MyCodableAttachable: Codable, Attachable, Sendable {
   var string: String
 }
+#endif
 
 final class MySecureCodingAttachable: NSObject, NSSecureCoding, Attachable, Sendable {
   let string: String
@@ -1108,6 +1175,7 @@ final class MySecureCodingAttachable: NSObject, NSSecureCoding, Attachable, Send
   }
 }
 
+#if !SWT_NO_CODABLE
 final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCoding, Attachable, Sendable {
   let string: String
 
@@ -1123,6 +1191,7 @@ final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCodin
     string = (coder.decodeObject(of: NSString.self, forKey: "string") as? String) ?? ""
   }
 }
+#endif
 #endif
 
 #if canImport(AppKit) && canImport(_Testing_AppKit)

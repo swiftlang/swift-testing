@@ -415,11 +415,13 @@ public struct __Expression: Sendable {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension __Expression: Codable {}
 extension __Expression.Kind: Codable {}
 extension __Expression.Value: Codable {}
+#endif
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 

@@ -60,6 +60,8 @@ extension SuspendingClock.Instant {
 
 // Date.init(decoding:) is in the Foundation overlay.
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedInstant: Codable {}
+#endif

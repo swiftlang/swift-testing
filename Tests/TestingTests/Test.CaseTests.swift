@@ -10,10 +10,6 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if canImport(Foundation)
-private import Foundation
-#endif
-
 @Suite("Test.Case Tests")
 struct Test_CaseTests {
   @Test func nonParameterized() throws {
@@ -43,6 +39,7 @@ struct Test_CaseTests {
     #expect(testCase.id.isStable)
   }
 
+#if !SWT_NO_CODABLE
   @Test("Two arguments: one non-stable, followed by one stable")
   func nonStableAndStableArgument() throws {
     let testCase = Test.Case(
@@ -58,7 +55,6 @@ struct Test_CaseTests {
 
   @Suite("Test.Case.ID Tests")
   struct IDTests {
-#if canImport(Foundation)
     @Test(arguments: [
       Test.Case.ID(argumentIDs: nil, discriminator: nil, isStable: true),
       Test.Case.ID(argumentIDs: [.init(bytes: "x".utf8)], discriminator: 0, isStable: false),
@@ -69,15 +65,17 @@ struct Test_CaseTests {
     }
 
     @Test func decoding_nonParameterized() throws {
-      let encodedData = Data(#"{"isStable": true}"#.utf8)
-      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData)
+      let encodedData = Array(#"{"isStable": true}"#.utf8)
+      let testCaseID = try encodedData.withUnsafeBytes { encodedData in
+        try JSON.decode(Test.Case.ID.self, from: encodedData)
+      }
       #expect(testCaseID.isStable)
       #expect(testCaseID.argumentIDs == nil)
       #expect(testCaseID.discriminator == nil)
     }
 
     @Test func decoding_parameterizedStable() throws {
-      let encodedData = Data("""
+      let encodedData = Array("""
         {
           "isStable": true,
           "argIDs": [
@@ -86,17 +84,20 @@ struct Test_CaseTests {
           "discriminator": 0
         }
         """.utf8)
-      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData)
+      let testCaseID = try encodedData.withUnsafeBytes { encodedData in
+        try JSON.decode(Test.Case.ID.self, from: encodedData)
+      }
       #expect(testCaseID.isStable)
       #expect(testCaseID.argumentIDs?.count == 1)
       #expect(testCaseID.discriminator == 0)
     }
-#endif
   }
+#endif
 }
 
 // MARK: - Fixtures, helpers
 
+#if !SWT_NO_CODABLE
 private struct NonCodable {}
 
 private struct IssueRecordingEncodable: Encodable {
@@ -104,3 +105,4 @@ private struct IssueRecordingEncodable: Encodable {
     Issue.record("Unexpected attempt to encode an instance of \(Self.self)")
   }
 }
+#endif

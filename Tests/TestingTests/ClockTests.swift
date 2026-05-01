@@ -102,7 +102,7 @@ struct ClockTests {
     #expect(duration == .nanoseconds(offsetNanoseconds))
   }
 
-#if !SWT_NO_SNAPSHOT_TYPES && canImport(Foundation)
+#if !SWT_NO_SNAPSHOT_TYPES
   @Test("Codable")
   func codable() async throws {
     let now = Test.Clock.Instant()
@@ -112,4 +112,17 @@ struct ClockTests {
     #expect(instant != now)
   }
 #endif
+
+  @Test("Round trip Test.Clock.Instant <-> ABI.EncodedInstant")
+  func roundTrip() async throws {
+    let now = Test.Clock.Instant()
+    let encoded = ABI.EncodedInstant<ABI.CurrentVersion>(encoding: now)
+    let decoded = try #require(Test.Clock.Instant(decoding: encoded))
+
+    // Instant -> EncodedInstant loses some precision when converting from Duration -> Double
+    #expect(abs((now.suspending.rawValue - decoded.suspending.rawValue) / .seconds(1)) < 0.001)
+#if !SWT_NO_UTC_CLOCK
+    #expect(abs((now.durationSince1970 - decoded.durationSince1970) / .seconds(1)) < 0.001)
+#endif
+  }
 }

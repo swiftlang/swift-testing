@@ -10,11 +10,17 @@
 
 private import _TestingInternals
 
+#if !SWT_NO_INTEROP
+#if SWT_NO_CODABLE
+#error("Platform-specific misconfiguration: support for the fallback event handler (XCTest interop) requires support for 'Codable'")
+#endif
+#endif
+
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public enum Interop: Sendable {}
 
 extension Interop {
-  public enum Mode: String, Sendable, Codable, CaseIterable {
+  public enum Mode: String, Sendable, CaseIterable {
     /// The interop feature is not active.
     case none
 
@@ -81,8 +87,8 @@ extension Event {
   /// - Throws: Any error that prevented handling the encoded record.
   ///
   /// - Important: This function only handles a subset of event kinds.
-  static func handle<V>(_ recordJSON: UnsafeRawBufferPointer, encodedWith version: V.Type) throws
-  where V: ABI.Version {
+  static func handle<V>(_ recordJSON: UnsafeRawBufferPointer, encodedWith version: V.Type) throws where V: ABI.Version {
+#if !SWT_NO_INTEROP
     let record = try JSON.decode(ABI.Record<V>.self, from: recordJSON)
     guard case .event(let event) = record.kind,
       var issue = Issue(decoding: event)
@@ -118,6 +124,7 @@ extension Event {
         "\(xctestWarningMessage) This is a fatal error because strict interop mode is active (\(Interop.Mode.interopModeEnvKey)=strict)",
       )
     }
+#endif
   }
 
   /// Get the best available source location to use when diagnosing an issue
@@ -142,7 +149,7 @@ extension Event {
     return .unknown
   }
 
-  #if !SWT_NO_INTEROP
+#if !SWT_NO_INTEROP
   /// The fallback event handler to install when Swift Testing is the active
   /// testing library.
   private static let _ourFallbackEventHandler: SWTFallbackEventHandler = {
@@ -181,7 +188,7 @@ extension Event {
       ).record()
     }
   }
-  #endif
+#endif
 
   /// The implementation of ``installFallbackEventHandler()``.
   private static let _installFallbackEventHandler: Bool = {
@@ -218,14 +225,14 @@ extension Event {
   ///   currently-installed handler belongs to the testing library, returns
   ///   `false`.
   borrowing func postToFallbackEventHandler(in context: borrowing Context) -> Bool {
-    #if !SWT_NO_INTEROP
+#if !SWT_NO_INTEROP
     return Self._postToFallbackEventHandler?(self, context) != nil
-    #else
+#else
     return false
-    #endif
+#endif
   }
 
-  #if !SWT_NO_INTEROP
+#if !SWT_NO_INTEROP
   /// The implementation of ``postToFallbackEventHandler(in:)`` that actually
   /// invokes the installed fallback event handler.
   ///
@@ -257,5 +264,11 @@ extension Event {
       )
     }
   }()
-  #endif
+#endif
 }
+
+#if !SWT_NO_CODABLE
+// MARK: - Codable
+
+extension Interop.Mode: Codable {}
+#endif
