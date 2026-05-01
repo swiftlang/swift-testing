@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 #if canImport(Synchronization)
 private import Synchronization
 #endif
@@ -981,3 +982,4 @@ extension Event.AdvancedConsoleOutputRecorder {
     return nameParts.joined(separator: "/")
   }
 }
+#endif

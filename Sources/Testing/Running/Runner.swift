@@ -277,8 +277,10 @@ extension Runner {
   ///
   /// - ``Runner/run()``
   private static func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>, context: _Context) async throws {
+#if !hasFeature(Embedded)
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
+#endif
 
     if let step = stepGraph.value {
       let configuration = _configuration
@@ -289,8 +291,10 @@ extension Runner {
 
       await Test.withCurrent(step.test) {
         _ = await Issue.withErrorRecording(at: step.test.sourceLocation, configuration: configuration) {
+#if !hasFeature(Embedded)
           // Exit early if the task has already been cancelled.
           try Task.checkCancellation()
+#endif
 
           switch step.action {
           case .run:
@@ -449,8 +453,10 @@ extension Runner {
     await Test.Case.withCurrent(testCase) {
       let sourceLocation = step.test.sourceLocation
       await Issue.withErrorRecording(at: sourceLocation, configuration: configuration) {
+#if !hasFeature(Embedded)
         // Exit early if the task has already been cancelled.
         try Task.checkCancellation()
+#endif
 
         try await withTimeLimit(for: step.test, configuration: configuration) {
           try await _applyScopingTraits(for: step.test, testCase: testCase) {

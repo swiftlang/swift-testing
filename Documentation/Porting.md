@@ -119,8 +119,9 @@ Once the header is included, we can call `GetDateTime()` from `Clock.swift`:
 +  return TimeValue(rawValue: .seconds(seconds))
  #else
  #warning("Platform-specific implementation missing: UTC time unavailable (no timespec)")
+   return TimeValue(rawValue: .zero)
  #endif
- }
+ }()
 ```
 
 ## Runtime test discovery

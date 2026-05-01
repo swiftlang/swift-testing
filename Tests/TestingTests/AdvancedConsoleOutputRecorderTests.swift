@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 #if !SWT_TARGET_OS_APPLE && canImport(Synchronization)

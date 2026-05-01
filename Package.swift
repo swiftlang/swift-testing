@@ -137,8 +137,9 @@ let package = Package(
       dependencies: [
         "_TestDiscovery",
         "_TestingInternals",
-        "TestingMacros",
-      ],
+      ] + {
+        buildingForEmbedded ? [] : ["TestingMacros"]
+      }(),
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       cxxSettings: .packageSettings(),
       swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("Testing"),
@@ -517,8 +518,12 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
       "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
       "SWT_NO_ABI_ENTRY_POINT": (platforms: .none, embedded: true),
+      "SWT_NO_ABI_JSON_SCHEMA": (platforms: .none, embedded: true),
       "SWT_NO_CODABLE": (platforms: .none, embedded: true),
       "SWT_NO_INTEROP": (platforms: .none, embedded: true),
+      "SWT_NO_UNSTRUCTURED_TASKS": (platforms: .none, embedded: true),
+      "SWT_NO_GLOBAL_ACTORS": (platforms: .none, embedded: true),
+      "SWT_NO_SUSPENDING_CLOCK": (platforms: .none, embedded: true),
 
       "SWT_NO_LEGACY_TEST_DISCOVERY": (platforms: .none, embedded: true),
       "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),

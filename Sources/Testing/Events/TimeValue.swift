@@ -67,9 +67,7 @@ extension TimeValue: CustomStringConvertible {
     }
 
     return withUnsafeTemporaryAllocation(of: CChar.self, capacity: 512) { buffer in
-      withVaList([seconds, milliseconds]) { args in
-        _ = vsnprintf(buffer.baseAddress!, buffer.count, "%lld.%03d seconds", args)
-      }
+      swt_printTimeValue(buffer.baseAddress!, buffer.count, seconds, milliseconds)
       return String(cString: buffer.baseAddress!)
     }
   }

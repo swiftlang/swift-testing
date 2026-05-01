@@ -362,7 +362,7 @@ extension Event.HumanReadableOutputRecorder {
 
     // A helper function for displaying test durations.
     func descriptionOfDuration(from start: Test.Clock.Instant, to end: Test.Clock.Instant) -> String {
-      String(describing: TimeValue(rawValue: end.suspending.rawValue - start.suspending.rawValue))
+      String(describing: TimeValue(rawValue: start.duration(to: end)))
     }
 
     // Finally, produce any messages for the event.

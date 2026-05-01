@@ -149,7 +149,7 @@ extension Event.JUnitXMLRecorder {
           .compactMap(\.value?.skipInfo)
           .count
         let durationSeconds = context.runStartInstant
-          .map { (instant.suspending.rawValue - $0.suspending.rawValue) / .seconds(1) } ?? 0.0
+          .map { $0.duration(to: instant) / .seconds(1) } ?? 0.0
         return #"""
             <testsuite name="TestResults" errors="0" tests="\#(context.testCount)" failures="\#(issueCount)" skipped="\#(skipCount)" time="\#(durationSeconds)">
           \#(Self._xml(for: context.testData))
@@ -185,7 +185,7 @@ extension Event.JUnitXMLRecorder {
       // an end instant; don't report timing for such tests.
       var timeClause = ""
       if let endInstant = testData.endInstant {
-        let durationSeconds = (endInstant.suspending.rawValue - testData.startInstant.suspending.rawValue) / .seconds(1)
+        let durationSeconds = testData.startInstant.duration(to: endInstant) / .seconds(1)
         timeClause = #"time="\#(durationSeconds)" "#
       }
 

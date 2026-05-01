@@ -599,6 +599,7 @@ public var __defaultSynchronousIsolationContext: (any Actor)? {
   false
 }
 
+#if !hasFeature(Embedded)
 /// The `XCTest.XCTest` Objective-C class.
 let xcTestClass: AnyClass? = {
 #if _runtime(_ObjC)
@@ -634,3 +635,4 @@ public func __invokeXCTestMethod<T>(
   issue.record()
   return true
 }
+#endif
