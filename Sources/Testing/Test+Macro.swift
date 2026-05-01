@@ -437,25 +437,25 @@ extension Test {
 
   /// Create an instance of ``Test`` for a parameterized function.
   ///
-  /// This initializer overload is specialized for dictionary collections, to
-  /// efficiently de-structure their elements (which are known to be 2-tuples)
-  /// when appropriate. This overload is distinct from those for other
-  /// collections of 2-tuples because the `Element` tuple type for
-  /// `Dictionary` includes labels (`(key: Key, value: Value)`).
+  /// This initializer overload is specialized for dictionary-like collections
+  /// to efficiently de-structure their elements (which are known to be
+  /// 2-tuples) when appropriate. This overload is distinct from those for other
+  /// collections of 2-tuples because the `Element` tuple type for these kinds
+  /// of collections includes labels (`(key: Key, value: Value)`).
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<S, Key, Value>(
+  public static func __function<S, C>(
     named testFunctionName: String,
     in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
-    arguments dictionary: @escaping @Sendable () async throws -> Dictionary<Key, Value>,
+    arguments dictionary: @escaping @Sendable () async throws -> C,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
-  ) -> Self where S: ~Copyable & ~Escapable, Key: Sendable, Value: Sendable {
+    testFunction: @escaping @Sendable (C.Element) async throws -> Void
+  ) -> Self where S: ~Copyable & ~Escapable, C: __DictionaryLikeCollection & Sendable, C.Key: Sendable, C.Value: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -528,6 +528,21 @@ extension Test {
 @attached(peer) public macro __testing(
   warning message: _const String
 ) = #externalMacro(module: "TestingMacros", type: "PragmaMacro")
+
+// MARK: - Dictionary-like collection disambiguation
+
+/// A protocol that describes the basic shape of a "dictionary-like" collection
+/// whose elements are key-value pairs.
+///
+/// - Warning: This protocol is used to implement the `@Test` macro. Do not use
+///   it directly.
+public protocol __DictionaryLikeCollection<Key, Value>: Collection where Element == (key: Key, value: Value) {
+  associatedtype Key
+  associatedtype Value
+}
+
+extension Dictionary: __DictionaryLikeCollection {}
+extension KeyValuePairs: __DictionaryLikeCollection {}
 
 // MARK: - Helper functions
 
