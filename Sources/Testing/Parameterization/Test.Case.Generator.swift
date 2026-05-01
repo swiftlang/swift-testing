@@ -235,7 +235,7 @@ extension Test.Case {
       arguments collection: S,
       parameters: [Test.Parameter],
       testFunction: @escaping @Sendable ((S.Key, S.Value)) async throws -> Void
-    ) where S: __DictionaryLikeCollection {
+    ) where S: ExpressibleByDictionaryLiteral, S.Element == (key: S.Key, value: S.Value) {
       if parameters.count > 1 {
         self.init(sequence: collection) { element in
           Test.Case(values: [element.key, element.value], parameters: parameters) {

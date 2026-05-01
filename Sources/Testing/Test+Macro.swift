@@ -455,7 +455,7 @@ extension Test {
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
-  ) -> Self where S: ~Copyable & ~Escapable, C: __DictionaryLikeCollection & Sendable, C.Key: Sendable, C.Value: Sendable {
+  ) -> Self where S: ~Copyable & ~Escapable, C: ExpressibleByDictionaryLiteral & Collection & Sendable, C.Element == (key: C.Key, value: C.Value), C.Key: Sendable, C.Value: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -528,21 +528,6 @@ extension Test {
 @attached(peer) public macro __testing(
   warning message: _const String
 ) = #externalMacro(module: "TestingMacros", type: "PragmaMacro")
-
-// MARK: - Dictionary-like collection disambiguation
-
-/// A protocol that describes the basic shape of a "dictionary-like" collection
-/// whose elements are key-value pairs.
-///
-/// - Warning: This protocol is used to implement the `@Test` macro. Do not use
-///   it directly.
-public protocol __DictionaryLikeCollection<Key, Value>: Collection where Element == (key: Key, value: Value) {
-  associatedtype Key
-  associatedtype Value
-}
-
-extension Dictionary: __DictionaryLikeCollection {}
-extension KeyValuePairs: __DictionaryLikeCollection {}
 
 // MARK: - Helper functions
 
