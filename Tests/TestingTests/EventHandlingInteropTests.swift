@@ -9,7 +9,7 @@
 //
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
-private import _TestingInternals
+private import _TestingInternals.InteropOnly
 
 #if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
 import Synchronization
