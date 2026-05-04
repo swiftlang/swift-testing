@@ -1153,7 +1153,50 @@ final class IssueTests: XCTestCase {
       Issue.record(MyError(), "Custom message")
     }.run(configuration: configuration)
   }
-  
+
+  func testFailDetachedTaskOnlyCalledOnce() async throws {
+    // This test ensures that multiple `Configuration.withCurrent` calls
+    // don't cause the overridden event handlers to get called multiple
+    // times when issues are recorded.
+
+    struct ConfigurationOverridingTrait: TestTrait, TestScoping {
+      func provideScope(for test: Test, testCase: Test.Case?, performing function: () async throws -> Void) async throws {
+        let config = Configuration.current ?? .init()
+        try await Configuration.withCurrent(config) {
+          try await function()
+        }
+      }
+    }
+
+    let issueRecorded = expectation(description: "Issue recorded")
+    issueRecorded.expectedFulfillmentCount = 2
+
+    let lowerBound = #_sourceLocation
+    let upperBound = Self.testFailWithoutCurrentTestEnd
+    let sourceBounds = __SourceBounds(
+      __uncheckedLowerBound: lowerBound,
+      upperBound: (upperBound.line, upperBound.column)
+    )
+    let test = Test(ConfigurationOverridingTrait(), sourceBounds: sourceBounds) {
+      await Task.detached {
+        _ = Issue.record()
+        Self.recordIssue(sourceLocation: #_sourceLocation)
+      }.value
+    }
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case .issueRecorded = event.kind else {
+        return
+      }
+      issueRecorded.fulfill()
+    }
+
+    await test.run(configuration: configuration)
+
+    await fulfillment(of: [issueRecorded], timeout: 0.0)
+  }
+
   func testWarningBecauseOfError() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in

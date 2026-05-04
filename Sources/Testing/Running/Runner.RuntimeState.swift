@@ -77,9 +77,9 @@ extension Configuration {
   ///
   /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ configuration: Self, perform body: () throws -> R) rethrows -> R {
-    let id = configuration._addToAll()
+    let previous = configuration._addToAll()
     defer {
-      configuration._removeFromAll(identifiedBy: id)
+      configuration._restore(previous)
     }
 
     var runtimeState = Runner.RuntimeState.current ?? .init()
@@ -98,9 +98,9 @@ extension Configuration {
   ///
   /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ configuration: Self, perform body: () async throws -> R) async rethrows -> R {
-    let id = configuration._addToAll()
+    let previous = configuration._addToAll()
     defer {
-      configuration._removeFromAll(identifiedBy: id)
+      configuration._restore(previous)
     }
 
     var runtimeState = Runner.RuntimeState.current ?? .init()
@@ -111,12 +111,20 @@ extension Configuration {
   /// A type containing the mutable state tracked by ``Configuration/_all`` and,
   /// indirectly, by ``Configuration/all``.
   private struct _All: Sendable {
-    /// All instances of ``Configuration`` set as current, keyed by their unique
-    /// identifiers.
-    var instances = [UInt64: Configuration]()
+    /// All instances of ``Configuration`` set as current, keyed by a unique identifier
+    /// attached to the current Task.
+    var instances = [Int: Configuration]()
+  }
 
-    /// The next available unique identifier for a configuration.
-    var nextID: UInt64 = 0
+  /// An identifier that uniquely identifies the Task that stores the TaskLocal itself.
+  /// Used as a key in a global dictionary that maps task IDs to their current Configuration.
+  @TaskLocal static var currentTaskID = nextTaskID()
+  private static let _currentTaskID = Atomic<Int>(0)
+
+  /// Returns the next monotonically-increasing identifier to identify this task.
+  private static func nextTaskID() -> Int {
+    let (_, new) = _currentTaskID.add(1, ordering: .sequentiallyConsistent)
+    return new
   }
 
   /// Mutable storage for ``Configuration/all``.
@@ -135,15 +143,12 @@ extension Configuration {
   ///
   /// - Returns: A unique number identifying `self` that can be
   ///   passed to `_removeFromAll(identifiedBy:)`` to unregister it.
-  private func _addToAll() -> UInt64 {
+  private func _addToAll() -> Configuration? {
     if eventHandlingOptions.isExpectationCheckedEventEnabled {
       Self._deliverExpectationCheckedEventsCount.add(1, ordering: .sequentiallyConsistent)
     }
     return Self._all.withLock { all in
-      let id = all.nextID
-      all.nextID += 1
-      all.instances[id] = self
-      return id
+      all.instances.updateValue(self, forKey: Self.currentTaskID)
     }
   }
 
@@ -152,9 +157,13 @@ extension Configuration {
   /// - Parameters:
   ///   - id: The unique identifier of this instance, as previously returned by
   ///     `_addToAll()`.
-  private func _removeFromAll(identifiedBy id: UInt64) {
+  private func _restore(_ previous: Configuration?) {
     let configuration = Self._all.withLock { all in
-      all.instances.removeValue(forKey: id)
+      if let previous {
+        all.instances.updateValue(previous, forKey: Self.currentTaskID)
+      } else {
+        all.instances.removeValue(forKey: Self.currentTaskID)
+      }
     }
     if let configuration, configuration.eventHandlingOptions.isExpectationCheckedEventEnabled {
       Self._deliverExpectationCheckedEventsCount.subtract(1, ordering: .sequentiallyConsistent)
