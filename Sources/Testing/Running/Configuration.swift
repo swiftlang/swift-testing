@@ -349,6 +349,13 @@ public struct Configuration: Sendable {
     ///   defaults useful for real-world tests.
     public var maximumChildDepth: Int = 10
   }
+
+  public var benchmarkOptions: BenchmarkOptions = .init()
+
+  public struct BenchmarkOptions: Sendable {
+    public var warmup: Int = 100
+    public var repetitions: Int = 1000
+  }
 }
 
 // MARK: - Deprecated
