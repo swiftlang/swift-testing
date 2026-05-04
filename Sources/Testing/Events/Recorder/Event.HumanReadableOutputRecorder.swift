@@ -365,6 +365,10 @@ extension Event.HumanReadableOutputRecorder {
       String(describing: TimeValue(rawValue: end.suspending.rawValue - start.suspending.rawValue))
     }
 
+    func testStartedMessage(for test: Test) -> String {
+      "\(_capitalizedTitle(for: test)) \(testName) started"
+    }
+
     // Finally, produce any messages for the event.
     switch event.kind {
     case .testDiscovered:
@@ -425,7 +429,7 @@ extension Event.HumanReadableOutputRecorder {
       return [
         Message(
           symbol: .default,
-          stringValue: "\(_capitalizedTitle(for: test)) \(testName) started."
+          stringValue: "\(testStartedMessage(for: test))."
         )
       ]
 
@@ -565,15 +569,26 @@ extension Event.HumanReadableOutputRecorder {
       return result
 
     case .testCaseStarted:
-      guard let testCase, testCase.isParameterized, let arguments = testCase.arguments else {
+      guard let test, let testCase else { break }
+      let iteration = eventContext.iteration ?? 1
+
+      var message: String
+      if testCase.isParameterized, let arguments = testCase.arguments {
+        message = "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started"
+      } else if iteration > 1 {
+        message = testStartedMessage(for: test)
+      } else {
         break
       }
 
+      if iteration > 1 {
+        message += " (repetition \(iteration))"
+      }
+
+      message += "."
+
       return [
-        Message(
-          symbol: .default,
-          stringValue: "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started."
-        )
+        Message(symbol: .default, stringValue: message)
       ]
 
     case .testCaseEnded:

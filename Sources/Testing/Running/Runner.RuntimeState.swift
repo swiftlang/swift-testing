@@ -29,6 +29,9 @@ extension Runner {
     /// The test case that is running on the current task, if any.
     var testCase: Test.Case?
 
+    /// The current iteration of the test repetition policy, if any.
+    var iteration: Int?
+
     /// The runtime state related to the runner running on the current task,
     /// if any.
     @TaskLocal
@@ -71,15 +74,22 @@ extension Configuration {
   ///
   /// - Parameters:
   ///   - configuration: The new value to set for ``Configuration/current``.
+  ///   - addingToAll: Whether to add this configuration to the set of implicitly-tracked ``Configuration``s that are told about detached Issues.
   ///   - body: A function to call.
   ///
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ configuration: Self, perform body: () throws -> R) rethrows -> R {
-    let id = configuration._addToAll()
+  static func withCurrent<R>(
+    _ configuration: Self,
+    addingToAll: Bool = true,
+    perform body: () throws -> R
+  ) rethrows -> R {
+    let id = addingToAll ? configuration._addToAll() : nil
     defer {
-      configuration._removeFromAll(identifiedBy: id)
+      if let id {
+        configuration._removeFromAll(identifiedBy: id)
+      }
     }
 
     var runtimeState = Runner.RuntimeState.current ?? .init()
@@ -92,15 +102,22 @@ extension Configuration {
   ///
   /// - Parameters:
   ///   - configuration: The new value to set for ``Configuration/current``.
+  ///   - addingToAll: Whether to add this configuration to the set of implicitly-tracked ``Configuration``s that are told about detached Issues.
   ///   - body: A function to call.
   ///
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ configuration: Self, perform body: () async throws -> R) async rethrows -> R {
-    let id = configuration._addToAll()
+  static func withCurrent<R>(
+    _ configuration: Self,
+    addingToAll: Bool = true,
+    perform body: () async throws -> R
+  ) async rethrows -> R {
+    let id = addingToAll ? configuration._addToAll() : nil
     defer {
-      configuration._removeFromAll(identifiedBy: id)
+      if let id {
+        configuration._removeFromAll(identifiedBy: id)
+      }
     }
 
     var runtimeState = Runner.RuntimeState.current ?? .init()
@@ -198,7 +215,7 @@ extension Configuration {
   }
 }
 
-// MARK: - Current test and test case
+// MARK: - Current test, test case, and iteration
 
 extension Test {
   /// The test that is running on the current task, if any.
@@ -231,6 +248,28 @@ extension Test {
     runtimeState.testCase = nil
     return try await Runner.RuntimeState.$current.withValue(runtimeState) {
       try await test.withCancellationHandling(body)
+    }
+  }
+
+  /// The current iteration of the currently-running test case, if any.
+  static var currentIteration: Int? {
+    Runner.RuntimeState.current?.iteration
+  }
+
+  /// Call a function while the value of ``Test/currentIteration`` is set.
+  ///
+  /// - Parameters:
+  ///   - iteration: The new value to set for ``Test/currentIteration``.
+  ///   - body: A function to call.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`.
+  static func withCurrentIteration<R>(_ iteration: Int?, perform body: () async throws -> R) async rethrows -> R {
+    var runtimeState = Runner.RuntimeState.current ?? .init()
+    runtimeState.iteration = iteration
+    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
+      try await body()
     }
   }
 }
