@@ -576,6 +576,59 @@ extension Event.HumanReadableOutputRecorder {
         )
       ]
 
+    case let .benchmarkResultsReported(timings):
+      func format(ns: Int64) -> String {
+        let ns = Double(ns)
+        let (value, unit): (Double, String)
+        switch ns {
+        case ..<1_000:
+          (value, unit) = (ns, "ns")
+        case ..<1_000_000:
+          (value, unit) = (ns / 1_000, "µs")
+        case ..<1_000_000_000:
+          (value, unit) = (ns / 1_000_000, "ms")
+        case ..<60_000_000_000:
+          (value, unit) = (ns / 1_000_000_000, "s")
+        default:
+          (value, unit) = (ns / 60_000_000_000, "min")
+        }
+        let rounded = Int64((value * 1000).rounded())
+        let whole = rounded / 1000
+        var frac = rounded % 1000
+        var digits = 3
+        while digits > 1 && frac % 10 == 0 {
+          frac /= 10
+          digits -= 1
+        }
+        let fracStr = String(frac)
+        let padding = String(repeating: "0", count: digits - fracStr.count)
+        return "\(whole).\(padding)\(fracStr) \(unit)"
+      }
+
+      let times = timings.durations
+
+      let mean = times.reduce(.zero) { $0 + $1.nanoseconds } / Int64(times.count)
+      let variance = times.reduce(Int64(0)) {
+        let diff = ($1.nanoseconds - mean)
+        return $0 + (diff * diff)
+      }
+      let standardDeviation = Int64((Double(variance) / (Double(times.count) - 1)).squareRoot())
+
+      let results = "    average: \(format(ns: mean)) (± \(format(ns: standardDeviation)))"
+
+      let message = if let testCase, testCase.isParameterized, let arguments = testCase.arguments {
+        Message(
+          symbol: .default,
+          stringValue: "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) reported benchmark results:\n\(results)"
+        )
+      } else {
+        Message(
+          symbol: .default,
+          stringValue: "Test \(testName) reported benchmark results:\n\(results)"
+        )
+      }
+      return [message]
+
     case .testCaseEnded:
       guard verbosity > 0, let test, let testCase, testCase.isParameterized, let arguments = testCase.arguments else {
         break
@@ -680,3 +733,10 @@ extension Event.Context {
 
 extension Event.HumanReadableOutputRecorder.Message: Codable {}
 #endif
+
+extension Duration {
+  var nanoseconds: Int64 {
+    let (seconds, attoseconds) = components
+    return (seconds * 1_000_000_000) + (attoseconds / 1_000_000_000)
+  }
+}

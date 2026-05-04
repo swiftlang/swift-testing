@@ -29,10 +29,19 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       return []
     }
 
+    let isBenchmark = node.attributeName.as(IdentifierTypeSyntax.self)?.name.text == "Benchmark"
+
     let functionDecl = declaration.cast(FunctionDeclSyntax.self)
     let typeName = context.typeOfLexicalContext
 
-    return _createTestDecls(for: functionDecl, on: typeName, testAttribute: node, inheritsFromXCTestClass: inheritsFromXCTestClass, in: context)
+    return _createTestDecls(
+      for: functionDecl,
+      on: typeName,
+      testAttribute: node,
+      inheritsFromXCTestClass: inheritsFromXCTestClass,
+      isBenchmark: isBenchmark,
+      in: context
+    )
   }
 
   public static var formatMode: FormatMode {
@@ -375,6 +384,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     on typeName: TypeSyntax?,
     testAttribute: AttributeSyntax,
     inheritsFromXCTestClass: Bool?,
+    isBenchmark: Bool,
     in context: some MacroExpansionContext
   ) -> [DeclSyntax] {
     var result = [DeclSyntax]()
@@ -423,6 +433,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
       \(raw: attributeInfo.functionArgumentList(in: context)),
       parameters: \(raw: functionDecl.testFunctionParameterList),
+      isBenchmark: \(literal: isBenchmark),
       testFunction: \(thunkDecl.name)
     )
     """
@@ -446,6 +457,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
             in: \(typeNameExpr),
             xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
             \(raw: attributeInfo.functionArgumentList(in: context)),
+            isBenchmark: \(literal: isBenchmark),
             testFunction: {}
           )
         }

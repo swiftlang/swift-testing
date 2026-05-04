@@ -232,6 +232,13 @@ extension Never: TestScoping {
 /// that conform to this protocol, or to the ``SuiteTrait`` protocol.
 public protocol TestTrait: Trait {}
 
+/// A protocol describing a trait that you can add to a benchmark function.
+///
+/// The testing library defines a number of traits that you can add to test
+/// functions. You can also define your own traits by creating types
+/// that conform to this protocol, or to the ``SuiteTrait`` protocol.
+public protocol BenchmarkTrait: TestTrait {}
+
 /// A protocol describing a trait that you can add to a test suite.
 ///
 /// The testing library defines a number of traits that you can add to test
@@ -283,5 +290,11 @@ extension Trait where TestScopeProvider == Never {
 extension SuiteTrait {
   public var isRecursive: Bool {
     false
+  }
+}
+
+extension BenchmarkTrait where Self: TestScoping, TestScopeProvider == Self {
+  public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
+    test.isBenchmark ? self : nil
   }
 }

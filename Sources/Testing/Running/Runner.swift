@@ -454,7 +454,11 @@ extension Runner {
 
         try await withTimeLimit(for: step.test, configuration: configuration) {
           try await _applyScopingTraits(for: step.test, testCase: testCase) {
-            try await testCase.body()
+            if step.test.isBenchmark {
+              try await _runBenchmark(step.test, testCase: testCase, configuration: configuration)
+            } else {
+              try await testCase.body()
+            }
           }
         } timeoutHandler: { timeLimit in
           let issue = Issue(
@@ -466,6 +470,18 @@ extension Runner {
         }
       }
     }
+  }
+
+  static func _runBenchmark(_ test: Test, testCase: Test.Case, configuration: Configuration) async throws {
+    let clock = Test.Clock()
+    var times = [Duration]()
+    for _ in 0..<configuration.benchmarkOptions.repetitions {
+      let time = try await clock.measure {
+        try await testCase.body()
+      }
+      times.append(time)
+    }
+    Event.post(.benchmarkResultsReported(TestTimings(durations: times)), for: (test, testCase), configuration: configuration)
   }
 
   /// Run the tests in this runner's plan.
