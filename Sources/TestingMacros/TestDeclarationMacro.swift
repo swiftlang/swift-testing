@@ -25,14 +25,29 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     in context: some MacroExpansionContext
   ) throws -> [DeclSyntax] {
     var inheritsFromXCTestClass: Bool?
-    guard _diagnoseIssues(with: declaration, testAttribute: node, inheritsFromXCTestClass: &inheritsFromXCTestClass, in: context) else {
+    var isBenchmark: Bool = false
+
+    guard _diagnoseIssues(
+      with: declaration,
+      testAttribute: node,
+      inheritsFromXCTestClass: &inheritsFromXCTestClass,
+      isBenchmark: &isBenchmark,
+      in: context
+    ) else {
       return []
     }
 
     let functionDecl = declaration.cast(FunctionDeclSyntax.self)
     let typeName = context.typeOfLexicalContext
 
-    return _createTestDecls(for: functionDecl, on: typeName, testAttribute: node, inheritsFromXCTestClass: inheritsFromXCTestClass, in: context)
+    return _createTestDecls(
+      for: functionDecl,
+      on: typeName,
+      testAttribute: node,
+      inheritsFromXCTestClass: inheritsFromXCTestClass,
+      isBenchmark: isBenchmark,
+      in: context
+    )
   }
 
   public static var formatMode: FormatMode {
@@ -54,6 +69,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     with declaration: some DeclSyntaxProtocol,
     testAttribute: AttributeSyntax,
     inheritsFromXCTestClass: inout Bool?,
+    isBenchmark: inout Bool,
     in context: some MacroExpansionContext
   ) -> Bool {
     var diagnostics = [DiagnosticMessage]()
@@ -87,7 +103,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     // Only one @Test attribute is supported.
-    let suiteAttributes = function.attributes(named: "Test")
+    let suiteAttributes = function.attributes(named: "Test") + function.attributes(named: "Benchmark")
     if suiteAttributes.count > 1 {
       diagnostics.append(.multipleAttributesNotSupported(suiteAttributes, on: declaration))
     }
@@ -134,6 +150,22 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // @Test should not use a generic argument clause.
     if let genericArgumentClause = testAttribute.genericArgumentClause {
       diagnostics.append(.genericAttributeNotSupported(testAttribute, on: function, becauseOf: genericArgumentClause, languageMode: context.buildConfiguration?.languageVersion))
+    }
+
+    if testAttribute.attributeName.as(IdentifierTypeSyntax.self)?.name.text == "Benchmark" {
+      isBenchmark = true
+      if let asyncSpecifier = function.signature.effectSpecifiers?.asyncSpecifier {
+        diagnostics.append(.benchmarksMustBeSync(asyncSpecifier: asyncSpecifier))
+      }
+      if let arguments = AttributeInfo(byParsing: testAttribute, on: function, in: context).testFunctionArguments, arguments.count > 1 {
+        diagnostics.append(
+          DiagnosticMessage(
+            syntax: Syntax(testAttribute),
+            message: "Attribute '@Benchmark' cannot be applied to a function parameterized over more than one collection",
+            severity: .error
+          )
+        )
+      }
     }
 
     return !diagnostics.lazy.map(\.severity).contains(.error)
@@ -208,6 +240,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     calling functionDecl: FunctionDeclSyntax,
     on typeName: TypeSyntax?,
     xcTestCompatibleSelector selectorExpr: ExprSyntax?,
+    isBenchmark: Bool,
     in context: some MacroExpansionContext
   ) -> FunctionDeclSyntax {
     // Get the function's parameters along with the labels we'll use internally
@@ -243,8 +276,14 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // MainActor.run to invoke it. We do not have a general mechanism for
     // detecting isolation to other global actors.
     lazy var isMainActorIsolated = !functionDecl.attributes(named: "MainActor", inModuleNamed: "_Concurrency").isEmpty
+
+    var effectfulKeywords: Set<Keyword> = [.try, .await, .unsafe]
+    if isBenchmark {
+      effectfulKeywords.remove(.await)
+    }
+
     var forwardCall: (ExprSyntax) -> ExprSyntax = {
-      applyEffectfulKeywords([.try, .await, .unsafe], to: $0)
+      applyEffectfulKeywords(effectfulKeywords, to: $0)
     }
     let forwardInit = forwardCall
     if functionDecl.noasyncAttribute != nil {
@@ -298,6 +337,19 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       thunkBody = "_ = \(forwardCall("\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))"
     }
 
+    // Benchmarks must always be synchronous and nonisolated; to enforce that,
+    // we need to create a nonisolated local thunk function and call it, which
+    // will explicitly error in the compiler for actor methods.
+    if isBenchmark {
+      let thunkName = context.makeUniqueName("")
+      thunkBody = """
+      nonisolated func \(thunkName)\(thunkParamsExpr) throws {
+        \(thunkBody)
+      }
+      try \(thunkName)\(forwardedParamsExpr)
+      """
+    }
+
     // If this function is synchronous, is not explicitly nonisolated, and is
     // not explicitly isolated to some actor, it should run in the configured
     // default isolation context. If the suite type is an actor, this will cause
@@ -308,7 +360,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // We use a second, inner thunk function here instead of just adding the
     // isolation parameter to the "real" thunk because adding it there prevents
     // correct tuple desugaring of the "real" arguments to the thunk.
-    if functionDecl.signature.effectSpecifiers?.asyncSpecifier == nil && !isMainActorIsolated && !functionDecl.isNonisolated {
+    else if functionDecl.signature.effectSpecifiers?.asyncSpecifier == nil && !isMainActorIsolated && !functionDecl.isNonisolated {
       // Get a unique name for this secondary thunk. We don't need it to be
       // uniqued against functionDecl because it's interior to the "real" thunk,
       // so its name can't conflict with any other names visible in this scope.
@@ -347,9 +399,15 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     )
 
     let thunkName = context.makeUniqueName(thunking: functionDecl)
+    let effects = EffectsAttributeArgumentListSyntax {
+      if !isBenchmark {
+        TokenSyntax("async ")
+      }
+      TokenSyntax("throws")
+    }
     let thunkDecl: DeclSyntax = """
     @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
-    @Sendable private \(staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
+    @Sendable private \(staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) \(effects) -> Void {
       \(thunkBody)
     }
     """
@@ -375,6 +433,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     on typeName: TypeSyntax?,
     testAttribute: AttributeSyntax,
     inheritsFromXCTestClass: Bool?,
+    isBenchmark: Bool,
     in context: some MacroExpansionContext
   ) -> [DeclSyntax] {
     var result = [DeclSyntax]()
@@ -411,8 +470,12 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       calling: functionDecl,
       on: typeName,
       xcTestCompatibleSelector: selectorExpr,
+      isBenchmark: isBenchmark,
       in: context
     )
+
+    // A benchmark's generator, like its thunk, is synchronous.
+    let asyncToken = isBenchmark ? TokenSyntax("") : TokenSyntax("async")
     result.append(DeclSyntax(thunkDecl))
 
     // Create the expression that returns the Test instance for the function.
@@ -423,7 +486,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
       \(raw: attributeInfo.functionArgumentList(in: context)),
       parameters: \(raw: functionDecl.testFunctionParameterList),
-      testFunction: \(thunkDecl.name)
+      \(raw: isBenchmark ? "benchmarkFunction" : "testFunction"): \(thunkDecl.name)
     )
     """
 
@@ -440,13 +503,13 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       result.append(
         """
         @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-        private \(staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> Testing.Test {
+        private \(staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() \(asyncToken) -> Testing.Test {
           .__function(
             named: \(literal: functionDecl.completeName.trimmedDescription),
             in: \(typeNameExpr),
             xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
             \(raw: attributeInfo.functionArgumentList(in: context)),
-            testFunction: {}
+            \(raw: isBenchmark ? "benchmarkFunction" : "testFunction"): {}
           )
         }
         """
@@ -457,7 +520,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       testsBody = createSyntaxNode(
         guardingForAvailabilityOf: functionDecl,
         beforePerforming: testsBody,
-        orExitingWith: "return await \(unavailableTestName)()",
+        orExitingWith: "return \(raw: asyncToken.text.isEmpty ? "" : "await ")\(unavailableTestName)()",
         in: context
       )
     }
@@ -466,7 +529,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     result.append(
       """
       @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-      @Sendable private \(staticKeyword(for: typeName)) func \(generatorName)() async -> Testing.Test {
+      @Sendable private \(staticKeyword(for: typeName)) func \(generatorName)() \(asyncToken) -> Testing.Test {
         \(raw: testsBody)
       }
       """

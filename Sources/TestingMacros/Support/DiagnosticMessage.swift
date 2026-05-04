@@ -842,6 +842,27 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that `@Benchmark` bodies are not
+  /// allowed to be `async`.
+  ///
+  /// - Parameters:
+  ///   - asyncSpecifier: The `async` token found in source.
+  ///
+  /// - Returns: A diagnostic message.
+  static func benchmarksMustBeSync(asyncSpecifier: TokenSyntax) -> Self {
+    Self(
+      syntax: Syntax(asyncSpecifier),
+      message: "'@Benchmark' cannot be applied to async functions",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove 'async'"),
+          changes: [.replace(oldNode: Syntax(asyncSpecifier), newNode: Syntax("" as ExprSyntax))]
+        )
+      ]
+    )
+  }
+
   var syntax: Syntax
 
   // MARK: - DiagnosticMessage

@@ -103,6 +103,12 @@ public struct Event: Sendable {
     ///   - attachment: The attachment that was created.
     indirect case valueAttached(_ attachment: Attachment<AnyAttachable>)
 
+    /// A benchmark result was reported for a given test case.
+    ///
+    /// - Parameters:
+    ///   - results: What the benchmark host measured.
+    case benchmarkResultsReported(_ results: Benchmark.Results)
+
     /// A test ended.
     ///
     /// The test that ended is contained in the ``Event/Context`` instance that
@@ -442,6 +448,9 @@ extension Event.Kind {
     /// A test case ended.
     case testCaseEnded
 
+    /// A benchmark has reported results for a test case.
+    case benchmarkResultsReported(_ results: Benchmark.Results)
+
     /// A test case was cancelled.
     ///
     /// - Parameters:
@@ -549,6 +558,8 @@ extension Event.Kind.Snapshot {
       self = .testCaseStarted
     case .testCaseEnded:
       self = .testCaseEnded
+    case let .benchmarkResultsReported(results):
+      self = .benchmarkResultsReported(results)
     case let .testCaseCancelled(skipInfo):
       self = .testCaseCancelled(skipInfo)
     case let .expectationChecked(expectation):

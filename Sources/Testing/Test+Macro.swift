@@ -173,7 +173,16 @@ extension Test {
       nil
     }
     let caseGenerator = { @Sendable in Case.Generator(testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: [])
+    return Self(
+      name: testFunctionName,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: caseGenerator,
+      parameters: []
+    )
   }
 }
 
@@ -257,7 +266,95 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(
+      name: testFunctionName,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: caseGenerator,
+      parameters: parameters
+    )
+  }
+}
+
+// MARK: - @Benchmark
+
+extension Test {
+  /// Create an instance of ``Test`` for a benchmark.
+  ///
+  /// - Warning: This function is used to implement the `@Benchmark` macro. Do not
+  ///   call it directly.
+  ///
+  /// A benchmark's function is synchronous so that measuring it does not include
+  /// the cost of suspension. Passing one is what marks the resulting test as a
+  /// benchmark.
+  public static func __function<S>(
+    named benchmarkName: String,
+    in containingType: S.Type?,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
+    displayName: String? = nil,
+    traits: [any TestTrait],
+    sourceBounds: __SourceBounds,
+    parameters: [__Parameter] = [],
+    benchmarkFunction: @escaping @Sendable () throws -> Void
+  ) -> Self where S: ~Copyable & ~Escapable {
+    let containingTypeInfo: TypeInfo? = if let containingType {
+      TypeInfo(describing: containingType)
+    } else {
+      nil
+    }
+    let caseGenerator = { @Sendable in Case.Generator(benchmarkFunction: benchmarkFunction) }
+    return Self(
+      name: benchmarkName,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: caseGenerator,
+      parameters: [],
+      isBenchmark: true
+    )
+  }
+
+  /// Create an instance of ``Test`` for a benchmark parameterized over a
+  /// collection of values.
+  ///
+  /// - Warning: This function is used to implement the `@Benchmark` macro. Do not
+  ///   call it directly.
+  public static func __function<S, C>(
+    named benchmarkName: String,
+    in containingType: S.Type?,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
+    displayName: String? = nil,
+    traits: [any TestTrait],
+    arguments collection: @escaping @Sendable () async throws -> C,
+    sourceBounds: __SourceBounds,
+    parameters paramTuples: [__Parameter],
+    benchmarkFunction: @escaping @Sendable (C.Element) throws -> Void
+  ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element: Sendable {
+    let containingTypeInfo: TypeInfo? = if let containingType {
+      TypeInfo(describing: containingType)
+    } else {
+      nil
+    }
+    let parameters = paramTuples.parameters
+    let caseGenerator = { @Sendable in
+      Case.Generator(arguments: try await collection(), parameters: parameters, benchmarkFunction: benchmarkFunction)
+    }
+    return Self(
+      name: benchmarkName,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: caseGenerator,
+      parameters: parameters,
+      isBenchmark: true
+    )
   }
 }
 
@@ -404,7 +501,16 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in try await Case.Generator(arguments: collection1(), collection2(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(
+      name: testFunctionName,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: caseGenerator,
+      parameters: parameters
+    )
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -432,7 +538,16 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(
+      name: testFunctionName,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: caseGenerator,
+      parameters: parameters
+    )
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -463,7 +578,16 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await dictionary(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(
+      name: testFunctionName,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: caseGenerator,
+      parameters: parameters
+    )
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -492,7 +616,16 @@ extension Test {
         try await testFunction($0, $1)
       }
     }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(
+      name: testFunctionName,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: caseGenerator,
+      parameters: parameters
+    )
   }
 }
 

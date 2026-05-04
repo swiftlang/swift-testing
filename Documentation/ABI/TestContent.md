@@ -96,6 +96,7 @@ record's kind is a 32-bit unsigned value. The following kinds are defined:
 | `0x00000000` | &ndash; | Reserved (**do not use**) |
 | `0x74657374` | `'test'` | Test or suite declaration |
 | `0x65786974` | `'exit'` | Exit test |
+| `0x62656e63` | `'benc'` | Benchmark host |
 | `0x706c6179` | `'play'` | [Playground](https://github.com/apple/swift-play-experimental) |
 
 <!-- The kind values listed in this table should be a superset of the constants
@@ -178,6 +179,13 @@ content record that needs to be made available before the accessor is called:
 
 - For exit test declarations (kind `0x65786974`), this field is reserved for
   future use and must be set to `0`.
+
+- For benchmark hosts (kind `0x62656e63`), the low 16 bits of this field contain
+  the version of the `TestingBenchmarkHost` module's interface that the host was
+  built against. The testing library reads this field before calling the
+  record's accessor and ignores records whose version it does not support. Other
+  bits are reserved for future use and must be set to `0`. See
+  `BenchmarkHostRecord` in the `TestingBenchmarkHost` module.
 
 #### The reserved1 and reserved2 fields
 

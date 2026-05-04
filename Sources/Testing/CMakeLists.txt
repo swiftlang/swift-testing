@@ -34,6 +34,17 @@ add_library(Testing
   Attachments/Attachable.swift
   Attachments/AttachableWrapper.swift
   Attachments/Attachment.swift
+  Benchmark/Benchmark.swift
+  Benchmark/Benchmark.Body.swift
+  Benchmark/Benchmark.Configuration.swift
+  Benchmark/Benchmark.Context.swift
+  Benchmark/Benchmark.Host.swift
+  Benchmark/Benchmark.Host+Discovery.swift
+  Benchmark/Benchmark.Host+Macro.swift
+  Benchmark/Benchmark.Metric.swift
+  Benchmark/Benchmark.Results.swift
+  Benchmark/Benchmark.TimedHost.swift
+  Benchmark/Benchmark.Traits.swift
   Events/Clock.swift
   Events/Event.swift
   Events/Event+FallbackEventHandler.swift

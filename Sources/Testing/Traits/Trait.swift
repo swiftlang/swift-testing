@@ -264,6 +264,37 @@ extension Never: TestScoping {
 /// that conform to this protocol, or to the ``SuiteTrait`` protocol.
 public protocol TestTrait: Trait {}
 
+/// A protocol describing a trait that you can add to a benchmark function.
+///
+/// The testing library defines a number of traits that you can add to benchmark
+/// functions. You can also define your own traits by creating types that conform
+/// to this protocol; a benchmark host does this to expose settings that only it
+/// understands.
+///
+/// A trait conforming to this protocol customizes how a benchmark is measured by
+/// also conforming to ``TestScoping`` and modifying the current
+/// ``Configuration`` — typically its
+/// ``Configuration/benchmarkConfiguration`` — for the duration of the benchmark.
+/// Its scope provider is only consulted for benchmarks, so applying a benchmark
+/// trait to an ordinary test has no effect.
+extension Benchmark {
+  public protocol Trait: TestTrait, SuiteTrait {}
+}
+
+extension Benchmark.Trait {
+  /// Benchmark traits are recursive so that a setting applied to a suite reaches
+  /// the benchmarks it contains.
+  public var isRecursive: Bool {
+    true
+  }
+}
+
+extension Benchmark.Trait where Self: TestScoping, TestScopeProvider == Self {
+  public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
+    test.isBenchmark ? self : nil
+  }
+}
+
 /// A protocol describing a trait that you can add to a test suite.
 ///
 /// The testing library defines a number of traits that you can add to test

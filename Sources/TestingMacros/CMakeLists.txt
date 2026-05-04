@@ -82,6 +82,7 @@ else()
 endif()
 
 target_sources(TestingMacros PRIVATE
+  BenchmarkHostMacro.swift
   ConditionMacro.swift
   ExitTestCapturedValueMacro.swift
   PragmaMacro.swift

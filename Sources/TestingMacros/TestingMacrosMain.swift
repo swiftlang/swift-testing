@@ -18,6 +18,7 @@ import SwiftSyntaxMacros
 struct TestingMacrosMain: CompilerPlugin {
   var providingMacros: [any Macro.Type] {
     [
+      BenchmarkHostMacro.self,
       SuiteDeclarationMacro.self,
       TestDeclarationMacro.self,
       ExpectMacro.self,

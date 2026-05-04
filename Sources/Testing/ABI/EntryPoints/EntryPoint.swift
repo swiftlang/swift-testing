@@ -236,6 +236,12 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value of the `--list-tests` argument.
   public var listTests: Bool?
 
+  /// The value of the `--benchmark` argument.
+  ///
+  /// If the value of this property is `true`, the run measures benchmarks and does
+  /// not run tests. Otherwise, the run runs tests and does not measure benchmarks.
+  public var benchmark: Bool?
+
   /// The value of the `--parallel` or `--no-parallel` argument.
   public var parallel: Bool?
 
@@ -368,6 +374,7 @@ extension __CommandLineArguments_v0: Codable {
   // do not end up with leading underscores when encoded.
   enum CodingKeys: String, CodingKey {
     case listTests
+    case benchmark
     case parallel
     case experimentalMaximumParallelizationWidth
     case symbolicateBacktraces
@@ -516,6 +523,11 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     result.listTests = true
   }
 
+  // Benchmarking (off by default: a run measures benchmarks only when asked to)
+  if args.contains("--benchmark") {
+    result.benchmark = true
+  }
+
   // Parallelization (on by default)
   if args.contains("--no-parallel") {
     result.parallel = false
@@ -582,6 +594,14 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 @_spi(ForToolsIntegrationOnly)
 public func configurationForEntryPoint(from args: __CommandLineArguments_v0) throws -> Configuration {
   var configuration = Configuration()
+
+  // Whether this run measures benchmarks or runs tests. A run never does both:
+  // a benchmark shares the process with nothing else so that what it measures is
+  // not perturbed, and a test run should not pay for measurement it did not ask
+  // for.
+  if args.benchmark == true {
+    configuration.runKind = .benchmarks
+  }
 
   // Parallelization (on by default)
   if let parallel = args.parallel {

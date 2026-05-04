@@ -37,6 +37,7 @@ public struct Test: Sendable {
     var testCasesState: TestCasesState?
     var parameters: [Parameter]?
     var isSynthesized: Bool
+    var isBenchmark: Bool
 #if DEBUG
     var mutationCount = 0
 #endif
@@ -300,6 +301,15 @@ public struct Test: Sendable {
     }
   }
 
+  public var isBenchmark: Bool {
+    get {
+      _properties.value.isBenchmark
+    }
+    set {
+      _setValue(newValue, forKeyPath: \.isBenchmark)
+    }
+  }
+
 #if DEBUG
   /// The number of times any property on this instance of ``Test`` has been
   /// mutated after initialization.
@@ -314,7 +324,7 @@ public struct Test: Sendable {
     traits: [any Trait],
     sourceLocation: SourceLocation,
     containingTypeInfo: TypeInfo,
-    isSynthesized: Bool = false
+    isSynthesized: Bool = false,
   ) {
     let name = containingTypeInfo.unqualifiedName
     var displayName = displayName
@@ -329,7 +339,8 @@ public struct Test: Sendable {
       traits: traits,
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
-      isSynthesized: isSynthesized
+      isSynthesized: isSynthesized,
+      isBenchmark: false
     )
     _properties = Allocated(properties)
   }
@@ -343,7 +354,8 @@ public struct Test: Sendable {
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
     testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
-    parameters: [Parameter]
+    parameters: [Parameter],
+    isBenchmark: Bool = false
   ) {
     let properties = _Properties(
       name: name,
@@ -354,7 +366,8 @@ public struct Test: Sendable {
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCasesState: .unevaluated { try await testCases() },
       parameters: parameters,
-      isSynthesized: false
+      isSynthesized: false,
+      isBenchmark: isBenchmark
     )
     _properties = Allocated(properties)
   }
@@ -368,7 +381,8 @@ public struct Test: Sendable {
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
     testCases: Test.Case.Generator<S>,
-    parameters: [Parameter]
+    parameters: [Parameter],
+    isBenchmark: Bool = false
   ) {
     let properties = _Properties(
       name: name,
@@ -379,7 +393,8 @@ public struct Test: Sendable {
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCasesState: .evaluated(testCases),
       parameters: parameters,
-      isSynthesized: false
+      isSynthesized: false,
+      isBenchmark: isBenchmark
     )
     _properties = Allocated(properties)
   }

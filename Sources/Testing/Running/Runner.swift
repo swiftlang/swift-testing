@@ -89,6 +89,46 @@ extension Runner {
     let testIssueRecorder = TestIssueRecorder()
   }
 
+  /// Get the steps of a plan step graph that a given kind of run should perform.
+  ///
+  /// - Parameters:
+  ///   - stepGraph: The plan step graph to filter.
+  ///   - runKind: The kind of run being performed.
+  ///
+  /// - Returns: A graph containing the steps to run, or `nil` if there are none.
+  ///
+  /// - Complexity: O(*n*) where *n* is the number of nodes in `stepGraph`.
+  ///
+  /// Suites are kept for a run of ``Configuration/RunKind/tests``, even one that
+  /// contains only benchmarks, so that such a run behaves exactly as it did before
+  /// benchmarks existed. A run of ``Configuration/RunKind/benchmarks`` keeps only
+  /// the suites enclosing a benchmark.
+  static func _filter(
+    _ stepGraph: Graph<String, Plan.Step?>,
+    for runKind: Configuration.RunKind
+  ) -> Graph<String, Plan.Step?>? {
+    let step = stepGraph.value
+
+    // A test function runs only if it belongs to this kind of run.
+    if let test = step?.test, !test.isSuite {
+      return test.isBenchmark == (runKind == .benchmarks) ? stepGraph : nil
+    }
+
+    var children = [String: Graph<String, Plan.Step?>]()
+    for (key, childGraph) in stepGraph.children {
+      if let childGraph = _filter(childGraph, for: runKind) {
+        children[key] = childGraph
+      }
+    }
+
+    switch runKind {
+    case .tests:
+      return Graph(value: step, children: children)
+    case .benchmarks:
+      return children.isEmpty ? nil : Graph(value: step, children: children)
+    }
+  }
+
   /// Apply the custom scope for any test scope providers of the traits
   /// associated with a specified test by calling their
   /// ``TestScoping/provideScope(for:testCase:performing:)`` function.
@@ -108,9 +148,11 @@ extension Runner {
     testCase: Test.Case?,
     _ body: @escaping @Sendable () async throws -> Void
   ) async throws {
+    let traits = test.traits
+
     // If the test does not have any traits, exit early to avoid unnecessary
     // heap allocations below.
-    if test.traits.isEmpty {
+    if traits.isEmpty {
       return try await body()
     }
 
@@ -119,7 +161,7 @@ extension Runner {
     // sequence is reversed so that the last trait is the one that invokes body,
     // then the second-to-last invokes the last, etc. and ultimately the first
     // trait is the first one to be invoked.
-    let executeAllTraits = test.traits.lazy
+    let executeAllTraits = traits.lazy
       .reversed()
       .compactMap { $0.scopeProvider(for: test, testCase: testCase) }
       .map { $0.provideScope(for:testCase:performing:) }
@@ -479,10 +521,14 @@ extension Runner {
         // Exit early if the task has already been cancelled.
         try Task.checkCancellation()
 #endif
+        if step.test.isBenchmark {
+          try await _runBenchmark(step.test, testCase: testCase, configuration: configuration)
+          return
+        }
 
         try await withTimeLimit(for: step.test, configuration: configuration) {
           try await _applyScopingTraits(for: step.test, testCase: testCase) {
-            try await testCase.body()
+            try await testCase.invoke()
           }
         } timeoutHandler: { timeLimit in
           let issue = Issue(
@@ -493,6 +539,51 @@ extension Runner {
           issue.record(configuration: configuration)
         }
       }
+    }
+  }
+
+#if !SWT_NO_GLOBAL_ACTORS
+  @MainActor
+#endif
+  static func _runBenchmark(_ test: Test, testCase: Test.Case, configuration: Configuration) async throws {
+    let benchmarkHost = try configuration.benchmarkHost ?? _selectBenchmarkHost()
+
+    let body = Benchmark.Body { context in
+      try testCase.invokeSync()
+    }
+
+    // The configuration is derived inside the scope provided by this benchmark's
+    // traits, since that is where those traits have modified it.
+    try await _applyScopingTraits(for: test, testCase: testCase) {
+      let benchmarkConfig = Benchmark.Configuration(
+        for: test,
+        testCase: testCase,
+        displayName: test.humanReadableName(withVerbosity: configuration.verbosity)
+      )
+      let result = try benchmarkHost.run(body, configuration: benchmarkConfig)
+      Event.post(.benchmarkResultsReported(result), for: (test, testCase), configuration: configuration)
+    }
+  }
+
+  /// Get the benchmark host to use when a configuration does not specify one.
+  ///
+  /// - Returns: The only benchmark host linked into the current process, or an
+  ///   instance of ``Benchmark/TimedHost`` if there are none.
+  ///
+  /// - Throws: ``Benchmark/HostError/multipleHostsAvailable(identifiers:)`` if more
+  ///   than one host is linked into the current process and the caller must choose
+  ///   between them.
+  private static func _selectBenchmarkHost() throws -> any Benchmark.Host {
+    let hosts = Benchmark.HostRegistration.allHostsInProcess
+    switch hosts.count {
+    case 0:
+      // The default host is not discoverable, so that linking a host always takes
+      // precedence over it without needing to be disambiguated from it.
+      return Benchmark.TimedHost()
+    case 1:
+      return hosts[0]
+    default:
+      throw Benchmark.HostError.multipleHostsAvailable(identifiers: hosts.map(\.identifier))
     }
   }
 
@@ -557,11 +648,33 @@ extension Runner {
   /// - Parameters:
   ///   - context: Context for the test run.
   private func _runAllTests(context: _Context) async {
-    await withTaskGroup { taskGroup in
-      _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: nil)) {
-        try? await Self._runStep(atRootOf: plan.stepGraph, context: context)
+    guard let stepGraph = Self._filter(plan.stepGraph, for: configuration.runKind) else {
+      return
+    }
+
+    switch configuration.runKind {
+    case .tests:
+      await withTaskGroup { taskGroup in
+        _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: nil)) {
+          try? await Self._runStep(atRootOf: stepGraph, context: context)
+        }
+        await taskGroup.waitForAll()
       }
-      await taskGroup.waitForAll()
+
+    case .benchmarks:
+      // Benchmarks run one at a time, so that nothing else in the process perturbs
+      // what they measure. Parallelization is disabled for the duration so that the
+      // order in which they run is also deterministic.
+      var configuration = Self._configuration
+      configuration.isParallelizationEnabled = false
+      await Configuration.withCurrent(configuration) {
+        await withTaskGroup { taskGroup in
+          _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("benchmark run", withAction: nil)) {
+            try? await Self._runStep(atRootOf: stepGraph, context: context)
+          }
+          await taskGroup.waitForAll()
+        }
+      }
     }
   }
 }

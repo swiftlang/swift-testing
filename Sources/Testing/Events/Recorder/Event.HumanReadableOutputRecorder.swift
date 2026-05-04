@@ -571,6 +571,76 @@ extension Event.HumanReadableOutputRecorder {
         Message(symbol: .default, stringValue: message)
       ]
 
+    case let .benchmarkResultsReported(benchmarkResults):
+      func format(ns: Int64) -> String {
+        let ns = Double(ns)
+        let (value, unit): (Double, String)
+        switch ns {
+        case ..<1_000:
+          (value, unit) = (ns, "ns")
+        case ..<1_000_000:
+          (value, unit) = (ns / 1_000, "µs")
+        case ..<1_000_000_000:
+          (value, unit) = (ns / 1_000_000, "ms")
+        case ..<60_000_000_000:
+          (value, unit) = (ns / 1_000_000_000, "s")
+        default:
+          (value, unit) = (ns / 60_000_000_000, "min")
+        }
+        let rounded = Int64((value * 1000).rounded())
+        let whole = rounded / 1000
+        var frac = rounded % 1000
+        var digits = 3
+        while digits > 1 && frac % 10 == 0 {
+          frac /= 10
+          digits -= 1
+        }
+        let fracStr = String(frac)
+        let padding = String(repeating: "0", count: digits - fracStr.count)
+        return "\(whole).\(padding)\(fracStr) \(unit)"
+      }
+
+      /// Format a value in a metric's canonical unit for presentation.
+      func format(_ value: Int64, as metric: Benchmark.Metric) -> String {
+        switch metric.unit {
+        case .nanoseconds:
+          format(ns: value)
+        case .count:
+          String(value)
+        case .bytes:
+          "\(value) bytes"
+        case let .other(symbol):
+          "\(value) \(symbol)"
+        }
+      }
+
+      var lines = benchmarkResults.measurements.map { measurement in
+        var line = "    \(measurement.metric.displayName): \(format(measurement.median, as: measurement.metric)) median"
+        if let standardDeviation = measurement.standardDeviation {
+          line += " (± \(format(Int64(standardDeviation.rounded()), as: measurement.metric)))"
+        }
+        line += ", \(format(measurement.p99, as: measurement.metric)) p99"
+        return line
+      }
+      lines += benchmarkResults.unavailableMetrics
+        .sorted { $0.key.identifier < $1.key.identifier }
+        .map { "    \($0.key.displayName): not measured (\($0.value))" }
+
+      let results = lines.joined(separator: "\n")
+
+      let message = if let testCase, testCase.isParameterized, let arguments = testCase.arguments {
+        Message(
+          symbol: .default,
+          stringValue: "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) reported benchmark results:\n\(results)"
+        )
+      } else {
+        Message(
+          symbol: .default,
+          stringValue: "Test \(testName) reported benchmark results:\n\(results)"
+        )
+      }
+      return [message]
+
     case .testCaseEnded:
       guard verbosity > 0, let test, let testCase, testCase.isParameterized, let arguments = testCase.arguments else {
         break
@@ -720,3 +790,10 @@ extension Event.Context {
 
 extension Event.HumanReadableOutputRecorder.Message: Codable {}
 #endif
+
+extension Duration {
+  var nanoseconds: Int64 {
+    let (seconds, attoseconds) = components
+    return (seconds * 1_000_000_000) + (attoseconds / 1_000_000_000)
+  }
+}

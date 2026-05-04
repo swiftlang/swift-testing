@@ -350,6 +350,34 @@ public struct Configuration: Sendable {
     ///   defaults useful for real-world tests.
     public var maximumChildDepth: Int = 10
   }
+
+  /// What kind of work a test run performs.
+  ///
+  /// A run either runs tests or measures benchmarks; it never does both. A
+  /// benchmark shares the process with nothing else so that what it measures is not
+  /// perturbed, and a test run should not pay for measurement it did not ask for.
+  public enum RunKind: Sendable {
+    /// Run every test that is not a benchmark.
+    case tests
+
+    /// Measure every benchmark, and run no tests.
+    case benchmarks
+  }
+
+  /// What kind of work this run performs.
+  ///
+  /// The default value of this property is ``RunKind/tests``.
+  public var runKind: RunKind = .tests
+
+  public var benchmarkHost: any Benchmark.Host? = nil
+
+  /// The settings to apply to benchmarks run with this configuration.
+  ///
+  /// Benchmark traits such as ``Trait/warmup(_:)`` modify this property for the
+  /// duration of the benchmark they are applied to. The testing library passes it
+  /// to the benchmark host, after filling in the properties that describe the
+  /// individual benchmark being run.
+  public var benchmarkConfiguration = Benchmark.Configuration()
 }
 
 // MARK: - Deprecated

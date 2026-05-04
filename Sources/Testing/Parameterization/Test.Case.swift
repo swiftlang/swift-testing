@@ -155,7 +155,7 @@ extension Test {
       }
     }
 
-    private init(kind: _Kind, body: @escaping @Sendable () async throws -> Void) {
+    private init(kind: _Kind, body: Body) {
       self._kind = kind
       self.body = body
     }
@@ -166,8 +166,16 @@ extension Test {
     ///   - body: The body closure of this test case.
     ///
     /// The resulting test case will have zero arguments.
-    init(body: @escaping @Sendable () async throws -> Void) {
+    init(body: Body) {
       self.init(kind: .nonParameterized, body: body)
+    }
+
+    /// Initialize a test case for a non-parameterized asynchronous test function.
+    ///
+    /// - Parameters:
+    ///   - body: The body closure of this test case.
+    init(body: @escaping @Sendable () async throws -> Void) {
+      self.init(body: .async(body))
     }
 
     /// Initialize a test case by pairing values with their corresponding
@@ -181,6 +189,21 @@ extension Test {
       values: [any Sendable],
       parameters: [Parameter],
       body: @escaping @Sendable () async throws -> Void
+    ) {
+      self.init(values: values, parameters: parameters, body: .async(body))
+    }
+
+    /// Initialize a test case by pairing values with their corresponding
+    /// parameters to form the ``arguments`` array.
+    ///
+    /// - Parameters:
+    ///   - values: The values passed to the parameters for this test case.
+    ///   - parameters: The parameters of the test function for this test case.
+    ///   - body: The body of this test case.
+    init(
+      values: [any Sendable],
+      parameters: [Parameter],
+      body: Body
     ) {
       var isStable = true
 
@@ -228,11 +251,30 @@ extension Test {
       }
     }
 
+    enum Body {
+      case async(@Sendable () async throws -> Void)
+      case sync(@Sendable () throws -> Void)
+    }
+
     /// The body closure of this test case.
     ///
     /// Do not invoke this closure directly. Always use a ``Runner`` to invoke a
     /// test or test case.
-    var body: @Sendable () async throws -> Void
+    var body: Body
+
+    func invokeSync() throws {
+      switch body {
+      case .async: fatalError("Cannot invokeSync an async test body")
+      case let .sync(fn): try fn()
+      }
+    }
+
+    func invoke() async throws {
+      switch body {
+      case let .async(fn): try await fn()
+      case let .sync(fn): try fn()
+      }
+    }
   }
 
   /// A type representing a single parameter to a parameterized test function.

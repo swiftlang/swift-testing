@@ -114,6 +114,9 @@ extension TestContentKind {
   /// An exit test.
   package static var exitTest: Self { "exit" }
 
+  /// A benchmark host.
+  package static var benchmarkHost: Self { "benc" }
+
   /// A Swift playground.
   package static var playground: Self { "play" }
 }

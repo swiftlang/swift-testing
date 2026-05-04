@@ -133,6 +133,21 @@ extension Trait where Self == TimeLimitTrait {
   public static func timeLimit(_ timeLimit: Self.Duration) -> Self {
     return Self(timeLimit: timeLimit.underlyingDuration)
   }
+
+  /// Specify a time limit in seconds.
+  ///
+  /// - Parameters:
+  ///   - seconds: The length of the time limit in seconds.
+  ///
+  /// - Returns: An instance of ``TimeLimitTrait``.
+  ///
+  /// Unlike ``timeLimit(_:)-4kzjp``, this function accepts a duration shorter than
+  /// one minute. Only a benchmark honors it exactly: a test's time limit is
+  /// rounded up to ``Configuration/testTimeLimitGranularity``, which is one minute
+  /// by default.
+  public static func timeLimit(seconds: some BinaryInteger) -> Self {
+    Self(timeLimit: .seconds(Int64(seconds)))
+  }
 }
 
 @available(_clockAPI, *) // For DocC
@@ -226,10 +241,14 @@ extension Test {
     // specified by the configuration.
     var timeLimit = timeLimit ?? configuration.defaultTestTimeLimit
 
-    // Round the time limit.
-    timeLimit = timeLimit.map { timeLimit in
-      let granularity = configuration.testTimeLimitGranularity
-      return granularity * (timeLimit / granularity).rounded(.awayFromZero)
+    // Round the time limit. Benchmarks are exempt: a benchmark's time limit is
+    // also the budget its host measures within, and rounding a two-second budget
+    // up to a minute would make it useless.
+    if !isBenchmark {
+      timeLimit = timeLimit.map { timeLimit in
+        let granularity = configuration.testTimeLimitGranularity
+        return granularity * (timeLimit / granularity).rounded(.awayFromZero)
+      }
     }
 
     // Do not exceed the maximum time limit specified by the configuration.

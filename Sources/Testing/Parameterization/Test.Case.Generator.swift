@@ -62,7 +62,59 @@ extension Test.Case {
       // A beautiful hack to give us the right number of cases: iterate over a
       // collection containing a single Void value.
       self.init(sequence: CollectionOfOne(())) { _ in
-        Test.Case(body: testFunction)
+        Test.Case(body: .async(testFunction))
+      }
+    }
+
+    /// Initialize an instance of this type that generates exactly one test case
+    /// calling a benchmark.
+    ///
+    /// - Parameters:
+    ///   - benchmarkFunction: The benchmark called by the generated test case.
+    ///
+    /// A benchmark's body is synchronous so that measuring it does not include the
+    /// cost of suspension.
+    init(
+      benchmarkFunction: @escaping @Sendable () throws -> Void
+    ) where S == CollectionOfOne<Void> {
+      self.init(sequence: CollectionOfOne(())) { _ in
+        Test.Case(body: .sync(benchmarkFunction))
+      }
+    }
+
+    /// Initialize an instance of this type that iterates over the specified
+    /// collection of argument values, calling a benchmark.
+    ///
+    /// - Parameters:
+    ///   - collection: The collection of argument values for which test cases
+    ///     should be generated.
+    ///   - parameters: The parameters of the benchmark for which test cases should
+    ///     be generated.
+    ///   - benchmarkFunction: The benchmark to which each generated test case
+    ///     passes an argument value from `collection`.
+    @_disfavoredOverload
+    init(
+      arguments collection: S,
+      parameters: [Test.Parameter],
+      benchmarkFunction: @escaping @Sendable (S.Element) throws -> Void
+    ) where S: Collection {
+#if !hasFeature(Embedded)
+      if parameters.count > 1 {
+        self.init(sequence: collection) { element in
+          let mirror = Mirror(reflectingForTest: element)
+          let values: [any Sendable] = if mirror.displayStyle == .tuple {
+            mirror.children.map { unsafeBitCast($0.value, to: (any Sendable).self) }
+          } else {
+            [element]
+          }
+          return Test.Case(values: values, parameters: parameters, body: .sync { try benchmarkFunction(element) })
+        }
+        return
+      }
+#endif
+
+      self.init(sequence: collection) { element in
+        Test.Case(values: [element], parameters: parameters, body: .sync { try benchmarkFunction(element) })
       }
     }
 
@@ -97,18 +149,14 @@ extension Test.Case {
             [element]
           }
 
-          return Test.Case(values: values, parameters: parameters) {
-            try await testFunction(element)
-          }
+          return Test.Case(values: values, parameters: parameters, body: .async { try await testFunction(element) })
         }
         return
       }
 #endif
 
       self.init(sequence: collection) { element in
-        Test.Case(values: [element], parameters: parameters) {
-          try await testFunction(element)
-        }
+        Test.Case(values: [element], parameters: parameters, body: .async { try await testFunction(element) })
       }
     }
 
@@ -130,9 +178,7 @@ extension Test.Case {
       testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
     ) where S == CartesianProduct<C1, C2> {
       self.init(sequence: cartesianProduct(collection1, collection2)) { element in
-        Test.Case(values: [element.0, element.1], parameters: parameters) {
-          try await testFunction(element.0, element.1)
-        }
+        Test.Case(values: [element.0, element.1], parameters: parameters, body: .async { try await testFunction(element.0, element.1) })
       }
     }
 
@@ -161,15 +207,11 @@ extension Test.Case {
     ) where S.Element == (E1, E2), E1: Sendable, E2: Sendable {
       if parameters.count > 1 {
         self.init(sequence: sequence) { element in
-          Test.Case(values: [element.0, element.1], parameters: parameters) {
-            try await testFunction(element)
-          }
+          Test.Case(values: [element.0, element.1], parameters: parameters, body: .async { try await testFunction(element) })
         }
       } else {
         self.init(sequence: sequence) { element in
-          Test.Case(values: [element], parameters: parameters) {
-            try await testFunction(element)
-          }
+          Test.Case(values: [element], parameters: parameters, body: .async { try await testFunction(element) })
         }
       }
     }
@@ -241,15 +283,11 @@ extension Test.Case {
     ) where S: ExpressibleByDictionaryLiteral, S.Element == (key: S.Key, value: S.Value) {
       if parameters.count > 1 {
         self.init(sequence: collection) { element in
-          Test.Case(values: [element.key, element.value], parameters: parameters) {
-            try await testFunction(element)
-          }
+          Test.Case(values: [element.key, element.value], parameters: parameters, body: .async { try await testFunction(element) })
         }
       } else {
         self.init(sequence: collection) { element in
-          Test.Case(values: [element], parameters: parameters) {
-            try await testFunction(element)
-          }
+          Test.Case(values: [element], parameters: parameters, body: .async { try await testFunction(element) })
         }
       }
     }
