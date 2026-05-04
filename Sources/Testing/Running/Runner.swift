@@ -106,9 +106,17 @@ extension Runner {
     testCase: Test.Case?,
     _ body: @escaping @Sendable () async throws -> Void
   ) async throws {
+    var traits = test.traits
+
+    // HACK: Force benchmarks to be .serialized(for: *)
+    if test.isBenchmark {
+      traits.removeAll(where: { $0 is ParallelizationTrait })
+      traits.append(.serialized(for: *))
+    }
+
     // If the test does not have any traits, exit early to avoid unnecessary
     // heap allocations below.
-    if test.traits.isEmpty {
+    if traits.isEmpty {
       return try await body()
     }
 
@@ -117,7 +125,7 @@ extension Runner {
     // sequence is reversed so that the last trait is the one that invokes body,
     // then the second-to-last invokes the last, etc. and ultimately the first
     // trait is the first one to be invoked.
-    let executeAllTraits = test.traits.lazy
+    let executeAllTraits = traits.lazy
       .reversed()
       .compactMap { $0.scopeProvider(for: test, testCase: testCase) }
       .map { $0.provideScope(for:testCase:performing:) }
