@@ -286,7 +286,7 @@ extension ExitTest {
     // repository doesn't have an official GitHub mirror, but you can manually
     // navigate to misc/signal.cpp:481 to see the implementation of SIG_DFL
     // (which, again, calls `_exit(3)` unconditionally.)
-    for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT, SIGABRT_COMPAT] {
+    for sig in windowsSignals.keys {
       _ = signal(sig) { sig in
         _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
       }

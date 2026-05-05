@@ -33,6 +33,8 @@ private import _TestingInternals
 #endif
 #elseif os(Linux) && !SWT_NO_DYNAMIC_LINKING
     hasSignalNames = (symbol(named: "sigabbrev_np") != nil)
+#elseif os(Windows)
+    hasSignalNames = true
 #endif
 
     let exitStatus = ExitStatus.signal(SIGABRT)
