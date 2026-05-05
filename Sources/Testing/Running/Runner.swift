@@ -82,6 +82,10 @@ extension Runner {
   private struct _Context: Sendable {
     /// A serializer used to reduce parallelism among test cases.
     var testCaseSerializer: Serializer<Void>?
+
+    /// A set of test+case IDs that have recorded at least one issue during a test run.
+    /// This is consumed
+    let testIssueRecorder = TestIssueRecorder()
   }
 
   /// Apply the custom scope for any test scope providers of the traits
@@ -419,9 +423,9 @@ extension Runner {
       if let testCaseSerializer = context.testCaseSerializer {
         // Note that if .serialized is applied to an inner scope, we still use
         // this serializer (if set) so that we don't overcommit.
-        await testCaseSerializer.run { await _runTestCase(testCase, within: step) }
+        await testCaseSerializer.run { await _runTestCase(testCase, in: context, within: step) }
       } else {
-        await _runTestCase(testCase, within: step)
+        await _runTestCase(testCase, in: context, within: step)
       }
     }
   }
@@ -436,13 +440,16 @@ extension Runner {
   /// body closure.
   private static func _runTestCase(
     _ testCase: Test.Case,
-    within step: Plan.Step
+    in context: _Context,
+    within step: Plan.Step,
   ) async {
     if _configuration.shouldUseLegacyPlanLevelRepetition {
       await _runSingleTestCaseIteration(testCase, within: step)
     } else {
-      await _applyRepetitionPolicy {
+      await _applyRepetitionPolicy(_configuration.repetitionPolicy) {
         await _runSingleTestCaseIteration(testCase, within: step)
+      } didRecordIssue: {
+        context.testIssueRecorder.consumeIssue(for: step.test.id, testCase: testCase.id)
       }
     }
   }
@@ -485,47 +492,6 @@ extension Runner {
     }
   }
 
-  /// Applies the repetition policy specified in the current configuration by running the provided test case
-  /// repeatedly until the continuation condition is satisfied.
-  ///
-  /// - Parameters:
-  ///   - body: The actual body of the function which must ultimately call into the test function.
-  ///
-  /// - Note: This function updates ``Configuration/current`` before invoking the test body.
-  private static func _applyRepetitionPolicy(
-    perform body: () async -> Void
-  ) async {
-    for iteration in 1..._configuration.repetitionPolicy.maximumIterationCount {
-      let issueRecorded = Atomic(false)
-      var config = _configuration
-      config.eventHandler = { [eventHandler = config.eventHandler] event, context in
-        if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
-          issueRecorded.store(true, ordering: .sequentiallyConsistent)
-        }
-        eventHandler(event, context)
-      }
-
-      await Test.withCurrentIteration(iteration) {
-        await Configuration.withCurrent(config, addingToAll: false) {
-          await body()
-        }
-      }
-
-      // Determine if the test plan should iterate again.
-      let shouldContinue = switch config.repetitionPolicy.continuationCondition {
-      case nil:
-        true
-      case .untilIssueRecorded:
-        !issueRecorded.load(ordering: .sequentiallyConsistent)
-      case .whileIssueRecorded:
-        issueRecorded.load(ordering: .sequentiallyConsistent)
-      }
-      guard shouldContinue else {
-        break
-      }
-    }
-  }
-
   /// Run the tests in this runner's plan.
   public func run() async {
     await Self._run(self)
@@ -561,6 +527,8 @@ extension Runner {
       return context
     }()
 
+    runner.configureIssueRecordingEventHandling(testIssueRecorder: context.testIssueRecorder)
+
     await Configuration.withCurrent(runner.configuration) {
       // Post an event for every test in the test plan being run. These events
       // are turned into JSON objects if JSON output is enabled.
@@ -576,7 +544,9 @@ extension Runner {
       }
 
       if runner.configuration.shouldUseLegacyPlanLevelRepetition {
-        await _applyRepetitionPolicy { [runner] in
+        await _applyRepetitionPolicy(runner.configuration.repetitionPolicy) { [runner] in
+          context.testIssueRecorder.clear()
+
           let iteration = Test.currentIteration ?? 1
 
           // Legacy clients expect these values to be zero-indexed.
@@ -585,7 +555,10 @@ extension Runner {
           defer {
             Event.post(.iterationEnded(iterationIndex), configuration: runner.configuration)
           }
+
           await runner._runAllTests(context: context)
+        } didRecordIssue: {
+          context.testIssueRecorder.hasIssues
         }
       } else {
         await runner._runAllTests(context: context)

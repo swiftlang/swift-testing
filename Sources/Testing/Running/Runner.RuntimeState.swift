@@ -74,7 +74,6 @@ extension Configuration {
   ///
   /// - Parameters:
   ///   - configuration: The new value to set for ``Configuration/current``.
-  ///   - addingToAll: Whether to add this configuration to the set of implicitly-tracked ``Configuration``s that are told about detached Issues.
   ///   - body: A function to call.
   ///
   /// - Returns: Whatever is returned by `body`.
@@ -82,14 +81,11 @@ extension Configuration {
   /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(
     _ configuration: Self,
-    addingToAll: Bool = true,
     perform body: () throws -> R
   ) rethrows -> R {
-    let id = addingToAll ? configuration._addToAll() : nil
+    let id = configuration._addToAll()
     defer {
-      if let id {
-        configuration._removeFromAll(identifiedBy: id)
-      }
+      configuration._removeFromAll(identifiedBy: id)
     }
 
     var runtimeState = Runner.RuntimeState.current ?? .init()
@@ -102,7 +98,6 @@ extension Configuration {
   ///
   /// - Parameters:
   ///   - configuration: The new value to set for ``Configuration/current``.
-  ///   - addingToAll: Whether to add this configuration to the set of implicitly-tracked ``Configuration``s that are told about detached Issues.
   ///   - body: A function to call.
   ///
   /// - Returns: Whatever is returned by `body`.
@@ -110,14 +105,11 @@ extension Configuration {
   /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(
     _ configuration: Self,
-    addingToAll: Bool = true,
     perform body: () async throws -> R
   ) async rethrows -> R {
-    let id = addingToAll ? configuration._addToAll() : nil
+    let id = configuration._addToAll()
     defer {
-      if let id {
-        configuration._removeFromAll(identifiedBy: id)
-      }
+      configuration._removeFromAll(identifiedBy: id)
     }
 
     var runtimeState = Runner.RuntimeState.current ?? .init()
