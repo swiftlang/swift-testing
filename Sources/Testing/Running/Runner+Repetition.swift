@@ -81,19 +81,11 @@ extension Runner {
 
   mutating func configureIssueRecordingEventHandling(testIssueRecorder: TestIssueRecorder) {
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-      defer {
-        oldEventHandler(event, context)
+      if case .issueRecorded = event.kind, let testID = event.testID, let testCaseID = event.testCaseID {
+        testIssueRecorder.recordIssue(for: testID, testCase: testCaseID)
       }
 
-      guard
-        case .issueRecorded = event.kind,
-        let testID = event.testID,
-        let testCaseID = event.testCaseID
-      else {
-        return
-      }
-
-      testIssueRecorder.recordIssue(for: testID, testCase: testCaseID)
+      oldEventHandler(event, context)
     }
   }
 }
