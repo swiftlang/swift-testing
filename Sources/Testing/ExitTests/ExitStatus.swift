@@ -142,7 +142,7 @@ extension ExitStatus: CustomStringConvertible {
         .map { "SIG\($0)" }
 #endif
 #elseif os(Windows)
-      windowsSignals[signal]
+      result = windowsSignals[signal]
 #elseif os(WASI)
       // These platforms do not have API to get the programmatic name of a
       // signal constant.
