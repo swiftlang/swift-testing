@@ -18,11 +18,11 @@ extension Runner {
   /// and is used by the repetition machinery to determine if an issue was recorded
   /// during a run.
   final class TestIssueRecorder: Sendable {
-    struct ID: Hashable {
+    private struct ID: Hashable {
       var testID: Test.ID
       var testCaseID: Test.Case.ID
     }
-    let ids = Mutex<Set<ID>>([])
+    private let ids = Mutex<Set<ID>>([])
 
     var hasIssues: Bool {
       ids.withLock { !$0.isEmpty }
