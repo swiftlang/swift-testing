@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 extension Runner {
   /// A thread-safe set of test+case IDs that have recorded issues.
   /// This keeps track of tests that recorded an issue during a test repetition
