@@ -37,6 +37,8 @@ public struct Test: Sendable {
     var testCasesState: TestCasesState?
     var parameters: [Parameter]?
     var isSynthesized: Bool
+    var isPolymorphic: Bool
+    var wasInherited: Bool
 #if DEBUG
     var mutationCount = 0
 #endif
@@ -300,6 +302,27 @@ public struct Test: Sendable {
     }
   }
 
+  /// Whether or not this instance should be copied and inherited by subclasses
+  /// of ``containingTypeInfo``.
+  var isPolymorphic: Bool {
+    get {
+      _properties.value.isPolymorphic
+    }
+    set {
+      _setValue(newValue, forKeyPath: \.isPolymorphic)
+    }
+  }
+
+  /// Whether or not this instance was inherited from a superclass.
+  var wasInherited: Bool {
+    get {
+      _properties.value.wasInherited
+    }
+    set {
+      _setValue(newValue, forKeyPath: \.wasInherited)
+    }
+  }
+
 #if DEBUG
   /// The number of times any property on this instance of ``Test`` has been
   /// mutated after initialization.
@@ -314,7 +337,8 @@ public struct Test: Sendable {
     traits: [any Trait],
     sourceLocation: SourceLocation,
     containingTypeInfo: TypeInfo,
-    isSynthesized: Bool = false
+    isSynthesized: Bool = false,
+    isPolymorphic: Bool
   ) {
     let name = containingTypeInfo.unqualifiedName
     var displayName = displayName
@@ -329,7 +353,9 @@ public struct Test: Sendable {
       traits: traits,
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
-      isSynthesized: isSynthesized
+      isSynthesized: isSynthesized,
+      isPolymorphic: isPolymorphic,
+      wasInherited: false
     )
     _properties = Allocated(properties)
   }
@@ -354,7 +380,9 @@ public struct Test: Sendable {
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCasesState: .unevaluated { try await testCases() },
       parameters: parameters,
-      isSynthesized: false
+      isSynthesized: false,
+      isPolymorphic: false,
+      wasInherited: false
     )
     _properties = Allocated(properties)
   }
@@ -379,7 +407,9 @@ public struct Test: Sendable {
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCasesState: .evaluated(testCases),
       parameters: parameters,
-      isSynthesized: false
+      isSynthesized: false,
+      isPolymorphic: false,
+      wasInherited: false
     )
     _properties = Allocated(properties)
   }

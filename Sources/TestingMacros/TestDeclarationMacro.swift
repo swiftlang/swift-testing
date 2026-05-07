@@ -87,9 +87,9 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     // Only one @Test attribute is supported.
-    let suiteAttributes = function.attributes(named: "Test")
-    if suiteAttributes.count > 1 {
-      diagnostics.append(.multipleAttributesNotSupported(suiteAttributes, on: declaration))
+    let testAttributes = function.attributes(named: "Test")
+    if testAttributes.count > 1 {
+      diagnostics.append(.multipleAttributesNotSupported(testAttributes, on: declaration))
     }
 
     let parameterList = function.signature.parameterClause.parameters
@@ -259,6 +259,22 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       }
     }
 
+    // Should the thunk be declared generic over subclasses of `typeName`?
+    var isPolymorphicSuiteClass = false
+    var mayBePolymorphicSuiteExtension = false
+    if let containingTypeDecl = context.lexicalContext.first?.asProtocol((any WithAttributesSyntax).self) {
+      switch containingTypeDecl.kind {
+      case .classDecl, .actorDecl:
+        if !containingTypeDecl.attributes(named: "polymorphic").isEmpty {
+          isPolymorphicSuiteClass = true
+        }
+      case .extensionDecl:
+        mayBePolymorphicSuiteExtension = true
+      default:
+        break
+      }
+    }
+
     // Generate a thunk function that invokes the actual function.
     var thunkBody: CodeBlockItemListSyntax
     if functionDecl.availability(when: .unavailable).first(where: { $0.platformVersion == nil }) != nil {
@@ -269,10 +285,20 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       if functionDecl.isStaticOrClass {
         thunkBody = "_ = \(forwardCall("\(typeName).\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))"
       } else {
-        let instanceName = context.makeUniqueName("")
+        let instanceName = context.makeUniqueName("subclass")
         let varOrLet = functionDecl.isMutating ? "var" : "let"
+        var initExpr: ExprSyntax = "\(typeName)()"
+        if isPolymorphicSuiteClass || mayBePolymorphicSuiteExtension {
+          initExpr = """
+          try await Testing.__initialize {
+            \(forwardInit(initExpr))
+          }
+          """
+        } else {
+          initExpr = forwardInit(initExpr)
+        }
         thunkBody = """
-        \(raw: varOrLet) \(raw: instanceName) = \(forwardInit("\(typeName)()"))
+        \(raw: varOrLet) \(raw: instanceName) = \(initExpr)
         _ = \(forwardCall("\(raw: instanceName).\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))
         """
 
@@ -312,7 +338,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       // Get a unique name for this secondary thunk. We don't need it to be
       // uniqued against functionDecl because it's interior to the "real" thunk,
       // so its name can't conflict with any other names visible in this scope.
-      let isolationThunkName = context.makeUniqueName("")
+      let isolationThunkName = context.makeUniqueName("isolation")
 
       // Insert a (defaulted) isolated argument. If we emit a closure (or inner
       // function) that captured the arguments to the "real" thunk, the compiler
