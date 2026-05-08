@@ -10,16 +10,6 @@
 
 extension String {
 #if hasFeature(Embedded)
-  // WORKAROUND: https://github.com/swiftlang/swift/pull/88738
-  init(describing value: some CustomStringConvertible) {
-    self = value.description
-  }
-
-  init(describing value: some TextOutputStreamable) {
-    self.init()
-    value.write(to: &self)
-  }
-
   // WORKAROUND: https://github.com/swiftlang/swift/issues/88756
   func contains(_ other: some StringProtocol) -> Bool {
     self.indices.contains { self[$0...].hasPrefix(other) }
