@@ -138,6 +138,7 @@ let package = Package(
         "_TestDiscovery",
         "_TestingInternals",
       ] + {
+        // TODO: get macro target building for host when the target is embedded
         buildingForEmbedded ? [] : ["TestingMacros"]
       }(),
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
