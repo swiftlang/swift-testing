@@ -71,6 +71,6 @@ extension TimeValue: CustomStringConvertible {
     if strMilliseconds.count < 3 {
       strMilliseconds = String(repeating: "0", count: 3 - strMilliseconds.count) + strMilliseconds
     }
-    return "\(strSeconds).\(strMilliseconds)"
+    return "\(strSeconds).\(strMilliseconds) seconds"
   }
 }
