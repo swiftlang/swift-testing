@@ -124,7 +124,7 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
 #error("Platform-specific misconfiguration: Mutex is unavailable")
 #endif
 
-extension Mutex where Value: Copyable {
+extension Mutex where Value: Copyable & Sendable {
   var rawValue: Value {
     withLock { $0 }
   }
