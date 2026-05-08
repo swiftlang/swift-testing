@@ -286,7 +286,7 @@ extension ExitTest {
     // repository doesn't have an official GitHub mirror, but you can manually
     // navigate to misc/signal.cpp:481 to see the implementation of SIG_DFL
     // (which, again, calls `_exit(3)` unconditionally.)
-    for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT, SIGABRT_COMPAT] {
+    for sig in windowsSignals.keys {
       _ = signal(sig) { sig in
         _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
       }
@@ -887,6 +887,20 @@ extension ExitTest {
       // platform-specific changes.
       var childEnvironment = Environment.get()
 #if SWT_TARGET_OS_APPLE
+      // If XCTest is hosting tests in an app, it uses DYLD_INSERT_LIBRARIES to
+      // inject its startup code, then strips the injected library path from the
+      // environment variable so as not to affect child processes. We want to
+      // add it back in!
+      if let bundleInjectPath = childEnvironment["XCTestBundleInjectPath"] {
+        let newValue = if let oldValue = childEnvironment["DYLD_INSERT_LIBRARIES"] {
+          "\(oldValue):\(bundleInjectPath)"
+        } else {
+          bundleInjectPath
+        }
+        childEnvironment["DYLD_INSERT_LIBRARIES"] = newValue
+        childEnvironment.removeValue(forKey: "XCTestBundleInjectPath")
+      }
+
       // We need to remove the XCTest-related environment variables set by Xcode,
       // except those known to be safe and relevant, from the child environment
       // to avoid accidentally recursing.
