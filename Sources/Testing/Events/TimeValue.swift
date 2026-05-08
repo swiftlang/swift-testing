@@ -66,9 +66,11 @@ extension TimeValue: CustomStringConvertible {
       milliseconds = 1
     }
 
-    return withUnsafeTemporaryAllocation(of: CChar.self, capacity: 512) { buffer in
-      swt_printTimeValue(buffer.baseAddress!, buffer.count, seconds, milliseconds)
-      return String(cString: buffer.baseAddress!)
+    let strSeconds = String(describing: seconds)
+    var strMilliseconds = String(describing: milliseconds)
+    if strMilliseconds.count < 3 {
+      strMilliseconds = String(repeating: "0", count: 3 - strMilliseconds.count) + strMilliseconds
     }
+    return "\(strSeconds).\(strMilliseconds)"
   }
 }
