@@ -83,8 +83,9 @@ extension Runner {
     /// A serializer used to reduce parallelism among test cases.
     var testCaseSerializer: Serializer<Void>?
 
-    /// A set of test+case IDs that have recorded at least one issue during a test run.
-    /// This is consumed
+    /// A set of test+case IDs that have recorded at least one issue during a
+    /// test run. This is consumed by the per-test-case repetition machinery to
+    /// determine whether a test case's iteration recorded an issue.
     let testIssueRecorder = TestIssueRecorder()
   }
 
@@ -434,6 +435,7 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - testCase: The test case to run.
+  ///   - context: Context for the test run.
   ///   - step: The runner plan step associated with this test case.
   ///
   /// This function sets ``Test/Case/current``, then invokes the test case's
@@ -566,6 +568,10 @@ extension Runner {
     }
   }
 
+  /// Run every test in this runner's plan.
+  ///
+  /// - Parameters:
+  ///   - context: Context for the test run.
   private func _runAllTests(context: _Context) async {
     await withTaskGroup { taskGroup in
       _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: nil)) {
