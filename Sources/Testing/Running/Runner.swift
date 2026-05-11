@@ -424,9 +424,9 @@ extension Runner {
       if let testCaseSerializer = context.testCaseSerializer {
         // Note that if .serialized is applied to an inner scope, we still use
         // this serializer (if set) so that we don't overcommit.
-        await testCaseSerializer.run { await _runTestCase(testCase, in: context, within: step) }
+        await testCaseSerializer.run { await _runTestCase(testCase, within: step, in: context) }
       } else {
-        await _runTestCase(testCase, in: context, within: step)
+        await _runTestCase(testCase, within: step, in: context)
       }
     }
   }
@@ -435,15 +435,15 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - testCase: The test case to run.
-  ///   - context: Context for the test run.
   ///   - step: The runner plan step associated with this test case.
+  ///   - context: Context for the test run.
   ///
   /// This function sets ``Test/Case/current``, then invokes the test case's
   /// body closure.
   private static func _runTestCase(
     _ testCase: Test.Case,
-    in context: _Context,
     within step: Plan.Step,
+    in context: _Context,
   ) async {
     if _configuration.shouldUseLegacyPlanLevelRepetition {
       await _runSingleTestCaseIteration(testCase, within: step)
