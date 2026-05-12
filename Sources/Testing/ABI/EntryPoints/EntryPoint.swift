@@ -636,18 +636,55 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 #endif
 
   // Filtering
+
+  // Filters currently come in two flavors: those with a prefix and those
+  // without. Those without a prefix are treated the same as those with an
+  // "id:" prefix.
+  enum FilterPrefix: String, CaseIterable {
+    case id = "id:"
+    case tag = "tag:"
+  }
   var filters = [Configuration.TestFilter]()
-  func testFilter(forRegularExpressions regexes: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
-    guard let regexes, !regexes.isEmpty else {
-      // Return early if empty, even though the `reduce` logic below can handle
-      // this case, in order to avoid the `#available` guard.
-      return .unfiltered
+  func testFilters(forOptionArguments optionArguments: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> [Configuration.TestFilter] {
+    var tagPatterns = [String]()
+    var idPatterns = [String]()
+
+    // Loop through all the option arguments, separating tags from regex filters
+    for var optionArg in optionArguments ?? [] {
+      if let prefix = FilterPrefix.allCases.first(where: { optionArg.hasPrefix($0.rawValue) }) {
+        // We have encountered a prefix, so trim it off and add the supplied
+        // argument to the appropriate filter list
+        optionArg.trimPrefix(prefix.rawValue)
+        switch prefix {
+          case .id: idPatterns.append(optionArg)
+          case .tag: tagPatterns.append(optionArg)
+        }
+      } else {
+        // No prefix was detected, so we treat this as a regex matching a test ID.
+        idPatterns.append(optionArg)
+      }
     }
 
-    return try Configuration.TestFilter(membership: membership, matchingAnyOf: regexes)
+    // If we didn't find any tags, the tagFilter should be .unfiltered,
+    // otherwise we construct it with the provided tags
+    let tagFilter: Configuration.TestFilter = switch (membership, tagPatterns.isEmpty) {
+      case (_, true): .unfiltered
+      case (.including, false): Configuration.TestFilter(includingTagsMatching: tagPatterns)
+      case (.excluding, false): Configuration.TestFilter(excludingTagsMatching: tagPatterns)
+    }
+
+    guard !idPatterns.isEmpty else {
+      // Return early with just the tag filter, otherwise we try to match
+      // against an empty array of regular expressions which is _not_
+      // equivalent to `.unfiltered`.
+      return [tagFilter]
+    }
+
+    return [try Configuration.TestFilter(membership: membership, matchingAnyOf: idPatterns), tagFilter]
   }
-  filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))
-  filters.append(try testFilter(forRegularExpressions: args.skip, label: "--skip", membership: .excluding))
+
+  filters += try testFilters(forOptionArguments: args.filter, label: "--filter", membership: .including)
+  filters += try testFilters(forOptionArguments: args.skip, label: "--skip", membership: .excluding)
 
   configuration.testFilter = filters.reduce(.unfiltered) { $0.combining(with: $1) }
   if args.includeHiddenTests == true {
