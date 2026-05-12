@@ -50,4 +50,29 @@ let STATUS_SIGNAL_CAUGHT_BITS = {
 
   return result
 }()
+
+/// The names of all signals supported on Windows (to the degree that Windows
+/// supports signals).
+///
+/// Most other platforms provide a C API for getting the name of a signal code.
+/// Windows doesn't have such an API, but it does have a short [list](https://learn.microsoft.com/en-us/cpp/c-runtime-library/signal-constants?view=msvc-170)
+/// of supported signals that we can just hard-code here.
+let windowsSignals: [CInt: String] = {
+  var result = [
+    SIGINT: "SIGINT",
+    SIGILL: "SIGILL",
+    SIGFPE: "SIGFPE",
+    SIGSEGV: "SIGSEGV",
+    SIGTERM: "SIGTERM",
+    SIGBREAK: "SIGBREAK",
+    SIGABRT: "SIGABRT",
+  ]
+  if SIGABRT_COMPAT != SIGABRT {
+    // As currently defined, SIGABRT_COMPAT is a different value from SIGABRT,
+    // but I'm going to code defensively here in case Microsoft coalesces them
+    // in some future Windows SDK update.
+    result[SIGABRT_COMPAT] = "SIGABRT_COMPAT"
+  }
+  return result
+}()
 #endif

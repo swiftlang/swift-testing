@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI {
   /// A type implementing the JSON encoding of ``Event`` for the ABI entry point
   /// and event stream output.
@@ -117,10 +118,18 @@ extension ABI {
       case .testStarted:
         kind = .testStarted
       case .testCaseStarted:
+        // For non-parameterized tests, we elide `testCaseStarted` calls because it would be
+        // redundant. However, for multiple iterations of a test case within a non-parameterized
+        // function, we need to emit another `testStarted` event.
         if eventContext.test?.isParameterized == false {
-          return nil
+          if let iteration = eventContext.iteration, iteration > 1 {
+            kind = .testStarted
+          } else {
+            return nil
+          }
+        } else {
+          kind = .testCaseStarted
         }
-        kind = .testCaseStarted
       case let .issueRecorded(recordedIssue):
         kind = .issueRecorded
         issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
@@ -129,9 +138,14 @@ extension ABI {
         self.attachment = EncodedAttachment(encoding: attachment)
       case .testCaseEnded:
         if eventContext.test?.isParameterized == false {
-          return nil
+          if let iteration = eventContext.iteration, iteration > 1 {
+            kind = .testEnded
+          } else {
+            return nil
+          }
+        } else {
+          kind = .testCaseEnded
         }
-        kind = .testCaseEnded
       case .testCaseCancelled:
         kind = .testCaseCancelled
       case .testEnded:
@@ -164,6 +178,7 @@ extension ABI {
           let .testCancelled(skipInfo):
           _comments = Array(skipInfo.comment).map(\.rawValue)
           _sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
+          _iteration = eventContext.iteration
         default:
           break
         }
@@ -180,3 +195,66 @@ extension ABI {
 
 extension ABI.EncodedEvent: Codable {}
 extension ABI.EncodedEvent.Kind: Codable {}
+
+// MARK: - Conversion to/from library types
+
+@_spi(ForToolsIntegrationOnly)
+extension Event {
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - event: The encoded event to initialize this instance from.
+  ///
+  /// ``testID`` and ``testCaseID`` are always `nil` because we need information
+  /// from the associated `ABI.EncodedTest` to properly decode those values.
+  public init?<V>(decoding event: ABI.EncodedEvent<V>) {
+    // SkipInfo will only be decoded for skip/cancel event kinds
+    lazy var skipInfo = SkipInfo(decoding: event)
+
+    let kind: Kind
+    switch event.kind {
+    case .runStarted:
+      kind = .runStarted
+    case .testStarted:
+      kind = .testStarted
+    case .testCaseStarted:
+      kind = .testCaseStarted
+    case .issueRecorded:
+      guard let issue = Issue(decoding: event) else {
+        return nil
+      }
+      kind = .issueRecorded(issue)
+    case .valueAttached:
+      guard let attachment = Attachment<AnyAttachable>(decoding: event) else {
+        return nil
+      }
+      kind = .valueAttached(attachment)
+    case .testCaseEnded:
+      kind = .testCaseEnded
+    case .testCaseCancelled:
+      guard let skipInfo else {
+        return nil
+      }
+      kind = .testCaseCancelled(skipInfo)
+    case .testEnded:
+      kind = .testEnded
+    case .testSkipped:
+      guard let skipInfo else {
+        return nil
+      }
+      kind = .testSkipped(skipInfo)
+    case .testCancelled:
+      guard let skipInfo else {
+        return nil
+      }
+      kind = .testCancelled(skipInfo)
+    case .runEnded:
+      kind = .runEnded
+    }
+
+    guard let instant = Test.Clock.Instant(decoding: event.instant) else { return nil }
+
+    self.init(kind, testID: nil, testCaseID: nil, instant: instant)
+  }
+}
+#endif

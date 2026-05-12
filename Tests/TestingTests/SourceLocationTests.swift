@@ -10,10 +10,6 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if canImport(Foundation)
-private import Foundation
-#endif
-
 @Suite("SourceLocation Tests")
 struct SourceLocationTests {
   @Test("SourceLocation.description property")
@@ -69,7 +65,7 @@ struct SourceLocationTests {
     #expect(sourceLocation.fileName == "D.swift")
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
   @Test("SourceLocation.fileID property is synthesized if not decoded")
   func sourceLocationFileIDSynthesizedWhenNeeded() throws {
 #if os(Windows)

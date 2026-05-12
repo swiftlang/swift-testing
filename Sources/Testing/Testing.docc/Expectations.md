@@ -91,7 +91,6 @@ the test when the code doesn't satisfy a requirement, use
 
 - ``Expectation``
 - ``ExpectationFailedError``
-- ``CustomTestStringConvertible``
 
 ### Representing source locations
 

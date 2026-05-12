@@ -98,8 +98,8 @@ record's kind is a 32-bit unsigned value. The following kinds are defined:
 | `0x65786974` | `'exit'` | Exit test |
 | `0x706c6179` | `'play'` | [Playground](https://github.com/apple/swift-play-experimental) |
 
-<!-- The kind values listed in this table should be a superset of the cases in
-the `TestContentKind` enumeration. -->
+<!-- The kind values listed in this table should be a superset of the constants
+in Sources/_TestDiscovery/TestContentKind.swift. -->
 
 If a test content record's `kind` field equals `0x00000000`, the values of all
 other fields in that record are undefined.

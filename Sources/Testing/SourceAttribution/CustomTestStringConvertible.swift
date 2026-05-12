@@ -8,71 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A protocol describing types with a custom string representation when
 /// presented as part of a test's output.
-///
-/// Values whose types conform to this protocol use it to describe themselves
-/// when they are present as part of the output of a test. For example, this
-/// protocol affects the display of values that are passed as arguments to test
-/// functions or that are elements of an expectation failure.
-///
-/// By default, the testing library converts values to strings using
-/// `String(describing:)`. The resulting string may be inappropriate for some
-/// types and their values. If the type of the value is made to conform to
-/// ``CustomTestStringConvertible``, then the value of its ``testDescription``
-/// property will be used instead.
-///
-/// For example, consider the following type:
-///
-/// ```swift
-/// enum Food: CaseIterable {
-///   case paella, oden, ragu
-/// }
-/// ```
-///
-/// If an array of cases from this enumeration is passed to a parameterized test
-/// function:
-///
-/// ```swift
-/// @Test(arguments: Food.allCases)
-/// func isDelicious(_ food: Food) { ... }
-/// ```
-///
-/// Then the values in the array need to be presented in the test output, but
-/// the default description of a value may not be adequately descriptive:
-///
-/// ```
-/// ◇ Test case passing 1 argument food → .paella to isDelicious(_:) started.
-/// ◇ Test case passing 1 argument food → .oden to isDelicious(_:) started.
-/// ◇ Test case passing 1 argument food → .ragu to isDelicious(_:) started.
-/// ```
-///
-/// By adopting ``CustomTestStringConvertible``, customized descriptions can be
-/// included:
-///
-/// ```swift
-/// extension Food: CustomTestStringConvertible {
-///   var testDescription: String {
-///     switch self {
-///     case .paella:
-///       "paella valenciana"
-///     case .oden:
-///       "おでん"
-///     case .ragu:
-///       "ragù alla bolognese"
-///     }
-///   }
-/// }
-/// ```
-///
-/// The presentation of these values will then reflect the value of the
-/// ``testDescription`` property:
-///
-/// ```
-/// ◇ Test case passing 1 argument food → paella valenciana to isDelicious(_:) started.
-/// ◇ Test case passing 1 argument food → おでん to isDelicious(_:) started.
-/// ◇ Test case passing 1 argument food → ragù alla bolognese to isDelicious(_:) started.
-/// ```
 ///
 /// ## See Also
 ///
@@ -95,7 +34,9 @@ extension String {
   /// ## See Also
   ///
   /// - ``CustomTestStringConvertible``
+  @_unavailableInEmbedded
   public init(describingForTest value: some Any) {
+#if !hasFeature(Embedded)
     // The mangled type name SPI doesn't handle generic types very well, so we
     // ask for the dynamic type of `value` (type(of:)) instead of just T.self.
     lazy var valueTypeInfo = TypeInfo(describingTypeOf: value)
@@ -124,7 +65,58 @@ extension String {
       // Use the generic description of the value.
       self.init(describing: value)
     }
+#else
+    swt_unreachable()
+#endif
   }
+
+#if hasFeature(Embedded)
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  public init(describingForTest value: some CustomTestStringConvertible) {
+    self = value.testDescription
+  }
+
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  @_disfavoredOverload
+  @available(*, deprecated, message: "String representations of arbitrary values are not supported in Embedded Swift")
+  @usableFromInline
+  init(describingForTest value: borrowing some ~Copyable & ~Escapable) {
+    // FIXME: need some sort of description functionality for arbitrary values
+    self = "<unknown value>"
+  }
+
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  init(describingForTest value: (some ~Copyable & ~Escapable).Type) {
+    // FIXME: need some sort of description functionality for types
+    self = "<unknown type>"
+  }
+
+  init(describingForTest value: any Error) {
+    // FIXME: need some sort of description functionality for errors
+    self = "<unknown error>"
+  }
+#endif
 }
 
 // MARK: - Built-in implementations

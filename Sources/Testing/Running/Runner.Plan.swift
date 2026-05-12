@@ -147,6 +147,46 @@ extension Runner.Plan {
     }
   }
 
+  /// Recursively deduplicate traits on the given test by calling
+  /// ``ReducibleTrait/reduce(_:)`` across all nodes in the graph.
+  ///
+  /// - Parameters:
+  ///   - testGraph: The graph of tests to modify.
+  private static func _recursivelyReduceTraits(in testGraph: inout Graph<String, Test?>) {
+    testGraph = testGraph.mapValues { _, test in
+      guard var test else {
+        return nil
+      }
+
+      var traits = test.traits.map { $0 as Optional }
+      for i in traits.indices {
+        guard var trait = traits[i] as? any ReducibleTrait else {
+          // The trait is not reducible, so preserve it verbatim and move on.
+          continue
+        }
+        defer {
+          traits[i] = trait
+        }
+
+        func open<T>(_ trait: inout T) where T: ReducibleTrait {
+          for j in traits.index(after: i) ..< traits.endIndex {
+            if let other = traits[j] as? T,
+               let replacement = other.reduce(into: trait) {
+              // Reduction occurred, so remove the other trait and replace this one
+              // with the reduced trait.
+              trait = replacement
+              traits[j] = nil
+            }
+          }
+        }
+        open(&trait)
+      }
+      test.traits = traits.compactMap(\.self)
+
+      return test
+    }
+  }
+
   /// Recursively synthesize test instances representing suites for all missing
   /// values in the specified test graph.
   ///
@@ -356,6 +396,12 @@ extension Runner.Plan {
     // filtered out.
     _recursivelyApplyTraits(to: &testGraph)
 
+    // Recursively reduce traits in the graph.
+    //
+    // As with `_recursivelyApplyTraits(to:)`, we must call this function before
+    // calling `prepare(for:)` to ensure correct operation.
+    _recursivelyReduceTraits(in: &testGraph)
+
     // For each test value, determine the appropriate action for it.
     testGraph = await testGraph.mapValues { keyPath, test in
       // Skip any nil test, which implies this node is just a placeholder and
@@ -416,6 +462,9 @@ extension Runner.Plan {
   }
 }
 
+#if !SWT_NO_CODABLE
+// MARK: - Codable
+
 extension Runner.Plan.Action.RunOptions: Codable {
   private enum CodingKeys: CodingKey {
     case isParallelizationEnabled
@@ -438,6 +487,7 @@ extension Runner.Plan.Action.RunOptions: Codable {
     try container.encode(false, forKey: .isParallelizationEnabled)
   }
 }
+#endif
 
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting

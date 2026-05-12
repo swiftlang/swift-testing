@@ -53,6 +53,7 @@ names prefixed with `SWT_`.
 | `SWT_CAPTURED_VALUES` | `CInt`/`HANDLE` | A file descriptor (handle on Windows) containing captured values passed to the exit test. |
 | `SWT_CLOSEFROM` | `CInt` | Used on OpenBSD to emulate `posix_spawn_file_actions_addclosefrom_np()`. |
 | `SWT_EXIT_TEST_ID` | `String` (JSON) | Specifies which exit test to run. |
+| `SWT_START_CHILD_PROCESSES_SUSPENDED` | `Bool` | Start child processes (such as those for exit tests) in a suspended state where supported (Apple platforms and Windows). |
 | `XCTestBundlePath`\* | `String` | Used on Apple platforms to determine if Xcode is hosting the test run. |
 
 ## Miscellaneous
@@ -63,4 +64,5 @@ names prefixed with `SWT_`.
 | `HOME`[\*](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html) | `String` | Used to determine the user's home directory. |
 | `SIMULATOR_RUNTIME_BUILD_VERSION`\* | `String` | Used when running in the iOS (etc.) Simulator to determine the simulator's version. |
 | `SIMULATOR_RUNTIME_VERSION`\* | `String` | Used when running in the iOS (etc.) Simulator to determine the simulator's version. |
+| `SWT_EXPERIMENTAL_SERIALIZED_TRAIT_APPLIES_GLOBALLY` | `Bool` | Whether or not `.serialized` applies globally or just to its branch of the test graph. |
 | `SWT_USE_LEGACY_TEST_DISCOVERY` | `Bool` | Used to explicitly enable or disable legacy test discovery. |

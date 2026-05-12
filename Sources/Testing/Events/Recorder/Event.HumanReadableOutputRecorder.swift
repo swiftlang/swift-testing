@@ -652,7 +652,11 @@ extension Event.HumanReadableOutputRecorder {
 
     // A helper function for displaying test durations.
     func descriptionOfDuration(from start: Test.Clock.Instant, to end: Test.Clock.Instant) -> String {
-      String(describing: TimeValue(rawValue: end.suspending.rawValue - start.suspending.rawValue))
+      String(describing: TimeValue(rawValue: start.duration(to: end)))
+    }
+
+    func testStartedMessage(for test: Test) -> String {
+      "\(_capitalizedTitle(for: test)) \(testName) started"
     }
 
     // Finally, produce any messages for the event.
@@ -715,7 +719,7 @@ extension Event.HumanReadableOutputRecorder {
       return [
         Message(
           symbol: .default,
-          stringValue: "\(_capitalizedTitle(for: test)) \(testName) started."
+          stringValue: "\(testStartedMessage(for: test))."
         )
       ]
 
@@ -855,15 +859,26 @@ extension Event.HumanReadableOutputRecorder {
       return result
 
     case .testCaseStarted:
-      guard let testCase, testCase.isParameterized, let arguments = testCase.arguments else {
+      guard let test, let testCase else { break }
+      let iteration = eventContext.iteration ?? 1
+
+      var message: String
+      if testCase.isParameterized, let arguments = testCase.arguments {
+        message = "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started"
+      } else if iteration > 1 {
+        message = testStartedMessage(for: test)
+      } else {
         break
       }
 
+      if iteration > 1 {
+        message += " (repetition \(iteration))"
+      }
+
+      message += "."
+
       return [
-        Message(
-          symbol: .default,
-          stringValue: "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started."
-        )
+        Message(symbol: .default, stringValue: message)
       ]
 
     case .testCaseEnded:
@@ -981,6 +996,8 @@ extension Event.Context {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension Event.HumanReadableOutputRecorder.Message: Codable {}
+#endif
