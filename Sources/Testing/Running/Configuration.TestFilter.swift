@@ -55,7 +55,7 @@ extension Configuration {
       /// The test filter contains a pattern to predicate test tags against.
       ///
       /// - Parameters:
-      ///   - patterns: The patterns to predicate test tags against.
+      ///   - tagPatterns: The patterns to predicate test tags against
       ///   - membership: How to interpret the result when predicating tests.
       case tagPatterns(_ tagPatterns: [String], membership: Membership)
 
@@ -195,10 +195,20 @@ extension Configuration.TestFilter {
     self.init(_kind: .tags(Set(tags), anyOf: false, membership: .excluding))
   }
 
+  /// Initialize this instance to include tests with tags matching a pattern.
+  ///
+  /// - Parameters:
+  ///   - tagPatterns: The patterns, expressed as a `Regex`-compatible regular
+  ///     expressions, to match test tags against.
   public init(includingTagsMatching tagPatterns: [String]) {
     self.init(_kind: .tagPatterns(tagPatterns, membership: .including))
   }
 
+  /// Initialize this instance to exclude tests with tags matching a pattern.
+  ///
+  /// - Parameters:
+  ///   - tagPatterns: The patterns, expressed as a `Regex`-compatible regular
+  ///     expressions, to match test tags against.
   public init(excludingTagsMatching tagPatterns: [String]) {
     self.init(_kind: .tagPatterns(tagPatterns, membership: .excluding))
   }
