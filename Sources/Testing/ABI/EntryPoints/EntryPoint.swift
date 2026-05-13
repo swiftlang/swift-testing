@@ -635,6 +635,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 #endif
 #endif
 
+#if canImport(_StringProcessing)
   // Filtering
   var filters = [Configuration.TestFilter]()
   func testFilter(forRegularExpressions regexes: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
@@ -653,6 +654,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   if args.includeHiddenTests == true {
     configuration.testFilter.includeHiddenTests = true
   }
+#endif
 
   // Set up the iteration policy for the test run.
   var repetitionPolicy: Configuration.RepetitionPolicy = .once
