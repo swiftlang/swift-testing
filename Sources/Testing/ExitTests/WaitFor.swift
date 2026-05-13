@@ -192,15 +192,15 @@ private let _createWaitThread: Void = {
       // on Darwin, TASK_COMM_LEN on Linux, MAXCOMLEN on FreeBSD, and _MAXCOMLEN
       // on OpenBSD. We try to maximize legibility in the available space.
 #if SWT_TARGET_OS_APPLE
-      _ = pthread_setname_np("Swift Testing exit test monitor")
+      _ = pthread_setname_np("Swift Testing subprocess monitor")
 #elseif os(Linux)
 #if !SWT_NO_DYNAMIC_LINKING
-      _ = _pthread_setname_np?(pthread_self(), "SWT ExT monitor")
+      _ = _pthread_setname_np?(pthread_self(), "SWT prc monitor")
 #endif
 #elseif os(FreeBSD)
-      pthread_set_name_np(pthread_self(), "SWT ex test monitor")
+      pthread_set_name_np(pthread_self(), "SWT subproc monitor")
 #elseif os(OpenBSD)
-      pthread_set_name_np(pthread_self(), "SWT exit test monitor")
+      pthread_set_name_np(pthread_self(), "SWT subprocess monitor")
 #else
 #warning("Platform-specific implementation missing: thread naming unavailable")
 #endif
