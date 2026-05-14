@@ -51,6 +51,12 @@ extension Tag.List: TestTrait, SuiteTrait {
   public var isRecursive: Bool {
     true
   }
+
+#if hasFeature(Embedded)
+  public func __as(_: Tag.List.Type) -> Tag.List? {
+    self
+  }
+#endif
 }
 
 extension Trait where Self == Tag.List {
