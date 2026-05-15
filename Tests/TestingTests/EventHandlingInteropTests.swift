@@ -244,7 +244,10 @@ struct EventHandlingInteropTests {
 
     let stderr = try #require(
       String(validating: result?.standardErrorContent ?? [UInt8](), as: UTF8.self))
-    #expect(stderr.contains("Fatal error: XCTest API was used in a Swift Testing test"))
+    #expect(
+      stderr.contains(
+        "Fatal error: Replace XCTest API such as 'XCTAssert' with a Swift Testing equivalent such as '#expect'."
+      ))
   }
 
   @Test func `Handle fallback event warns issue about XCTest API usage`() async throws {
@@ -260,7 +263,7 @@ struct EventHandlingInteropTests {
 
       #expect(
         issues.map { $0.description }.sorted() == [
-          "An API was misused (warning): XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead.",
+          "An API was misused (warning): Replace XCTest API such as 'XCTAssert' with a Swift Testing equivalent such as '#expect'.",
           "Issue recorded (warning)",
         ]
       )
@@ -316,7 +319,7 @@ struct EventHandlingInteropTests {
 
       #expect(issues.map(\.severity) == [.warning, .warning])
       #expect(issues.map(\.description).sorted() == [
-          "An API was misused (warning): XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead.",
+          "An API was misused (warning): Replace XCTest API such as 'XCTAssert' with a Swift Testing equivalent such as '#expect'.",
           "Issue recorded (warning)"
         ]
       )
