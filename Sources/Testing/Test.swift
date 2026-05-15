@@ -94,9 +94,9 @@ public struct Test: Sendable {
       // traits to test suites.
       func traitsAreCorrectlyTyped() -> Bool {
         if isSuite {
-          return newValue.allSatisfy { $0 is any SuiteTrait }
+          return newValue.allSatisfy { $0.__as((any SuiteTrait).self) != nil }
         } else {
-          return newValue.allSatisfy { $0 is any TestTrait }
+          return newValue.allSatisfy { $0.__as((any TestTrait).self) != nil }
         }
       }
       precondition(traitsAreCorrectlyTyped(), "Programmatically added an inapplicable trait to test \(self)")

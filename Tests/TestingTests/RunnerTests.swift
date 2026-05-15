@@ -720,7 +720,11 @@ final class RunnerTests: XCTestCase {
     // emitted.
     let plan = await Runner.Plan(selecting: ObsoletedTests.self)
     for step in plan.steps where !step.test.isSuite {
-      XCTAssertNotNil(step.test.comments(from: ConditionTrait.self).map(\.rawValue).first { $0.contains("999.0") })
+      let conditionComments = step.test.traits
+        .compactMap { $0.__as(ConditionTrait.self) }
+        .flatMap(\.comments)
+        .map(\.rawValue)
+      XCTAssertNotNil(conditionComments.first { $0.contains("999.0") })
     }
   }
 #endif

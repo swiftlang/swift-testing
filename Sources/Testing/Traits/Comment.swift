@@ -144,6 +144,12 @@ extension Comment: TestTrait, SuiteTrait {
   public var comments: [Comment] {
     [self]
   }
+
+#if hasFeature(Embedded)
+  public func __as(_: Comment.Type) -> Comment? {
+    self
+  }
+#endif
 }
 
 @_spi(Experimental)
@@ -174,19 +180,5 @@ extension Test {
   /// The complete set of comments about this test from all of its traits.
   public var comments: [Comment] {
     traits.flatMap(\.comments)
-  }
-
-  /// The complete set of comments about this test from all traits of a certain
-  /// type.
-  ///
-  /// - Parameters:
-  ///   - traitType: The type of ``Trait`` whose comments should be returned.
-  ///
-  /// - Returns: The comments found for the specified test trait type.
-  @_spi(Experimental)
-  public func comments<T>(from traitType: T.Type) -> [Comment] where T: Trait {
-    traits.lazy
-      .compactMap { $0 as? T }
-      .flatMap(\.comments)
   }
 }

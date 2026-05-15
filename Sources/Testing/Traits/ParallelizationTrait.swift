@@ -104,6 +104,7 @@ extension ParallelizationTrait {
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: -
 
 @_spi(Experimental)
@@ -133,6 +134,7 @@ extension ParallelizationTrait: ReducibleTrait {
     }
   }
 }
+#endif
 
 // MARK: - TestScoping
 
