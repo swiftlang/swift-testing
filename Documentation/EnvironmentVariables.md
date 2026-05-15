@@ -64,6 +64,9 @@ names prefixed with `SWT_`.
 | `HOME`[\*](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html) | `String` | Used to determine the user's home directory. |
 | `SIMULATOR_RUNTIME_BUILD_VERSION`\* | `String` | Used when running in the iOS (etc.) Simulator to determine the simulator's version. |
 | `SIMULATOR_RUNTIME_VERSION`\* | `String` | Used when running in the iOS (etc.) Simulator to determine the simulator's version. |
+| `SWIFT_TESTING_XCTEST_INTEROP_MODE` | `String` | Overrides the behavior for handling XCTest assertion failures recorded during a Swift Testing test. One of `none`, `limited`, `complete`, or `strict`. Explanation of modes can be found in [ST-0021][interop-modes]. | <!--prefer to link to MigratingFromXCTest.md once it is updated with interop-->
 | `SWT_EXPERIMENTAL_SERIALIZED_TRAIT_APPLIES_GLOBALLY` | `Bool` | Whether or not `.serialized` applies globally or just to its branch of the test graph. |
 | `SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH` | `Int` | The default parallelization width when parallelized testing is enabled. |
 | `SWT_USE_LEGACY_TEST_DISCOVERY` | `Bool` | Used to explicitly enable or disable legacy test discovery. |
+
+[interop-modes]: https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0021-targeted-interoperability-swift-testing-and-xctest.md#interoperability-modes
