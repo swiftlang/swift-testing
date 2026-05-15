@@ -8,8 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
-
 /// A type that represents a comment related to a test.
 ///
 /// Use this type to provide context or background information about a
