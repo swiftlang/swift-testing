@@ -143,7 +143,7 @@ extension ExitStatus: CustomStringConvertible {
 #endif
 #elseif os(Windows)
       result = windowsSignals[signal]
-#elseif os(WASI)
+#elseif os(WASI) || os(Emscripten)
       // These platforms do not have API to get the programmatic name of a
       // signal constant.
 #else
