@@ -16,4 +16,9 @@ module _TestingInternals {
     header "Stubs.h"
     export *
   }
+
+  explicit module InteropOnly {
+    header "FallbackEventHandler.h"
+    export *
+  }
 }

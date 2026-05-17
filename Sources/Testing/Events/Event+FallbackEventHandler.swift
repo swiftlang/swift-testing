@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
+private import _TestingInternals.InteropOnly
 
 #if !SWT_NO_INTEROP
 #if SWT_NO_CODABLE
