@@ -509,13 +509,10 @@ struct SwiftPMTests {
     #expect(configuration.repetitionPolicy.continuationCondition == .whileIssueRecorded)
   }
 
-  @Test("--experimental-per-test-case-repetition")
-  func experimentalPerTestCaseRepetition() throws {
+  @Test
+  func `Per-test-case iteration enabled by default`() throws {
     let defaultConfig = try configurationForEntryPoint(withArguments: ["PATH"])
-    #expect(defaultConfig.shouldUseLegacyPlanLevelRepetition)
-
-    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-per-test-case-repetition"])
-    #expect(!configuration.shouldUseLegacyPlanLevelRepetition)
+    #expect(!defaultConfig.shouldUseLegacyPlanLevelRepetition)
   }
 
   @Test("list subcommand")
