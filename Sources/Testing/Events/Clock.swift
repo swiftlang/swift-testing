@@ -20,8 +20,10 @@ extension Test {
   public struct Clock: Sendable {
     /// An instant on the testing clock.
     public struct Instant: Sendable {
+#if !SWT_NO_SUSPENDING_CLOCK
       /// The suspending-clock time corresponding to this instant.
       fileprivate(set) var suspending = TimeValue(rawValue: SuspendingClock().systemEpoch.duration(to: .now))
+#endif
 
 #if !SWT_NO_UTC_CLOCK
       /// The wall-clock time since 1970 corresponding to this instant.
@@ -43,6 +45,18 @@ extension Test {
       }()
 #endif
 
+      /// The time value to use for comparison with other instances of this
+      /// type.
+      private var _timeValueForComparison: TimeValue {
+#if !SWT_NO_SUSPENDING_CLOCK
+        suspending
+#elseif !SWT_NO_UTC_CLOCK
+        wall
+#else
+        TimeValue(rawValue: .zero)
+#endif
+      }
+
       /// The current time according to the testing clock.
       public static var now: Self {
         Self()
@@ -55,6 +69,7 @@ extension Test {
 
 // MARK: -
 
+#if !SWT_NO_SUSPENDING_CLOCK
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension SuspendingClock.Instant {
   /// Initialize this instant to the equivalent of the same instant on the
@@ -66,7 +81,9 @@ extension SuspendingClock.Instant {
     self = SuspendingClock().systemEpoch + testClockInstant.suspending.rawValue
   }
 }
+#endif
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 @_spi(ForToolsIntegrationOnly)
 extension Test.Clock.Instant {
   /// Initialize this instant to be exactly equal to an instant from the testing
@@ -78,12 +95,15 @@ extension Test.Clock.Instant {
   /// - Parameters:
   ///   - instant: The encoded instant to initialize this instant from.
   public init?<V>(decoding instant: ABI.EncodedInstant<V>) {
+#if !SWT_NO_SUSPENDING_CLOCK
     suspending = TimeValue(rawValue: .seconds(instant.absolute))
+#endif
 #if !SWT_NO_UTC_CLOCK
     wall = TimeValue(rawValue: .seconds(instant.since1970))
 #endif
   }
 }
+#endif
 
 #if !SWT_NO_UTC_CLOCK
 extension Test.Clock.Instant {
@@ -104,7 +124,22 @@ extension Test.Clock: _Concurrency.Clock {
   }
 
   public var minimumResolution: Duration {
+#if !SWT_NO_SUSPENDING_CLOCK
     SuspendingClock().minimumResolution
+#elseif !SWT_NO_UTC_CLOCK
+#if !SWT_NO_TIMESPEC
+    // timespec_getres() requires C23 or newer and is not widely implemented as
+    // of this writing, so we unconditionally use clock_getres() here.
+    var res = timespec()
+    _ = clock_getres(CLOCK_REALTIME, &res)
+    return .seconds(res.tv_sec) + .nanoseconds(res.tv_nsec)
+#else
+#warning("Platform-specific implementation missing: UTC time unavailable (no timespec)")
+    .zero
+#endif
+#else
+    .zero
+#endif
   }
 
   /// Suspend the current task for the given duration.
@@ -119,13 +154,15 @@ extension Test.Clock: _Concurrency.Clock {
   /// It is primarily used by the testing library's own tests. External clients
   /// can use ``sleep(for:tolerance:)`` or ``sleep(until:tolerance:)`` instead.
   static func sleep(for duration: Duration) async throws {
-#if !SWT_NO_UNSTRUCTURED_TASKS
+#if !SWT_NO_SUSPENDING_CLOCK
     return try await SuspendingClock().sleep(for: duration)
 #elseif !SWT_NO_TIMESPEC
     var ts = timespec(tv_sec: .init(duration.components.seconds), tv_nsec: .init(duration.components.attoseconds / 1_000_000_000))
     var tsRemaining = ts
     while 0 != nanosleep(&ts, &tsRemaining) {
+#if !hasFeature(Embedded)
       try Task.checkCancellation()
+#endif
       ts = tsRemaining
     }
 #else
@@ -135,10 +172,10 @@ extension Test.Clock: _Concurrency.Clock {
 
   public func sleep(until deadline: Instant, tolerance: Duration?) async throws {
     let duration = Instant.now.duration(to: deadline)
-#if SWT_NO_UNSTRUCTURED_TASKS
-    try await Self.sleep(for: duration)
-#else
+#if !SWT_NO_SUSPENDING_CLOCK
     try await SuspendingClock().sleep(for: duration, tolerance: tolerance)
+#else
+    try await Self.sleep(for: duration)
 #endif
   }
 }
@@ -147,15 +184,15 @@ extension Test.Clock: _Concurrency.Clock {
 
 extension Test.Clock.Instant: Equatable, Hashable, Comparable {
   public static func ==(lhs: Self, rhs: Self) -> Bool {
-    lhs.suspending.rawValue == rhs.suspending.rawValue
+    lhs._timeValueForComparison.rawValue == rhs._timeValueForComparison.rawValue
   }
 
   public func hash(into hasher: inout Hasher) {
-    hasher.combine(suspending.rawValue)
+    hasher.combine(_timeValueForComparison.rawValue)
   }
 
   public static func <(lhs: Self, rhs: Self) -> Bool {
-    lhs.suspending.rawValue < rhs.suspending.rawValue
+    lhs._timeValueForComparison.rawValue < rhs._timeValueForComparison.rawValue
   }
 }
 
@@ -165,7 +202,9 @@ extension Test.Clock.Instant: InstantProtocol {
   public func advanced(by duration: Duration) -> Self {
     var result = self
 
+#if !SWT_NO_SUSPENDING_CLOCK
     result.suspending = TimeValue(rawValue: result.suspending.rawValue + duration)
+#endif
 #if !SWT_NO_UTC_CLOCK
     result.wall = TimeValue(rawValue: result.wall.rawValue + duration)
 #endif
@@ -174,7 +213,7 @@ extension Test.Clock.Instant: InstantProtocol {
   }
 
   public func duration(to other: Test.Clock.Instant) -> Duration {
-    other.suspending.rawValue - suspending.rawValue
+    other._timeValueForComparison.rawValue - _timeValueForComparison.rawValue
   }
 }
 

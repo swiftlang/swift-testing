@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI {
   /// A type implementing the JSON encoding of ``Test/Clock/Instant`` for the
   /// ABI entry point and event stream output.
@@ -34,7 +35,11 @@ extension ABI.EncodedInstant {
   /// - Parameters:
   ///   - instant: The instant to initialize this instance from.
   public init(encoding instant: borrowing Test.Clock.Instant) {
+#if !SWT_NO_SUSPENDING_CLOCK
     absolute = instant.suspending.rawValue / .seconds(1)
+#else
+    absolute = 0
+#endif
 #if !SWT_NO_UTC_CLOCK
     since1970 = instant.wall.rawValue / .seconds(1)
 #else
@@ -60,7 +65,6 @@ extension SuspendingClock.Instant {
 
 // Date.init(decoding:) is in the Foundation overlay.
 
-#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedInstant: Codable {}

@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI {
   /// A type implementing the JSON encoding of ``Expression`` for the ABI entry
   /// point and event stream output.
@@ -37,11 +38,9 @@ extension ABI {
   }
 }
 
-#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedExpression: Codable {}
-#endif
 
 // MARK: - Conversion to/from library types
 
@@ -81,3 +80,4 @@ extension Expression {
     }
   }
 }
+#endif

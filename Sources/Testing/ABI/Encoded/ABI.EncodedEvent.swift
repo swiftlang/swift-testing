@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI {
   /// A type implementing the JSON encoding of ``Event`` for the ABI entry point
   /// and event stream output.
@@ -117,10 +118,18 @@ extension ABI {
       case .testStarted:
         kind = .testStarted
       case .testCaseStarted:
+        // For non-parameterized tests, we elide `testCaseStarted` calls because it would be
+        // redundant. However, for multiple iterations of a test case within a non-parameterized
+        // function, we need to emit another `testStarted` event.
         if eventContext.test?.isParameterized == false {
-          return nil
+          if let iteration = eventContext.iteration, iteration > 1 {
+            kind = .testStarted
+          } else {
+            return nil
+          }
+        } else {
+          kind = .testCaseStarted
         }
-        kind = .testCaseStarted
       case let .issueRecorded(recordedIssue):
         kind = .issueRecorded
         issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
@@ -129,9 +138,14 @@ extension ABI {
         self.attachment = EncodedAttachment(encoding: attachment)
       case .testCaseEnded:
         if eventContext.test?.isParameterized == false {
-          return nil
+          if let iteration = eventContext.iteration, iteration > 1 {
+            kind = .testEnded
+          } else {
+            return nil
+          }
+        } else {
+          kind = .testCaseEnded
         }
-        kind = .testCaseEnded
       case .testCaseCancelled:
         kind = .testCaseCancelled
       case .testEnded:
@@ -164,6 +178,7 @@ extension ABI {
           let .testCancelled(skipInfo):
           _comments = Array(skipInfo.comment).map(\.rawValue)
           _sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
+          _iteration = eventContext.iteration
         default:
           break
         }
@@ -176,12 +191,10 @@ extension ABI {
   }
 }
 
-#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedEvent: Codable {}
 extension ABI.EncodedEvent.Kind: Codable {}
-#endif
 
 // MARK: - Conversion to/from library types
 
@@ -244,3 +257,4 @@ extension Event {
     self.init(kind, testID: nil, testCaseID: nil, instant: instant)
   }
 }
+#endif

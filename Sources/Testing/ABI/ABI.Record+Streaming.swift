@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT) && !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI.Version {
   /// Create an event handler that encodes instances of ``Event`` as instances
   /// of ``ABI/Record`` and forwards them to a handler function.

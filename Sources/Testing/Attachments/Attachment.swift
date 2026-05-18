@@ -522,13 +522,22 @@ extension Attachment where AttachableValue: ~Copyable {
         let preferredName = preferredNameComponents.joined(separator: ".")
         let preferredPath = appendPathComponent(preferredName, to: directoryPath)
 
+        func isEEXIST(_ error: any Error) -> Bool {
+#if !hasFeature(Embedded)
+          error._code == swt_EEXIST() && error._domain == "NSPOSIXErrorDomain"
+#else
+          // TODO: detect EEXIST without using _code/_domain?
+          false
+#endif
+        }
+
         // Propagate any error *except* EEXIST, which would indicate that the
         // name was already in use (so we should try again with a new suffix.)
         do {
           try attachableValue.write(toFileAtPath: preferredPath, for: self)
           result = preferredPath
           break
-        } catch where error._code == swt_EEXIST() && error._domain == "NSPOSIXErrorDomain" {
+        } catch where isEEXIST(error) {
           // Try again with a new suffix.
           continue
         } catch where usingPreferredName {

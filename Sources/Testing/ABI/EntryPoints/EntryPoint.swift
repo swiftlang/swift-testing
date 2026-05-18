@@ -57,7 +57,9 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // Configure the event recorder to write events to stderr.
     if configuration.verbosity > .min {
       // Check for experimental console output flag
-      if Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true {
+      let useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
+#if !SWT_NO_ABI_JSON_SCHEMA
+      if useExperimentalConsoleOutput {
         // Use experimental AdvancedConsoleOutputRecorder
         var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>.Options()
         advancedOptions.base = .for(.stderr)
@@ -70,7 +72,10 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
           eventRecorder.record(event, in: context)
           oldEventHandler(event, context)
         }
-      } else {
+      }
+#endif
+
+      if !useExperimentalConsoleOutput {
         // Use the standard console output recorder (default behavior)
         let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
           try? FileHandle.stderr.write(string)
@@ -333,6 +338,9 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value of the `--repeat-until` argument.
   public var repeatUntil: String?
 
+  /// Whether or not to use the per-test-case repetition mode.
+  var usePerTestCaseRepetition: Bool = false
+
   /// The value of the `--attachments-path` argument.
   public var attachmentsPath: String?
 }
@@ -539,6 +547,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   if let repeatUntil = args.argumentValue(forLabel: "--repeat-until") {
     result.repeatUntil = repeatUntil
   }
+  if args.contains("--experimental-per-test-case-repetition") {
+    result.usePerTestCaseRepetition = true
+  }
 
   return result
 }
@@ -606,7 +617,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     configuration.attachmentsPath = attachmentsPath
   }
 
-#if !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
   // Event stream output
   if let eventStreamOutputPath = args.eventStreamOutputPath {
     let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
@@ -624,6 +635,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 #endif
 #endif
 
+#if canImport(_StringProcessing)
   // Filtering
   var filters = [Configuration.TestFilter]()
   func testFilter(forRegularExpressions regexes: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
@@ -642,6 +654,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   if args.includeHiddenTests == true {
     configuration.testFilter.includeHiddenTests = true
   }
+#endif
 
   // Set up the iteration policy for the test run.
   var repetitionPolicy: Configuration.RepetitionPolicy = .once
@@ -666,6 +679,9 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     }
   }
   configuration.repetitionPolicy = repetitionPolicy
+
+  // Opt in to per-test-case repetition
+  configuration.shouldUseLegacyPlanLevelRepetition = !args.usePerTestCaseRepetition
 
 #if !SWT_NO_EXIT_TESTS
   // Enable exit test handling via __swiftPMEntryPoint().
@@ -692,7 +708,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   return configuration
 }
 
-#if (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT) && !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
 /// Create an event handler that streams events to the given file using the
 /// specified ABI version.
 ///

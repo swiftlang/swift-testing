@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 #if canImport(Foundation)
 private import struct Foundation.Data
 private import struct Foundation.URL
@@ -50,7 +51,6 @@ extension ABI {
   }
 }
 
-#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedAttachment: Codable {
@@ -159,7 +159,6 @@ extension ABI.EncodedAttachment: Codable {
     }
   }
 }
-#endif
 
 // MARK: - Attachable
 
@@ -285,3 +284,4 @@ extension Attachment where AttachableValue == AnyAttachable {
     }
   }
 }
+#endif

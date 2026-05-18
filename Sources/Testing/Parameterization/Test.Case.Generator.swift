@@ -87,6 +87,7 @@ extension Test.Case {
       parameters: [Test.Parameter],
       testFunction: @escaping @Sendable (S.Element) async throws -> Void
     ) where S: Collection {
+#if !hasFeature(Embedded)
       if parameters.count > 1 {
         self.init(sequence: collection) { element in
           let mirror = Mirror(reflectingForTest: element)
@@ -100,11 +101,13 @@ extension Test.Case {
             try await testFunction(element)
           }
         }
-      } else {
-        self.init(sequence: collection) { element in
-          Test.Case(values: [element], parameters: parameters) {
-            try await testFunction(element)
-          }
+        return
+      }
+#endif
+
+      self.init(sequence: collection) { element in
+        Test.Case(values: [element], parameters: parameters) {
+          try await testFunction(element)
         }
       }
     }

@@ -474,7 +474,7 @@ extension Backtrace {
     }
   }
 #else
-  init?(forFirstThrowOf error: some Error, checkFoundation: Bool = true) {
+  init?(forFirstThrowOf error: any Error, checkFoundation: Bool = true) {
     return nil
   }
 #endif

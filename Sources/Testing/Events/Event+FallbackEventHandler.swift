@@ -97,9 +97,9 @@ extension Event {
     }
 
     let xctestWarningMessage =
-      "XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead."
+      "Replace XCTest API such as 'XCTAssert' with a Swift Testing equivalent such as '#expect'."
 
-    // For the time being, assume that foreign test events originate from XCTest
+    // For the time being, assume that cross-library issues originate from XCTest
     lazy var warnForXCTestUsageIssue =
       Issue(
         kind: .apiMisused, severity: .warning,
@@ -110,7 +110,7 @@ extension Event {
     // Unconditionally downgrade interop issues to warning for limited interop mode.
     // Otherwise, preserve the issue severity.
     switch Interop.Mode.current {
-    case .none: return  // no-op
+    case .none: return  // In practice, this branch should be unreachable since we don't install our handler for mode == .none
     case .limited:
       issue.severity = .warning
       issue.record()
