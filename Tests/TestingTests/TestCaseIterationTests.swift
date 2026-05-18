@@ -43,7 +43,6 @@ struct TestCaseIterationTests {
     await confirmation("N iterations started", expectedCount: iterationCount) { started in
       await confirmation("N iterations ended", expectedCount: iterationCount) { ended in
         var configuration = Configuration()
-        configuration.shouldUseLegacyPlanLevelRepetition = false
         configuration.eventHandler = { event, _ in
           if case .testCaseStarted = event.kind {
             started()
@@ -70,7 +69,6 @@ struct TestCaseIterationTests {
     await confirmation("N iterations started", expectedCount: iterationWithIssue) { started in
       await confirmation("N iterations ended", expectedCount: iterationWithIssue) { ended in
         var configuration = Configuration()
-        configuration.shouldUseLegacyPlanLevelRepetition = false
         configuration.eventHandler = { event, context in
           guard let iteration = context.iteration else { return }
           if case .testCaseStarted = event.kind {
@@ -98,7 +96,6 @@ struct TestCaseIterationTests {
     await confirmation("N iterations started", expectedCount: iterationWithoutIssue) { started in
       await confirmation("N iterations ended", expectedCount: iterationWithoutIssue) { ended in
         var configuration = Configuration()
-        configuration.shouldUseLegacyPlanLevelRepetition = false
         configuration.eventHandler = { event, context in
           guard let iteration = context.iteration else { return }
           if case .testCaseStarted = event.kind {
