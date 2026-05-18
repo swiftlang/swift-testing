@@ -674,9 +674,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   }
   configuration.repetitionPolicy = repetitionPolicy
 
-  // Opt in to per-test-case repetition
-  configuration.shouldUseLegacyPlanLevelRepetition = false
-
 #if !SWT_NO_EXIT_TESTS
   // Enable exit test handling via __swiftPMEntryPoint().
   configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
