@@ -696,8 +696,8 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     // otherwise we construct it with the provided tags
     let tagFilter: Configuration.TestFilter = switch (membership, tagPatterns.isEmpty) {
       case (_, true): .unfiltered
-      case (.including, false): Configuration.TestFilter(includingTagsMatching: tagPatterns)
-      case (.excluding, false): Configuration.TestFilter(excludingTagsMatching: tagPatterns)
+      case (.including, false): try Configuration.TestFilter(includingTagsMatching: tagPatterns)
+      case (.excluding, false): try Configuration.TestFilter(excludingTagsMatching: tagPatterns)
     }
 
     guard !idPatterns.isEmpty else {
