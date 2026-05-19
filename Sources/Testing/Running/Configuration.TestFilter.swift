@@ -200,7 +200,11 @@ extension Configuration.TestFilter {
   /// - Parameters:
   ///   - tagPatterns: The patterns, expressed as a `Regex`-compatible regular
   ///     expressions, to match test tags against.
-  public init(includingTagsMatching tagPatterns: [String]) {
+  public init(includingTagsMatching tagPatterns: [String]) throws {
+    // See the comment above in init(membership:matchingAnyOf:) to understand why we construct regexes here.
+    for pattern in tagPatterns {
+      _ = try Regex(pattern)
+    }
     self.init(_kind: .tagPatterns(tagPatterns, membership: .including))
   }
 
@@ -209,7 +213,11 @@ extension Configuration.TestFilter {
   /// - Parameters:
   ///   - tagPatterns: The patterns, expressed as a `Regex`-compatible regular
   ///     expressions, to match test tags against.
-  public init(excludingTagsMatching tagPatterns: [String]) {
+  public init(excludingTagsMatching tagPatterns: [String]) throws {
+    // See the comment above in init(membership:matchingAnyOf:) to understand why we construct regexes here.
+    for pattern in tagPatterns {
+      _ = try Regex(pattern)
+    }
     self.init(_kind: .tagPatterns(tagPatterns, membership: .excluding))
   }
 }
