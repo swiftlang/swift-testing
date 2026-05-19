@@ -3,14 +3,16 @@
 # Copyright (c) 2024 Apple Inc. and the Swift project authors
 # Licensed under Apache License v2.0 with Runtime Library Exception
 #
-# See http://swift.org/LICENSE.txt for license information
-# See http://swift.org/CONTRIBUTORS.txt for Swift project authors
+# See https://swift.org/LICENSE.txt for license information
+# See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 cmake_minimum_required(VERSION 3.19.6...3.29)
 
 if(POLICY CMP0157)
   cmake_policy(SET CMP0157 NEW)
 endif()
+
+set(SWT_SOURCE_ROOT_DIR ${CMAKE_SOURCE_DIR}/../..)
 
 project(TestingMacros
   LANGUAGES Swift)
@@ -31,7 +33,7 @@ if(SwiftTesting_BuildMacrosAsExecutables)
   set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_d)
   FetchContent_Declare(SwiftSyntax
     GIT_REPOSITORY https://github.com/swiftlang/swift-syntax
-    GIT_TAG 340f8400262d494c7c659cd838223990195d7fed) # 602.0.0-prerelease-2025-04-10
+    GIT_TAG 65b02a90ad2cc213e09309faeb7f6909e0a8577a) # 604.0.0-prerelease-2026-01-20
   FetchContent_MakeAvailable(SwiftSyntax)
 endif()
 
@@ -81,6 +83,7 @@ endif()
 
 target_sources(TestingMacros PRIVATE
   ConditionMacro.swift
+  ExitTestCapturedValueMacro.swift
   PragmaMacro.swift
   SourceLocationMacro.swift
   SuiteDeclarationMacro.swift
@@ -97,6 +100,7 @@ target_sources(TestingMacros PRIVATE
   Support/Argument.swift
   Support/AttributeDiscovery.swift
   Support/AvailabilityGuards.swift
+  Support/BugReporting.swift
   Support/ClosureCaptureListParsing.swift
   Support/CommentParsing.swift
   Support/ConditionArgumentParsing.swift
@@ -107,6 +111,7 @@ target_sources(TestingMacros PRIVATE
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
   Support/TestContentGeneration.swift
+  Support/TestContentKind.swift
   TagMacro.swift
   TestDeclarationMacro.swift
   TestingMacrosMain.swift)
@@ -123,3 +128,8 @@ if(SwiftTesting_BuildMacrosAsExecutables)
   target_link_libraries(TestingMacros PRIVATE
     SwiftSyntax::SwiftCompilerPlugin)
 endif()
+
+# Makes SwiftTesting_MACRO_DIR available after find_package(SwiftTestingMacros)
+file(GENERATE
+  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/cmake/modules/SwiftTestingMacrosConfig.cmake"
+  CONTENT "get_filename_component(SwiftTesting_MACRO_DIR \"$<TARGET_FILE:TestingMacros>\" DIRECTORY)\n")

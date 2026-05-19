@@ -11,6 +11,7 @@
 private import _TestingInternals
 
 #if SWT_NO_EXIT_TESTS
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 extension ExitTest {
@@ -35,6 +36,7 @@ extension ExitTest {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public struct Condition: Sendable {
     /// An enumeration describing the possible conditions for an exit test.
@@ -51,12 +53,21 @@ extension ExitTest {
 
     /// The kind of condition.
     private var _kind: _Kind
+
+    /// The represented exit status, if a specific one exists.
+    var exitStatus: ExitStatus? {
+      if case let .exitStatus(exitStatus) = _kind {
+        return exitStatus
+      }
+      return nil
+    }
   }
 }
 
 // MARK: -
 
 #if SWT_NO_EXIT_TESTS
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 extension ExitTest.Condition {
@@ -66,6 +77,7 @@ extension ExitTest.Condition {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public static var success: Self {
     Self(_kind: .success)
@@ -78,6 +90,7 @@ extension ExitTest.Condition {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public static var failure: Self {
     Self(_kind: .failure)
@@ -91,6 +104,7 @@ extension ExitTest.Condition {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public init(_ exitStatus: ExitStatus) {
     self.init(_kind: .exitStatus(exitStatus))
@@ -126,12 +140,13 @@ extension ExitTest.Condition {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public static func exitCode(_ exitCode: CInt) -> Self {
 #if !SWT_NO_EXIT_TESTS
     Self(.exitCode(exitCode))
 #else
-    fatalError("Unsupported")
+    swt_unreachable()
 #endif
   }
 
@@ -158,20 +173,21 @@ extension ExitTest.Condition {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public static func signal(_ signal: CInt) -> Self {
 #if !SWT_NO_EXIT_TESTS
     Self(.signal(signal))
 #else
-    fatalError("Unsupported")
+    swt_unreachable()
 #endif
   }
 }
 
 // MARK: - CustomStringConvertible
 
-@_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 extension ExitTest.Condition: CustomStringConvertible {
@@ -186,7 +202,7 @@ extension ExitTest.Condition: CustomStringConvertible {
       String(describing: exitStatus)
     }
 #else
-    fatalError("Unsupported")
+    swt_unreachable()
 #endif
   }
 }
@@ -194,6 +210,7 @@ extension ExitTest.Condition: CustomStringConvertible {
 // MARK: - Comparison
 
 #if SWT_NO_EXIT_TESTS
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 extension ExitTest.Condition {

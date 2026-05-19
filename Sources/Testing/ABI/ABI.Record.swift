@@ -1,23 +1,28 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
+#if SWT_NO_CODABLE
+#error("Platform-specific misconfiguration: support for the ABI JSON schema requires support for 'Codable'")
+#endif
+
 extension ABI {
   /// A type implementing the JSON encoding of records for the ABI entry point
   /// and event stream output.
   ///
-  /// This type is not part of the public interface of the testing library. It
-  /// assists in converting values to JSON; clients that consume this JSON are
-  /// expected to write their own decoders.
-  struct Record<V>: Sendable where V: ABI.Version {
+  /// You can use this type and its conformance to [`Codable`](https://developer.apple.com/documentation/swift/codable),
+  /// when integrating the testing library with development tools. It is not
+  /// part of the testing library's public interface.
+  public struct Record<V>: Sendable where V: ABI.Version {
     /// An enumeration describing the various kinds of record.
-    enum Kind: Sendable {
+    public enum Kind: Sendable {
       /// A test record.
       case test(EncodedTest<V>)
 
@@ -26,18 +31,35 @@ extension ABI {
     }
 
     /// The kind of record.
-    var kind: Kind
+    public internal(set) var kind: Kind
 
-    init(encoding test: borrowing Test) {
-      kind = .test(EncodedTest(encoding: test))
+    public init(encoding test: borrowing EncodedTest<V>) {
+      kind = .test(copy test)
     }
 
-    init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
-      guard let event = EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) else {
-        return nil
-      }
-      kind = .event(event)
+    public init(encoding event: borrowing EncodedEvent<V>) {
+      kind = .event(copy event)
     }
+  }
+}
+
+// MARK: -
+
+extension ABI.Record {
+  init(encoding test: borrowing Test) {
+    let test = ABI.EncodedTest<V>(encoding: test)
+    self.init(encoding: test)
+  }
+
+  init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
+    guard let event = ABI.EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) else {
+      return nil
+    }
+    if !V.includesExperimentalFields && event.kind.rawValue.first == "_" {
+      // Don't encode experimental event kinds.
+      return nil
+    }
+    self.init(encoding: event)
   }
 }
 
@@ -50,7 +72,7 @@ extension ABI.Record: Codable {
     case payload
   }
 
-  func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(V.versionNumber, forKey: .version)
     switch kind {
@@ -63,11 +85,18 @@ extension ABI.Record: Codable {
     }
   }
 
-  init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
 
-    let versionNumber = try container.decode(Int.self, forKey: .version)
-    if versionNumber != V.versionNumber {
+    func validateVersionNumber(_ versionNumber: VersionNumber) throws {
+      if versionNumber == V.versionNumber {
+        return
+      }
+      // Allow for alternate version numbers if they correspond to the expected
+      // record version (e.g. "1.2.3" might map to `v1_2_0` without a problem.)
+      if ABI.version(forVersionNumber: versionNumber) == V.self {
+        return
+      }
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath + CollectionOfOne(CodingKeys.version as any CodingKey),
@@ -75,6 +104,8 @@ extension ABI.Record: Codable {
         )
       )
     }
+    let versionNumber = try container.decode(VersionNumber.self, forKey: .version)
+    try validateVersionNumber(versionNumber)
 
     switch try container.decode(String.self, forKey: .kind) {
     case "test":
@@ -93,3 +124,4 @@ extension ABI.Record: Codable {
     }
   }
 }
+#endif

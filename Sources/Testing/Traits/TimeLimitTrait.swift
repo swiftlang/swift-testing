@@ -8,10 +8,12 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A type that defines a time limit to apply to a test.
 ///
 /// To add this trait to a test, use ``Trait/timeLimit(_:)-4kzjp``.
-@available(_clockAPI, *)
+@available(_clockAPI, *) // For DocC
 public struct TimeLimitTrait: TestTrait, SuiteTrait {
   /// A type representing the duration of a time limit applied to a test.
   ///
@@ -50,7 +52,7 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
 
 // MARK: -
 
-@available(_clockAPI, *)
+@available(_clockAPI, *) // For DocC
 extension Trait where Self == TimeLimitTrait {
   /// Construct a time limit trait that causes a test to time out if it runs for
   /// too long.
@@ -81,6 +83,13 @@ extension Trait where Self == TimeLimitTrait {
   /// test cases individually. If a test has more than one time limit associated
   /// with it, the shortest one is used. A test run may also be configured with
   /// a maximum time limit per test case.
+  ///
+  /// If you apply this trait to a test suite, then it sets the time limit for
+  /// each test in the suite, or each test case in parameterized tests in the
+  /// suite.
+  /// For example, if a suite contains five tests and you apply a time limit trait
+  /// with a duration of one minute, then each test in the suite may run for up to
+  /// one minute.
   @_spi(Experimental)
   public static func timeLimit(_ timeLimit: Duration) -> Self {
     return Self(timeLimit: timeLimit)
@@ -114,19 +123,26 @@ extension Trait where Self == TimeLimitTrait {
   /// If a test is parameterized, this time limit is applied to each of its
   /// test cases individually. If a test has more than one time limit associated
   /// with it, the testing library uses the shortest time limit.
+  ///
+  /// If you apply this trait to a test suite, then it sets the time limit for
+  /// each test in the suite, or each test case in parameterized tests in the
+  /// suite.
+  /// For example, if a suite contains five tests and you apply a time limit trait
+  /// with a duration of one minute, then each test in the suite may run for up to
+  /// one minute.
   public static func timeLimit(_ timeLimit: Self.Duration) -> Self {
     return Self(timeLimit: timeLimit.underlyingDuration)
   }
 }
 
-@available(_clockAPI, *)
+@available(_clockAPI, *) // For DocC
 extension TimeLimitTrait.Duration {
   /// Construct a time limit duration given a number of seconds.
   ///
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func seconds(_ seconds: some BinaryInteger) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of seconds.
@@ -134,7 +150,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func seconds(_ seconds: Double) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of milliseconds.
@@ -142,7 +158,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func milliseconds(_ milliseconds: some BinaryInteger) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of milliseconds.
@@ -150,7 +166,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func milliseconds(_ milliseconds: Double) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of microseconds.
@@ -158,7 +174,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func microseconds(_ microseconds: some BinaryInteger) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of microseconds.
@@ -166,7 +182,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func microseconds(_ microseconds: Double) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of nanoseconds.
@@ -174,13 +190,13 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func nanoseconds(_ nanoseconds: some BinaryInteger) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 }
 
 // MARK: -
 
-@available(_clockAPI, *)
+@available(_clockAPI, *) // For DocC
 extension Test {
   /// The maximum amount of time this test's cases may run for.
   ///
@@ -231,23 +247,12 @@ extension Test {
 
 // MARK: -
 
-/// An error that is reported when a test times out.
-///
-/// This type is not part of the public interface of the testing library.
-struct TimeoutError: Error, CustomStringConvertible {
-  /// The time limit exceeded by the test that timed out.
-  var timeLimit: TimeValue
-
-  var description: String {
-    "Timed out after \(timeLimit) seconds."
-  }
-}
-
 #if !SWT_NO_UNSTRUCTURED_TASKS
 /// Invoke a function with a timeout.
 ///
 /// - Parameters:
 ///   - timeLimit: The amount of time until the closure times out.
+///   - taskName: The name of the child task that runs `body`, if any.
 ///   - body: The function to invoke.
 ///   - timeoutHandler: A function to invoke if `body` times out.
 ///
@@ -258,21 +263,21 @@ struct TimeoutError: Error, CustomStringConvertible {
 /// and `body` is cancelled.
 ///
 /// This function is not part of the public interface of the testing library.
-@available(_clockAPI, *)
 func withTimeLimit(
   _ timeLimit: Duration,
+  taskName: String? = nil,
   _ body: @escaping @Sendable () async throws -> Void,
   timeoutHandler: @escaping @Sendable () -> Void
 ) async throws {
-  try await withThrowingTaskGroup(of: Void.self) { group in
-    group.addTask {
+  try await withThrowingTaskGroup { group in
+    group.addTask(name: decorateTaskName(taskName, withAction: "waiting for timeout")) {
       // If sleep() returns instead of throwing a CancellationError, that means
       // the timeout was reached before this task could be cancelled, so call
       // the timeout handler.
-      try await Test.Clock.sleep(for: timeLimit)
+      try await Test.Clock().sleep(for: timeLimit)
       timeoutHandler()
     }
-    group.addTask(operation: body)
+    group.addTask(name: decorateTaskName(taskName, withAction: "running"), operation: body)
 
     defer {
       group.cancelAll()
@@ -303,10 +308,9 @@ func withTimeLimit(
   for test: Test,
   configuration: Configuration,
   _ body: @escaping @Sendable () async throws -> Void,
-  timeoutHandler: @escaping @Sendable (_ timeLimit: (seconds: Int64, attoseconds: Int64)) -> Void
+  timeoutHandler: @escaping @Sendable (_ timeLimit: Duration) -> Void
 ) async throws {
-  if #available(_clockAPI, *),
-     let timeLimit = test.adjustedTimeLimit(configuration: configuration) {
+  if let timeLimit = test.adjustedTimeLimit(configuration: configuration) {
 #if SWT_NO_UNSTRUCTURED_TASKS
     // This environment may not support full concurrency, so check if the body
     // closure timed out after it returns. This won't help us catch hangs, but
@@ -314,7 +318,7 @@ func withTimeLimit(
     let start = Test.Clock.Instant.now
     defer {
       if start.duration(to: .now) > timeLimit {
-        timeoutHandler(timeLimit.components)
+        timeoutHandler(timeLimit)
       }
     }
     try await body()
@@ -322,7 +326,7 @@ func withTimeLimit(
     return try await withTimeLimit(timeLimit) {
       try await body()
     } timeoutHandler: {
-      timeoutHandler(timeLimit.components)
+      timeoutHandler(timeLimit)
     }
 #endif
   }

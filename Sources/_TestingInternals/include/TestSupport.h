@@ -37,6 +37,21 @@ static inline bool swt_pointersNotEqual4(const char *a, const char *b, const cha
   return a != b && b != c && c != d;
 }
 
+#if defined(_WIN32)
+static inline LPCSTR swt_IDI_SHIELD(void) {
+  return IDI_SHIELD;
+}
+#endif
+
+static const int *_Nullable swt_EX_IOERR(void) {
+#if __has_include(<sysexits.h>) && defined(EX_IOERR)
+  static int result = EX_IOERR;
+  return &result;
+#else
+  return 0;
+#endif
+}
+
 SWT_ASSUME_NONNULL_END
 
 #endif

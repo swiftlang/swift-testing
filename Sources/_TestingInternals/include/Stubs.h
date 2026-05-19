@@ -16,6 +16,15 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
+/// Mark a code path as unreachable.
+///
+/// This function is necessary because Swift does not have an equivalent of
+/// `__builtin_unreachable()`.
+__attribute__((always_inline, noreturn))
+static inline void swt_unreachable(void) {
+  __builtin_unreachable();
+}
+
 #if !SWT_NO_FILE_IO
 /// The C file handle type.
 ///
@@ -75,6 +84,35 @@ static mach_port_t swt_mach_task_self(void) {
 }
 #endif
 
+#if defined(__APPLE__)
+/// Define the minimal set of atomic operations supported and used by the
+/// testing library for a given C type.
+///
+/// This macro is provided because Swift cannot directly import the symbols in
+/// `<stdatomic.h>` nor clang's/GCC's generic atomic intrinsics. This macro
+/// simplifies the definition of atomic operations across the set of types we
+/// need them for.
+#define SWT_DEFINE_ATOMIC_OPERATIONS(T) \
+  SWT_SWIFT_NAME(swt_atomicLoad(_:)) \
+  static inline T SWT_CONCAT(swt_atomicLoad, __COUNTER__)(T *const _Nonnull src) { \
+    return __atomic_load_n(src, __ATOMIC_SEQ_CST); \
+  } \
+  SWT_SWIFT_NAME(swt_atomicStore(_:_:)) \
+  static inline void SWT_CONCAT(swt_atomicStore, __COUNTER__)(T *_Nonnull dst, T src) { \
+    __atomic_store_n(dst, src, __ATOMIC_SEQ_CST); \
+  } \
+  SWT_SWIFT_NAME(swt_atomicCompareExchange(_:_:_:)) \
+  static inline bool SWT_CONCAT(swt_atomicCompareExchange, __COUNTER__)(T *_Nonnull dst, T *_Nonnull expected, T desired) { \
+    return __atomic_compare_exchange_n(dst, expected, desired, /*weak: */false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST); \
+  }
+
+/// Define the minimal set of atomic operations that we use on various C types.
+SWT_DEFINE_ATOMIC_OPERATIONS(bool)
+SWT_DEFINE_ATOMIC_OPERATIONS(int)
+SWT_DEFINE_ATOMIC_OPERATIONS(intptr_t)
+SWT_DEFINE_ATOMIC_OPERATIONS(void const *_Nullable)
+#endif
+
 #if defined(_WIN32)
 /// Make a Win32 language ID.
 ///
@@ -117,6 +155,33 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 }
 #endif
 
+#if defined(__linux__)
+/// Get the `FICLONE` `ioctl()` argument.
+///
+/// This function is provided because `FICLONE` is a complex macro and cannot be
+/// imported directly into Swift.
+static unsigned long swt_FICLONE(void) {
+  return FICLONE;
+}
+#endif
+
+#if defined(__FreeBSD__)
+/// Get the `COPY_FILE_RANGE_CLONE` `copy_file_range()` flag.
+///
+/// This function is provided because `COPY_FILE_RANGE_CLONE` is not available
+/// prior to FreeBSD 15.0. The caller should check `getosreldate()` before using
+/// this flag.
+static unsigned int swt_COPY_FILE_RANGE_CLONE(void) {
+#if defined(COPY_FILE_RANGE_CLONE)
+  return COPY_FILE_RANGE_CLONE;
+#else
+  // Compiled against an older unistd.h, but presumably running on FreeBSD 15.0
+  // or newer. SEE: https://github.com/freebsd/freebsd-src/blob/main/sys/sys/unistd.h
+  return 0x00800000;
+#endif
+}
+#endif
+
 #if !defined(__ANDROID__)
 #if __has_include(<signal.h>) && defined(si_pid)
 /// Get the value of the `si_pid` field of a `siginfo_t` structure.
@@ -150,6 +215,102 @@ static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
 static int swt_EEXIST(void) {
   return EEXIST;
 }
+
+#if defined(F_GETFD)
+/// Call `fcntl(F_GETFD)`.
+///
+/// This function is provided because `fcntl()` is a variadic function and
+/// cannot be imported directly into Swift.
+static int swt_getfdflags(int fd) {
+  return fcntl(fd, F_GETFD);
+}
+#endif
+
+#if defined(F_SETFD)
+/// Call `fcntl(F_SETFD)`.
+///
+/// This function is provided because `fcntl()` is a variadic function and
+/// cannot be imported directly into Swift.
+static int swt_setfdflags(int fd, int flags) {
+  return fcntl(fd, F_SETFD, flags);
+}
+#endif
+
+/// Get the name of the given exit code if one is available.
+///
+/// - Parameters:
+///   - exitCode: An exit code.
+///
+/// - Returns: The name of `exitCode` if it is a known constant such as
+///   `EXIT_FAILURE` or if a name for it is defined in `<sysexits.h>` and that
+///   header is present at compile time. If no name is available for `exitCode`,
+///   returns `NULL`.
+///
+/// - Note: The set of exit codes in `<sysexits.h>` is _de facto_ standardized
+///   on platforms that include that header.
+static const char *_Nullable swt_getExitCodeName(int exitCode) {
+#define SWT_EXIT_CODE(NAME) NAME: return #NAME
+  switch (exitCode) {
+    case SWT_EXIT_CODE(EXIT_SUCCESS);
+    case SWT_EXIT_CODE(EXIT_FAILURE);
+#if __has_include(<sysexits.h>)
+    case SWT_EXIT_CODE(EX_USAGE);
+    case SWT_EXIT_CODE(EX_DATAERR);
+    case SWT_EXIT_CODE(EX_NOINPUT);
+    case SWT_EXIT_CODE(EX_NOUSER);
+    case SWT_EXIT_CODE(EX_NOHOST);
+    case SWT_EXIT_CODE(EX_UNAVAILABLE);
+    case SWT_EXIT_CODE(EX_SOFTWARE);
+    case SWT_EXIT_CODE(EX_OSERR);
+    case SWT_EXIT_CODE(EX_OSFILE);
+    case SWT_EXIT_CODE(EX_CANTCREAT);
+    case SWT_EXIT_CODE(EX_IOERR);
+    case SWT_EXIT_CODE(EX_TEMPFAIL);
+    case SWT_EXIT_CODE(EX_PROTOCOL);
+    case SWT_EXIT_CODE(EX_NOPERM);
+    case SWT_EXIT_CODE(EX_CONFIG);
+#endif
+    default: return 0;
+  }
+#undef SWT_SYSEXIT_CODE
+};
+
+#if !SWT_NO_INTEROP
+
+/// A type describing a fallback event handler that testing API can invoke as an
+/// alternate method of reporting test events to the current test runner.
+/// Shadows the type with the same name in _TestingInterop.
+///
+/// - Parameters:
+///   - recordJSONSchemaVersionNumber: The JSON schema version used to encode
+///     the event record.
+///   - recordJSONBaseAddress: A pointer to the first byte of the encoded event.
+///   - recordJSONByteCount: The size of the encoded event in bytes.
+///   - reserved: Reserved for future use.
+typedef void (* SWTFallbackEventHandler)(const char *recordJSONSchemaVersionNumber,
+                                      const void *recordJSONBaseAddress,
+                                      size_t recordJSONByteCount,
+                                      const void *_Nullable reserved);
+
+/// Set the current fallback event handler if one has not already been set.
+///
+/// - Parameters:
+///   - handler: The handler function to set.
+///
+/// - Returns: Whether or not `handler` was installed.
+///
+/// The fallback event handler can only be installed once per process, typically
+/// by the first testing library to run. If this function has already been
+/// called and the handler set, it does not replace the previous handler.
+SWT_EXTERN bool _swift_testing_installFallbackEventHandler(SWTFallbackEventHandler handler);
+
+/// Get the current fallback event handler.
+/// Shadows the function with the same name in _TestingInterop.
+///
+/// - Returns: The currently-set handler function, if any.
+SWT_EXTERN SWTFallbackEventHandler _Nullable _swift_testing_getFallbackEventHandler(void);
+
+#endif
 
 SWT_ASSUME_NONNULL_END
 

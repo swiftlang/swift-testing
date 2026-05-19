@@ -67,6 +67,9 @@ platform-specific attention.
 > conflicting requirements (for example, attempting to enable support for pipes
 > without also enabling support for file I/O.) You should be able to resolve
 > these issues by updating `Package.swift` and/or `CompilerSettings.cmake`.
+>
+> Don't forget to add your platform to the
+> `BuildSettingCondition/nonApplePlatforms` property in `Package.swift`.
 
 Most platform dependencies can be resolved through the use of platform-specific
 API. For example, Swift Testing uses the C11 standard [`timespec`](https://en.cppreference.com/w/c/chrono/timespec)
@@ -113,11 +116,12 @@ Once the header is included, we can call `GetDateTime()` from `Clock.swift`:
 +  var seconds = CUnsignedLong(0)
 +  GetDateTime(&seconds)
 +  seconds -= 2_082_844_800 // seconds between epochs
-+  return TimeValue((seconds: Int64(seconds), attoseconds: 0))
++  return TimeValue(rawValue: .seconds(seconds))
  #else
  #warning("Platform-specific implementation missing: UTC time unavailable (no timespec)")
+   return TimeValue(rawValue: .zero)
  #endif
- }
+ }()
 ```
 
 ## Runtime test discovery
@@ -127,7 +131,13 @@ When porting to a new platform, you may need to provide a new implementation for
 on Swift metadata discovery which is an inherently platform-specific operation.
 
 _Most_ platforms in use today use the ELF image format and will be able to reuse
-the implementation used by Linux.
+the implementation used by Linux, FreeBSD, etc.
+
+> [!NOTE]
+> We are not using `objectFormat()` in this file yet in order to maintain
+> compatibility with the Swift 6.2 toolchain. We will migrate to
+> `objectFormat()` when the `_TestDiscovery` target drops Swift 6.2 toolchain
+> support in the future.
 
 Classic does not use the ELF image format, so you'll need to write a custom
 implementation of `_sectionBounds(_:)` instead. Assuming that the Swift compiler
@@ -169,8 +179,10 @@ to load that information:
 +    }
 +    let sb = SectionBounds(
 +      imageAddress: UnsafeRawPointer(bitPattern: UInt(refNum)),
-+      start: handle.pointee!,
-+      size: GetHandleSize(handle)
++      buffer: UnsafeRawBufferPointer(
++        start: handle.pointee,
++        count: GetHandleSize(handle)
++      )
 +    )
 +    result.append(sb)
 +  } while noErr == GetNextResourceFile(refNum, &refNum))
@@ -187,27 +199,21 @@ to load that information:
  #endif
 ```
 
-You will also need to update the `makeTestContentRecordDecl()` function in the
-`TestingMacros` target to emit the correct `@_section` attribute for your
-platform. If your platform uses the ELF image format and supports the
-`dl_iterate_phdr()` function, add it to the existing `#elseif os(Linux) || ...`
-case. Otherwise, add a new case for your platform:
+You may also need to update the `makeTestContentRecordDecl()` function in the
+`TestingMacros` target to emit the correct `@section` attribute for your
+platform if it does not use an image format already supported by Swift Testing:
 
 ```diff
 --- a/Sources/TestingMacros/Support/TestContentGeneration.swift
 +++ b/Sources/TestingMacros/Support/TestContentGeneration.swift
-   // ...
-+  #elseif os(Classic)
-+  @_section(".rsrc,swft,__swift5_tests")
-   #else
-   @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
-   #endif
+   let objectFormatsAndSectionNames: [(objectFormat: String, sectionName: String)] = [
+     ("MachO", "__DATA_CONST,__swift5_tests"),
+     ("ELF", "swift5_tests"),
+     ("COFF", ".sw5test$B"),
+     ("Wasm", "swift5_tests"),
++    ("CFM", ".rsrc,swft,__swift5_tests"),
+   ]
 ```
-
-Keep in mind that this code is emitted by the `@Test` and `@Suite` macros
-directly into test authors' test targets, so you will not be able to use
-compiler conditionals defined in the Swift Testing package (including those that
-start with `"SWT_"`).
 
 ## Runtime test discovery with static linkage
 

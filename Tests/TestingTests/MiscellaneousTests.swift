@@ -24,6 +24,15 @@ private import _TestingInternals
 
 @Sendable func freeSyncFunctionParameterized2(_ i: Int, _ j: String) {}
 
+struct SuiteTypeWithModuleSelector {}
+
+extension TestingTests::SuiteTypeWithModuleSelector {
+  @Test(.hidden) func withModuleSelector() {}
+  @Suite(.hidden) struct NestedType {
+    @Test(.hidden) func nestedFunction() {}
+  }
+}
+
 // This type ensures the parser can correctly infer that f() is a member
 // function even though @Test is preceded by another attribute or is embedded in
 // a #if statement.
@@ -213,6 +222,7 @@ struct TestsWithStaticMemberAccessBySelfKeyword {
   func j(i: Box<@Sendable (Int) -> Range<Int>>) {}
 #endif
 
+  @Suite(.hidden, .enabled(if: Self.x.contains(0)))
   struct Nested {
     static let x = 0 ..< 100
   }
@@ -268,6 +278,14 @@ struct MultiLineSuite {
   _ = try #require(x?[...].last)
 }
 
+extension Bool {
+  func throwingValue() throws -> Bool { self }
+}
+
+@Test(.hidden) func `Effectful keywords are found in the lexical context of an expression macro`() throws {
+  try #expect(true.throwingValue())
+}
+
 @Suite("Miscellaneous tests")
 struct MiscellaneousTests {
   @Test("Free function's name")
@@ -293,13 +311,27 @@ struct MiscellaneousTests {
     #expect(testType.displayName == "Named Sendable test type")
   }
 
-  @Test func `__raw__$raw_identifier_provides_a_display_name`() throws {
+  @Test func `Test with raw identifier gets a display name`() throws {
     let test = try #require(Test.current)
-    #expect(test.displayName == "raw_identifier_provides_a_display_name")
-    #expect(test.name == "`raw_identifier_provides_a_display_name`()")
+    #expect(test.displayName == "Test with raw identifier gets a display name")
+    #expect(test.name == "`Test with raw identifier gets a display name`()")
     let id = test.id
     #expect(id.moduleName == "TestingTests")
-    #expect(id.nameComponents == ["MiscellaneousTests", "`raw_identifier_provides_a_display_name`()"])
+    #expect(id.nameComponents == ["MiscellaneousTests", "`Test with raw identifier gets a display name`()"])
+  }
+
+  @Test func `Suite type with raw identifier gets a display name`() throws {
+    struct `Suite With De Facto Display Name` {}
+    let typeInfo = TypeInfo(describing: `Suite With De Facto Display Name`.self)
+    let suite = Test(traits: [], sourceLocation: #_sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+    #expect(suite.name == "`Suite With De Facto Display Name`")
+    let displayName = try #require(suite.displayName)
+    #expect(displayName == "Suite With De Facto Display Name")
+  }
+
+  @Test(arguments: [0])
+  func `Test with raw identifier and raw identifier parameter labels can compile`(`argument name` i: Int) {
+    #expect(i == 0)
   }
 
   @Test("Free functions are runnable")
@@ -491,7 +523,7 @@ struct MiscellaneousTests {
   @Test("Properties related to parameterization")
   func parameterizationRelatedProperties() async throws {
     do {
-      let test = Test.__type(SendableTests.self, displayName: "", traits: [], sourceLocation: #_sourceLocation)
+      let test = Test.__type(SendableTests.self, displayName: "", traits: [], sourceBounds: __SourceBounds(lowerBoundOnly: #_sourceLocation))
       #expect(!test.isParameterized)
       #expect(test.testCases == nil)
       #expect(test.parameters == nil)
@@ -534,7 +566,7 @@ struct MiscellaneousTests {
 
   @Test("Test.id property")
   func id() async throws {
-    let typeTest = Test.__type(SendableTests.self, displayName: "SendableTests", traits: [], sourceLocation: #_sourceLocation)
+    let typeTest = Test.__type(SendableTests.self, displayName: "SendableTests", traits: [], sourceBounds: __SourceBounds(lowerBoundOnly: #_sourceLocation))
     #expect(String(describing: typeTest.id) == "TestingTests.SendableTests")
 
     let fileID = "Module/Y.swift"
@@ -542,7 +574,7 @@ struct MiscellaneousTests {
     let line = 12345
     let column = 67890
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let testFunction = Test.__function(named: "myTestFunction()", in: nil, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceLocation: sourceLocation) {}
+    let testFunction = Test.__function(named: "myTestFunction()", in: nil as Never.Type?, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceBounds: __SourceBounds(lowerBoundOnly: sourceLocation)) {}
     #expect(String(describing: testFunction.id) == "Module.myTestFunction()/Y.swift:12345:67890")
   }
 
@@ -568,6 +600,32 @@ struct MiscellaneousTests {
     #expect(id.keyPathRepresentation == [""])
   }
 
+#if !hasFeature(Embedded)
+  @Test("Test type is one object/pointer wide")
+  func testTypeSize() {
+    #expect(MemoryLayout<Test>.stride == MemoryLayout<AnyObject>.stride)
+  }
+#endif
+
+#if DEBUG
+  @Test("Mutation count of the current test is small")
+  func testMutationCount() throws {
+    let test = try #require(Test.current)
+    #expect(
+      test.mutationCount <= 3,
+      """
+      More mutations than expected on test '\(test.name)'. This is not
+      necessarily a bug. Please double-check where the additional mutations came
+      from and confirm they were expected before modifying this test.
+      """
+    )
+
+    var testCopy = test
+    testCopy.name = "\(test.name) copy"
+    #expect(testCopy.mutationCount == test.mutationCount + 1)
+  }
+#endif
+
   @Test("failureBreakpoint() call")
   func failureBreakpointCall() {
     failureBreakpointValue = 1
@@ -575,7 +633,6 @@ struct MiscellaneousTests {
     #expect(failureBreakpointValue == 0)
   }
 
-  @available(_clockAPI, *)
   @Test("Repeated calls to #expect() run in reasonable time", .disabled("time-sensitive"))
   func repeatedlyExpect() {
     let duration = Test.Clock().measure {
@@ -584,5 +641,15 @@ struct MiscellaneousTests {
       }
     }
     #expect(duration < .seconds(1))
+  }
+
+  @Test func `Expectation with a non-string literal comment and ambiguous 'Comment' type`() {
+    let comment: Comment = "foo"
+    do {
+      // Declare a custom type whose name conflicts with the testing library's
+      // built-in Comment type.
+      struct Comment {}
+      #expect(true as Bool, comment)
+    }
   }
 }

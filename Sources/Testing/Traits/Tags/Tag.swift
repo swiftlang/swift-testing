@@ -48,6 +48,19 @@ public struct Tag: Sendable {
   public init(userProvidedStringValue stringValue: String) {
     self.init(_codableStringValue: stringValue)
   }
+
+  /// Initialize an instance of this type from a string previously encoded from
+  /// the `_codableStringValue` property.
+  ///
+  /// - Parameters:
+  ///   - stringValue: The previously-encoded string.
+  private init(_codableStringValue stringValue: String) {
+    if stringValue.first == "." {
+      self.init(kind: .staticMember(String(stringValue.dropFirst())))
+    } else {
+      self.init(kind: .staticMember(stringValue))
+    }
+  }
 }
 
 // MARK: - CustomStringConvertible
@@ -72,22 +85,10 @@ extension Tag: Equatable, Hashable, Comparable {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable, CodingKeyRepresentable
 
 extension Tag: Codable, CodingKeyRepresentable {
-  /// Initialize an instance of this type from a string previously encoded from
-  /// the `_codableStringValue` property.
-  ///
-  /// - Parameters:
-  ///   - stringValue: The previously-encoded string.
-  private init(_codableStringValue stringValue: String) {
-    if stringValue.first == "." {
-      self.init(kind: .staticMember(String(stringValue.dropFirst())))
-    } else {
-      self.init(kind: .staticMember(stringValue))
-    }
-  }
-
   public init(from decoder: any Decoder) throws {
     let stringValue = try String(from: decoder)
     self.init(_codableStringValue: stringValue)
@@ -132,6 +133,7 @@ extension Tag: Codable, CodingKeyRepresentable {
     self.init(_codableStringValue: codingKey.stringValue)
   }
 }
+#endif
 
 // MARK: -
 

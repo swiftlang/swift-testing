@@ -151,7 +151,9 @@ struct Graph<K, V> where K: Hashable {
     let result: V?
 
     if let key = keyPath.first {
-      if var child = children[key] {
+      // The `.take()` here ensures we remove the item from the graph before mutating,
+      // preventing this from causing a cascading COW update down the tree.
+      if var child = children[key].take() {
         result = child.insertValue(newValue, at: keyPath.dropFirst(), intermediateValue: intermediateValue)
         children[key] = child
       } else {

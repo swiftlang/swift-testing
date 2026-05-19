@@ -13,10 +13,6 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
-#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
-#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand #expect(processExitsWith:)")
-#endif
-
 /// A protocol containing the common implementation for the expansions of the
 /// `#expect()` and `#require()` macros.
 ///
@@ -181,7 +177,7 @@ extension ConditionMacro {
         // the resulting comment array.
         checkArguments.append(Argument(
           label: "comments",
-          expression: #"(\#(commentsArrayExpr) as [Comment?]).compactMap(\.self)"#
+          expression: #"(\#(commentsArrayExpr) as [Testing.Comment?]).compactMap(\.self)"#
         ))
       } else {
         checkArguments.append(Argument(label: "comments", expression: commentsArrayExpr))
@@ -299,7 +295,7 @@ public struct AmbiguousRequireMacro: RefinedConditionMacro {
     }
 
     // Perform the normal macro expansion for #require().
-    return try RequireMacro.expansion(of: macro, in: context)
+    return try Base.expansion(of: macro, in: context)
   }
 
   /// Check for an ambiguous argument to the `#require()` macro and emit the
@@ -359,7 +355,29 @@ public struct NonOptionalRequireMacro: RefinedConditionMacro {
     }
 
     // Perform the normal macro expansion for #require().
-    return try RequireMacro.expansion(of: macro, in: context)
+    return try Base.expansion(of: macro, in: context)
+  }
+}
+
+// MARK: - Error-checking macros (#expect(throws:) etc.)
+
+/// A type describing the expansion of the `#expect(throws:)` macro.
+public struct ExpectThrowsMacro: RefinedConditionMacro {
+  public typealias Base = ExpectMacro
+
+  public static func expansion(
+    of macro: some FreestandingMacroExpansionSyntax,
+    in context: some MacroExpansionContext
+  ) throws -> ExprSyntax {
+    let arguments = argumentList(of: macro, in: context)
+    let errorExpr = arguments.first { $0.label?.tokenKind == .identifier("throws") }?.expression
+
+    // Perform the normal macro expansion for #expect().
+    return try Base.expansion(
+      of: macro,
+      primaryExpression: errorExpr,
+      in: context
+    )
   }
 }
 
@@ -369,8 +387,6 @@ public struct NonOptionalRequireMacro: RefinedConditionMacro {
 /// (as we only have the syntax tree here) and diagnoses it as redundant if so.
 /// See also ``RequireThrowsNeverMacro`` which is used when full type checking
 /// is contextually available.
-///
-/// This type is otherwise exactly equivalent to ``RequireMacro``.
 public struct RequireThrowsMacro: RefinedConditionMacro {
   public typealias Base = RequireMacro
 
@@ -378,24 +394,31 @@ public struct RequireThrowsMacro: RefinedConditionMacro {
     of macro: some FreestandingMacroExpansionSyntax,
     in context: some MacroExpansionContext
   ) throws -> ExprSyntax {
-    if let argument = macro.arguments.first {
-      let argumentTokens: [String] = argument.expression.tokens(viewMode: .fixedUp).lazy
-        .filter { $0.tokenKind != .period }
-        .map(\.textWithoutBackticks)
-      if argumentTokens == ["Swift", "Never", "self"] || argumentTokens == ["Never", "self"] {
-        context.diagnose(.requireThrowsNeverIsRedundant(argument.expression, in: macro))
+    let arguments = argumentList(of: macro, in: context)
+    let errorExpr = arguments.first { $0.label?.tokenKind == .identifier("throws") }?.expression
+
+    if let errorExpr = errorExpr?.as(MemberAccessExprSyntax.self),
+       errorExpr.declName.argumentNames == nil,
+       errorExpr.declName.baseName.tokenKind == .keyword(.self) {
+      let errorType = "\(errorExpr.base)" as TypeSyntax
+      if errorType.isNamed("Never", inModuleNamed: "Swift") {
+        context.diagnose(.requireThrowsNeverIsRedundant(errorExpr, in: macro))
       }
     }
 
     // Perform the normal macro expansion for #require().
-    return try RequireMacro.expansion(of: macro, in: context)
+    return try Base.expansion(
+      of: macro,
+      primaryExpression: errorExpr,
+      in: context
+    )
   }
 }
 
 /// A type describing the expansion of the `#require(throws:)` macro when it is
 /// passed `Never.self`, which is redundant.
 ///
-/// This type is otherwise exactly equivalent to ``RequireMacro``.
+/// This type is otherwise exactly equivalent to ``RequireThrowsMacro``.
 public struct RequireThrowsNeverMacro: RefinedConditionMacro {
   public typealias Base = RequireMacro
 
@@ -403,12 +426,18 @@ public struct RequireThrowsNeverMacro: RefinedConditionMacro {
     of macro: some FreestandingMacroExpansionSyntax,
     in context: some MacroExpansionContext
   ) throws -> ExprSyntax {
-    if let argument = macro.arguments.first {
+    let arguments = argumentList(of: macro, in: context)
+    if let argument = arguments.first {
       context.diagnose(.requireThrowsNeverIsRedundant(argument.expression, in: macro))
     }
 
     // Perform the normal macro expansion for #require().
-    return try RequireMacro.expansion(of: macro, in: context)
+    let errorExpr = arguments.first { $0.label?.tokenKind == .identifier("throws") }?.expression
+    return try Base.expansion(
+      of: macro,
+      primaryExpression: errorExpr,
+      in: context
+    )
   }
 }
 
@@ -431,27 +460,31 @@ extension ExitTestConditionMacro {
     var arguments = argumentList(of: macro, in: context)
     let trailingClosureIndex = arguments.firstIndex { $0.label?.tokenKind == _trailingClosureLabel.tokenKind }
     guard let trailingClosureIndex else {
-      fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      fatalError("Could not find the body argument to this exit test. \(fileABugMessage)")
     }
+
+    let conditionExpr = arguments.first { $0.label?.tokenKind == .identifier("processExitsWith") }?.expression
 
     var bodyArgumentExpr = arguments[trailingClosureIndex].expression
     bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
 
+    // Before building the macro expansion, look for any problems and return
+    // early if found.
+    guard _diagnoseIssues(with: macro, body: bodyArgumentExpr, in: context) else {
+      if Self.isThrowing {
+        return #"{ () async throws -> Testing.ExitTest.Result in \#(ExprSyntax.unreachable) }()"#
+      } else {
+        return #"{ () async -> Testing.ExitTest.Result in \#(ExprSyntax.unreachable) }()"#
+      }
+    }
+
     // Find any captured values and extract them from the trailing closure.
     var capturedValues = [CapturedValueInfo]()
-    if ExitTestExpectMacro.isValueCapturingEnabled {
-      // The source file imports @_spi(Experimental), so allow value capturing.
-      if var closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
-         let captureList = closureExpr.signature?.capture?.items {
-        closureExpr.signature?.capture = ClosureCaptureClauseSyntax(items: [], trailingTrivia: .space)
-        capturedValues = captureList.map { CapturedValueInfo($0, in: context) }
-        bodyArgumentExpr = ExprSyntax(closureExpr)
-      }
-
-    } else if let closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
-              let captureClause = closureExpr.signature?.capture,
-              !captureClause.items.isEmpty {
-      context.diagnose(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
+    if var closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
+       let captureList = closureExpr.signature?.capture?.items {
+      closureExpr.signature?.capture = ClosureCaptureClauseSyntax(items: [], trailingTrivia: .space)
+      capturedValues = captureList.map { CapturedValueInfo($0, in: context) }
+      bodyArgumentExpr = ExprSyntax(closureExpr)
     }
 
     // Generate a unique identifier for this exit test.
@@ -489,39 +522,25 @@ extension ExitTestConditionMacro {
         named: .identifier("testContentRecord"),
         in: TypeSyntax(IdentifierTypeSyntax(name: enumName)),
         ofKind: .exitTest,
-        accessingWith: .identifier("accessor")
-      )
-
-      // Create another local type for legacy test discovery.
-      var recordDecl: DeclSyntax?
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-      let legacyEnumName = context.makeUniqueName("__🟡$")
-      recordDecl = """
-      enum \(legacyEnumName): Testing.__TestContentRecordContainer {
-        nonisolated static var __testContentRecord: Testing.__TestContentRecord {
-          \(enumName).testContentRecord
+        accessingWith: """
+        { outValue, type, hint, _ in
+          Testing.ExitTest.__store(
+            \(idExpr),
+            \(bodyThunkName),
+            into: outValue,
+            asTypeAt: type,
+            withHintAt: hint
+          )
         }
-      }
-      """
-#endif
+        """,
+        in: context
+      )
 
       decls.append(
         """
         @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
         enum \(enumName) {
-          private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint, _ in
-            Testing.ExitTest.__store(
-              \(idExpr),
-              \(bodyThunkName),
-              into: outValue,
-              asTypeAt: type,
-              withHintAt: hint
-            )
-          }
-
           \(testContentRecordDecl)
-
-          \(recordDecl)
         }
         """
       )
@@ -550,7 +569,7 @@ extension ExitTestConditionMacro {
           label: "encodingCapturedValues",
           expression: TupleExprSyntax {
             for capturedValue in capturedValues {
-              LabeledExprSyntax(expression: capturedValue.expression.trimmed)
+              LabeledExprSyntax(expression: capturedValue.typeCheckedExpression)
             }
           }
         )
@@ -565,7 +584,7 @@ extension ExitTestConditionMacro {
     macro.trailingClosure = nil
     macro.additionalTrailingClosures = MultipleTrailingClosureElementListSyntax()
 
-    return try Base.expansion(of: macro, primaryExpression: bodyArgumentExpr, in: context)
+    return try Base.expansion(of: macro, primaryExpression: conditionExpr ?? bodyArgumentExpr, in: context)
   }
 
   /// Make an expression representing an exit test ID that can be passed to the
@@ -610,22 +629,54 @@ extension ExitTestConditionMacro {
       return ExprSyntax(tupleExpr)
     }
   }
-}
 
-extension ExitTestExpectMacro {
-  /// Whether or not experimental value capturing via explicit capture lists is
-  /// enabled.
+  /// Diagnose issues with an exit test macro call.
   ///
-  /// This member is declared on ``ExitTestExpectMacro`` but also applies to
-  /// ``ExitTestRequireMacro``.
-  @TaskLocal
-  static var isValueCapturingEnabled: Bool = {
-#if ExperimentalExitTestValueCapture
-    return true
-#else
-    return false
-#endif
-  }()
+  /// - Parameters:
+  ///   - macro: The exit test macro call.
+  ///   - bodyArgumentExpr: The exit test's body.
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: Whether or not macro expansion should continue (i.e. stopping
+  ///   if a fatal error was diagnosed.)
+  private static func _diagnoseIssues(
+    with macro: some FreestandingMacroExpansionSyntax,
+    body bodyArgumentExpr: ExprSyntax,
+    in context: some MacroExpansionContext
+  ) -> Bool {
+    var diagnostics = [DiagnosticMessage]()
+
+    // Disallow exit tests in generic types and functions as they cannot be
+    // correctly expanded due to the use of a nested type with static members.
+    for lexicalContext in context.lexicalContext {
+      if let lexicalContext = lexicalContext.asProtocol((any DeclGroupSyntax).self) {
+        if let genericClause = lexicalContext.asProtocol((any WithGenericParametersSyntax).self)?.genericParameterClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: lexicalContext))
+        } else if let whereClause = lexicalContext.genericWhereClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: lexicalContext))
+        } else if lexicalContext.type.isExplicitlyGeneric {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: lexicalContext.type, on: lexicalContext))
+        }
+      } else if let functionDecl = lexicalContext.as(FunctionDeclSyntax.self) {
+        if let genericClause = functionDecl.genericParameterClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: functionDecl))
+        } else if let whereClause = functionDecl.genericWhereClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: functionDecl))
+        } else {
+          for parameter in functionDecl.signature.parameterClause.parameters {
+            if parameter.type.isSome {
+              diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: parameter, on: functionDecl))
+            }
+          }
+        }
+      }
+    }
+
+    for diagnostic in diagnostics {
+      context.diagnose(diagnostic)
+    }
+    return diagnostics.isEmpty
+  }
 }
 
 /// A type describing the expansion of the `#expect(processExitsWith:)` macro.

@@ -120,3 +120,18 @@ func allIngredientsAvailable(for food: Food) -> Bool { ... }
 )
 func makeSundae() async throws { ... }
 ```
+
+### End a test after it has already started
+
+If a test is running and you determine it cannot complete and should end early
+without failing, use ``Test/cancel(_:sourceLocation:)`` to cancel the test:
+
+```swift
+@Test("Can make sundaes")
+func makeSundae() throws {
+  guard let iceCreamMaker = IceCreamMaker() else {
+    try Test.cancel("The ice cream maker isn't working right now")
+  }
+  ...
+}
+```

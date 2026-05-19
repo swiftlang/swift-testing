@@ -20,7 +20,7 @@ extension __Expression {
   /// - Warning: This function is used to implement the `@Test`, `@Suite`,
   ///   `#expect()` and `#require()` macros. Do not call it directly.
   public static func __fromSyntaxNode(_ syntaxNode: String) -> Self {
-    Self(kind: .generic(syntaxNode))
+    Self(syntaxNode)
   }
 
   /// Create an instance of this type representing a string literal.
@@ -35,7 +35,7 @@ extension __Expression {
   /// - Warning: This function is used to implement the `@Test`, `@Suite`,
   ///   `#expect()` and `#require()` macros. Do not call it directly.
   public static func __fromStringLiteral(_ sourceCode: String, _ stringValue: String) -> Self {
-    Self(kind: .stringLiteral(sourceCode: sourceCode, stringValue: stringValue))
+    Self(sourceCode)
   }
 
   /// Create an instance of this type representing a binary operation.
@@ -50,7 +50,10 @@ extension __Expression {
   /// - Warning: This function is used to implement the `@Test`, `@Suite`,
   ///   `#expect()` and `#require()` macros. Do not call it directly.
   public static func __fromBinaryOperation(_ lhs: Self, _ op: String, _ rhs: Self) -> Self {
-    return Self(kind: .binaryOperation(lhs: lhs, operator: op, rhs: rhs))
+    return Self(
+      "\(lhs) \(op) \(rhs)",
+      subexpressions: [lhs, rhs]
+    )
   }
 
   /// Create an instance of this type representing a function call.
@@ -67,8 +70,24 @@ extension __Expression {
   /// - Warning: This function is used to implement the `@Test`, `@Suite`,
   ///   `#expect()` and `#require()` macros. Do not call it directly.
   public static func __fromFunctionCall(_ value: Self?, _ functionName: String, _ arguments: (label: String?, value: Self)...) -> Self {
-    let arguments = arguments.map(Kind.FunctionCallArgument.init)
-    return Self(kind: .functionCall(value: value, functionName: functionName, arguments: arguments))
+    var sourceCode = functionName
+    if let value {
+      sourceCode = "\(value.sourceCode).\(functionName)"
+    }
+    let argumentsSourceCode: String = arguments.lazy
+      .map { label, value in
+        if let label {
+          "\(label): \(value.sourceCode)"
+        } else {
+          value.sourceCode
+        }
+      }.joined(separator: ", ")
+    sourceCode = "\(sourceCode)(\(argumentsSourceCode))"
+
+    return Self(
+      sourceCode,
+      subexpressions: Array(value) + arguments.map(\.value)
+    )
   }
 
   /// Create an instance of this type representing a property access.
@@ -83,7 +102,10 @@ extension __Expression {
   /// - Warning: This function is used to implement the `@Test`, `@Suite`,
   ///   `#expect()` and `#require()` macros. Do not call it directly.
   public static func __fromPropertyAccess(_ value: Self, _ keyPath: Self) -> Self {
-    return Self(kind: .propertyAccess(value: value, keyPath: keyPath))
+    Self(
+      "\(value.sourceCode).\(keyPath.sourceCode)",
+      subexpressions: [value, keyPath]
+    )
   }
 
   /// Create an instance of this type representing a negated expression
@@ -100,6 +122,15 @@ extension __Expression {
   /// - Warning: This function is used to implement the `@Test`, `@Suite`,
   ///   `#expect()` and `#require()` macros. Do not call it directly.
   public static func __fromNegation(_ expression: Self, _ isParenthetical: Bool) -> Self {
-    return Self(kind: .negation(expression, isParenthetical: isParenthetical))
+    let sourceCode = if isParenthetical {
+      "!(\(expression.sourceCode))"
+    } else {
+      "!\(expression.sourceCode)"
+    }
+    return Self(
+      sourceCode,
+      isNegated: true,
+      subexpressions: [expression]
+    )
   }
 }

@@ -266,19 +266,25 @@ extension Test {
     @_spi(ForToolsIntegrationOnly)
     public var typeInfo: TypeInfo
 
-    init(index: Int, firstName: String, secondName: String? = nil, type: Any.Type) {
+    init(index: Int, firstName: String, secondName: String? = nil, typeInfo: TypeInfo) {
       self.index = index
       self.firstName = firstName
       self.secondName = secondName
-      self.typeInfo = TypeInfo(describing: type)
+      self.typeInfo = typeInfo
+    }
+
+    init(index: Int, firstName: String, secondName: String? = nil, type: Any.Type) {
+      self.init(index: index, firstName: firstName, secondName: secondName, typeInfo: TypeInfo(describing: type))
     }
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension Test.Parameter: Codable {}
 extension Test.Case.Argument.ID: Codable {}
+#endif
 
 // MARK: - Equatable, Hashable
 

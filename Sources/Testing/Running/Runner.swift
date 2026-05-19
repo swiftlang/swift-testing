@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type that runs tests according to a given configuration.
 @_spi(ForToolsIntegrationOnly)
 public struct Runner: Sendable {
@@ -64,6 +68,25 @@ extension Runner {
   /// including potentially modifying the current configuration.
   private static var _configuration: Configuration {
     .current ?? .init()
+  }
+
+  /// Context to apply to a test run.
+  ///
+  /// Instances of this type are passed directly to the various functions in
+  /// this file and represent context for the run itself. As such, they are not
+  /// task-local nor are they meant to change as the test run progresses.
+  ///
+  /// This type is distinct from ``Configuration`` which _can_ change on a
+  /// per-test basis. If you find yourself wanting to modify a property of this
+  /// type at runtime, it may be better-suited for ``Configuration`` instead.
+  private struct _Context: Sendable {
+    /// A serializer used to reduce parallelism among test cases.
+    var testCaseSerializer: Serializer<Void>?
+
+    /// A set of test+case IDs that have recorded at least one issue during a
+    /// test run. This is consumed by the per-test-case repetition machinery to
+    /// determine whether a test case's iteration recorded an issue.
+    let testIssueRecorder = TestIssueRecorder()
   }
 
   /// Apply the custom scope for any test scope providers of the traits
@@ -149,17 +172,21 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - sequence: The sequence to enumerate.
+  ///   - taskNamer: A function to invoke for each element in `sequence`. The
+  ///     result of this function is used to name each child task.
   ///   - body: The function to invoke.
   ///
   /// - Throws: Whatever is thrown by `body`.
   private static func _forEach<E>(
     in sequence: some Sequence<E>,
-    _ body: @Sendable @escaping (E) async throws -> Void
-  ) async throws where E: Sendable {
-    try await withThrowingTaskGroup(of: Void.self) { taskGroup in
+    namingTasksWith taskNamer: (borrowing E) -> (taskName: String, action: String?)?,
+    _ body: @Sendable @escaping (borrowing E) async throws -> Void
+  ) async rethrows where E: Sendable {
+    try await withThrowingTaskGroup { taskGroup in
       for element in sequence {
         // Each element gets its own subtask to run in.
-        _ = taskGroup.addTaskUnlessCancelled {
+        let taskName = taskNamer(element)
+        taskGroup.addTask(name: decorateTaskName(taskName?.taskName, withAction: taskName?.action)) {
           try await body(element)
         }
 
@@ -171,10 +198,72 @@ extension Runner {
     }
   }
 
+  /// Post `testStarted` and `testEnded` (or `testSkipped`) events for the test
+  /// at the given plan step.
+  ///
+  /// - Parameters:
+  ///   - step: The plan step for which events should be posted.
+  ///   - configuration: The configuration to use for running.
+  ///   - context: Context for the test run.
+  ///   - body: A function to execute between the started/ended events.
+  ///
+  /// - Throws: Whatever is thrown by `body` or while handling any issues
+  ///   recorded in the process.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// This function does _not_ post the `planStepStarted` and `planStepEnded`
+  /// events.
+  private static func _postingTestStartedAndEndedEvents<R>(for step: Plan.Step, configuration: Configuration, context: _Context, _ body: @Sendable () async throws -> R) async throws -> R {
+#if DEBUG
+    // This function should only be called when the caller has already set the
+    // current test to the one represented by `step`.
+    let currentTestID = Test.current?.id
+    let expectedTestID = step.test.id
+    precondition(currentTestID == expectedTestID, "Called \(#function) without first setting the current test (was '\(currentTestID as Any)', expected '\(expectedTestID)')")
+#endif
+
+    // Whether to send a `.testEnded` event at the end of running this step.
+    // Some steps' actions may not require a final event to be sent — for
+    // example, a skip event only sends `.testSkipped`.
+    let shouldSendTestEnded: Bool
+
+    // Determine what kind of event to send for this step based on its action.
+    switch step.action {
+    case .run:
+      Event.post(.testStarted, for: (step.test, nil), configuration: configuration)
+      shouldSendTestEnded = true
+    case let .skip(skipInfo):
+      Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: configuration)
+      shouldSendTestEnded = false
+    case let .recordIssue(issue):
+      // Scope posting the issue recorded event such that issue handling
+      // traits have the opportunity to handle it. This ensures that if a test
+      // has an issue handling trait _and_ some other trait which caused an
+      // issue to be recorded, the issue handling trait can process the issue
+      // even though it wasn't recorded by the test function.
+      try await _applyIssueHandlingTraits(for: step.test) {
+        // Don't specify `configuration` when posting this issue so that
+        // traits can provide scope and potentially customize the
+        // configuration.
+        Event.post(.issueRecorded(issue), for: (step.test, nil))
+      }
+      shouldSendTestEnded = false
+    }
+    defer {
+      if shouldSendTestEnded {
+        Event.post(.testEnded, for: (step.test, nil), configuration: configuration)
+      }
+    }
+
+    return try await body()
+  }
+
   /// Run this test.
   ///
   /// - Parameters:
   ///   - stepGraph: The subgraph whose root value, a step, is to be run.
+  ///   - context: Context for the test run.
   ///
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
@@ -189,75 +278,52 @@ extension Runner {
   /// ## See Also
   ///
   /// - ``Runner/run()``
-  private static func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>) async throws {
+  private static func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>, context: _Context) async throws {
+#if !hasFeature(Embedded)
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
+#endif
 
-    // Whether to send a `.testEnded` event at the end of running this step.
-    // Some steps' actions may not require a final event to be sent — for
-    // example, a skip event only sends `.testSkipped`.
-    let shouldSendTestEnded: Bool
-
-    let configuration = _configuration
-
-    // Determine what action to take for this step.
     if let step = stepGraph.value {
+      let configuration = _configuration
       Event.post(.planStepStarted(step), for: (step.test, nil), configuration: configuration)
-
-      // Determine what kind of event to send for this step based on its action.
-      switch step.action {
-      case .run:
-        Event.post(.testStarted, for: (step.test, nil), configuration: configuration)
-        shouldSendTestEnded = true
-      case let .skip(skipInfo):
-        Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: configuration)
-        shouldSendTestEnded = false
-      case let .recordIssue(issue):
-        // Scope posting the issue recorded event such that issue handling
-        // traits have the opportunity to handle it. This ensures that if a test
-        // has an issue handling trait _and_ some other trait which caused an
-        // issue to be recorded, the issue handling trait can process the issue
-        // even though it wasn't recorded by the test function.
-        try await Test.withCurrent(step.test) {
-          try await _applyIssueHandlingTraits(for: step.test) {
-            // Don't specify `configuration` when posting this issue so that
-            // traits can provide scope and potentially customize the
-            // configuration.
-            Event.post(.issueRecorded(issue), for: (step.test, nil))
-          }
-        }
-        shouldSendTestEnded = false
-      }
-    } else {
-      shouldSendTestEnded = false
-    }
-    defer {
-      if let step = stepGraph.value {
-        if shouldSendTestEnded {
-          Event.post(.testEnded, for: (step.test, nil), configuration: configuration)
-        }
+      defer {
         Event.post(.planStepEnded(step), for: (step.test, nil), configuration: configuration)
       }
-    }
 
-    if let step = stepGraph.value, case .run = step.action {
       await Test.withCurrent(step.test) {
         _ = await Issue.withErrorRecording(at: step.test.sourceLocation, configuration: configuration) {
-          try await _applyScopingTraits(for: step.test, testCase: nil) {
-            // Run the test function at this step (if one is present.)
-            if let testCases = step.test.testCases {
-              try await _runTestCases(testCases, within: step)
-            }
+#if !hasFeature(Embedded)
+          // Exit early if the task has already been cancelled.
+          try Task.checkCancellation()
+#endif
 
-            // Run the children of this test (i.e. the tests in this suite.)
-            try await _runChildren(of: stepGraph)
+          switch step.action {
+          case .run:
+            try await _applyScopingTraits(for: step.test, testCase: nil) {
+              try await _postingTestStartedAndEndedEvents(for: step, configuration: configuration, context: context) {
+                // Run the test function at this step (if one is present.)
+                if let testCases = step.test.testCases {
+                  await _runTestCases(testCases, within: step, context: context)
+                }
+
+                // Run the children of this test (i.e. the tests in this suite.)
+                try await _runChildren(of: stepGraph, context: context)
+              }
+            }
+          default:
+            // Skipping this step or otherwise not running it. Post appropriate
+            // started/ended events for the test and walk any child nodes.
+            try await _postingTestStartedAndEndedEvents(for: step, configuration: configuration, context: context) {
+              try await _runChildren(of: stepGraph, context: context)
+            }
           }
         }
       }
     } else {
       // There is no test at this node in the graph, so just skip down to the
       // child nodes.
-      try await _runChildren(of: stepGraph)
+      try await _runChildren(of: stepGraph, context: context)
     }
   }
 
@@ -282,10 +348,11 @@ extension Runner {
   /// - Parameters:
   ///   - stepGraph: The subgraph whose root value, a step, will be used to
   ///     find children to run.
+  ///   - context: Context for the test run.
   ///
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
-  private static func _runChildren(of stepGraph: Graph<String, Plan.Step?>) async throws {
+  private static func _runChildren(of stepGraph: Graph<String, Plan.Step?>, context: _Context) async throws {
     let childGraphs = if _configuration.isParallelizationEnabled {
       // Explicitly shuffle the steps to help detect accidental dependencies
       // between tests due to their ordering.
@@ -314,9 +381,20 @@ extension Runner {
       }
     }
 
+    // Figure out how to name child tasks.
+    func taskNamer(_ childGraph: Graph<String, Plan.Step?>) -> (String, String?)? {
+      childGraph.value.map { step in
+        let testName = step.test.humanReadableName()
+        if step.test.isSuite {
+          return ("suite \(testName)", "running")
+        }
+        return ("test \(testName)", nil) // test cases have " - running" suffix
+      }
+    }
+
     // Run the child nodes.
-    try await _forEach(in: childGraphs) { _, childGraph in
-      try await _runStep(atRootOf: childGraph)
+    try await _forEach(in: childGraphs.lazy.map(\.value), namingTasksWith: taskNamer) { childGraph in
+      try await _runStep(atRootOf: childGraph, context: context)
     }
   }
 
@@ -325,21 +403,35 @@ extension Runner {
   /// - Parameters:
   ///   - testCases: The test cases to be run.
   ///   - step: The runner plan step associated with this test case.
-  ///
-  /// - Throws: Whatever is thrown from a test case's body. Thrown errors are
-  ///   normally reported as test failures.
+  ///   - context: Context for the test run.
   ///
   /// If parallelization is supported and enabled, the generated test cases will
   /// be run in parallel using a task group.
-  private static func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step) async throws {
+  private static func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step, context: _Context) async {
+    let configuration = _configuration
+
     // Apply the configuration's test case filter.
-    let testCaseFilter = _configuration.testCaseFilter
+    let testCaseFilter = configuration.testCaseFilter
     let testCases = testCases.lazy.filter { testCase in
       testCaseFilter(testCase, step.test)
     }
 
-    try await _forEach(in: testCases) { testCase in
-      try await _runTestCase(testCase, within: step)
+    // Figure out how to name child tasks.
+    let testName = "test \(step.test.humanReadableName())"
+    let taskNamer: (Int, Test.Case) -> (String, String?)? = if step.test.isParameterized {
+      { i, _ in (testName, "running test case #\(i + 1)") }
+    } else {
+      { _, _ in (testName, "running") }
+    }
+
+    await _forEach(in: testCases.enumerated(), namingTasksWith: taskNamer) { _, testCase in
+      if let testCaseSerializer = context.testCaseSerializer {
+        // Note that if .serialized is applied to an inner scope, we still use
+        // this serializer (if set) so that we don't overcommit.
+        await testCaseSerializer.run { await _runTestCase(testCase, within: step, in: context) }
+      } else {
+        await _runTestCase(testCase, within: step, in: context)
+      }
     }
   }
 
@@ -348,16 +440,35 @@ extension Runner {
   /// - Parameters:
   ///   - testCase: The test case to run.
   ///   - step: The runner plan step associated with this test case.
-  ///
-  /// - Throws: Whatever is thrown from the test case's body. Thrown errors
-  ///   are normally reported as test failures.
+  ///   - context: Context for the test run.
   ///
   /// This function sets ``Test/Case/current``, then invokes the test case's
   /// body closure.
-  private static func _runTestCase(_ testCase: Test.Case, within step: Plan.Step) async throws {
-    // Exit early if the task has already been cancelled.
-    try Task.checkCancellation()
+  private static func _runTestCase(
+    _ testCase: Test.Case,
+    within step: Plan.Step,
+    in context: _Context,
+  ) async {
+    if _configuration.shouldUseLegacyPlanLevelRepetition {
+      await _runSingleTestCaseIteration(testCase, within: step)
+    } else {
+      await _applyRepetitionPolicy(_configuration.repetitionPolicy) {
+        await _runSingleTestCaseIteration(testCase, within: step)
+      } didRecordIssue: {
+        context.testIssueRecorder.consumeIssue(for: step.test.id, testCase: testCase.id)
+      }
+    }
+  }
 
+  /// Run a single iteration of a test case.
+  ///
+  /// - Parameters:
+  ///   - testCase: The test case to run.
+  ///   - step: The runner plan step associated with this test case.
+  ///
+  /// This function sets ``Test/Case/current``, then invokes the test case's
+  /// body closure.
+  private static func _runSingleTestCaseIteration(_ testCase: Test.Case, within step: Plan.Step) async {
     let configuration = _configuration
 
     Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
@@ -368,13 +479,18 @@ extension Runner {
     await Test.Case.withCurrent(testCase) {
       let sourceLocation = step.test.sourceLocation
       await Issue.withErrorRecording(at: sourceLocation, configuration: configuration) {
+#if !hasFeature(Embedded)
+        // Exit early if the task has already been cancelled.
+        try Task.checkCancellation()
+#endif
+
         try await withTimeLimit(for: step.test, configuration: configuration) {
           try await _applyScopingTraits(for: step.test, testCase: testCase) {
             try await testCase.body()
           }
         } timeoutHandler: { timeLimit in
           let issue = Issue(
-            kind: .timeLimitExceeded(timeLimitComponents: timeLimit),
+            kind: .timeLimitExceeded(timeLimitComponents: timeLimit.components),
             comments: [],
             sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
           )
@@ -399,63 +515,75 @@ extension Runner {
   private static func _run(_ runner: Self) async {
     var runner = runner
     runner.configureEventHandlerRuntimeState()
+#if !SWT_NO_FILE_IO
+    runner.configureAttachmentHandling()
+#endif
+    _ = Event.installFallbackEventHandler()
 
-    // Track whether or not any issues were recorded across the entire run.
-    let issueRecorded = Locked(rawValue: false)
-    runner.configuration.eventHandler = { [eventHandler = runner.configuration.eventHandler] event, context in
-      if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
-        issueRecorded.withLock { issueRecorded in
-          issueRecorded = true
-        }
+    // Context to pass into the test run. We intentionally don't pass the Runner
+    // itself (implicitly as `self` nor as an argument) because we don't want to
+    // accidentally depend on e.g. the `configuration` property rather than the
+    // current configuration.
+    let context: _Context = {
+      var context = _Context()
+
+      let maximumParallelizationWidth = runner.configuration.maximumParallelizationWidth
+      if maximumParallelizationWidth > 1 && maximumParallelizationWidth < .max {
+        context.testCaseSerializer = Serializer(maximumWidth: runner.configuration.maximumParallelizationWidth)
       }
-      eventHandler(event, context)
-    }
+
+      return context
+    }()
+
+    runner.configureIssueRecordingEventHandling(testIssueRecorder: context.testIssueRecorder)
 
     await Configuration.withCurrent(runner.configuration) {
       // Post an event for every test in the test plan being run. These events
       // are turned into JSON objects if JSON output is enabled.
-      for test in runner.plan.steps.lazy.map(\.test) {
+      let tests = runner.plan.stepGraph.compactMap { $0.value?.test }
+      for test in tests {
         Event.post(.testDiscovered, for: (test, nil), configuration: runner.configuration)
       }
+      schedule(tests)
 
       Event.post(.runStarted, for: (nil, nil), configuration: runner.configuration)
       defer {
         Event.post(.runEnded, for: (nil, nil), configuration: runner.configuration)
       }
 
-      let repetitionPolicy = runner.configuration.repetitionPolicy
-      for iterationIndex in 0 ..< repetitionPolicy.maximumIterationCount {
-        Event.post(.iterationStarted(iterationIndex), for: (nil, nil), configuration: runner.configuration)
-        defer {
-          Event.post(.iterationEnded(iterationIndex), for: (nil, nil), configuration: runner.configuration)
-        }
+      if runner.configuration.shouldUseLegacyPlanLevelRepetition {
+        await _applyRepetitionPolicy(runner.configuration.repetitionPolicy) { [runner] in
+          context.testIssueRecorder.clear()
 
-        await withTaskGroup(of: Void.self) { [runner] taskGroup in
-          _ = taskGroup.addTaskUnlessCancelled {
-            try? await _runStep(atRootOf: runner.plan.stepGraph)
+          let iteration = Test.currentIteration ?? 1
+
+          // Legacy clients expect these values to be zero-indexed.
+          let iterationIndex = iteration - 1
+          Event.post(.iterationStarted(iterationIndex), configuration: runner.configuration)
+          defer {
+            Event.post(.iterationEnded(iterationIndex), configuration: runner.configuration)
           }
-          await taskGroup.waitForAll()
-        }
 
-        // Determine if the test plan should iterate again. (The iteration count
-        // is handled by the outer for-loop.)
-        let shouldContinue = switch repetitionPolicy.continuationCondition {
-        case nil:
-          true
-        case .untilIssueRecorded:
-          !issueRecorded.rawValue
-        case .whileIssueRecorded:
-          issueRecorded.rawValue
+          await runner._runAllTests(context: context)
+        } didRecordIssue: {
+          context.testIssueRecorder.hasIssues
         }
-        guard shouldContinue else {
-          break
-        }
-
-        // Reset the run-wide "issue was recorded" flag for this iteration.
-        issueRecorded.withLock { issueRecorded in
-          issueRecorded = false
-        }
+      } else {
+        await runner._runAllTests(context: context)
       }
+    }
+  }
+
+  /// Run every test in this runner's plan.
+  ///
+  /// - Parameters:
+  ///   - context: Context for the test run.
+  private func _runAllTests(context: _Context) async {
+    await withTaskGroup { taskGroup in
+      _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: nil)) {
+        try? await Self._runStep(atRootOf: plan.stepGraph, context: context)
+      }
+      await taskGroup.waitForAll()
     }
   }
 }

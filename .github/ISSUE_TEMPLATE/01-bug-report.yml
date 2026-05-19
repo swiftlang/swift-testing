@@ -9,7 +9,7 @@
 name: 🪲 Report a bug
 description: >
   Report a deviation from expected or documented behavior.
-labels: [bug, triage-needed]
+labels: [bug]
 body:
   - type: markdown
     attributes:

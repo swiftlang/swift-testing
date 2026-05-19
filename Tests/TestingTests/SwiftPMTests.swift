@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -15,6 +15,20 @@ private func configurationForEntryPoint(withArguments args: [String]) throws -> 
   let args = try parseCommandLineArguments(from: args)
   return try configurationForEntryPoint(from: args)
 }
+
+#if !SWT_NO_CODABLE
+/// Reads event stream output from the provided file matching event stream
+/// version `V`.
+private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String) throws -> [ABI.Record<V>] {
+  try FileHandle(forReadingAtPath: filePath).readToEnd()
+    .split(whereSeparator: \.isASCIINewline)
+    .map { line in
+      try line.withUnsafeBytes { line in
+        return try JSON.decode(ABI.Record<V>.self, from: line)
+      }
+    }
+}
+#endif
 
 @Suite("Swift Package Manager Integration Tests")
 struct SwiftPMTests {
@@ -41,6 +55,25 @@ struct SwiftPMTests {
 
     configuration = try configurationForEntryPoint(withArguments: ["PATH", "--no-parallel"])
     #expect(!configuration.isParallelizationEnabled)
+  }
+
+  @Test("--experimental-maximum-parallelization-width argument")
+  func maximumParallelizationWidth() throws {
+    var configuration = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-maximum-parallelization-width", "12345"])
+    #expect(configuration.isParallelizationEnabled)
+    #expect(configuration.maximumParallelizationWidth == 12345)
+
+    configuration = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-maximum-parallelization-width", "1"])
+    #expect(!configuration.isParallelizationEnabled)
+    #expect(configuration.maximumParallelizationWidth == 1)
+
+    configuration = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-maximum-parallelization-width", "\(Int.max)"])
+    #expect(configuration.isParallelizationEnabled)
+    #expect(configuration.maximumParallelizationWidth == .max)
+
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-maximum-parallelization-width", "0"])
+    }
   }
 
   @Test("--symbolicate-backtraces argument",
@@ -71,7 +104,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter argument")
-  @available(_regexAPI, *)
   func filter() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello"])
     let test1 = Test(name: "hello") {}
@@ -83,7 +115,6 @@ struct SwiftPMTests {
   }
 
   @Test("Multiple --filter arguments")
-  @available(_regexAPI, *)
   func multipleFilter() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello", "--filter", "sorry"])
     let test1 = Test(name: "hello") {}
@@ -97,7 +128,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter or --skip argument with bad regex")
-  @available(_regexAPI, *)
   func badArguments() throws {
     #expect(throws: (any Error).self) {
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "("])
@@ -108,7 +138,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter with no matches")
-  @available(_regexAPI, *)
   func filterWithNoMatches() async {
     var args = __CommandLineArguments_v0()
     args.filter = ["NOTHING_MATCHES_THIS_TEST_NAME_HOPEFULLY"]
@@ -118,7 +147,6 @@ struct SwiftPMTests {
   }
 
   @Test("--skip argument")
-  @available(_regexAPI, *)
   func skip() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--skip", "hello"])
     let test1 = Test(name: "hello") {}
@@ -129,7 +157,13 @@ struct SwiftPMTests {
     #expect(planTests.contains(test2))
   }
 
-  @Test(".hidden trait")
+  @Test("--filter or --skip argument as last argument")
+  func filterOrSkipAsLast() async throws {
+    _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter"])
+    _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
+  }
+
+  @Test(".hidden trait", .tags(.traitRelated))
   func hidden() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH"])
     let test1 = Test(name: "hello") {}
@@ -141,7 +175,6 @@ struct SwiftPMTests {
   }
 
   @Test("--filter/--skip arguments and .hidden trait")
-  @available(_regexAPI, *)
   func filterAndSkipAndHidden() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello", "--skip", "hello2"])
     let test1 = Test(name: "hello") {}
@@ -183,19 +216,18 @@ struct SwiftPMTests {
     }
     do {
       let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--xunit-output", temporaryFilePath])
-      let eventContext = Event.Context(test: nil, testCase: nil, configuration: nil)
+      let eventContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
       configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
 
-    let fileHandle = try FileHandle(forReadingAtPath: temporaryFilePath)
+    let fileHandle = try Testing.FileHandle(forReadingAtPath: temporaryFilePath)
     let fileContents = try fileHandle.readToEnd()
     #expect(!fileContents.isEmpty)
     #expect(fileContents.contains(UInt8(ascii: "<")))
     #expect(fileContents.contains(UInt8(ascii: ">")))
   }
 
-#if canImport(Foundation)
   @Test("--configuration-path argument", arguments: [
     "--configuration-path", "--experimental-configuration-path",
   ])
@@ -206,7 +238,7 @@ struct SwiftPMTests {
       _ = remove(temporaryFilePath)
     }
     do {
-      let fileHandle = try FileHandle(forWritingAtPath: temporaryFilePath)
+      let fileHandle = try Testing.FileHandle(forWritingAtPath: temporaryFilePath)
       try fileHandle.write(
         """
         {
@@ -226,21 +258,119 @@ struct SwiftPMTests {
     #expect(args.parallel == false)
   }
 
+  @available(*, deprecated)
+  @Test("Deprecated eventStreamVersion property")
+  func deprecatedEventStreamVersionProperty() async throws {
+    var args = __CommandLineArguments_v0()
+    args.eventStreamVersion = 0
+    #expect(args.eventStreamVersionNumber == VersionNumber(0, 0))
+    #expect(args.eventStreamSchemaVersion == "0")
+
+    args.eventStreamVersion = -1
+    #expect(args.eventStreamVersionNumber == VersionNumber(-1, 0))
+    #expect(args.eventStreamSchemaVersion == "-1")
+
+    args.eventStreamVersion = 123
+    #expect(args.eventStreamVersionNumber == VersionNumber(123, 0))
+    #expect(args.eventStreamSchemaVersion == "123.0")
+
+    args.eventStreamVersionNumber = VersionNumber(10, 20, 30)
+    #expect(args.eventStreamVersion == 10)
+    #expect(args.eventStreamSchemaVersion == "10.20.30")
+
+    args.eventStreamSchemaVersion = "10.20.30"
+    #expect(args.eventStreamVersionNumber == VersionNumber(10, 20, 30))
+    #expect(args.eventStreamVersion == 10)
+
+#if !SWT_NO_EXIT_TESTS
+    await #expect(processExitsWith: .failure) {
+      var args = __CommandLineArguments_v0()
+      args.eventStreamSchemaVersion = "invalidVersionString"
+    }
+#endif
+  }
+
+  @Test("New-but-not-experimental ABI version")
+  func newButNotExperimentalABIVersion() async throws {
+    let currentVersionNumber = ABI.CurrentVersion.versionNumber
+    var newerVersionNumber = currentVersionNumber
+    newerVersionNumber.patchComponent += 1
+    let version = try #require(ABI._version(forVersionNumber: newerVersionNumber, givenSwiftCompilerVersion: newerVersionNumber))
+    #expect(version.versionNumber == currentVersionNumber)
+  }
+
+  @Test("Unsupported ABI version")
+  func unsupportedABIVersion() async throws {
+    let versionNumber = VersionNumber(-100, 0)
+    let versionTypeInfo = ABI.version(forVersionNumber: versionNumber).map {TypeInfo(describing: $0) }
+    #expect(versionTypeInfo == nil)
+  }
+
+  @Test("Future ABI version (should be nil)")
+  func futureABIVersion() async throws {
+    #expect(swiftCompilerVersion >= VersionNumber(6, 0))
+    #expect(swiftCompilerVersion < VersionNumber(8, 0), "Swift 8.0 is here! Please update this test.")
+    let versionNumber = VersionNumber(8, 0)
+    let versionTypeInfo = ABI.version(forVersionNumber: versionNumber).map {TypeInfo(describing: $0) }
+    #expect(versionTypeInfo == nil)
+  }
+
+#if !SWT_NO_SNAPSHOT_TYPES
+  @Test("Severity field included in Issue.Snapshot")
+  func issueSnapshotIncludesSeverity() async throws {
+    let configuration = try configurationForEntryPoint(
+      withArguments: ["PATH", "--event-stream-version", "-1"]
+    )
+    #expect(configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled)
+  }
+#endif
+
+#if !SWT_NO_CODABLE
+  @Test("Severity and isFailure fields included in version 6.3")
+  func validateEventStreamContents() async throws {
+    let tempDirPath = try temporaryDirectory()
+    let temporaryFilePath = appendPathComponent("\(UInt64.random(in: 0 ..< .max))", to: tempDirPath)
+    defer {
+      _ = remove(temporaryFilePath)
+    }
+
+    do {
+      let test = Test {
+        Issue.record("Test warning", severity: .warning)
+      }
+
+      let configuration = try configurationForEntryPoint(withArguments:
+          ["PATH", "--event-stream-output-path", temporaryFilePath, "--experimental-event-stream-version", "6.3"]
+      )
+
+      await test.run(configuration: configuration)
+    }
+
+    let issueEventRecords = try decodedEventStreamRecords(fromPath: temporaryFilePath)
+      .compactMap { (record: ABI.Record<ABI.v6_3>) in
+        if case let .event(event) = record.kind, event.kind == .issueRecorded {
+          return event
+        }
+        return nil
+      }
+
+    let issue = try #require(issueEventRecords.first?.issue)
+    #expect(issueEventRecords.count == 1)
+    #expect(issue.isFailure == false)
+    #expect(issue.severity == .warning)
+  }
+
   @Test("--event-stream-output-path argument (writes to a stream and can be read back)",
         arguments: [
           ("--event-stream-output-path", "--event-stream-version", ABI.v0.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v0.versionNumber),
-          ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v1.versionNumber),
+          ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_3.versionNumber),
+          ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_4.versionNumber),
+          ("--event-stream-output-path", "--event-stream-version", ABI.v6_4.versionNumber),
         ])
-  func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: Int) async throws {
-    switch version {
-    case ABI.v0.versionNumber:
-      try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: ABI.v0.self)
-    case ABI.v1.versionNumber:
-      try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: ABI.v1.self)
-    default:
-      Issue.record("Unreachable event stream version \(version)")
-    }
+  func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: VersionNumber) async throws {
+    let version = try #require(ABI.version(forVersionNumber: version))
+    try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: version)
   }
 
   func eventStreamOutput<V>(outputArgumentName: String, versionArgumentName: String, version: V.Type) async throws where V: ABI.Version {
@@ -251,28 +381,32 @@ struct SwiftPMTests {
     defer {
       _ = remove(temporaryFilePath)
     }
+    let testTimeLimit = 3
+    let expectedArgs = ["argument1", "argument2"]
     do {
       let configuration = try configurationForEntryPoint(withArguments: ["PATH", outputArgumentName, temporaryFilePath, versionArgumentName, "\(version.versionNumber)"])
-      let test = Test(.tags(.blue)) {}
-      let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
+      let test = Test(
+        .tags(.blue),
+        .bug("https://my.defect.com/1234"),
+        .bug("other defect"),
+        .timeLimit(Swift.Duration.seconds(testTimeLimit + 100)),
+        .timeLimit(Swift.Duration.seconds(testTimeLimit)),
+        .timeLimit(Swift.Duration.seconds(testTimeLimit + 10)),
+        arguments: expectedArgs as [String]
+      ) {_ in}
+      let eventContext = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
 
       configuration.handleEvent(Event(.testDiscovered, testID: test.id, testCaseID: nil), in: eventContext)
       configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       do {
-        let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
+        let eventContext = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
         configuration.handleEvent(Event(.testStarted, testID: test.id, testCaseID: nil), in: eventContext)
         configuration.handleEvent(Event(.testEnded, testID: test.id, testCaseID: nil), in: eventContext)
       }
       configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
 
-    let decodedRecords = try FileHandle(forReadingAtPath: temporaryFilePath).readToEnd()
-      .split(whereSeparator: \.isASCIINewline)
-      .map { line in
-        try line.withUnsafeBytes { line in
-          try JSON.decode(ABI.Record<V>.self, from: line)
-        }
-      }
+    let decodedRecords: [ABI.Record<V>] = try decodedEventStreamRecords(fromPath: temporaryFilePath)
 
     let testRecords = decodedRecords.compactMap { record in
       if case let .test(test) = record.kind {
@@ -282,11 +416,27 @@ struct SwiftPMTests {
     }
     #expect(testRecords.count == 1)
     for testRecord in testRecords {
-      if version.versionNumber >= ABI.v1.versionNumber {
+      if version.includesExperimentalFields {
+        let actualTestCases = testRecord._testCases
+        let testCases = try #require(actualTestCases)
+        #expect(testCases.count == expectedArgs.count)
         #expect(testRecord._tags != nil)
       } else {
-        #expect(testRecord._tags == nil)
+        #expect(testRecord._testCases == nil)
       }
+
+      if version.versionNumber >= ABI.v6_4.versionNumber {
+        let testTags = try #require(testRecord.tags)
+        #expect(testTags.count >= 1)
+        for tag in testTags {
+          #expect(!tag.starts(with: "."))
+        }
+        let bugs = try #require(testRecord.bugs)
+        #expect(bugs.count == 2)
+        let timeLimit = try #require(testRecord.timeLimit)
+        #expect(timeLimit == Double(testTimeLimit))
+      }
+
     }
     let eventRecords = decodedRecords.compactMap { record in
       if case let .event(event) = record.kind {
@@ -300,15 +450,31 @@ struct SwiftPMTests {
   @Test("Experimental ABI version requires --experimental-event-stream-version argument")
   func experimentalABIVersionNeedsExperimentalFlag() {
     #expect(throws: (any Error).self) {
-      let experimentalVersion = ABI.CurrentVersion.versionNumber + 1
+      var experimentalVersion = ABI.CurrentVersion.versionNumber
+      experimentalVersion.minorComponent += 1
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--event-stream-version", "\(experimentalVersion)"])
     }
+  }
+
+  @Test("Invalid event stream version throws an invalid argument error")
+  func invalidEventStreamVersionThrows() {
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--event-stream-version", "xyz-invalid"])
+    }
+  }
+
+  @Test("Can extract the ABI version from record JSON")
+  func getVersionFromRecordJSON() throws {
+    var json = #"{ "kind": "test", "version": "1.2.3", "payload": {} }"#
+    let versionNumber = try json.withUTF8 { json in
+      try ABI.VersionNumber(fromRecordJSON: UnsafeRawBufferPointer(json))
+    }
+    #expect(versionNumber == ABI.VersionNumber(1, 2, 3))
   }
 #endif
 #endif
 
   @Test("--repetitions argument (alone)")
-  @available(_regexAPI, *)
   func repetitions() throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repetitions", "2468"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
@@ -316,7 +482,6 @@ struct SwiftPMTests {
   }
 
   @Test("--repeat-until pass argument (alone)")
-  @available(_regexAPI, *)
   func repeatUntilPass() throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == .max)
@@ -324,7 +489,6 @@ struct SwiftPMTests {
   }
 
   @Test("--repeat-until fail argument (alone)")
-  @available(_regexAPI, *)
   func repeatUntilFail() throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repeat-until", "fail"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == .max)
@@ -332,7 +496,6 @@ struct SwiftPMTests {
   }
 
   @Test("--repeat-until argument with garbage value (alone)")
-  @available(_regexAPI, *)
   func repeatUntilGarbage() {
     #expect(throws: (any Error).self) {
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--repeat-until", "qwertyuiop"])
@@ -340,11 +503,16 @@ struct SwiftPMTests {
   }
 
   @Test("--repetitions and --repeat-until arguments")
-  @available(_regexAPI, *)
   func repetitionsAndRepeatUntil() throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repetitions", "2468", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
     #expect(configuration.repetitionPolicy.continuationCondition == .whileIssueRecorded)
+  }
+
+  @Test
+  func `Per-test-case iteration enabled by default`() throws {
+    let defaultConfig = try configurationForEntryPoint(withArguments: ["PATH"])
+    #expect(!defaultConfig.shouldUseLegacyPlanLevelRepetition)
   }
 
   @Test("list subcommand")
@@ -370,6 +538,22 @@ struct SwiftPMTests {
     #expect(testIDs.allSatisfy { $0.contains(".swift:") })
   }
 
+  @Test("list subcommand includes synthesized tests")
+  func listIncludesSynthesizedTests() async throws {
+    var args = __CommandLineArguments_v0()
+    args.verbosity = .min
+    args.listTests = true
+    await confirmation("At least one suite was synthesized", expectedCount: 1...) { suiteSynthesized in
+      _ = await entryPoint(passing: args) { event, eventContext in
+        if case .testDiscovered = event.kind,
+           let test = eventContext.test,
+           test.isSynthesized {
+          suiteSynthesized()
+        }
+      }
+    }
+  }
+
   @Test(
     "--verbose, --very-verbose, and --quiet arguments",
     arguments: [
@@ -389,5 +573,26 @@ struct SwiftPMTests {
   func verbosity() throws {
     let args = try parseCommandLineArguments(from: ["PATH", "--verbosity", "12345"])
     #expect(args.verbosity == 12345)
+  }
+
+  @Test("--foo=bar form")
+  func equalsSignForm() throws {
+    // We can split the string and parse the result correctly.
+    do {
+      let args = try parseCommandLineArguments(from: ["PATH", "--verbosity=12345"])
+      #expect(args.verbosity == 12345)
+    }
+
+    // We don't overrun the string and correctly handle empty values.
+    do {
+      let args = try parseCommandLineArguments(from: ["PATH", "--xunit-output="])
+      #expect(args.xunitOutput == "")
+    }
+
+    // We split at the first equals-sign.
+    do {
+      let args = try parseCommandLineArguments(from: ["PATH", "--xunit-output=abc=123"])
+      #expect(args.xunitOutput == "abc=123")
+    }
   }
 }

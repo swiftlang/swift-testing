@@ -95,6 +95,7 @@ var swiftTestingDirectoryPath: String? {
 /// string values and the values represent tag colors. For a list of the
 /// supported formats for tag colors in this dictionary, see <doc:AddingTags>.
 func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? = swiftTestingDirectoryPath) throws -> [Tag: Tag.Color] {
+#if !SWT_NO_CODABLE
   guard let swiftTestingDirectoryPath else {
     // If the platform does not support user-specific configuration, skip custom
     // tag colors.
@@ -117,5 +118,8 @@ func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? 
     try JSON.decode([Tag: Tag.Color?].self, from: tagColorsData)
       .compactMapValues { $0 }
   }
+#else
+  return [:]
+#endif
 }
 #endif

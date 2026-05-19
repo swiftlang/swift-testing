@@ -147,6 +147,46 @@ extension Runner.Plan {
     }
   }
 
+  /// Recursively deduplicate traits on the given test by calling
+  /// ``ReducibleTrait/reduce(_:)`` across all nodes in the graph.
+  ///
+  /// - Parameters:
+  ///   - testGraph: The graph of tests to modify.
+  private static func _recursivelyReduceTraits(in testGraph: inout Graph<String, Test?>) {
+    testGraph = testGraph.mapValues { _, test in
+      guard var test else {
+        return nil
+      }
+
+      var traits = test.traits.map { $0 as Optional }
+      for i in traits.indices {
+        guard var trait = traits[i] as? any ReducibleTrait else {
+          // The trait is not reducible, so preserve it verbatim and move on.
+          continue
+        }
+        defer {
+          traits[i] = trait
+        }
+
+        func open<T>(_ trait: inout T) where T: ReducibleTrait {
+          for j in traits.index(after: i) ..< traits.endIndex {
+            if let other = traits[j] as? T,
+               let replacement = other.reduce(into: trait) {
+              // Reduction occurred, so remove the other trait and replace this one
+              // with the reduced trait.
+              trait = replacement
+              traits[j] = nil
+            }
+          }
+        }
+        open(&trait)
+      }
+      test.traits = traits.compactMap(\.self)
+
+      return test
+    }
+  }
+
   /// Recursively synthesize test instances representing suites for all missing
   /// values in the specified test graph.
   ///
@@ -193,6 +233,112 @@ extension Runner.Plan {
     synthesizeSuites(in: &graph, sourceLocation: &sourceLocation)
   }
 
+  /// Given an array of tests, synthesize any containing suites that are not
+  /// already represented in that array.
+  ///
+  /// - Parameters:
+  ///   - tests: The test functions and test suites that have already been
+  ///     generated.
+  ///
+  /// - Returns: A superset of `tests` that also includes synthesized instances
+  ///   of ``Test`` representing any test suites not already present in `tests`
+  ///   that can be inferred from the contents of that collection.
+  static func synthesizeSuites(for tests: [Test]) -> [Test] {
+    var testGraph = Graph<String, Test?>()
+    for test in tests {
+      let idComponents = test.id.keyPathRepresentation
+      testGraph.insertValue(test, at: idComponents)
+    }
+    _recursivelySynthesizeSuites(in: &testGraph)
+    return testGraph.compactMap { $0.value }
+  }
+
+  /// The basic "run" action.
+  private static let _runAction = Action.run(options: .init())
+
+  /// Determine what action to perform for a given test by preparing its traits.
+  ///
+  /// - Parameters:
+  ///   - test: The test whose action will be determined.
+  ///
+  /// - Returns:The action to take for `test`.
+  private static func _determineAction(for test: inout Test) async -> Action {
+    let result: Action
+
+    // We use a task group here with a single child task so that, if the trait
+    // code calls Test.cancel() we don't end up cancelling the entire test run.
+    // We could also model this as an unstructured task except that they aren't
+    // available in the "task-to-thread" concurrency model.
+    //
+    // FIXME: Parallelize this work. Calling `prepare(...)` on all traits and
+    // evaluating all test arguments should be safely parallelizable.
+    (test, result) = await withTaskGroup(returning: (Test, Action).self) { [test] taskGroup in
+      let testName = test.humanReadableName()
+      let (taskName, taskAction) = if test.isSuite {
+        ("suite \(testName)", "evaluating traits")
+      } else {
+        // TODO: split the task group's single task into two serially-run subtasks
+        ("test \(testName)", "evaluating traits and test cases")
+      }
+      taskGroup.addTask(name: decorateTaskName(taskName, withAction: taskAction)) {
+        var test = test
+        var action = _runAction
+
+        await Test.withCurrent(test) {
+          do {
+            var firstCaughtError: (any Error)?
+
+            for trait in test.traits {
+              do {
+                try await trait.prepare(for: test)
+              } catch {
+                if let skipInfo = SkipInfo(error) {
+                  action = .skip(skipInfo)
+                  break
+                } else {
+                  // Only preserve the first caught error
+                  firstCaughtError = firstCaughtError ?? error
+                }
+              }
+            }
+
+            // If no trait specified that the test should be skipped, but one
+            // did throw an error, then the action is to record an issue for
+            // that error.
+            if case .run = action, let error = firstCaughtError {
+              action = .recordIssue(Issue(for: error))
+            }
+          }
+
+          // If the test is still planned to run (i.e. nothing thus far has
+          // caused it to be skipped), evaluate its test cases now.
+          //
+          // The argument expressions of each test are captured in closures so
+          // they can be evaluated lazily only once it is determined that the
+          // test will run, to avoid unnecessary work. But now is the
+          // appropriate time to evaluate them.
+          if case .run = action {
+            do {
+              try await test.evaluateTestCases()
+            } catch {
+              if let skipInfo = SkipInfo(error) {
+                action = .skip(skipInfo)
+              } else {
+                action = .recordIssue(Issue(for: error))
+              }
+            }
+          }
+        }
+
+        return (test, action)
+      }
+
+      return await taskGroup.first { _ in true }!
+    }
+
+    return result
+  }
+
   /// Construct a graph of runner plan steps for the specified tests.
   ///
   /// - Parameters:
@@ -211,7 +357,7 @@ extension Runner.Plan {
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining
     // them, in which case it will be .recordIssue().
-    let runAction = Action.run(options: .init())
+    let runAction = _runAction
     var testGraph = Graph<String, Test?>()
     var actionGraph = Graph<String, Action>(value: runAction)
     for test in tests {
@@ -250,10 +396,13 @@ extension Runner.Plan {
     // filtered out.
     _recursivelyApplyTraits(to: &testGraph)
 
-    // For each test value, determine the appropriate action for it.
+    // Recursively reduce traits in the graph.
     //
-    // FIXME: Parallelize this work. Calling `prepare(...)` on all traits and
-    // evaluating all test arguments should be safely parallelizable.
+    // As with `_recursivelyApplyTraits(to:)`, we must call this function before
+    // calling `prepare(for:)` to ensure correct operation.
+    _recursivelyReduceTraits(in: &testGraph)
+
+    // For each test value, determine the appropriate action for it.
     testGraph = await testGraph.mapValues { keyPath, test in
       // Skip any nil test, which implies this node is just a placeholder and
       // not actual test content.
@@ -261,46 +410,12 @@ extension Runner.Plan {
         return nil
       }
 
-      var action = runAction
-      var firstCaughtError: (any Error)?
-
       // Walk all the traits and tell each to prepare to run the test.
       // If any throw a `SkipInfo` error at this stage, stop walking further.
       // But if any throw another kind of error, keep track of the first error
       // but continue walking, because if any subsequent traits throw a
       // `SkipInfo`, the error should not be recorded.
-      for trait in test.traits {
-        do {
-          try await trait.prepare(for: test)
-        } catch let error as SkipInfo {
-          action = .skip(error)
-          break
-        } catch {
-          // Only preserve the first caught error
-          firstCaughtError = firstCaughtError ?? error
-        }
-      }
-
-      // If no trait specified that the test should be skipped, but one did
-      // throw an error, then the action is to record an issue for that error.
-      if case .run = action, let error = firstCaughtError {
-        action = .recordIssue(Issue(for: error))
-      }
-
-      // If the test is still planned to run (i.e. nothing thus far has caused
-      // it to be skipped), evaluate its test cases now.
-      //
-      // The argument expressions of each test are captured in closures so they
-      // can be evaluated lazily only once it is determined that the test will
-      // run, to avoid unnecessary work. But now is the appropriate time to
-      // evaluate them.
-      if case .run = action {
-        do {
-          try await test.evaluateTestCases()
-        } catch {
-          action = .recordIssue(Issue(for: error))
-        }
-      }
+      var action = await _determineAction(for: &test)
 
       // If the test is parameterized but has no cases, mark it as skipped.
       if case .run = action, let testCases = test.testCases, testCases.first(where: { _ in true }) == nil {
@@ -347,6 +462,9 @@ extension Runner.Plan {
   }
 }
 
+#if !SWT_NO_CODABLE
+// MARK: - Codable
+
 extension Runner.Plan.Action.RunOptions: Codable {
   private enum CodingKeys: CodingKey {
     case isParallelizationEnabled
@@ -369,6 +487,7 @@ extension Runner.Plan.Action.RunOptions: Codable {
     try container.encode(false, forKey: .isParallelizationEnabled)
   }
 }
+#endif
 
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting

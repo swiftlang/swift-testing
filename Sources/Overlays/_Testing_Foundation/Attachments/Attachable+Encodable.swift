@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
+#if canImport(Foundation) && !SWT_NO_CODABLE
 public import Testing
 private import Foundation
 
@@ -56,6 +56,7 @@ func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
 /// }
 extension Attachable where Self: Encodable {
   /// Encode this value into a buffer using either [`PropertyListEncoder`](https://developer.apple.com/documentation/foundation/propertylistencoder)
@@ -92,6 +93,7 @@ extension Attachable where Self: Encodable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try _Testing_Foundation.withUnsafeBytes(encoding: self, for: attachment, body)

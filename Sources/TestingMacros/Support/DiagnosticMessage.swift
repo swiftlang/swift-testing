@@ -9,6 +9,7 @@
 //
 
 import SwiftDiagnostics
+import SwiftIfConfig
 import SwiftParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
@@ -18,6 +19,24 @@ import SwiftSyntaxMacroExpansion
 /// A type describing diagnostic messages emitted by this module's macro during
 /// evaluation.
 struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
+#if DEBUG
+  /// Create a diagnostic message for the given macro stating it cannot be used
+  /// when building the testing library itself.
+  ///
+  /// - Parameters:
+  ///   - macro: The macro that cannot be used.
+  ///   - targetName: The name of the target being built.
+  ///
+  /// - Returns: A diagnostic message.
+  static func macroExpansionNotAllowed(_ macro: some FreestandingMacroExpansionSyntax, inLibraryTargetNamed targetName: String) -> Self {
+    Self(
+      syntax: Syntax(macro),
+      message: "\(_macroName(macro)) cannot be used within the target '\(targetName)' because it will not be available when building the Swift toolchain",
+      severity: .error
+    )
+  }
+#endif
+
   /// Create a diagnostic message for the macro with the specified name
   /// stating that its condition will always pass or fail.
   ///
@@ -76,8 +95,19 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// - Returns: The name of the macro as understood by a developer, such as
   ///   `"'@Test'"`. Include single quotes.
   private static func _macroName(_ attribute: AttributeSyntax) -> String {
+    var attributeName = attribute.attributeName
+    if let type = attributeName.as(IdentifierTypeSyntax.self) {
+      attributeName = TypeSyntax(type.with(\.genericArgumentClause, nil))
+    } else if let type = attributeName.as(MemberTypeSyntax.self) {
+      attributeName = TypeSyntax(type.with(\.genericArgumentClause, nil))
+    }
+    let attributeNameText = attributeName
+      .tokens(viewMode: .fixedUp)
+      .map(\.textWithoutBackticks)
+      .joined()
+
     // SEE: https://github.com/swiftlang/swift/blob/main/docs/Diagnostics.md?plain=1#L44
-    "'\(attribute.attributeNameText)'"
+    return "'\(attributeNameText)'"
   }
 
   /// Get a string corresponding to the specified syntax node (for instance,
@@ -93,7 +123,11 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     let result: (value: String, article: String)
     switch node.kind {
     case .functionDecl:
-      result = ("function", "a")
+      if node.cast(FunctionDeclSyntax.self).isOperator {
+        result = ("operator", "an")
+      } else {
+        result = ("function", "a")
+      }
     case .classDecl:
       result = ("class", "a")
     case .structDecl:
@@ -171,6 +205,39 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
         syntax: syntax,
         message: "Attribute \(_macroName(attribute)) cannot be applied to a generic \(_kindString(for: decl))",
         severity: .error
+      )
+    }
+  }
+
+  /// Create a diagnostic message stating that the given attribute has an unused
+  /// generic argument clause (e.g. `@Test<T>`).
+  ///
+  /// - Parameters:
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///   - decl: The generic declaration in question.
+  ///   - genericClause: The child node on `attribute` that makes it generic.
+  ///
+  /// - Returns: A diagnostic message.
+  static func genericAttributeNotSupported(_ attribute: AttributeSyntax, on decl: some SyntaxProtocol, becauseOf genericClause: some SyntaxProtocol, languageMode: VersionTuple?) -> Self {
+    let fixIts: [FixIt] = [
+      FixIt(
+        message: MacroExpansionFixItMessage("Remove generic attribute clause from \(_macroName(attribute))"),
+        changes: [.replace(oldNode: Syntax(genericClause), newNode: Syntax("" as ExprSyntax))]
+      ),
+    ]
+    if let languageMode, languageMode >= .init(7, 0) {
+      return Self(
+        syntax: Syntax(genericClause),
+        message: "Generic argument clause of attribute \(_macroName(attribute)) is unsupported",
+        severity: .error,
+        fixIts: fixIts
+      )
+    } else {
+      return Self(
+        syntax: Syntax(genericClause),
+        message: "Generic argument clause of attribute \(_macroName(attribute)) is unsupported; this is an error in the Swift 7 language mode",
+        severity: .warning,
+        fixIts: fixIts
       )
     }
   }
@@ -323,19 +390,14 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///     generic.
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///   - decl: The declaration in question (contained in `node`.)
-  ///   - escapableNonConformance: The suppressed conformance to `Escapable` for
-  ///     `decl`, if present.
   ///
   /// - Returns: A diagnostic message.
-  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol, withSuppressedConformanceToEscapable escapableNonConformance: SuppressedTypeSyntax? = nil) -> Self {
+  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
     // Avoid using a syntax node from a lexical context (it won't have source
     // location information.)
     let syntax: Syntax = if let genericClause, attribute.root == genericClause.root {
       // Prefer the generic clause if available as the root cause.
       genericClause
-    } else if let escapableNonConformance, attribute.root == escapableNonConformance.root {
-      // Then the ~Escapable conformance if present.
-      Syntax(escapableNonConformance)
     } else if attribute.root == node.root {
       // Next best choice is the unsupported containing node.
       Syntax(node)
@@ -369,8 +431,8 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
         message += " within \(_kindString(for: node, includeA: true))"
       }
     }
-    if escapableNonConformance != nil {
-      message += " because its conformance to 'Escapable' has been suppressed"
+    if let decl = node.as(DeclSyntax.self), declarationInheritsFromXCTestClass(decl) == true {
+      message += " because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'"
     }
 
     return Self(syntax: syntax, message: message, severity: .error)
@@ -525,7 +587,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   }
 
   /// Create a diagnostic message stating that `@Test` or `@Suite` is
-  /// incompatible with `XCTestCase` and its subclasses.
+  /// incompatible with `XCTest.XCTest` and its subclasses.
   ///
   /// - Parameters:
   ///   - decl: The expression or declaration referring to the unsupported
@@ -533,10 +595,10 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///
   /// - Returns: A diagnostic message.
-  static func xcTestCaseNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
+  static func xcTestSubclassNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(decl),
-      message: "Attribute \(_macroName(attribute)) cannot be applied to a subclass of 'XCTestCase'",
+      message: "Attribute \(_macroName(attribute)) cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
       severity: .error
     )
   }
@@ -639,6 +701,41 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that a string literal expression
+  /// passed as the display name to a `@Test` or `@Suite` attribute is empty
+  /// but should not be.
+  ///
+  /// - Parameters:
+  ///   - decl: The declaration that has an empty display name.
+  ///   - displayNameExpr: The display name string literal expression.
+  ///   - argumentContainingDisplayName: The argument node containing the node
+  ///     `displayNameExpr`.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///
+  /// - Returns: A diagnostic message.
+  static func declaration(
+    _ decl: some NamedDeclSyntax,
+    hasEmptyDisplayName displayNameExpr: StringLiteralExprSyntax,
+    fromArgument argumentContainingDisplayName: LabeledExprListSyntax.Element,
+    using attribute: AttributeSyntax
+  ) -> Self {
+    Self(
+      syntax: Syntax(displayNameExpr),
+      message: "Attribute \(_macroName(attribute)) specifies an empty display name for this \(_kindString(for: decl))",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove display name argument"),
+          changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax("" as ExprSyntax))]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Add display name"),
+          changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax(StringLiteralExprSyntax(placeholder: "display name")))]
+        ),
+      ]
+    )
+  }
+
   /// Create a diagnostic message stating that a declaration has two display
   /// names.
   ///
@@ -657,10 +754,16 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     fromArgument argumentContainingDisplayName: LabeledExprListSyntax.Element,
     using attribute: AttributeSyntax
   ) -> Self {
-    Self(
+    // If the name of the ambiguously-named symbol should be derived from a raw
+    // identifier, this situation is an error. If the name is not raw but is
+    // still surrounded by backticks (e.g. "func `foo`()" or "struct `if`") then
+    // lower the severity to a warning. That way, existing code structured this
+    // way doesn't suddenly fail to build.
+    let severity: DiagnosticSeverity = (decl.name.rawIdentifier != nil) ? .error : .warning
+    return Self(
       syntax: Syntax(decl),
-      message: "Attribute \(_macroName(attribute)) specifies display name '\(displayNameFromAttribute.representedLiteralValue!)' for \(_kindString(for: decl)) with implicit display name '\(decl.name.rawIdentifier!)'",
-      severity: .error,
+      message: "Attribute \(_macroName(attribute)) specifies display name '\(displayNameFromAttribute.representedLiteralValue!)' for \(_kindString(for: decl)) with implicit display name '\(decl.name.textWithoutBackticks)'",
+      severity: severity,
       fixIts: [
         FixIt(
           message: MacroExpansionFixItMessage("Remove '\(displayNameFromAttribute.representedLiteralValue!)'"),
@@ -726,7 +829,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - expr: The error type expression.
   ///
   /// - Returns: A diagnostic message.
-  static func requireThrowsNeverIsRedundant(_ expr: ExprSyntax, in macro: some FreestandingMacroExpansionSyntax) -> Self {
+  static func requireThrowsNeverIsRedundant(_ expr: some ExprSyntaxProtocol, in macro: some FreestandingMacroExpansionSyntax) -> Self {
     // We do not provide fix-its because we cannot see the leading "try" keyword
     // so we can't provide a valid fix-it to remove the macro either. We can
     // provide a fix-it to add "as Optional", but only providing that fix-it may
@@ -827,47 +930,53 @@ extension DiagnosticMessage {
     )
   }
 
-  /// Create a diagnostic message stating that a capture clause cannot be used
-  /// in an exit test.
+  /// Create a diagnostic message stating that a captured value must conform to
+  /// `Sendable` and `Codable`.
   ///
   /// - Parameters:
-  ///   - captureClause: The invalid capture clause.
-  ///   - closure: The closure containing `captureClause`.
-  ///   - exitTestMacro: The containing exit test macro invocation.
+  ///   - valueExpr: The captured value.
+  ///   - nameExpr: The name of the capture list item corresponding to
+  ///     `valueExpr`.
   ///
   /// - Returns: A diagnostic message.
-  static func captureClauseUnsupported(_ captureClause: ClosureCaptureClauseSyntax, in closure: ClosureExprSyntax, inExitTest exitTestMacro: some FreestandingMacroExpansionSyntax) -> Self {
-    let changes: [FixIt.Change]
-    if let signature = closure.signature,
-       Array(signature.with(\.capture, nil).tokens(viewMode: .sourceAccurate)).count == 1 {
-      // The only remaining token in the signature is `in`, so remove the whole
-      // signature tree instead of just the capture clause.
-      changes = [
-        .replaceTrailingTrivia(token: closure.leftBrace, newTrivia: ""),
-        .replace(
-          oldNode: Syntax(signature),
-          newNode: Syntax("" as ExprSyntax)
-        )
-      ]
-    } else {
-      changes = [
-        .replace(
-          oldNode: Syntax(captureClause),
-          newNode: Syntax("" as ExprSyntax)
-        )
-      ]
-    }
-
+  static func capturedValueMustBeSendableAndCodable(_ valueExpr: ExprSyntax, name nameExpr: StringLiteralExprSyntax) -> Self {
+    let name = nameExpr.representedLiteralValue ?? valueExpr.trimmedDescription
     return Self(
-      syntax: Syntax(captureClause),
-      message: "Cannot specify a capture clause in closure passed to \(_macroName(exitTestMacro))",
-      severity: .error,
-      fixIts: [
-        FixIt(
-          message: MacroExpansionFixItMessage("Remove '\(captureClause.trimmed)'"),
-          changes: changes
-        ),
-      ]
+      syntax: Syntax(valueExpr),
+      message: "Type of captured value '\(name)' must conform to 'Sendable' and 'Codable'",
+      severity: .error
     )
+  }
+
+  /// Create a diagnostic message stating that an expression macro is not
+  /// supported in a generic context.
+  ///
+  /// - Parameters:
+  ///   - macro: The invalid macro.
+  ///   - genericClause: The child node on `genericDecl` that makes it generic.
+  ///   - genericDecl: The generic declaration to which `genericClause` is
+  ///     attached, possibly equal to `decl`.
+  ///
+  /// - Returns: A diagnostic message.
+  static func expressionMacroUnsupported(_ macro: some FreestandingMacroExpansionSyntax, inGenericContextBecauseOf genericClause: some SyntaxProtocol, on genericDecl: some SyntaxProtocol) -> Self {
+    if let functionDecl = genericDecl.as(FunctionDeclSyntax.self) {
+      return Self(
+        syntax: Syntax(macro),
+        message: "Cannot call macro '\(_macroName(macro))' within generic function '\(functionDecl.completeName)'",
+        severity: .error
+      )
+    } else if let namedDecl = genericDecl.asProtocol((any NamedDeclSyntax).self) {
+      return Self(
+        syntax: Syntax(macro),
+        message: "Cannot call macro '\(_macroName(macro))' within generic \(_kindString(for: genericDecl)) '\(namedDecl.name.trimmed)'",
+        severity: .error
+      )
+    } else {
+      return Self(
+        syntax: Syntax(macro),
+        message: "Cannot call macro '\(_macroName(macro))' within a generic \(_kindString(for: genericDecl))",
+        severity: .error
+      )
+    }
   }
 }

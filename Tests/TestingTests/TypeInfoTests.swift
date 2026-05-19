@@ -24,7 +24,7 @@ struct TypeInfoTests {
     ),
     (
       [Test].self,
-      TypeInfo(fullyQualifiedName: "Swift.Array<Testing.Test>", unqualifiedName: "Array<Test>", mangledName: "")
+      TypeInfo(fullyQualifiedName: "Swift.Array<\(testingModuleABIName).Test>", unqualifiedName: "Array<Test>", mangledName: "")
     ),
     (
       (key: String, value: Int).self,
@@ -104,23 +104,25 @@ struct TypeInfoTests {
     #expect(typeInfo.fullyQualifiedNameComponents == expectedComponents)
   }
 
-  @available(_mangledTypeNameAPI, *)
   @Test func mangledTypeName() {
     #expect(_mangledTypeName(String.self) == TypeInfo(describing: String.self).mangledName)
     #expect(_mangledTypeName(String.NestedType.self) == TypeInfo(describing: String.NestedType.self).mangledName)
     #expect(_mangledTypeName(SomeEnum.self) == TypeInfo(describing: SomeEnum.self).mangledName)
   }
 
-  @available(_mangledTypeNameAPI, *)
   @Test func isImportedFromC() {
     #expect(!TypeInfo(describing: String.self).isImportedFromC)
     #expect(TypeInfo(describing: SWTTestEnumeration.self).isImportedFromC)
   }
 
-  @available(_mangledTypeNameAPI, *)
   @Test func isSwiftEnumeration() {
     #expect(!TypeInfo(describing: String.self).isSwiftEnumeration)
     #expect(TypeInfo(describing: SomeEnum.self).isSwiftEnumeration)
+  }
+
+  @Test func typeOfMoveOnlyValueIsInferred() {
+    let value = MoveOnlyType()
+    #expect(TypeInfo(describingTypeOf: value).unqualifiedName == "MoveOnlyType")
   }
 }
 
@@ -131,3 +133,5 @@ extension String {
 }
 
 private enum SomeEnum {}
+
+private struct MoveOnlyType: ~Copyable {}

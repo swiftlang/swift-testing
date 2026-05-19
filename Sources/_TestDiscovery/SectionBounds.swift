@@ -14,7 +14,7 @@ private import ObjectiveC
 #endif
 
 /// A structure describing the bounds of a Swift metadata section.
-struct SectionBounds: Sendable {
+struct SectionBounds: Sendable, BitwiseCopyable {
   /// The base address of the image containing the section, if known.
   nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
@@ -23,7 +23,7 @@ struct SectionBounds: Sendable {
 
   /// An enumeration describing the different sections discoverable by the
   /// testing library.
-  enum Kind: Equatable, Hashable, CaseIterable {
+  enum Kind: Int, Equatable, Hashable, CaseIterable {
     /// The test content metadata section.
     case testContent
 
@@ -71,10 +71,19 @@ extension SectionBounds.Kind {
 
 /// An array containing all of the test content section bounds known to the
 /// testing library.
+///
+/// Indices into this array are equivalent to the `rawValue` values of instances
+/// of ``SectionBounds/Kind``.
 private nonisolated(unsafe) let _sectionBounds = {
-  let result = ManagedBuffer<[SectionBounds.Kind: [SectionBounds]], pthread_mutex_t>.create(
+  // We generate a contiguous array here rather than a dictionary because the
+  // former has less overall bridging with the Objective-C runtime (reducing the
+  // risk of reentrance while holding the libobjc lock) and because the set of
+  // keys or indices is closed, so an array lookup is always more efficient than
+  // a hashtable lookup.
+  let kindCount = SectionBounds.Kind.allCases.count
+  let result = ManagedBuffer<ContiguousArray<ContiguousArray<SectionBounds>>, pthread_mutex_t>.create(
     minimumCapacity: 1,
-    makingHeaderWith: { _ in [:] }
+    makingHeaderWith: { _ in .init(repeating: [], count: kindCount) }
   )
 
   result.withUnsafeMutablePointers { sectionBounds, lock in
@@ -82,7 +91,7 @@ private nonisolated(unsafe) let _sectionBounds = {
 
     let imageCount = Int(clamping: _dyld_image_count())
     for kind in SectionBounds.Kind.allCases {
-      sectionBounds.pointee[kind, default: []].reserveCapacity(imageCount)
+      sectionBounds.pointee[kind.rawValue].reserveCapacity(imageCount)
     }
   }
 
@@ -121,7 +130,7 @@ private let _startCollectingSectionBounds: Void = {
           defer {
             pthread_mutex_unlock(lock)
           }
-          sectionBounds.pointee[kind]!.append(sb)
+          sectionBounds.pointee[kind.rawValue].append(sb)
         }
       }
     }
@@ -145,14 +154,14 @@ private let _startCollectingSectionBounds: Void = {
 ///
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
-private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
+private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessCollection<SectionBounds> {
   _startCollectingSectionBounds
   return _sectionBounds.withUnsafeMutablePointers { sectionBounds, lock in
     pthread_mutex_lock(lock)
     defer {
       pthread_mutex_unlock(lock)
     }
-    return sectionBounds.pointee[kind]!
+    return sectionBounds.pointee[kind.rawValue]
   }
 }
 
@@ -247,23 +256,21 @@ private func _findSection(named sectionName: String, in hModule: HMODULE) -> Sec
           start: UnsafeRawPointer(hModule) + virtualAddress,
           count: Int(clamping: min(max(0, sectionHeader.Misc.VirtualSize), max(0, sectionHeader.SizeOfRawData)))
         )
-        guard buffer.count > 2 * MemoryLayout<UInt>.stride else {
-          return nil
-        }
 
-        // Skip over the leading and trailing zeroed uintptr_t values. These
-        // values are always emitted by SwiftRT-COFF.cpp into all Swift images.
-#if DEBUG
-        let firstPointerValue = buffer.baseAddress!.loadUnaligned(as: UInt.self)
-        assert(firstPointerValue == 0, "First pointer-width value in section '\(sectionName)' at \(buffer.baseAddress!) was expected to equal 0 (found \(firstPointerValue) instead)")
-        let lastPointerValue = ((buffer.baseAddress! + buffer.count) - MemoryLayout<UInt>.stride).loadUnaligned(as: UInt.self)
-        assert(lastPointerValue == 0, "Last pointer-width value in section '\(sectionName)' at \(buffer.baseAddress!) was expected to equal 0 (found \(lastPointerValue) instead)")
-#endif
-        buffer = UnsafeRawBufferPointer(
-          rebasing: buffer
-            .dropFirst(MemoryLayout<UInt>.stride)
-            .dropLast(MemoryLayout<UInt>.stride)
-        )
+        // Skip over the leading and trailing zeroed uintptr_t values if they're
+        // present. These values are emitted by older versions of SwiftRT-COFF.cpp
+        // into all Swift images. SEE: https://github.com/swiftlang/swift/issues/87650
+        if buffer.count > 2 * MemoryLayout<UInt>.stride {
+          let firstPointerValue = buffer.baseAddress!.loadUnaligned(as: UInt.self)
+          let lastPointerValue = ((buffer.baseAddress! + buffer.count) - MemoryLayout<UInt>.stride).loadUnaligned(as: UInt.self)
+          if firstPointerValue == 0 && lastPointerValue == 0 {
+            buffer = UnsafeRawBufferPointer(
+              rebasing: buffer
+                .dropFirst(MemoryLayout<UInt>.stride)
+                .dropLast(MemoryLayout<UInt>.stride)
+            )
+          }
+        }
 
         return SectionBounds(imageAddress: hModule, buffer: buffer)
       }.first

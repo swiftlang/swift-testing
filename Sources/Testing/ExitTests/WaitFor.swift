@@ -33,7 +33,7 @@ private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
       case .init(CLD_KILLED), .init(CLD_DUMPED):
         return .signal(siginfo.si_status)
       default:
-        throw SystemError(description: "Unexpected siginfo_t value. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new and include this information: \(String(reflecting: siginfo))")
+        throw SystemError(description: "Unexpected siginfo_t value. \(fileABugMessage(context: String(reflecting: siginfo)))")
       }
     } else if case let errorCode = swt_errno(), errorCode != EINTR {
       throw CError(rawValue: errorCode)
@@ -80,16 +80,47 @@ func wait(for pid: consuming pid_t) async throws -> ExitStatus {
 }
 #elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
-private let _childProcessContinuations = LockedWith<pthread_mutex_t, [pid_t: CheckedContinuation<ExitStatus, any Error>]>()
+private nonisolated(unsafe) let _childProcessContinuations = {
+  let result = ManagedBuffer<[pid_t: CheckedContinuation<ExitStatus, any Error>], pthread_mutex_t>.create(
+    minimumCapacity: 1,
+    makingHeaderWith: { _ in [:] }
+  )
+
+  result.withUnsafeMutablePointers { _, lock in
+    _ = pthread_mutex_init(lock, nil)
+  }
+
+  return result
+}()
+
+/// Access the value in `_childProcessContinuations` while guarded by its lock.
+///
+/// - Parameters:
+///   - body: A closure to invoke while the lock is held.
+///
+/// - Returns: Whatever is returned by `body`.
+///
+/// - Throws: Whatever is thrown by `body`.
+private func _withLockedChildProcessContinuations<R>(
+  _ body: (
+    _ childProcessContinuations: inout [pid_t: CheckedContinuation<ExitStatus, any Error>],
+    _ lock: UnsafeMutablePointer<pthread_mutex_t>
+  ) throws -> R
+) rethrows -> R {
+  try _childProcessContinuations.withUnsafeMutablePointers { childProcessContinuations, lock in
+    _ = pthread_mutex_lock(lock)
+    defer {
+      _ = pthread_mutex_unlock(lock)
+    }
+
+    return try body(&childProcessContinuations.pointee, lock)
+  }
+}
 
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.
 private nonisolated(unsafe) let _waitThreadNoChildrenCondition = {
-#if os(FreeBSD) || os(OpenBSD)
-  let result = UnsafeMutablePointer<pthread_cond_t?>.allocate(capacity: 1)
-#else
   let result = UnsafeMutablePointer<pthread_cond_t>.allocate(capacity: 1)
-#endif
   _ = pthread_cond_init(result, nil)
   return result
 }()
@@ -116,7 +147,7 @@ private let _createWaitThread: Void = {
     var siginfo = siginfo_t()
     if 0 == waitid(P_ALL, 0, &siginfo, WEXITED | WNOWAIT) {
       if case let pid = siginfo.si_pid, pid != 0 {
-        let continuation = _childProcessContinuations.withLock { childProcessContinuations in
+        let continuation = _withLockedChildProcessContinuations { childProcessContinuations, _ in
           childProcessContinuations.removeValue(forKey: pid)
         }
 
@@ -137,7 +168,7 @@ private let _createWaitThread: Void = {
       // newly-scheduled waiter process. (If this condition is spuriously
       // woken, we'll just loop again, which is fine.) Note that we read errno
       // outside the lock in case acquiring the lock perturbs it.
-      _childProcessContinuations.withUnsafeUnderlyingLock { lock, childProcessContinuations in
+      _withLockedChildProcessContinuations { childProcessContinuations, lock in
         if childProcessContinuations.isEmpty {
           _ = pthread_cond_wait(_waitThreadNoChildrenCondition, lock)
         }
@@ -161,15 +192,15 @@ private let _createWaitThread: Void = {
       // on Darwin, TASK_COMM_LEN on Linux, MAXCOMLEN on FreeBSD, and _MAXCOMLEN
       // on OpenBSD. We try to maximize legibility in the available space.
 #if SWT_TARGET_OS_APPLE
-      _ = pthread_setname_np("Swift Testing exit test monitor")
+      _ = pthread_setname_np("Swift Testing subprocess monitor")
 #elseif os(Linux)
 #if !SWT_NO_DYNAMIC_LINKING
-      _ = _pthread_setname_np?(pthread_self(), "SWT ExT monitor")
+      _ = _pthread_setname_np?(pthread_self(), "SWT prc monitor")
 #endif
 #elseif os(FreeBSD)
-      _ = pthread_set_name_np(pthread_self(), "SWT ex test monitor")
+      pthread_set_name_np(pthread_self(), "SWT subproc monitor")
 #elseif os(OpenBSD)
-      _ = pthread_set_name_np(pthread_self(), "SWT exit test monitor")
+      pthread_set_name_np(pthread_self(), "SWT subprocess monitor")
 #else
 #warning("Platform-specific implementation missing: thread naming unavailable")
 #endif
@@ -209,14 +240,14 @@ func wait(for pid: consuming pid_t) async throws -> ExitStatus {
   _createWaitThread
 
   return try await withCheckedThrowingContinuation { continuation in
-    _childProcessContinuations.withLock { childProcessContinuations in
+    _withLockedChildProcessContinuations { childProcessContinuations, _ in
       // We don't need to worry about a race condition here because waitid()
       // does not clear the wait/zombie state of the child process. If it sees
       // the child process has terminated and manages to acquire the lock before
       // we add this continuation to the dictionary, then it will simply loop
       // and report the status again.
       let oldContinuation = childProcessContinuations.updateValue(continuation, forKey: pid)
-      assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). \(fileABugMessage)")
 
       // Wake up the waiter thread if it is waiting for more child processes.
       _ = pthread_cond_signal(_waitThreadNoChildrenCondition)

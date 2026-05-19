@@ -29,6 +29,12 @@
 #include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
+/// limits.h must be included before stdlib.h with glibc, otherwise the
+/// fortified realpath() in this module will differ from the one in SwiftGlibc.
+/// glibc bug: https://sourceware.org/bugzilla/show_bug.cgi?id=30516
+#if __has_include(<limits.h>)
+#include <limits.h>
+#endif
 /// Guard against including `signal.h` on WASI. The `signal.h` header file
 /// itself is available in wasi-libc, but it's just a stub that doesn't actually
 /// do anything. And also including it requires a special macro definition
@@ -51,6 +57,14 @@
 #include <fcntl.h>
 #elif __has_include(<sys/fcntl.h>)
 #include <sys/fcntl.h>
+#endif
+
+#if __has_include(<gnu/libc-version.h>)
+#include <gnu/libc-version.h>
+#endif
+
+#if __has_include(<sys/param.h>)
+#include <sys/param.h>
 #endif
 
 #if __has_include(<sys/resource.h>) && !defined(__wasi__)
@@ -93,10 +107,6 @@
 #include <pwd.h>
 #endif
 
-#if __has_include(<limits.h>)
-#include <limits.h>
-#endif
-
 #if __has_include(<spawn.h>)
 #include <spawn.h>
 #endif
@@ -136,6 +146,14 @@
 #if !SWT_NO_OS_UNFAIR_LOCK
 #include <os/lock.h>
 #endif
+
+#if !SWT_NO_FILE_CLONING
+#include <sys/clonefile.h>
+#endif
+#endif
+
+#if defined(__linux__)
+#include <linux/fs.h>
 #endif
 
 #if defined(__FreeBSD__)
@@ -147,7 +165,6 @@
 #endif
 
 #if defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <Windows.h>
 #include <ntstatus.h>

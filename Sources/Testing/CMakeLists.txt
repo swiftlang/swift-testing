@@ -1,31 +1,42 @@
 # This source file is part of the Swift.org open source project
 #
-# Copyright (c) 2024 Apple Inc. and the Swift project authors
+# Copyright (c) 2024-2026 Apple Inc. and the Swift project authors
 # Licensed under Apache License v2.0 with Runtime Library Exception
 #
-# See http://swift.org/LICENSE.txt for license information
-# See http://swift.org/CONTRIBUTORS.txt for Swift project authors
+# See https://swift.org/LICENSE.txt for license information
+# See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
+include(ModuleABIName)
 add_library(Testing
   ABI/EntryPoints/ABIEntryPoint.swift
   ABI/EntryPoints/EntryPoint.swift
   ABI/EntryPoints/SwiftPMEntryPoint.swift
   ABI/ABI.Record.swift
   ABI/ABI.Record+Streaming.swift
+  ABI/ABI.VersionNumber.swift
   ABI/ABI.swift
   ABI/Encoded/ABI.EncodedAttachment.swift
   ABI/Encoded/ABI.EncodedBacktrace.swift
   ABI/Encoded/ABI.EncodedError.swift
   ABI/Encoded/ABI.EncodedEvent.swift
+  ABI/Encoded/ABI.EncodedExpression.swift
   ABI/Encoded/ABI.EncodedInstant.swift
   ABI/Encoded/ABI.EncodedIssue.swift
   ABI/Encoded/ABI.EncodedMessage.swift
+  ABI/Encoded/ABI.EncodedSourceLocation.swift
   ABI/Encoded/ABI.EncodedTest.swift
+  Attachments/Images/AttachableAsImage.swift
+  Attachments/Images/_AttachableImageWrapper.swift
+  Attachments/Images/AttachableImageFormat.swift
+  Attachments/Images/Attachment+AttachableAsImage.swift
+  Attachments/Images/ImageAttachmentError.swift
   Attachments/Attachable.swift
   Attachments/AttachableWrapper.swift
   Attachments/Attachment.swift
   Events/Clock.swift
   Events/Event.swift
+  Events/Event+FallbackEventHandler.swift
+  Events/Recorder/Event.AdvancedConsoleOutputRecorder.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
   Events/Recorder/Event.HumanReadableOutputRecorder.swift
   Events/Recorder/Event.JUnitXMLRecorder.swift
@@ -58,21 +69,30 @@ add_library(Testing
   Running/Runner.Plan+Dumping.swift
   Running/Runner.RuntimeState.swift
   Running/Runner.swift
+  Running/Runner+Repetition.swift
   Running/SkipInfo.swift
   SourceAttribution/Backtrace.swift
   SourceAttribution/Backtrace+Symbolication.swift
+  SourceAttribution/CustomTestReflectable.swift
   SourceAttribution/CustomTestStringConvertible.swift
   SourceAttribution/Expression.swift
   SourceAttribution/Expression+Macro.swift
+  SourceAttribution/SourceBounds.swift
   SourceAttribution/SourceContext.swift
   SourceAttribution/SourceLocation.swift
   SourceAttribution/SourceLocation+Macro.swift
   Support/Additions/ArrayAdditions.swift
+  Support/Additions/AtomicAdditions.swift
   Support/Additions/CollectionDifferenceAdditions.swift
   Support/Additions/CommandLineAdditions.swift
+  Support/Additions/CopyableAdditions.swift
+  Support/Additions/MutexAdditions.swift
   Support/Additions/NumericAdditions.swift
   Support/Additions/ResultAdditions.swift
+  Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
+  Support/Allocated.swift
+  Support/BugReporting.swift
   Support/CartesianProduct.swift
   Support/CError.swift
   Support/CustomIssueRepresentable.swift
@@ -81,16 +101,19 @@ add_library(Testing
   Support/GetSymbol.swift
   Support/Graph.swift
   Support/JSON.swift
-  Support/Locked.swift
-  Support/Locked+Platform.swift
+  Support/Serializer.swift
+  Support/SHA256.swift
+  Support/VersionNumber.swift
   Support/Versions.swift
   Discovery+Macro.swift
   Test.ID.Selection.swift
   Test.ID.swift
   Test.swift
+  Test+Cancellation.swift
   Test+Discovery.swift
   Test+Discovery+Legacy.swift
   Test+Macro.swift
+  Traits/AttachmentSavingTrait.swift
   Traits/Bug.swift
   Traits/Comment.swift
   Traits/Comment+Macro.swift
@@ -100,6 +123,7 @@ add_library(Testing
   Traits/HiddenTrait.swift
   Traits/IssueHandlingTrait.swift
   Traits/ParallelizationTrait.swift
+  Traits/ReducibleTrait.swift
   Traits/Tags/Tag.Color.swift
   Traits/Tags/Tag.Color+Loading.swift
   Traits/Tags/Tag.List.swift
@@ -110,7 +134,8 @@ add_library(Testing
   Traits/Trait.swift)
 target_link_libraries(Testing PRIVATE
   _TestDiscovery
-  _TestingInternals)
+  _TestingInternals
+  _TestingInterop)
 if(NOT APPLE)
   if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
     target_link_libraries(Testing PUBLIC
@@ -118,7 +143,8 @@ if(NOT APPLE)
   endif()
   target_link_libraries(Testing PUBLIC
     Foundation)
-  if (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+  if (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR
+      CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     target_link_libraries(Testing PUBLIC execinfo)
   endif()
 endif()
@@ -127,7 +153,8 @@ if(NOT BUILD_SHARED_LIBS)
   # libraries.
   target_compile_options(Testing PRIVATE
     "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestDiscovery"
-    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals")
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals"
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInterop")
 endif()
 add_dependencies(Testing
   TestingMacros)

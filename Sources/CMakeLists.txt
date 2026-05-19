@@ -3,8 +3,8 @@
 # Copyright (c) 2024 Apple Inc. and the Swift project authors
 # Licensed under Apache License v2.0 with Runtime Library Exception
 #
-# See http://swift.org/LICENSE.txt for license information
-# See http://swift.org/CONTRIBUTORS.txt for Swift project authors
+# See https://swift.org/LICENSE.txt for license information
+# See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 set(SwiftTesting_MACRO "<auto>" CACHE STRING
     "Path to SwiftTesting macro plugin, or '<auto>' for automatically building it")
@@ -66,7 +66,7 @@ if(SwiftTesting_MACRO STREQUAL "<auto>")
   if(NOT SwiftTesting_BuildMacrosAsExecutables)
     if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
       set(SwiftTesting_MACRO_PATH "${SwiftTesting_MACRO_INSTALL_PREFIX}/lib/swift/host/plugins/testing/libTestingMacros.dylib")
-    elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux" or CMAKE_HOST_SYSTEM_NAME STREQUAL "FreeBSD")
+    elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_HOST_SYSTEM_NAME STREQUAL "FreeBSD")
       set(SwiftTesting_MACRO_PATH "${SwiftTesting_MACRO_INSTALL_PREFIX}/lib/swift/host/plugins/libTestingMacros.so")
     elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
       set(SwiftTesting_MACRO_PATH "${SwiftTesting_MACRO_INSTALL_PREFIX}/bin/TestingMacros.dll")
@@ -104,6 +104,7 @@ endif()
 include(AvailabilityDefinitions)
 include(CompilerSettings)
 add_subdirectory(_TestDiscovery)
+add_subdirectory(_TestingInterop)
 add_subdirectory(_TestingInternals)
 add_subdirectory(Overlays)
 add_subdirectory(Testing)

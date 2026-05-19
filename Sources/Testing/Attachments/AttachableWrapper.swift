@@ -8,9 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// A protocol describing a type that can be attached to a test report or
-/// written to disk when a test is run and which contains another value that it
-/// stands in for.
+/// A protocol describing a type whose instances can be recorded and saved as
+/// part of a test run and which contains another value that it stands in for.
 ///
 /// To attach an attachable value to a test, pass it to ``Attachment/record(_:named:sourceLocation:)``.
 /// To further configure an attachable value before you attach it, use it to
@@ -24,12 +23,14 @@
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
 /// }
 public protocol AttachableWrapper<Wrapped>: Attachable, ~Copyable {
   /// The type of the underlying value represented by this type.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   associatedtype Wrapped
 
@@ -37,6 +38,7 @@ public protocol AttachableWrapper<Wrapped>: Attachable, ~Copyable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   var wrappedValue: Wrapped { get }
 }

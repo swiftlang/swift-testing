@@ -10,12 +10,16 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type describing the environment of the current process.
 ///
 /// This type can be used to access the current process' environment variables.
 ///
 /// This type is not part of the public interface of the testing library.
-enum Environment {
+package enum Environment {
 #if SWT_NO_ENVIRONMENT_VARIABLES
   /// Storage for the simulated environment.
   ///
@@ -23,7 +27,7 @@ enum Environment {
   /// platform-specific implementation details. Callers should not read from
   /// this dictionary directly; use ``variable(named:)`` or ``flag(named:)``
   /// instead.
-  static let simulatedEnvironment = Locked<[String: String]>()
+  static let simulatedEnvironment = Mutex<[String: String]>()
 #endif
 
   /// Split a string containing an environment variable's name and value into
@@ -89,24 +93,41 @@ enum Environment {
   }()
 #endif
 
+  /// The address of the environment block, if available.
+  ///
+  /// The value of this property is always `nil` on Windows and on platforms
+  /// that do not support environment variables.
+  static var unsafeAddress: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>? {
+#if SWT_NO_ENVIRONMENT_VARIABLES
+    nil
+#elseif SWT_TARGET_OS_APPLE
+    _NSGetEnviron()?.pointee
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+    swt_environ()
+#elseif os(WASI)
+    __wasilibc_get_environ()
+#elseif os(Windows)
+    nil
+#else
+#warning("Platform-specific implementation missing: environment variables unavailable")
+    nil
+#endif
+  }
+
   /// Get all environment variables in the current process.
   ///
   /// - Returns: A copy of the current process' environment dictionary.
-  static func get() -> [String: String] {
+  package static func get() -> [String: String] {
 #if SWT_NO_ENVIRONMENT_VARIABLES
     simulatedEnvironment.rawValue
-#elseif SWT_TARGET_OS_APPLE
-#if !SWT_NO_DYNAMIC_LINKING
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
     _environ_lock_np?()
     defer {
       _environ_unlock_np?()
     }
 #endif
-    return _get(fromEnviron: _NSGetEnviron()!.pointee!)
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
-    _get(fromEnviron: swt_environ())
-#elseif os(WASI)
-    _get(fromEnviron: __wasilibc_get_environ())
+    return _get(fromEnviron: Self.unsafeAddress!)
 #elseif os(Windows)
     guard let environ = GetEnvironmentStringsW() else {
       return [:]
@@ -140,7 +161,7 @@ enum Environment {
   ///
   /// - Returns: The value of the specified environment variable, or `nil` if it
   ///   is not set for the current process.
-  static func variable(named name: String) -> String? {
+  package static func variable(named name: String) -> String? {
 #if SWT_NO_ENVIRONMENT_VARIABLES
     simulatedEnvironment.rawValue[name]
 #elseif SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
@@ -153,7 +174,9 @@ enum Environment {
     defer {
       _environ_unlock_np?()
     }
-    let environ = _NSGetEnviron()!.pointee!
+    guard let environ = Self.unsafeAddress else {
+      return nil
+    }
 
     return name.withCString { name in
       for i in 0... {
@@ -175,7 +198,7 @@ enum Environment {
 #elseif os(Windows)
     name.withCString(encodedAs: UTF16.self) { name in
       func getVariable(maxCount: Int) -> String? {
-        withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: maxCount) { buffer in
+        withUnsafeTemporaryAllocation(of: CWideChar.self, capacity: maxCount) { buffer in
           SetLastError(DWORD(ERROR_SUCCESS))
           let count = GetEnvironmentVariableW(name, buffer.baseAddress!, DWORD(buffer.count))
           if count == 0 {
@@ -188,7 +211,7 @@ enum Environment {
               return nil
             case let errorCode:
               let error = Win32Error(rawValue: errorCode)
-              fatalError("Unexpected error when getting environment variable '\(name)': \(error) (\(errorCode))")
+              fatalError("Unexpected error when getting environment variable '\(name)': \(String(describingForTest: error)) (\(errorCode))")
             }
           } else if count > buffer.count {
             // Try again with the larger count.
@@ -221,7 +244,7 @@ enum Environment {
   /// - String values beginning with the letters `"t"`, `"T"`, `"y"`, or `"Y"`
   ///   are interpreted as `true`; and
   /// - All other non-`nil` string values are interpreted as `false`.
-  static func flag(named name: String) -> Bool? {
+  package static func flag(named name: String) -> Bool? {
     variable(named: name).map {
       if let signedValue = Int64($0) {
         return signedValue != 0
@@ -248,7 +271,7 @@ extension Environment {
   ///
   /// - Returns: Whether or not the environment variable was successfully set.
   @discardableResult
-  static func setVariable(_ value: String?, named name: String) -> Bool {
+  package static func setVariable(_ value: String?, named name: String) -> Bool {
 #if SWT_NO_ENVIRONMENT_VARIABLES
     simulatedEnvironment.withLock { environment in
       environment[name] = value

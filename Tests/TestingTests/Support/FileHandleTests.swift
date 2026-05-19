@@ -48,7 +48,7 @@ struct FileHandleTests {
   @Test("Init from invalid file descriptor")
   func invalidFileDescriptor() throws {
     #expect(throws: CError.self) {
-      _ = try FileHandle(unsafePOSIXFileDescriptor: -1, mode: "")
+      _ = try FileHandle(unsafePOSIXFileDescriptor: -1, options: [])
     }
   }
 #endif
@@ -86,7 +86,7 @@ struct FileHandleTests {
   @Test("Writing requires contiguous storage")
   func writeIsContiguous() async {
     await #expect(processExitsWith: .failure) {
-      let fileHandle = try FileHandle.null(mode: "wb")
+      let fileHandle = try FileHandle.null(options: [.writeAccess])
       try fileHandle.write([1, 2, 3, 4, 5].lazy.filter { $0 == 1 })
     }
   }
@@ -110,7 +110,7 @@ struct FileHandleTests {
 
   @Test("Cannot write bytes to a read-only file")
   func cannotWriteBytesToReadOnlyFile() throws {
-    let fileHandle = try FileHandle.null(mode: "rb")
+    let fileHandle = try FileHandle.null(options: [.readAccess])
     #expect(throws: CError.self) {
       try fileHandle.write([0, 1, 2, 3, 4, 5])
     }
@@ -118,7 +118,7 @@ struct FileHandleTests {
 
   @Test("Cannot write string to a read-only file")
   func cannotWriteStringToReadOnlyFile() throws {
-    let fileHandle = try FileHandle.null(mode: "rb")
+    let fileHandle = try FileHandle.null(options: [.readAccess])
     #expect(throws: CError.self) {
       try fileHandle.write("Impossible!")
     }
@@ -181,7 +181,7 @@ struct FileHandleTests {
 
   @Test("/dev/null is not a TTY or pipe")
   func devNull() throws {
-    let fileHandle = try FileHandle.null(mode: "wb")
+    let fileHandle = try FileHandle.null(options: [.writeAccess])
     #expect(!Bool(fileHandle.isTTY))
 #if !SWT_NO_PIPES
     #expect(!Bool(fileHandle.isPipe))
@@ -201,9 +201,44 @@ struct FileHandleTests {
 #endif
   }
 #endif
+
+  @Test("Root directory path is correct")
+  func rootDirectoryPathIsCorrect() throws {
+#if os(Windows)
+    if let systemDrive = Environment.variable(named: "SYSTEMDRIVE") {
+      #expect(rootDirectoryPath.starts(with: systemDrive))
+    }
+#else
+    #expect(rootDirectoryPath == "/")
+#endif
+  }
 }
 
 // MARK: - Fixtures
+
+extension FileHandle {
+  static func temporary() throws -> FileHandle {
+#if os(Windows)
+    let tmpFile: SWT_FILEHandle = try {
+      var file: SWT_FILEHandle?
+      try #require(0 == tmpfile_s(&file))
+      return file!
+    }()
+#else
+    let tmpFile = try #require(tmpfile())
+#endif
+    return FileHandle(unsafeCFILEHandle: tmpFile, closeWhenDone: true)
+  }
+
+  static func null(options: FileHandle.OpenOptions) throws -> FileHandle {
+#if os(Windows)
+    try FileHandle(atPath: "NUL", options: options)
+#else
+    try FileHandle(atPath: "/dev/null", options: options)
+#endif
+  }
+}
+#endif
 
 func withTemporaryPath<R>(_ body: (_ path: String) throws -> R) throws -> R {
   // NOTE: we are not trying to test mkstemp() here. We are trying to test the
@@ -223,30 +258,6 @@ func withTemporaryPath<R>(_ body: (_ path: String) throws -> R) throws -> R {
   return try body(path)
 }
 
-extension FileHandle {
-  static func temporary() throws -> FileHandle {
-#if os(Windows)
-    let tmpFile: SWT_FILEHandle = try {
-      var file: SWT_FILEHandle?
-      try #require(0 == tmpfile_s(&file))
-      return file!
-    }()
-#else
-    let tmpFile = try #require(tmpfile())
-#endif
-    return FileHandle(unsafeCFILEHandle: tmpFile, closeWhenDone: true)
-  }
-
-  static func null(mode: String) throws -> FileHandle {
-#if os(Windows)
-    try FileHandle(atPath: "NUL", mode: mode)
-#else
-    try FileHandle(atPath: "/dev/null", mode: mode)
-#endif
-  }
-}
-#endif
-
 func temporaryDirectory() throws -> String {
 #if SWT_TARGET_OS_APPLE
   try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX)) { buffer in
@@ -260,7 +271,7 @@ func temporaryDirectory() throws -> String {
 #elseif os(Android)
   Environment.variable(named: "TMPDIR") ?? "/data/local/tmp"
 #elseif os(Windows)
-  try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(MAX_PATH + 1)) { buffer in
+  try withUnsafeTemporaryAllocation(of: CWideChar.self, capacity: Int(MAX_PATH + 1)) { buffer in
     // NOTE: GetTempPath2W() was introduced in Windows 10 Build 20348.
     if 0 == GetTempPathW(DWORD(buffer.count), buffer.baseAddress) {
       throw Win32Error(rawValue: GetLastError())

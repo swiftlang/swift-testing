@@ -13,7 +13,7 @@ public struct Issue: Sendable {
   /// Kinds of issues which may be recorded.
   public enum Kind: Sendable {
     /// An issue which occurred unconditionally, for example by using
-    /// ``Issue/record(_:sourceLocation:)``.
+    /// ``Issue/record(_:severity:sourceLocation:)``.
     case unconditional
 
     /// An issue due to a failed expectation, such as those produced by
@@ -49,12 +49,6 @@ public struct Issue: Sendable {
     ///
     /// - Parameters:
     ///   - timeLimitComponents: The time limit reached by the test.
-    ///
-    /// @Comment {
-    ///   - Bug: The associated value of this enumeration case should be an
-    ///     instance of `Duration`, but the testing library's deployment target
-    ///     predates the introduction of that type.
-    /// }
     indirect case timeLimitExceeded(timeLimitComponents: (seconds: Int64, attoseconds: Int64))
 
     /// A known issue was expected, but was not recorded.
@@ -84,24 +78,42 @@ public struct Issue: Sendable {
   ///
   /// - ``warning``
   /// - ``error``
-  @_spi(Experimental)
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
+  /// }
   public enum Severity: Sendable {
     /// The severity level for an issue which should be noted but is not
     /// necessarily an error.
     ///
     /// An issue with warning severity does not cause the test it's associated
     /// with to be marked as a failure, but is noted in the results.
+    ///
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.3)
+    ///   @Available(Xcode, introduced: 26.4)
+    /// }
     case warning
 
     /// The severity level for an issue which represents an error in a test.
     ///
     /// An issue with error severity causes the test it's associated with to be
     /// marked as a failure.
+    ///
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.3)
+    ///   @Available(Xcode, introduced: 26.4)
+    /// }
     case error
   }
 
   /// The severity of this issue.
-  @_spi(Experimental)
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
+  /// }
   public var severity: Severity
   
   /// Whether or not this issue should cause the test it's associated with to be
@@ -114,7 +126,11 @@ public struct Issue: Sendable {
   ///
   /// Use this property to determine if an issue should be considered a failure, instead of
   /// directly comparing the value of the ``severity`` property.
-  @_spi(Experimental)
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
+  /// }
   public var isFailure: Bool {
     return !self.isKnown && self.severity >= .error
   }
@@ -270,7 +286,7 @@ extension Issue.Kind: CustomStringConvertible {
       } else if let mismatchedExitConditionDescription = expectation.mismatchedExitConditionDescription {
         "Expectation failed: \(mismatchedExitConditionDescription)"
       } else {
-        "Expectation failed: \(expectation.evaluatedExpression.expandedDescription())"
+        "Expectation failed: \(expectation.evaluatedExpression.sourceCode)"
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
       if let expected = expected as? any _RangeExpressionOverIntValues {
@@ -287,13 +303,13 @@ extension Issue.Kind: CustomStringConvertible {
       }
       return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(String(describingForTest: expected)) time(s)"
     case let .errorCaught(error):
-      return "Caught error: \(error)"
-    case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
+      return "Caught error: \(String(describingForTest: error))"
+    case let .timeLimitExceeded(timeLimitComponents):
       return "Time limit was exceeded: \(TimeValue(timeLimitComponents))"
     case .knownIssueNotRecorded:
       return "Known issue was not recorded"
     case let .valueAttachmentFailed(error):
-      return "Caught error while saving attachment: \(error)"
+      return "Caught error while saving attachment: \(String(describingForTest: error))"
     case .apiMisused:
       return "An API was misused"
     case .system:
@@ -324,7 +340,11 @@ extension Issue {
     public var kind: Kind.Snapshot
 
     /// The severity of this issue.
-    @_spi(Experimental)
+    /// 
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.3)
+    ///   @Available(Xcode, introduced: 26.4)
+    /// }
     public var severity: Severity
 
     /// Any comments provided by the developer and associated with this issue.
@@ -397,7 +417,7 @@ extension Issue.Kind {
   @_spi(ForToolsIntegrationOnly)
   public enum Snapshot: Sendable, Codable {
     /// An issue which occurred unconditionally, for example by using
-    /// ``Issue/record(_:sourceLocation:)``.
+    /// ``Issue/record(_:severity:sourceLocation:)``.
     case unconditional
 
     /// An issue due to a failed expectation, such as those produced by
@@ -467,7 +487,7 @@ extension Issue.Kind {
           .unconditional
       case let .errorCaught(error), let .valueAttachmentFailed(error):
           .errorCaught(ErrorSnapshot(snapshotting: error))
-      case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
+      case let .timeLimitExceeded(timeLimitComponents):
           .timeLimitExceeded(timeLimitComponents: timeLimitComponents)
       case .knownIssueNotRecorded:
           .knownIssueNotRecorded
@@ -523,7 +543,7 @@ extension Issue.Kind {
                                                                  forKey: .errorCaught) {
         self = .errorCaught(try errorCaught.decode(ErrorSnapshot.self, forKey: .error))
       } else if let timeLimit = try container.decodeIfPresent(TimeValue.self, forKey: .timeLimitExceeded) {
-        self = .timeLimitExceeded(timeLimitComponents: timeLimit.components)
+        self = .timeLimitExceeded(timeLimitComponents: timeLimit.rawValue.components)
       } else if try container.decodeIfPresent(Bool.self, forKey: .knownIssueNotRecorded) != nil {
         self = .knownIssueNotRecorded
       } else if try container.decodeIfPresent(Bool.self, forKey: .apiMisused) != nil {
@@ -606,7 +626,7 @@ extension Issue.Kind.Snapshot: CustomStringConvertible {
       if let mismatchedErrorDescription = expectation.mismatchedErrorDescription {
         "Expectation failed: \(mismatchedErrorDescription)"
       } else {
-        "Expectation failed: \(expectation.evaluatedExpression.expandedDescription())"
+        "Expectation failed: \(expectation.evaluatedExpression.sourceCode)"
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
       "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(expected.counting("time"))"

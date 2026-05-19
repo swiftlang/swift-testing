@@ -1,25 +1,45 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
-#if canImport(Foundation)
+#if canImport(AppKit) && canImport(_Testing_AppKit)
+import AppKit
+import _Testing_AppKit
+#endif
+#if canImport(Foundation) && canImport(_Testing_Foundation)
 import Foundation
 import _Testing_Foundation
 #endif
-#if canImport(CoreGraphics)
+#if canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)
 import CoreGraphics
 @_spi(Experimental) import _Testing_CoreGraphics
 #endif
+#if canImport(CoreImage) && canImport(_Testing_CoreImage)
+import CoreImage
+import _Testing_CoreImage
+#endif
+#if canImport(CoreTransferable) && canImport(_Testing_CoreTransferable)
+import CoreTransferable
+@_spi(Experimental) import _Testing_CoreTransferable
+#endif
+#if canImport(UIKit) && canImport(_Testing_UIKit)
+import UIKit
+import _Testing_UIKit
+#endif
 #if canImport(UniformTypeIdentifiers)
 import UniformTypeIdentifiers
+#endif
+#if canImport(WinSDK) && canImport(_Testing_WinSDK)
+import WinSDK
+@testable @_spi(Experimental) import _Testing_WinSDK
 #endif
 
 @Suite("Attachment Tests")
@@ -44,9 +64,17 @@ struct AttachmentTests {
     #expect(attachment.description.contains("'MyAttachable'"))
   }
 
+  @Test func preferredNameOfStringAttachment() {
+    let attachment1 = Attachment("", named: "abc123")
+    #expect(attachment1.preferredName == "abc123.txt")
+
+    let attachment2 = Attachment("", named: "abc123.html")
+    #expect(attachment2.preferredName == "abc123.html")
+  }
+
 #if !SWT_NO_FILE_IO
   func compare(_ attachableValue: borrowing MySendableAttachable, toContentsOfFileAtPath filePath: String) throws {
-    let file = try FileHandle(forReadingAtPath: filePath)
+    let file = try Testing.FileHandle(forReadingAtPath: filePath)
     let bytes = try file.readToEnd()
 
     let decodedValue = if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
@@ -159,16 +187,12 @@ struct AttachmentTests {
         }
         valueAttached()
 
-        // BUG: We could use #expect(throws: Never.self) here, but the Swift 6.1
-        // compiler crashes trying to expand the macro (rdar://138997009)
-        do {
+        #expect(throws: Never.self) {
           let filePath = try #require(attachment.fileSystemPath)
           defer {
             remove(filePath)
           }
           try compare(attachableValue, toContentsOfFileAtPath: filePath)
-        } catch {
-          Issue.record(error)
         }
       }
 
@@ -176,6 +200,33 @@ struct AttachmentTests {
         let attachment = Attachment(attachableValue, named: "loremipsum.html")
         Attachment.record(attachment)
       }.run(configuration: configuration)
+    }
+  }
+#endif
+
+#if !SWT_NO_FILE_CLONING
+  @Test func cloneAttachment() async throws {
+    struct MyFileClonable: Attachable, FileClonable {
+      var withUnsafeBytesCalled: Confirmation
+
+      func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+        withUnsafeBytesCalled()
+        return try Array<UInt8>().withUnsafeBytes(body)
+      }
+
+      var cloneCalled: Confirmation
+
+      func clone(toFileAtPath filePath: String) -> Bool {
+        cloneCalled()
+        return true // don't actually write anything
+      }
+    }
+
+    try await confirmation("withUnsafeBytes(for:_:) called", expectedCount: 0) { withUnsafeBytesCalled in
+      try await confirmation("clone(toFileAtPath:) called") { cloneCalled in
+        let attachableValue = MyFileClonable(withUnsafeBytesCalled: withUnsafeBytesCalled, cloneCalled: cloneCalled)
+        _ = try Attachment(attachableValue).write(toFileInDirectoryAtPath: "/not/real/directory/")
+      }
     }
   }
 #endif
@@ -209,9 +260,9 @@ struct AttachmentTests {
           return
         }
 
-        #expect(attachment.attachableValue is MySendableAttachable)
+        #expect((attachment.attachableValue as Any) is AnyAttachable.Wrapped)
         #expect(attachment.sourceLocation.fileID == #fileID)
-       valueAttached()
+        valueAttached()
       }
 
       await Test {
@@ -232,6 +283,7 @@ struct AttachmentTests {
             valueAttached()
           } else if case let .issueRecorded(issue) = event.kind,
                     case let .valueAttachmentFailed(error) = issue.kind,
+                    issue.severity == .warning,
                     error is MyError {
             #expect(issue.sourceLocation?.fileID == #fileID)
             issueRecorded()
@@ -247,7 +299,7 @@ struct AttachmentTests {
     }
   }
 
-#if canImport(Foundation)
+#if canImport(Foundation) && canImport(_Testing_Foundation)
 #if !SWT_NO_FILE_IO
   @Test func attachContentsOfFileURL() async throws {
     let data = try #require("<!doctype html>".data(using: .utf8))
@@ -259,21 +311,25 @@ struct AttachmentTests {
       try? FileManager.default.removeItem(at: temporaryURL)
     }
 
-    await confirmation("Attachment detected") { valueAttached in
+    try await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment) = event.kind else {
-          return
-        }
-
-        #expect(attachment.preferredName == temporaryFileName)
-        #expect(throws: Never.self) {
-          try attachment.withUnsafeBytes { buffer in
-            #expect(buffer.count == data.count)
+        switch event.kind {
+        case let .issueRecorded(issue):
+          issue.record()
+        case let .valueAttached(attachment):
+          #expect(attachment.preferredName == temporaryFileName)
+          #expect(throws: Never.self) {
+            try attachment.withUnsafeBytes { buffer in
+              #expect(buffer.count == data.count)
+            }
           }
+          valueAttached()
+        default:
+          break
         }
-        valueAttached()
       }
+      configuration.attachmentsPath = try temporaryDirectory()
 
       await Test {
         let attachment = try await Attachment(contentsOf: temporaryURL)
@@ -292,24 +348,28 @@ struct AttachmentTests {
     let fileData = try #require("Hello world".data(using: .utf8))
     try fileData.write(to: temporaryURL.appendingPathComponent("loremipsum.txt"), options: [.atomic])
 
-    await confirmation("Attachment detected") { valueAttached in
+    try await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment) = event.kind else {
-          return
-        }
-
-        #expect(attachment.preferredName == "\(temporaryDirectoryName).zip")
-        try! attachment.withUnsafeBytes { buffer in
-          #expect(buffer.count > 32)
-          #expect(buffer[0] == UInt8(ascii: "P"))
-          #expect(buffer[1] == UInt8(ascii: "K"))
-          if #available(_regexAPI, *) {
-            #expect(buffer.contains("loremipsum.txt".utf8))
+        switch event.kind {
+        case let .issueRecorded(issue):
+          issue.record()
+        case let .valueAttached(attachment):
+          #expect(attachment.preferredName == "\(temporaryDirectoryName).zip")
+          #expect(throws: Never.self) {
+            try attachment.withUnsafeBytes { buffer in
+              #expect(buffer.count > 32)
+              #expect(buffer[0] == UInt8(ascii: "P"))
+              #expect(buffer[1] == UInt8(ascii: "K"))
+              #expect(buffer.contains("loremipsum.txt".utf8))
+            }
           }
+          valueAttached()
+        default:
+          break
         }
-        valueAttached()
       }
+      configuration.attachmentsPath = try temporaryDirectory()
 
       await Test {
         let attachment = try await Attachment(contentsOf: temporaryURL)
@@ -327,6 +387,7 @@ struct AttachmentTests {
   }
 #endif
 
+#if !SWT_NO_CODABLE
   struct CodableAttachmentArguments: Sendable, CustomTestArgumentEncodable, CustomTestStringConvertible {
     var forSecureCoding: Bool
     var pathExtension: String?
@@ -430,6 +491,46 @@ struct AttachmentTests {
     }
   }
 #endif
+#endif
+
+#if canImport(CoreTransferable) && canImport(_Testing_CoreTransferable)
+  @available(_transferableAPI, *)
+  @Test("Attach Transferable-conformant value")
+  func transferable() async throws {
+    let value = MyTransferable()
+    let attachment = try await Attachment(exporting: value, as: .plainText)
+    #expect(value == attachment.attachableValue)
+    try attachment.withUnsafeBytes { bytes in
+      #expect(Array(bytes) == Array(MyTransferable.stringValue.utf8))
+    }
+  }
+
+  @available(_transferableAPI, *)
+  @Test("Attach Transferable-conformant value with a nonsensical type")
+  func transferableWithNonsensicalType() async throws {
+    let value = MyTransferable()
+    await #expect(throws: (any Error).self) {
+      _ = try await Attachment(exporting: value, as: .gif)
+    }
+  }
+
+  @available(_transferableAPI, *)
+  @Test("Preferred name of Transferable-conformant value")
+  func transferablePreferredName() async throws {
+    let value = MyTransferable()
+    let attachment = try await Attachment(exporting: value)
+    #expect(attachment.preferredName == "untitled.txt")
+  }
+
+  @available(_transferableAPI, *)
+  @Test("Attach Transferable-conformant value with no available type")
+  func transferableWithNoAvailableType() async throws {
+    let value = MyBadTransferable()
+    await #expect(throws: (any Error).self) {
+      _ = try await Attachment(exporting: value)
+    }
+  }
+#endif
 }
 
 extension AttachmentTests {
@@ -469,7 +570,7 @@ extension AttachmentTests {
       try test(value)
     }
 
-#if canImport(Foundation)
+#if canImport(Foundation) && canImport(_Testing_Foundation)
     @Test func data() throws {
       let value = try #require("abc123".data(using: .utf8))
       try test(value)
@@ -487,7 +588,7 @@ extension AttachmentTests {
       case couldNotCreateCGImage
     }
 
-#if canImport(CoreGraphics)
+#if canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)
     static let cgImage = Result<CGImage, any Error> {
       let size = CGSize(width: 32.0, height: 32.0)
       let rgb = CGColorSpaceCreateDeviceRGB()
@@ -526,7 +627,6 @@ extension AttachmentTests {
       return image
     }
 
-    @available(_uttypesAPI, *)
     @Test func attachCGImage() throws {
       let image = try Self.cgImage.get()
       let attachment = Attachment(image, named: "diamond")
@@ -537,11 +637,27 @@ extension AttachmentTests {
       Attachment.record(attachment)
     }
 
-    @available(_uttypesAPI, *)
+    @Test func attachCGImageDirectly() async throws {
+      await confirmation("Attachment detected") { valueAttached in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          if case .valueAttached = event.kind {
+            valueAttached()
+          }
+        }
+
+        await Test {
+          let image = try Self.cgImage.get()
+          Attachment.record(image, named: "diamond.jpg")
+        }.run(configuration: configuration)
+      }
+    }
+
     @Test(arguments: [Float(0.0).nextUp, 0.25, 0.5, 0.75, 1.0], [.png as UTType?, .jpeg, .gif, .image, nil])
     func attachCGImage(quality: Float, type: UTType?) throws {
       let image = try Self.cgImage.get()
-      let attachment = Attachment(image, named: "diamond", as: type, encodingQuality: quality)
+      let format = type.map { AttachableImageFormat(contentType: $0, encodingQuality: quality) }
+      let attachment = Attachment(image, named: "diamond", as: format)
       #expect(attachment.attachableValue === image)
       try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
         #expect(buffer.count > 32)
@@ -551,17 +667,421 @@ extension AttachmentTests {
       }
     }
 
+    @Test(arguments: [AttachableImageFormat.png, .jpeg, .jpeg(withEncodingQuality: 0.5), .init(contentType: .tiff)])
+    func attachCGImage(format: AttachableImageFormat) throws {
+      let image = try Self.cgImage.get()
+      let attachment = Attachment(image, named: "diamond", as: format)
+      #expect(attachment.attachableValue === image)
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
+        #expect(buffer.count > 32)
+      }
+      if let ext = format.contentType.preferredFilenameExtension {
+        #expect(attachment.preferredName == ("diamond" as NSString).appendingPathExtension(ext))
+      }
+    }
+
+    @Test func attachCGImageWithCustomUTType() throws {
+      let contentType = try #require(UTType(tag: "derived-from-jpeg", tagClass: .filenameExtension, conformingTo: .jpeg))
+      let format = AttachableImageFormat(contentType: contentType)
+      let image = try Self.cgImage.get()
+      let attachment = Attachment(image, named: "diamond", as: format)
+      #expect(attachment.attachableValue === image)
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
+        #expect(buffer.count > 32)
+      }
+      if let ext = format.contentType.preferredFilenameExtension {
+        #expect(attachment.preferredName == ("diamond" as NSString).appendingPathExtension(ext))
+      }
+    }
+
+    @Test func attachCGImageWithUnsupportedImageType() throws {
+      let contentType = try #require(UTType(tag: "unsupported-image-format", tagClass: .filenameExtension, conformingTo: .image))
+      let format = AttachableImageFormat(contentType: contentType)
+      let image = try Self.cgImage.get()
+      let attachment = Attachment(image, named: "diamond", as: format)
+      #expect(attachment.attachableValue === image)
+      #expect(throws: ImageAttachmentError.self) {
+        try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
+      }
+    }
+
 #if !SWT_NO_EXIT_TESTS
-    @available(_uttypesAPI, *)
     @Test func cannotAttachCGImageWithNonImageType() async {
       await #expect(processExitsWith: .failure) {
-        let attachment = Attachment(try Self.cgImage.get(), named: "diamond", as: .mp3)
+        let format = AttachableImageFormat(contentType: .mp3)
+        let attachment = Attachment(try Self.cgImage.get(), named: "diamond", as: format)
         try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
       }
     }
 #endif
+
+#if canImport(CoreImage) && canImport(_Testing_CoreImage)
+    @Test func attachCIImage() throws {
+      let image = CIImage(cgImage: try Self.cgImage.get())
+      let attachment = Attachment(image, named: "diamond.jpg")
+      #expect(attachment.attachableValue === image)
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
+        #expect(buffer.count > 32)
+      }
+    }
+#endif
+
+#if canImport(AppKit) && canImport(_Testing_AppKit)
+    static var nsImage: NSImage {
+      get throws {
+        let cgImage = try cgImage.get()
+        let size = CGSize(width: CGFloat(cgImage.width), height: CGFloat(cgImage.height))
+        return NSImage(cgImage: cgImage, size: size)
+      }
+    }
+
+    @Test func attachNSImage() throws {
+      let image = try Self.nsImage
+      let attachment = Attachment(image, named: "diamond.jpg")
+      #expect(attachment.attachableValue.size == image.size) // NSImage makes a copy
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
+        #expect(buffer.count > 32)
+      }
+    }
+
+    @Test func attachNSImageWithCustomRep() throws {
+      let image = NSImage(size: NSSize(width: 32.0, height: 32.0), flipped: false) { rect in
+        NSColor.red.setFill()
+        rect.fill()
+        return true
+      }
+      let attachment = Attachment(image, named: "diamond.jpg")
+      #expect(attachment.attachableValue.size == image.size) // NSImage makes a copy
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
+        #expect(buffer.count > 32)
+      }
+    }
+
+    @Test func attachNSImageWithSubclassedNSImage() throws {
+      let image = MyImage(size: NSSize(width: 32.0, height: 32.0))
+      image.addRepresentation(NSCustomImageRep(size: image.size, flipped: false) { rect in
+        NSColor.green.setFill()
+        rect.fill()
+        return true
+      })
+
+      let attachment = Attachment(image, named: "diamond.jpg")
+      #expect(attachment.attachableValue === image)
+      #expect(attachment.attachableValue.size == image.size) // NSImage makes a copy
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
+        #expect(buffer.count > 32)
+      }
+    }
+
+    @Test func attachNSImageWithSubclassedRep() throws {
+      let image = NSImage(size: NSSize(width: 32.0, height: 32.0))
+      image.addRepresentation(MyImageRep<Int>())
+
+      let attachment = Attachment(image, named: "diamond.jpg")
+      #expect(attachment.attachableValue.size == image.size) // NSImage makes a copy
+      let firstRep = try #require(attachment.attachableValue.representations.first)
+      #expect(!(firstRep is MyImageRep<Int>))
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
+        #expect(buffer.count > 32)
+      }
+    }
+#endif
+
+#if canImport(UIKit) && canImport(_Testing_UIKit)
+    @Test func attachUIImage() throws {
+      let image = UIImage(cgImage: try Self.cgImage.get())
+      let attachment = Attachment(image, named: "diamond.jpg")
+      #expect(attachment.attachableValue === image)
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
+        #expect(buffer.count > 32)
+      }
+      Attachment.record(attachment)
+    }
+#endif
+#endif
+
+#if canImport(WinSDK) && canImport(_Testing_WinSDK)
+    private func copyHICON() throws -> HICON {
+      try #require(LoadIconA(nil, swt_IDI_SHIELD()))
+    }
+
+    @MainActor @Test func attachHICON() throws {
+      let icon = try copyHICON()
+      defer {
+        DestroyIcon(icon)
+      }
+
+      let attachment = Attachment(icon, named: "diamond.jpeg")
+      try attachment.withUnsafeBytes { buffer in
+        #expect(buffer.count > 32)
+      }
+    }
+
+    private func copyHBITMAP() throws -> HBITMAP {
+      let (width, height) = (GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON))
+
+      let icon = try copyHICON()
+      defer {
+        DestroyIcon(icon)
+      }
+
+      let screenDC = try #require(GetDC(nil))
+      defer {
+        ReleaseDC(nil, screenDC)
+      }
+
+      let dc = try #require(CreateCompatibleDC(nil))
+      defer {
+        DeleteDC(dc)
+      }
+
+      let bitmap = try #require(CreateCompatibleBitmap(screenDC, width, height))
+      let oldSelectedObject = SelectObject(dc, bitmap)
+      defer {
+        _ = SelectObject(dc, oldSelectedObject)
+      }
+      DrawIcon(dc, 0, 0, icon)
+
+      return bitmap
+    }
+
+    @MainActor @Test func attachHBITMAP() throws {
+      let bitmap = try copyHBITMAP()
+      defer {
+        DeleteObject(bitmap)
+      }
+
+      let attachment = Attachment(bitmap, named: "diamond.png")
+      try attachment.withUnsafeBytes { buffer in
+        #expect(buffer.count > 32)
+      }
+      Attachment.record(attachment)
+    }
+
+    @MainActor @Test func attachHBITMAPAsJPEG() throws {
+      let bitmap = try copyHBITMAP()
+      defer {
+        DeleteObject(bitmap)
+      }
+      let hiFi = Attachment(bitmap, named: "hifi", as: .jpeg(withEncodingQuality: 1.0))
+      let loFi = Attachment(bitmap, named: "lofi", as: .jpeg(withEncodingQuality: 0.1))
+
+      try hiFi.withUnsafeBytes { hiFi in
+        try loFi.withUnsafeBytes { loFi in
+          #expect(hiFi.count > loFi.count)
+        }
+      }
+      Attachment.record(loFi)
+    }
+
+    private func copyIWICBitmap() throws -> UnsafeMutablePointer<IWICBitmap> {
+      let factory = try IWICImagingFactory.create()
+      defer {
+        _ = factory.pointee.lpVtbl.pointee.Release(factory)
+      }
+
+      let bitmap = try copyHBITMAP()
+      defer {
+        DeleteObject(bitmap)
+      }
+
+      var wicBitmap: UnsafeMutablePointer<IWICBitmap>?
+      let rCreate = factory.pointee.lpVtbl.pointee.CreateBitmapFromHBITMAP(factory, bitmap, nil, WICBitmapUsePremultipliedAlpha, &wicBitmap)
+      guard rCreate == S_OK, let wicBitmap else {
+        throw ImageAttachmentError.comObjectCreationFailed(IWICBitmap.self, rCreate)
+      }
+      return wicBitmap
+    }
+
+    @MainActor @Test func attachIWICBitmap() throws {
+      let wicBitmap = try copyIWICBitmap()
+      defer {
+        _ = wicBitmap.pointee.lpVtbl.pointee.Release(wicBitmap)
+      }
+
+      let attachment = Attachment(wicBitmap, named: "diamond.png")
+      try attachment.withUnsafeBytes { buffer in
+        #expect(buffer.count > 32)
+      }
+      Attachment.record(attachment)
+    }
+
+    @MainActor @Test func attachIWICBitmapSource() throws {
+      let wicBitmapSource = try copyIWICBitmap().cast(to: IWICBitmapSource.self)
+      defer {
+        _ = wicBitmapSource.pointee.lpVtbl.pointee.Release(wicBitmapSource)
+      }
+
+      let attachment = Attachment(wicBitmapSource, named: "diamond.png")
+      try attachment.withUnsafeBytes { buffer in
+        #expect(buffer.count > 32)
+      }
+      Attachment.record(attachment)
+    }
+
+    @MainActor @Test func pathExtensionAndCLSID() {
+      let pngCLSID = AttachableImageFormat.png.encoderCLSID
+      let pngFilename = AttachableImageFormat.appendPathExtension(for: pngCLSID, to: "example")
+      #expect(pngFilename == "example.png")
+
+      let jpegCLSID = AttachableImageFormat.jpeg.encoderCLSID
+      let jpegFilename = AttachableImageFormat.appendPathExtension(for: jpegCLSID, to: "example")
+      #expect(jpegFilename == "example.jpeg")
+
+      let pngjpegFilename = AttachableImageFormat.appendPathExtension(for: jpegCLSID, to: "example.png")
+      #expect(pngjpegFilename == "example.png.jpeg")
+
+      let jpgjpegFilename = AttachableImageFormat.appendPathExtension(for: jpegCLSID, to: "example.jpg")
+      #expect(jpgjpegFilename == "example.jpg")
+    }
+#endif
+
+#if (canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)) || (canImport(WinSDK) && canImport(_Testing_WinSDK))
+    @Test func imageFormatFromPathExtension() {
+      let format = AttachableImageFormat(pathExtension: "png")
+      #expect(format != nil)
+      #expect(format == .png)
+
+      let badFormat = AttachableImageFormat(pathExtension: "no-such-image-format")
+      #expect(badFormat == nil)
+    }
+
+    @Test func imageFormatEquatableConformance() {
+      let format1 = AttachableImageFormat.png
+      let format2 = AttachableImageFormat.jpeg
+#if canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)
+      let format3 = AttachableImageFormat(contentType: .tiff)
+#elseif canImport(WinSDK) && canImport(_Testing_WinSDK)
+      let format3 = AttachableImageFormat(encoderCLSID: CLSID_WICTiffEncoder)
+#endif
+      #expect(format1 == format1)
+      #expect(format2 == format2)
+      #expect(format3 == format3)
+      #expect(format1 != format2)
+      #expect(format2 != format3)
+      #expect(format1 != format3)
+
+      #expect(format1.hashValue == format1.hashValue)
+      #expect(format2.hashValue == format2.hashValue)
+      #expect(format3.hashValue == format3.hashValue)
+      #expect(format1.hashValue != format2.hashValue)
+      #expect(format2.hashValue != format3.hashValue)
+      #expect(format1.hashValue != format3.hashValue)
+    }
+
+    @Test func imageFormatStringification() {
+      let format: AttachableImageFormat = AttachableImageFormat.png
+#if canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)
+      #expect(String(describing: format) == UTType.png.localizedDescription!)
+      #expect(String(reflecting: format) == "\(UTType.png.localizedDescription!) (\(UTType.png.identifier)) at quality 1.0")
+#elseif canImport(WinSDK) && canImport(_Testing_WinSDK)
+      #expect(String(describing: format) == "PNG format")
+      #expect(String(reflecting: format) == "PNG format (27949969-876a-41d7-9447-568f6a35a4dc) at quality 1.0")
+#endif
+    }
+
+    @Test func imageFormatStringificationWithQuality() {
+      let format: AttachableImageFormat = AttachableImageFormat.jpeg(withEncodingQuality: 0.5)
+#if canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)
+      #expect(String(describing: format) == "\(UTType.jpeg.localizedDescription!) at 50% quality")
+      #expect(String(reflecting: format) == "\(UTType.jpeg.localizedDescription!) (\(UTType.jpeg.identifier)) at quality 0.5")
+#elseif canImport(WinSDK) && canImport(_Testing_WinSDK)
+      #expect(String(describing: format) == "JPEG format at 50% quality")
+      #expect(String(reflecting: format) == "JPEG format (1a34f5c1-4a5a-46dc-b644-1f4567e7a676) at quality 0.5")
+#endif
+    }
 #endif
   }
+
+#if !SWT_NO_CODABLE
+#if !SWT_NO_FILE_IO
+  @Test("Decoding an encoded attachment with path")
+  func decodingAnEncodedAttachmentWithPath() throws {
+    let expectedBytes = "abc123".utf8
+    try withTemporaryPath { path in
+      let url = URL(fileURLWithPath: path, isDirectory: false)
+      try Data(expectedBytes).write(to: url)
+
+#if os(Windows)
+      let path = path.replacing(#"\"#, with: #"\\"#)
+#endif
+      var json = #"{"path": "\#(path)"}"#
+      let eattachment = try json.withUTF8 { json in
+        try JSON.decode(ABI.EncodedAttachment<ABI.v6_3>.self, from: UnsafeRawBufferPointer(json))
+      }
+      let attachment = Attachment(decoding: eattachment)
+      #expect(attachment != nil)
+      try attachment?.withUnsafeBytes { bytes in
+        #expect(bytes.count == expectedBytes.count)
+        #expect(bytes.elementsEqual(expectedBytes))
+      }
+    }
+  }
+#endif
+
+  @Test("Decoding an encoded attachment with bytes (experimental)")
+  func decodingAnEncodedAttachmentWithBytes() throws {
+    var json = #"{"_bytes": "YWJjMTIz"}"#
+    let eattachment = try json.withUTF8 { json in
+      try JSON.decode(ABI.EncodedAttachment<ABI.ExperimentalVersion>.self, from: UnsafeRawBufferPointer(json))
+    }
+    let attachment = Attachment(decoding: eattachment)
+    #expect(attachment != nil)
+    try attachment?.withUnsafeBytes { bytes in
+      #expect(bytes.count == 6)
+      #expect(bytes.elementsEqual("abc123".utf8))
+    }
+  }
+
+  @Test("Decoding an encoded attachment with bytes as UInt8 array (experimental)")
+  func decodingAnEncodedAttachmentWithBytesAsArray() throws {
+    var json = #"{"_bytes": [1, 2, 3, 4, 5, 6]}"#
+    let eattachment = try json.withUTF8 { json in
+      try JSON.decode(ABI.EncodedAttachment<ABI.ExperimentalVersion>.self, from: UnsafeRawBufferPointer(json))
+    }
+    let attachment = Attachment(decoding: eattachment)
+    #expect(attachment != nil)
+    try attachment?.withUnsafeBytes { bytes in
+      #expect(bytes.count == 6)
+      #expect(bytes.elementsEqual([1, 2, 3, 4, 5, 6]))
+    }
+  }
+
+  @Test("Decoding an encoded attachment with an error (experimental)")
+  func decodingAnEncodedAttachmentWithError() throws {
+    var json = #"{"_error": {"code": 123, "domain": "domain", "description": "text"}}"#
+    let eattachment = try json.withUTF8 { json in
+      try JSON.decode(ABI.EncodedAttachment<ABI.ExperimentalVersion>.self, from: UnsafeRawBufferPointer(json))
+    }
+    let attachment = Attachment(decoding: eattachment)
+    #expect(attachment != nil)
+    let error = #expect(throws: (any Error).self) {
+      try attachment?.withUnsafeBytes { _ in }
+    }
+    if let error {
+      #expect(error._domain == "domain")
+      #expect(error._code == 123)
+    }
+  }
+
+  @Test("Decoding an encoded attachment from an event")
+  func decodingAnEncodedAttachmentWithEvent() throws {
+    var json = #"""
+      {
+        "kind": "valueAttached",
+        "instant": { "since1970": 0, "absolute": 0 },
+        "messages": [],
+        "_sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
+        "attachment": { "_bytes": "YWJjMTIz" }
+      }
+      """#
+    let event = try json.withUTF8 { json in
+      try JSON.decode(ABI.EncodedEvent<ABI.ExperimentalVersion>.self, from: UnsafeRawBufferPointer(json))
+    }
+    let attachment = try #require(Attachment(decoding: event))
+    #expect(attachment.sourceLocation.line == 12345)
+  }
+#endif
 }
 
 // MARK: - Fixtures
@@ -608,10 +1128,32 @@ struct MySendableAttachableWithDefaultByteCount: Attachable, Sendable {
   }
 }
 
-#if canImport(Foundation)
+#if canImport(CoreTransferable) && canImport(_Testing_CoreTransferable)
+struct MyTransferable: Transferable, Equatable {
+  static let stringValue = "This isn't even my exported form!"
+
+  static var transferRepresentation: some TransferRepresentation {
+    DataRepresentation(exportedContentType: .plainText) { instance in
+      Data(Self.stringValue.utf8)
+    }
+  }
+}
+
+struct MyBadTransferable: Transferable, Equatable {
+  static var transferRepresentation: some TransferRepresentation {
+    DataRepresentation(exportedContentType: .directory) { _ in
+      throw MyError()
+    }
+  }
+}
+#endif
+
+#if canImport(Foundation) && canImport(_Testing_Foundation)
+#if !SWT_NO_CODABLE
 struct MyCodableAttachable: Codable, Attachable, Sendable {
   var string: String
 }
+#endif
 
 final class MySecureCodingAttachable: NSObject, NSSecureCoding, Attachable, Sendable {
   let string: String
@@ -633,6 +1175,7 @@ final class MySecureCodingAttachable: NSObject, NSSecureCoding, Attachable, Send
   }
 }
 
+#if !SWT_NO_CODABLE
 final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCoding, Attachable, Sendable {
   let string: String
 
@@ -646,6 +1189,46 @@ final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCodin
 
   required init?(coder: NSCoder) {
     string = (coder.decodeObject(of: NSString.self, forKey: "string") as? String) ?? ""
+  }
+}
+#endif
+#endif
+
+#if canImport(AppKit) && canImport(_Testing_AppKit)
+private final class MyImage: NSImage {
+  override init(size: NSSize) {
+    super.init(size: size)
+  }
+
+  required init(pasteboardPropertyList propertyList: Any, ofType type: NSPasteboard.PasteboardType) {
+    fatalError("Unimplemented")
+  }
+
+  required init(coder: NSCoder) {
+    fatalError("Unimplemented")
+  }
+
+  override func copy(with zone: NSZone?) -> Any {
+    // Intentionally make a copy as NSImage instead of MyImage to exercise the
+    // cast-failed code path in the overlay.
+    NSImage()
+  }
+}
+
+private final class MyImageRep<T>: NSImageRep {
+  override init() {
+    super.init()
+    size = NSSize(width: 32.0, height: 32.0)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("Unimplemented")
+  }
+
+  override func draw() -> Bool {
+    NSColor.blue.setFill()
+    NSRect(origin: .zero, size: size).fill()
+    return true
   }
 }
 #endif

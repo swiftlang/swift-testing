@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A type containing settings for preparing and running tests.
 @_spi(ForToolsIntegrationOnly)
 public struct Configuration: Sendable {
@@ -18,7 +20,37 @@ public struct Configuration: Sendable {
   // MARK: - Parallelization
 
   /// Whether or not to parallelize the execution of tests and test cases.
-  public var isParallelizationEnabled: Bool = true
+  ///
+  /// - Note: Setting the value of this property implicitly sets the value of
+  ///   the experimental ``maximumParallelizationWidth`` property.
+  public var isParallelizationEnabled: Bool {
+    get {
+      maximumParallelizationWidth > 1
+    }
+    set {
+      if newValue {
+        maximumParallelizationWidth = max(maximumParallelizationWidth, defaultParallelizationWidth)
+      } else {
+        maximumParallelizationWidth = 1
+      }
+    }
+  }
+
+  /// The maximum width of parallelization.
+  ///
+  /// The value of this property determines how many tests (or rather, test
+  /// cases) will run in parallel.
+  ///
+  /// @Comment {
+  ///   The default value of this property is equal to twice the number of CPU
+  ///   cores reported by the operating system, or `Int.max` if that value is
+  ///   not available.
+  /// }
+  ///
+  /// - Note: Setting the value of this property implicitly sets the value of
+  ///   the ``isParallelizationEnabled`` property.
+  @_spi(Experimental)
+  public var maximumParallelizationWidth: Int = defaultParallelizationWidth
 
   /// How to symbolicate backtraces captured during a test run.
   ///
@@ -100,6 +132,10 @@ public struct Configuration: Sendable {
     }
   }
 
+  /// Whether to perform test repetition at the plan level or on a per-test-
+  /// case basis.
+  public var shouldUseLegacyPlanLevelRepetition: Bool = false
+
   /// Whether or not, and how, to iterate the test plan repeatedly.
   ///
   /// By default, the value of this property allows for a single iteration.
@@ -126,7 +162,6 @@ public struct Configuration: Sendable {
   ///
   /// To determine the actual time limit that applies to an instance of
   /// ``Test`` at runtime, use ``Test/adjustedTimeLimit(configuration:)``.
-  @available(_clockAPI, *)
   public var defaultTestTimeLimit: Duration? {
     get {
       _defaultTestTimeLimit as? Duration
@@ -148,7 +183,6 @@ public struct Configuration: Sendable {
   ///
   /// To determine the actual time limit that applies to an instance of
   /// ``Test`` at runtime, use ``Test/adjustedTimeLimit(configuration:)``.
-  @available(_clockAPI, *)
   public var maximumTestTimeLimit: Duration? {
     get {
       _maximumTestTimeLimit as? Duration
@@ -166,7 +200,6 @@ public struct Configuration: Sendable {
   /// By default, test time limit granularity is limited to intervals of one
   /// minute (60 seconds.) If finer or coarser granularity is required, the
   /// value of this property can be adjusted.
-  @available(_clockAPI, *)
   public var testTimeLimitGranularity: Duration {
     get {
       (_testTimeLimitGranularity as? Duration) ?? .seconds(60)
@@ -184,13 +217,7 @@ public struct Configuration: Sendable {
     /// Whether or not events of the kind ``Event/Kind-swift.enum/issueRecorded(_:)``
     /// containing issues with warning (or lower) severity should be delivered
     /// to the event handler of the configuration these options are applied to.
-    ///
-    /// By default, events matching this criteria are not delivered to event
-    /// handlers since this is an experimental feature.
-    ///
-    /// - Warning: Warning issues are not yet an approved feature.
-    @_spi(Experimental)
-    public var isWarningIssueRecordedEventEnabled: Bool = false
+    public var isWarningIssueRecordedEventEnabled: Bool = true
 
     /// Whether or not events of the kind
     /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to

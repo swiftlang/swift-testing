@@ -44,7 +44,7 @@ private typealias _TestContentRecord = (
   reserved2: UInt
 )
 
-extension DiscoverableAsTestContent where Self: ~Copyable {
+extension DiscoverableAsTestContent {
   /// Check that the layout of this structure in memory matches its expected
   /// layout in the test content section.
   ///
@@ -64,28 +64,47 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
 /// ``DiscoverableAsTestContent/allTestContentRecords()`` on a type that
 /// conforms to ``DiscoverableAsTestContent``.
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-public struct TestContentRecord<T> where T: DiscoverableAsTestContent & ~Copyable {
+public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   /// The base address of the image containing this instance, if known.
   ///
   /// The type of this pointer is platform-dependent:
   ///
   /// | Platform | Pointer Type |
   /// |-|-|
-  /// | macOS, iOS, watchOS, tvOS, visionOS | `UnsafePointer<mach_header64>` |
-  /// | Linux, FreeBSD, Android | `UnsafePointer<ElfW_Ehdr>` |
-  /// | OpenBSD | `UnsafePointer<Elf_Ehdr>` |
-  /// | Windows | `HMODULE` |
+  /// | macOS, iOS, watchOS, tvOS, visionOS | [`UnsafePointer<mach_header_64>`](https://developer.apple.com/documentation/kernel/mach_header_64) |
+  /// | Linux, FreeBSD, Android | [`UnsafePointer<ElfW(Ehdr)>`](https://www.kernel.org/doc/man-pages/online/pages/man5/elf.5.html) |
+  /// | OpenBSD | [`UnsafePointer<Elf_Ehdr>`](https://man.openbsd.org/elf.3) |
+  /// | Windows | [`HMODULE`](https://learn.microsoft.com/en-us/windows/win32/winprog/windows-data-types) |
   ///
   /// On platforms such as WASI that statically link to the testing library, the
   /// value of this property is always `nil`.
   ///
-  /// - Note: The value of this property is distinct from the pointer returned
-  ///   by `dlopen()` (on platforms that have that function) and cannot be used
-  ///   with interfaces such as `dlsym()` that expect such a pointer.
+  /// The value of this property is distinct from the pointer returned by
+  /// [`dlopen(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlopen.3.html)
+  /// (on platforms that have that function). You cannot use this value with
+  /// interfaces such as [`dlsym(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlsym.3.html)
+  /// that expect such a pointer.
+  ///
+  /// To get the [`dlopen(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlopen.3.html)
+  /// handle corresponding to the value of this property, use [`dladdr(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dladdr.3.html)
+  /// to get the image name and pass that name to [`dlopen(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlopen.3.html):
+  ///
+  /// ```swift
+  /// var info = Dl_info()
+  /// if 0 != dladdr(imageAddress, &info),
+  ///       let dli_fname = info.dli_fname,
+  ///       let handle = dlopen(dli_fname, RTLD_NOLOAD) {
+  ///   // ...
+  /// }
+  /// ```
+  ///
+  /// - Important: You are responsible for calling [`dlclose(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlclose.3.html)
+  ///   when you are done using the handle that [`dlopen(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlopen.3.html)
+  ///   returns.
   public private(set) nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
   /// A type defining storage for the underlying test content record.
-  private enum _RecordStorage: @unchecked Sendable {
+  private enum _RecordStorage: BitwiseCopyable {
     /// The test content record is stored by address.
     case atAddress(UnsafePointer<_TestContentRecord>)
 
@@ -94,7 +113,7 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent & ~Copyabl
   }
 
   /// Storage for `_record`.
-  private var _recordStorage: _RecordStorage
+  private nonisolated(unsafe) var _recordStorage: _RecordStorage
 
   /// The underlying test content record.
   private var _record: _TestContentRecord {
@@ -229,32 +248,26 @@ extension TestContentRecord: CustomStringConvertible {
 
 // MARK: - Enumeration of test content records
 
-extension DiscoverableAsTestContent where Self: ~Copyable {
+extension DiscoverableAsTestContent {
   /// Get all test content of this type known to Swift and found in the current
   /// process.
   ///
   /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
   ///   content records matching this ``TestContent`` type's requirements are
   ///   included in the sequence.
-  ///
-  /// @Comment {
-  ///   - Bug: This function returns an instance of `AnySequence` instead of an
-  ///     opaque type due to a compiler crash. ([143080508](rdar://143080508))
-  /// }
-  public static func allTestContentRecords() -> AnySequence<TestContentRecord<Self>> {
+  public static func allTestContentRecords() -> some Sequence<TestContentRecord<Self>> {
     validateMemoryLayout()
 
     let kind = testContentKind.rawValue
 
-    let result = SectionBounds.all(.testContent).lazy.flatMap { sb in
+    return SectionBounds.all(.testContent).lazy.flatMap { sb in
       sb.buffer.withMemoryRebound(to: _TestContentRecord.self) { records in
         (0 ..< records.count).lazy
-          .map { (records.baseAddress! + $0) as UnsafePointer<_TestContentRecord> }
+          .map { records.baseAddress! + $0 }
           .filter { $0.pointee.kind == kind }
           .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, recordAddress: $0) }
       }
     }
-    return AnySequence(result)
   }
 }
 
@@ -263,7 +276,7 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
 
 private import _TestingInternals
 
-extension DiscoverableAsTestContent where Self: ~Copyable {
+extension DiscoverableAsTestContent {
   /// Get all test content of this type known to Swift and found in the current
   /// process using the legacy discovery mechanism.
   ///
@@ -277,15 +290,10 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
   /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
   ///   content records matching this ``TestContent`` type's requirements are
   ///   included in the sequence.
-  ///
-  /// @Comment {
-  ///   - Bug: This function returns an instance of `AnySequence` instead of an
-  ///     opaque type due to a compiler crash. ([143080508](rdar://143080508))
-  /// }
   @available(swift, deprecated: 100000.0, message: "Do not adopt this functionality in new code. It will be removed in a future release.")
   public static func allTypeMetadataBasedTestContentRecords(
     loadingWith loader: @escaping @Sendable (Any.Type, UnsafeMutableRawBufferPointer) -> Bool
-  ) -> AnySequence<TestContentRecord<Self>> {
+  ) -> some Sequence<TestContentRecord<Self>> {
     validateMemoryLayout()
 
     let typeNameHint = _testContentTypeNameHint
@@ -300,7 +308,7 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
       }
     }
 
-    let result = SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
+    return SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
       stride(from: 0, to: sb.buffer.count, by: SWTTypeMetadataRecordByteCount).lazy
         .map { sb.buffer.baseAddress! + $0 }
         .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifNameContains: typeNameHint) }
@@ -309,7 +317,6 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
         .filter { $0.kind == kind }
         .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, record: $0) }
     }
-    return AnySequence(result)
   }
 }
 #endif

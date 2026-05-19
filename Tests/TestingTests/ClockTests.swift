@@ -14,7 +14,6 @@ private import _TestingInternals
 
 @Suite("Clock API Tests")
 struct ClockTests {
-  @available(_clockAPI, *)
   @Test("Clock.Instant basics")
   func clockInstant() async throws {
     let instant1 = Test.Clock.Instant.now
@@ -36,15 +35,14 @@ struct ClockTests {
     #expect(instants.count == 2)
 
     let now = Test.Clock.Instant.now
-    #expect(now.suspending.seconds > 0)
-    #expect(now.suspending.attoseconds >= 0)
+    #expect(now.suspending.rawValue.components.seconds > 0)
+    #expect(now.suspending.rawValue.components.attoseconds >= 0)
 #if !SWT_NO_UTC_CLOCK
-    #expect(now.wall.seconds > 0)
-    #expect(now.wall.attoseconds >= 0)
+    #expect(now.wall.rawValue.components.seconds > 0)
+    #expect(now.wall.rawValue.components.attoseconds >= 0)
 #endif
   }
 
-  @available(_clockAPI, *)
   @Test("Creating a SuspendingClock.Instant from Test.Clock.Instant")
   func suspendingInstantInitializer() async throws {
     let instant1 = SuspendingClock.Instant(Test.Clock.Instant.now)
@@ -54,7 +52,6 @@ struct ClockTests {
     #expect(instant1 < instant2)
   }
 
-  @available(_clockAPI, *)
   @Test("Clock.sleep(until:tolerance:) method")
   func sleepUntilTolerance() async throws {
     let instant1 = SuspendingClock.Instant(Test.Clock.Instant.now)
@@ -65,19 +62,6 @@ struct ClockTests {
   }
 
 #if !SWT_NO_UTC_CLOCK
-  @available(_clockAPI, *)
-  @Test("Clock.Instant.timeComponentsSince1970 property")
-  func timeComponentsSince1970() async throws {
-    let instant1 = Test.Clock.Instant.now.timeComponentsSince1970
-    try await Test.Clock.sleep(for: .nanoseconds(50_000_000))
-    let instant2 = Test.Clock.Instant.now.timeComponentsSince1970
-
-    #expect(instant1.seconds < instant2.seconds || instant1.attoseconds < instant2.attoseconds)
-  }
-#endif
-
-#if !SWT_NO_UTC_CLOCK
-  @available(_clockAPI, *)
   @Test("Clock.Instant.durationSince1970 property")
   func durationSince1970() async throws {
     let instant1 = Test.Clock.Instant.now.durationSince1970
@@ -88,7 +72,6 @@ struct ClockTests {
   }
 #endif
 
-  @available(_clockAPI, *)
   @Test("Clock.now property")
   func clockNowProperty() async throws {
     let instant1 = Test.Clock().now
@@ -98,14 +81,12 @@ struct ClockTests {
     #expect(instant1 < instant2)
   }
 
-  @available(_clockAPI, *)
   @Test("Clock.minimumResolution property")
   func clockMinimumResolutionProperty() async throws {
     let minimumResolution = Test.Clock().minimumResolution
     #expect(minimumResolution == SuspendingClock().minimumResolution)
   }
 
-  @available(_clockAPI, *)
   @Test("Clock.Instant.advanced(by:) and .duration(to:) methods")
   func instantAdvancedByAndDurationTo() async throws {
     let offsetNanoseconds = Int64.random(in: -1_000_000_000 ..< 1_000_000_000)
@@ -121,8 +102,7 @@ struct ClockTests {
     #expect(duration == .nanoseconds(offsetNanoseconds))
   }
 
-#if canImport(Foundation)
-  @available(_clockAPI, *)
+#if !SWT_NO_SNAPSHOT_TYPES
   @Test("Codable")
   func codable() async throws {
     let now = Test.Clock.Instant()
@@ -133,17 +113,16 @@ struct ClockTests {
   }
 #endif
 
-  @available(_clockAPI, *)
-  @Test("Clock.Instant.nanoseconds(until:) method",
-    arguments: [
-      (Duration.zero, 0),
-      (.nanoseconds(1), 1),
-      (.seconds(1), 1_000_000_000),
-      (Duration(secondsComponent: 0, attosecondsComponent: 1), 0),
-    ]
-  )
-  func nanoseconds(until offset: Duration, nanoseconds: Int) {
-    let now = Test.Clock.Instant.now
-    #expect(now.nanoseconds(until: now.advanced(by: offset)) == nanoseconds)
+  @Test("Round trip Test.Clock.Instant <-> ABI.EncodedInstant")
+  func roundTrip() async throws {
+    let now = Test.Clock.Instant()
+    let encoded = ABI.EncodedInstant<ABI.CurrentVersion>(encoding: now)
+    let decoded = try #require(Test.Clock.Instant(decoding: encoded))
+
+    // Instant -> EncodedInstant loses some precision when converting from Duration -> Double
+    #expect(abs((now.suspending.rawValue - decoded.suspending.rawValue) / .seconds(1)) < 0.001)
+#if !SWT_NO_UTC_CLOCK
+    #expect(abs((now.durationSince1970 - decoded.durationSince1970) / .seconds(1)) < 0.001)
+#endif
   }
 }

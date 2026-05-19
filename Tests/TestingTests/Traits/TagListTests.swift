@@ -98,7 +98,7 @@ struct TagListTests {
     #expect(Tag(userProvidedStringValue: ".red") == .red)
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
   @Test("Encoding/decoding tags")
   func encodeAndDecodeTags() throws {
     let array: [Tag] = [.red, .orange, Tag("abc123"), Tag(".abc123")]
@@ -139,7 +139,7 @@ struct TagListTests {
     }
     """
     try jsonContent.withUTF8 { jsonContent in
-      let fileHandle = try FileHandle(forWritingAtPath: jsonPath)
+      let fileHandle = try Testing.FileHandle(forWritingAtPath: jsonPath)
       try fileHandle.write(jsonContent)
     }
     defer {
@@ -239,7 +239,11 @@ struct TagTests {
     .hidden,
     Tag.List.tags(.fromFunctionPartiallyQualified),
     Testing.Tag.List.tags(.fromFunctionFullyQualified),
-    .tags(.namedConstant, .NestedType.deeperTag, Testing.Tag.anotherConstant)
+    Testing::Tag.List.tags(.fromFunctionFullyQualified),
+    Testing::Testing.Tag.List.tags(.fromFunctionFullyQualified),
+    .tags(.namedConstant, .NestedType.deeperTag, Testing.Tag.anotherConstant),
+    .tags(.namedConstant, .NestedType.deeperTag, Testing::Tag.anotherConstant),
+    .tags(.namedConstant, .NestedType.deeperTag, Testing::Testing.Tag.anotherConstant)
   )
   func variations() async throws {}
 }

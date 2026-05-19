@@ -10,6 +10,23 @@
 
 private import _TestingInternals
 
+#if hasFeature(Embedded)
+/// A minimal interface-compatible implementation of the `CommandLine` type from
+/// the Swift standard library.
+///
+/// This type is declared for Embedded Swift targets to simplify calling code.
+enum CommandLine {
+  /// An array that provides access to this program's command line arguments.
+  ///
+  /// In Embedded Swift, this array contains one string standing in for the name
+  /// of the current program (as required by the C language standard).
+  static var arguments: [String] {
+    ["swift-test"]
+  }
+}
+#endif
+
+#if !SWT_NO_EXIT_TESTS
 extension CommandLine {
   /// The path to the current process' executable.
   static var executablePath: String {
@@ -33,14 +50,27 @@ extension CommandLine {
       }
       return result!
 #elseif os(Linux) || os(Android)
-      return try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX) * 2) { buffer in
-        let readCount = readlink("/proc/self/exe", buffer.baseAddress!, buffer.count - 1)
-        guard readCount >= 0 else {
-          throw CError(rawValue: swt_errno())
+      var result: String?
+#if DEBUG
+      var bufferCount = Int(1) // force looping
+#else
+      var bufferCount = Int(PATH_MAX)
+#endif
+      while result == nil {
+        try withUnsafeTemporaryAllocation(of: CChar.self, capacity: bufferCount) { buffer in
+          let readCount = readlink("/proc/self/exe", buffer.baseAddress!, buffer.count)
+          guard readCount >= 0 else {
+            throw CError(rawValue: swt_errno())
+          }
+          if readCount < buffer.count {
+            buffer[readCount] = 0 // NUL-terminate the string.
+            result = String(cString: buffer.baseAddress!)
+          } else {
+            bufferCount += Int(PATH_MAX) // add more space and try again
+          }
         }
-        buffer[readCount] = 0 // NUL-terminate the string.
-        return String(cString: buffer.baseAddress!)
       }
+      return result!
 #elseif os(FreeBSD)
       var mib = [CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1]
       return try mib.withUnsafeMutableBufferPointer { mib in
@@ -57,10 +87,16 @@ extension CommandLine {
       }
 #elseif os(OpenBSD)
       // OpenBSD does not have API to get a path to the running executable. Use
-      // arguments[0]. We do a basic sniff test for a path-like string, but
-      // otherwise return argv[0] verbatim.
-      guard let argv0 = arguments.first, argv0.contains("/") else {
+      // arguments[0]. We do a basic sniff test for a path-like string, and
+      // prepend the early CWD if it looks like a relative path, but otherwise
+      // return argv[0] verbatim.
+      guard var argv0 = arguments.first, argv0.contains("/") else {
         throw CError(rawValue: ENOEXEC)
+      }
+      if argv0.first != "/",
+         let earlyCWD = swt_getEarlyCWD().flatMap(String.init(validatingCString:)),
+         !earlyCWD.isEmpty {
+        argv0 = "\(earlyCWD)/\(argv0)"
       }
       return argv0
 #elseif os(Windows)
@@ -71,7 +107,7 @@ extension CommandLine {
       var bufferCount = Int(MAX_PATH)
 #endif
       while result == nil {
-        try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: bufferCount) { buffer in
+        try withUnsafeTemporaryAllocation(of: CWideChar.self, capacity: bufferCount) { buffer in
           SetLastError(DWORD(ERROR_SUCCESS))
           _ = GetModuleFileNameW(nil, buffer.baseAddress!, DWORD(buffer.count))
           switch GetLastError() {
@@ -100,3 +136,4 @@ extension CommandLine {
     }
   }
 }
+#endif

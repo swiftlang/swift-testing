@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
+#if canImport(Foundation) && !SWT_NO_CODABLE
 public import Testing
 public import Foundation
 
@@ -20,6 +20,7 @@ public import Foundation
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
 /// }
 extension Attachable where Self: Encodable & NSSecureCoding {
   @_documentation(visibility: private)

@@ -8,11 +8,44 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
 @Suite("Exit test tests") struct ExitTestTests {
+  @Test("Exit code names are reported (where supported)") func exitCodeName() {
+    #expect(String(describing: ExitStatus.exitCode(EXIT_SUCCESS)) == ".exitCode(EXIT_SUCCESS)")
+    #expect(String(describing: ExitStatus.exitCode(EXIT_FAILURE)) == ".exitCode(EXIT_FAILURE)")
+
+    if let EX_IOERR = swt_EX_IOERR()?.pointee {
+      let exitStatus = ExitStatus.exitCode(EX_IOERR)
+      #expect(exitStatus.code == EX_IOERR)
+      #expect(String(describing: exitStatus) == ".exitCode(EX_IOERR)")
+    }
+    #expect(String(describing: ExitStatus.exitCode(12345)) == ".exitCode(12345)")
+  }
+
+  @Test("Signal names are reported (where supported)") func signalName() {
+    var hasSignalNames = false
+#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Android)
+#if !SWT_NO_SYS_SIGNAME
+    hasSignalNames = true
+#endif
+#elseif os(Linux) && !SWT_NO_DYNAMIC_LINKING
+    hasSignalNames = (symbol(named: "sigabbrev_np") != nil)
+#elseif os(Windows)
+    hasSignalNames = true
+#endif
+
+    let exitStatus = ExitStatus.signal(SIGABRT)
+    #expect(exitStatus.code == SIGABRT)
+    if Bool(hasSignalNames) {
+      #expect(String(describing: exitStatus) == ".signal(SIGABRT)")
+    } else {
+      #expect(String(describing: exitStatus) == ".signal(\(SIGABRT))")
+    }
+  }
+
   @Test("Exit tests (passing)") func passing() async {
     await #expect(processExitsWith: .failure) {
       exit(EXIT_FAILURE)
@@ -38,11 +71,7 @@ private import _TestingInternals
       // Allow up to 1s for the signal to be delivered. On some platforms,
       // raise() delivers signals fully asynchronously and may not terminate the
       // child process before this closure returns.
-      if #available(_clockAPI, *) {
-        try await Test.Clock.sleep(for: .seconds(1))
-      } else {
-        try await Task.sleep(nanoseconds: 1_000_000_000)
-      }
+      try await Test.Clock.sleep(for: .seconds(1))
     }
     await #expect(processExitsWith: .signal(SIGABRT)) {
       abort()
@@ -187,7 +216,7 @@ private import _TestingInternals
 
         await Test {
           await #expect(processExitsWith: .success) {
-            #expect(Bool(false), "Something went wrong!")
+            Issue.record("Something went wrong!")
             exit(0)
           }
           await #expect(processExitsWith: .failure) {
@@ -195,6 +224,93 @@ private import _TestingInternals
           }
         }.run(configuration: configuration)
       }
+    }
+  }
+
+  @Test("Exit test forwards .apiMisused and .system issues") func forwardsAPIMisusedAndSystemIssues() async {
+    await confirmation(".apiMisused recorded") { apiMisusedRecorded in
+      await confirmation(".system recorded") { systemRecorded in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          guard case let .issueRecorded(issue) = event.kind else {
+            return
+          }
+          switch issue.kind {
+          case .apiMisused:
+            apiMisusedRecorded()
+          case .system:
+            systemRecorded()
+          default:
+            break
+          }
+        }
+        configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+
+        await Test {
+          await #expect(processExitsWith: .success) {
+            Issue(kind: .apiMisused).record()
+          }
+          await #expect(processExitsWith: .failure) {
+            Issue(kind: .system).record()
+          }
+        }.run(configuration: configuration)
+      }
+    }
+  }
+
+  @Test("Exit test issues contain expression trees") func expressionsInIssues() async {
+    await confirmation("Expectation failed") { expectationFailed in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        guard case let .issueRecorded(issue) = event.kind else {
+          return
+        }
+        if case let .expectationFailed(expectation) = issue.kind,
+           expectation.evaluatedExpression.sourceCode == "lhs == rhs",
+           expectation.evaluatedExpression.subexpressions.count > 1 {
+          expectationFailed()
+        }
+      }
+      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+
+      await Test {
+        await #expect(processExitsWith: .success) {
+          struct S: Equatable {
+            var x: Int
+            var y: String
+          }
+          let lhs = S(x: 1, y: "abc")
+          let rhs = S(x: 2, y: "def")
+          #expect(lhs == rhs)
+        }
+      }.run(configuration: configuration)
+    }
+  }
+
+  private static let attachmentPayload = [UInt8](0...255)
+
+  @Test("Exit test forwards attachments") func forwardsAttachments() async {
+    await confirmation("Value attached") { valueAttached in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        guard case let .valueAttached(attachment) = event.kind else {
+          return
+        }
+        #expect(throws: Never.self) {
+          try attachment.withUnsafeBytes { bytes in
+            #expect(Array(bytes) == Self.attachmentPayload)
+          }
+        }
+        #expect(attachment.preferredName == "my attachment.bytes")
+        valueAttached()
+      }
+      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+
+      await Test {
+        await #expect(processExitsWith: .success) {
+          Attachment.record(Self.attachmentPayload, named: "my attachment.bytes")
+        }
+      }.run(configuration: configuration)
     }
   }
 
@@ -306,7 +422,7 @@ private import _TestingInternals
 
       await Test {
         try await #require(processExitsWith: .success) {}
-        fatalError("Unreachable")
+        Issue.record("#require(processExitsWith:) should have thrown an error")
       }.run(configuration: configuration)
     }
   }
@@ -350,6 +466,7 @@ private import _TestingInternals
     }
     #expect(result.exitStatus == .exitCode(EXIT_SUCCESS))
     #expect(result.standardOutputContent.contains("STANDARD OUTPUT".utf8))
+    #expect(!result.standardOutputContent.contains(ExitTest.barrierValue))
     #expect(result.standardErrorContent.isEmpty)
 
     result = try await #require(processExitsWith: .success, observing: [\.standardErrorContent]) {
@@ -360,6 +477,15 @@ private import _TestingInternals
     #expect(result.exitStatus == .exitCode(EXIT_SUCCESS))
     #expect(result.standardOutputContent.isEmpty)
     #expect(result.standardErrorContent.contains("STANDARD ERROR".utf8.reversed()))
+    #expect(!result.standardErrorContent.contains(ExitTest.barrierValue))
+  }
+
+  @Test("Empty stdout/stderr stream is actually empty")
+  func exitTestEmptyStreamIsActuallyEmpty() async throws {
+    let result = try await #require(processExitsWith: .success, observing: [\.standardErrorContent]) {
+      _Exit(EXIT_SUCCESS)
+    }
+    #expect(result.standardErrorContent.isEmpty)
   }
 
   @Test("Arguments to the macro are not captured during expansion (do not need to be literals/const)")
@@ -381,7 +507,57 @@ private import _TestingInternals
     }
   }
 
-#if ExperimentalExitTestValueCapture
+  @Test("Issue severity")
+  func issueSeverity() async {
+    await confirmation("Recorded issue had warning severity") { wasWarning in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case let .issueRecorded(issue) = event.kind, issue.severity == .warning {
+          wasWarning()
+        }
+      }
+
+      // Mock an exit test where the process exits successfully.
+      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+      await Test {
+        await #expect(processExitsWith: .success) {
+          Issue.record("Issue recorded", severity: .warning)
+        }
+      }.run(configuration: configuration)
+    }
+  }
+
+  @Test("Known issues")
+  func knownIssues() async {
+    await confirmation("Recorded issue was a known issue") { wasKnown in
+      await confirmation("Recorded issue had the expected known-issue comment") { hadComment in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          guard case let .issueRecorded(issue) = event.kind else {
+            return
+          }
+          if issue.isKnown {
+            wasKnown()
+          }
+          if issue.knownIssueContext?.comment?.rawValue == "ABC 123",
+             issue.comments.count == 1, issue.comments.first == "456 DEF" {
+            hadComment()
+          }
+        }
+
+        // Mock an exit test where the process exits successfully.
+        configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+        await Test {
+          await #expect(processExitsWith: .success) {
+            withKnownIssue("ABC 123") {
+              Issue.record("456 DEF")
+            }
+          }
+        }.run(configuration: configuration)
+      }
+    }
+  }
+
   @Test("Capture list")
   func captureList() async {
     let i = 123
@@ -407,9 +583,10 @@ private import _TestingInternals
 
     @Test("self in capture list")
     func captureListWithSelf() async {
-      await #expect(processExitsWith: .success) { [self, x = self] in
+      await #expect(processExitsWith: .success) { [self, x = self, y = self as Self] in
         #expect(self.property == 456)
         #expect(x.property == 456)
+        #expect(y.property == 456)
       }
     }
   }
@@ -455,6 +632,115 @@ private import _TestingInternals
       #expect((instance as AnyObject) is CapturableDerivedClass)
       #expect(instance.x == 123)
     }
+  }
+
+  @Test("Capturing a parameter to the test function")
+  func captureListWithParameter() async {
+    let i = Int.random(in: 0 ..< 1000)
+
+    func f(j: Int) async {
+      await #expect(processExitsWith: .success) { [i = i as Int, j] in
+        #expect(i == j)
+        #expect(j >= 0)
+        #expect(j < 1000)
+      }
+    }
+    await f(j: i)
+
+    await { (j: Int) in
+      _ = await #expect(processExitsWith: .success) { [i = i as Int, j] in
+        #expect(i == j)
+        #expect(j >= 0)
+        #expect(j < 1000)
+      }
+    }(i)
+
+#if false // intentionally fails to compile
+    // FAILS TO COMPILE: shadowing `i` with a variable of a different type will
+    // prevent correct expansion (we need an equivalent of decltype() for that.)
+    func g(i: Int) async {
+      let i = String(i)
+      await #expect(processExitsWith: .success) { [i] in
+        #expect(!i.isEmpty)
+      }
+    }
+#endif
+  }
+
+  @Test("Capturing a literal expression")
+  func captureListWithLiterals() async {
+    await #expect(processExitsWith: .success) { [i = 0, f = 1.0, s = "", b = true] in
+      #expect(i == 0)
+      #expect(f == 1.0)
+      #expect(s == "")
+      #expect(b == true)
+    }
+  }
+
+  @Test("Capturing #_sourceLocation")
+  func captureListPreservesSourceLocationMacro() async {
+    func sl(_ sl: SourceLocation = #_sourceLocation) -> SourceLocation {
+      sl
+    }
+    await #expect(processExitsWith: .success) { [sl = sl() as SourceLocation] in
+      #expect(sl.fileID == #fileID)
+    }
+  }
+
+  @Test("Capturing an optional value")
+  func captureListWithOptionalValue() async throws {
+    await #expect(processExitsWith: .success) { [x = nil as Int?] in
+      #expect(x != 1)
+    }
+    await #expect(processExitsWith: .success) { [x = (0 as Any) as? String] in
+      #expect(x == nil)
+    }
+  }
+
+  @Test("Capturing an effectful expression")
+  func captureListWithEffectfulExpression() async throws {
+    func f() async throws -> Int { 0 }
+    try await #require(processExitsWith: .success) { [f = try await f() as Int] in
+      #expect(f == 0)
+    }
+    try await #expect(processExitsWith: .success) { [f = f() as Int] in
+      #expect(f == 0)
+    }
+  }
+
+#if false // intentionally fails to compile
+  @Test("Capturing a tuple")
+  func captureListWithTuple() async throws {
+    // A tuple whose elements conform to Codable does not itself conform to
+    // Codable, so we cannot actually express this capture list in a way that
+    // works with #expect().
+    await #expect(processExitsWith: .success) { [x = (0 as Int, 1 as Double, "2" as String)] in
+      #expect(x.0 == 0)
+      #expect(x.1 == 1)
+      #expect(x.2 == "2")
+    }
+  }
+#endif
+
+#if false // intentionally fails to compile
+  struct NonCodableValue {}
+
+  // We can't capture a value that isn't Codable. A unit test is not possible
+  // for this case as the type checker needs to get involved.
+  @Test("Capturing a move-only value")
+  func captureListWithMoveOnlyValue() async {
+    let x = NonCodableValue()
+    await #expect(processExitsWith: .success) { [x = x as NonCodableValue] in
+      _ = x
+    }
+  }
+#endif
+
+#if os(OpenBSD)
+  @Test("Changing the CWD doesn't break exit tests")
+  func changeCWD() async throws {
+    try #require(0 == chdir("/"))
+    await #expect(processExitsWith: .success) {}
   }
 #endif
 }

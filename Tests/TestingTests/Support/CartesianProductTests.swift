@@ -37,7 +37,7 @@ struct CartesianProductTests {
 
   @Test("First element is correct")
   func firstElement() throws {
-    // Sanity-check the first element is correct. (This value is also tested in
+    // Check that the first element is correct. (This value is also tested in
     // testCompleteEquality().)
     let (c1, c2, product) = computeCartesianProduct()
     let first = try #require(product.first(where: { _ in true }))
@@ -96,7 +96,7 @@ struct CartesianProductTests {
     // Test that the product can be iterated multiple times concurrently.
     let (_, _, product) = computeCartesianProduct()
     let expectedSum = product.reduce(into: 0) { $0 &+= $1.1 }
-    await withTaskGroup(of: Int.self) { taskGroup in
+    await withTaskGroup { taskGroup in
       for _ in 0 ..< 10 {
         taskGroup.addTask {
           product.reduce(into: 0) { $0 &+= $1.1 }

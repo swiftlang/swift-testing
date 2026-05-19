@@ -12,7 +12,7 @@
 /// record themselves as test issues.
 ///
 /// When a type conforms to this protocol, values of that type can be passed to
-/// ``Issue/record(_:_:)``. The testing library then calls the
+/// ``Issue/record(_:severity:sourceLocation:)``. The testing library then calls the
 /// ``customize(_:)`` function and passes it an instance of ``Issue`` that will
 /// be used to represent the value. The function can then reconfigure or replace
 /// the issue as needed.
@@ -43,9 +43,17 @@ protocol CustomIssueRepresentable: Error {
 ///
 /// This type is not part of the public interface of the testing library.
 /// External callers should generally record issues by throwing their own errors
-/// or by calling ``Issue/record(_:sourceLocation:)``.
+/// or by calling ``Issue/record(_:severity:sourceLocation:)``.
 struct SystemError: Error, CustomStringConvertible, CustomIssueRepresentable {
   var description: String
+
+  static var domain: String {
+    "org.swift.testing.SystemError"
+  }
+
+  var _domain: String {
+    Self.domain
+  }
 
   func customize(_ issue: consuming Issue) -> Issue {
     issue.kind = .system
@@ -62,9 +70,17 @@ struct SystemError: Error, CustomStringConvertible, CustomIssueRepresentable {
 ///
 /// This type is not part of the public interface of the testing library.
 /// External callers should generally record issues by throwing their own errors
-/// or by calling ``Issue/record(_:sourceLocation:)``.
+/// or by calling ``Issue/record(_:severity:sourceLocation:)``.
 struct APIMisuseError: Error, CustomStringConvertible, CustomIssueRepresentable {
   var description: String
+
+  static var domain: String {
+    "org.swift.testing.APIMisuseError"
+  }
+
+  var _domain: String {
+    Self.domain
+  }
 
   func customize(_ issue: consuming Issue) -> Issue {
     issue.kind = .apiMisused

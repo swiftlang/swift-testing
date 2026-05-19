@@ -14,9 +14,16 @@
 import XCTest
 #endif
 
-#if canImport(Foundation)
-import Foundation
+#if canImport(Synchronization)
+private import Synchronization
 #endif
+
+/// The ABI name of the testing library's main module.
+///
+/// This can be different than the target name ("Testing") whenever the module
+/// ABI name is customized at build time, as it is in certain deployment
+/// contexts.
+let testingModuleABIName = TypeInfo(describing: Test.self).fullyQualifiedNameComponents.first!
 
 extension Tag {
   /// A tag indicating that a test is related to a trait.
@@ -108,6 +115,25 @@ extension Runner {
     inModuleOf fileID: String = #fileID,
     configuration: Configuration = .init()
   ) async {
+    let plan = await Runner.Plan(selecting: testName, inModuleOf: fileID, configuration: configuration)
+    self.init(plan: plan, configuration: configuration)
+  }
+}
+
+extension Runner.Plan {
+  /// Initialize an instance of this type that selects the free test function
+  /// named `testName` in the module specified in `fileID`.
+  ///
+  /// - Parameters:
+  ///   - testName: The name of the test function this instance should run.
+  ///   - fileID: The `#fileID` string whose module should be used to locate
+  ///     the test function to run.
+  ///   - configuration: The configuration to use for running.
+  init(
+    selecting testName: String,
+    inModuleOf fileID: String = #fileID,
+    configuration: Configuration = .init()
+  ) async {
     let moduleName = String(fileID[..<fileID.lastIndex(of: "/")!])
 
     var configuration = configuration
@@ -116,9 +142,7 @@ extension Runner {
 
     await self.init(configuration: configuration)
   }
-}
 
-extension Runner.Plan {
   /// Initialize an instance of this type with the specified suite type.
   ///
   /// - Parameters:
@@ -145,11 +169,13 @@ extension Test {
   init(
     _ traits: any TestTrait...,
     sourceLocation: SourceLocation = #_sourceLocation,
+    sourceBounds: __SourceBounds? = nil,
     name: String = #function,
     testFunction: @escaping @Sendable () async throws -> Void
   ) {
+    let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: [])
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: [])
   }
 
   /// Initialize an instance of this type with a function or closure to call,
@@ -170,14 +196,37 @@ extension Test {
   init<C>(
     _ traits: any TestTrait...,
     arguments collection: C,
-    parameters: [Parameter] = [],
+    parameters: [Parameter] = [
+      Parameter(index: 0, firstName: "x", type: C.Element.self),
+    ],
     sourceLocation: SourceLocation = #_sourceLocation,
+    sourceBounds: __SourceBounds? = nil,
     column: Int = #column,
     name: String = #function,
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) where C: Collection & Sendable, C.Element: Sendable {
+    let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
+  }
+
+  init<C>(
+    _ traits: any TestTrait...,
+    arguments collection: @escaping @Sendable () async throws -> C,
+    parameters: [Parameter] = [
+      Parameter(index: 0, firstName: "x", type: C.Element.self),
+    ],
+    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceBounds: __SourceBounds? = nil,
+    column: Int = #column,
+    name: String = #function,
+    testFunction: @escaping @Sendable (C.Element) async throws -> Void
+  ) where C: Collection & Sendable, C.Element: Sendable {
+    let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
+    let caseGenerator = { @Sendable in
+      Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction)
+    }
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Initialize an instance of this type with a function or closure to call,
@@ -199,13 +248,18 @@ extension Test {
   init<C1, C2>(
     _ traits: any TestTrait...,
     arguments collection1: C1, _ collection2: C2,
-    parameters: [Parameter] = [],
+    parameters: [Parameter] = [
+      Parameter(index: 0, firstName: "x", type: C1.Element.self),
+      Parameter(index: 1, firstName: "y", type: C2.Element.self),
+    ],
     sourceLocation: SourceLocation = #_sourceLocation,
+    sourceBounds: __SourceBounds? = nil,
     name: String = #function,
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+    let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: collection1, collection2, parameters: parameters, testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Initialize an instance of this type with a function or closure to call,
@@ -222,13 +276,18 @@ extension Test {
   init<C1, C2>(
     _ traits: any TestTrait...,
     arguments zippedCollections: Zip2Sequence<C1, C2>,
-    parameters: [Parameter] = [],
+    parameters: [Parameter] = [
+      Parameter(index: 0, firstName: "x", type: C1.Element.self),
+      Parameter(index: 1, firstName: "y", type: C2.Element.self),
+    ],
     sourceLocation: SourceLocation = #_sourceLocation,
+    sourceBounds: __SourceBounds? = nil,
     name: String = #function,
     testFunction: @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+    let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: zippedCollections, parameters: parameters, testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
+    self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 }
 
@@ -245,6 +304,24 @@ extension Test {
   func run(configuration: Configuration = .init()) async {
     let runner = await Runner(testing: [self], configuration: configuration)
     await runner.run()
+  }
+
+  /// Run a single test, returning all `.issueRecorded` event types that it
+  /// encountered while running.
+  func runCapturingIssues() async -> [Issue] {
+    let issues = Mutex<[Issue]>()
+
+    var issueCapturingConfig = Configuration()
+    issueCapturingConfig.eventHandler = { event, _ in
+      if case .issueRecorded(let issue) = event.kind {
+        issues.withLock { $0.append(issue) }
+      }
+    }
+
+    let runner = await Runner(testing: [self], configuration: issueCapturingConfig)
+    await runner.run()
+
+    return issues.rawValue
   }
 }
 
@@ -339,6 +416,12 @@ extension Configuration {
 /// library.
 let testsWithSignificantIOAreEnabled = Environment.flag(named: "SWT_ENABLE_TESTS_WITH_SIGNIFICANT_IO") == true
 
+/// Whether or not to enable performance tests. These tests may be subject to scheduling differences,
+/// so they are not enabled in CI. When doing any sort of performance work on Swift Testing, you
+/// should enable these tests.
+let performanceTestsEnabled = Environment.flag(named: "SWT_ENABLE_PERFORMANCE_TESTS") == true
+
+#if !SWT_NO_CODABLE
 extension JSON {
   /// Round-trip a value through JSON encoding/decoding.
   ///
@@ -353,27 +436,9 @@ extension JSON {
       try JSON.decode(T.self, from: data)
     }
   }
-
-#if canImport(Foundation)
-  /// Decode a value from JSON data.
-  ///
-  /// - Parameters:
-  ///   - type: The type of value to decode.
-  ///   - jsonRepresentation: Data of the JSON encoding of the value to decode.
-  ///
-  /// - Returns: An instance of `T` decoded from `jsonRepresentation`.
-  ///
-  /// - Throws: Whatever is thrown by the decoding process.
-  @_disfavoredOverload
-  static func decode<T>(_ type: T.Type, from jsonRepresentation: Data) throws -> T where T: Decodable {
-    try jsonRepresentation.withUnsafeBytes { bytes in
-      try JSON.decode(type, from: bytes)
-    }
-  }
-#endif
 }
+#endif
 
-@available(_clockAPI, *)
 extension Trait where Self == TimeLimitTrait {
   /// Construct a time limit trait that causes a test to time out if it runs for
   /// too long.
@@ -407,5 +472,15 @@ extension SourceContext {
 
   init(sourceLocation: SourceLocation?) {
     self.init(backtrace: .current(), sourceLocation: sourceLocation)
+  }
+}
+
+@Suite struct TestingAdditionsTests {
+  @Test func `Demonstrate runCapturingIssues usage`() async {
+    let issues = await Test {
+      #expect(Bool(false))
+    }.runCapturingIssues()
+
+    #expect(issues.count == 1)
   }
 }

@@ -1,12 +1,14 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024–2025 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
+
+private import _TestingInternals
 
 /// A namespace for ABI symbols.
 @_spi(ForToolsIntegrationOnly)
@@ -16,11 +18,15 @@ public enum ABI: Sendable {}
 
 extension ABI {
   /// A protocol describing the types that represent different ABI versions.
-  protocol Version: Sendable {
+  public protocol Version: Sendable {
     /// The numeric representation of this ABI version.
-    static var versionNumber: Int { get }
+    static var versionNumber: VersionNumber { get }
+  }
 
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
+  /// A protocol that extends the public ``ABI/Version`` protocol with
+  /// internal-only requirements.
+  protocol _Version: Version {
+#if !SWT_NO_ABI_JSON_SCHEMA
     /// Create an event handler that encodes events as JSON and forwards them to
     /// an ABI-friendly event handler.
     ///
@@ -43,7 +49,111 @@ extension ABI {
   }
 
   /// The current supported ABI version (ignoring any experimental versions.)
-  typealias CurrentVersion = v0
+  public typealias CurrentVersion = v6_4
+
+  /// Get the type representing a given ABI version.
+  ///
+  /// - Parameters:
+  ///   - versionNumber: The ABI version number for which a concrete type is
+  ///     needed.
+  ///
+  /// - Returns: A type conforming to ``ABI/Version`` that represents the given
+  ///   ABI version, or `nil` if no such type exists.
+  public static func version(forVersionNumber versionNumber: VersionNumber) -> (any Version.Type)? {
+    _version(forVersionNumber: versionNumber)
+  }
+
+  /// Get the type representing a given ABI version.
+  ///
+  /// - Parameters:
+  ///   - versionNumber: The ABI version number for which a concrete type is
+  ///     needed.
+  ///   - swiftCompilerVersion: The version number of the Swift compiler. This
+  ///     is used when `versionNumber` is greater than the highest known version
+  ///     to determine whether a version type can be returned. The default value
+  ///     is the version of the Swift compiler which was used to build the
+  ///     testing library.
+  ///
+  /// - Returns: A type conforming to ``ABI/Version`` that represents the given
+  ///   ABI version, or `nil` if no such type exists.
+  static func _version(
+    forVersionNumber versionNumber: VersionNumber,
+    givenSwiftCompilerVersion swiftCompilerVersion: @autoclosure () -> VersionNumber = swiftCompilerVersion
+  ) -> (any _Version.Type)? {
+    if versionNumber >= ABI.ExperimentalVersion.versionNumber {
+      // The experimental ABI version is higher than any real ABI version.
+      return ABI.ExperimentalVersion.self
+    }
+
+    if versionNumber > ABI.CurrentVersion.versionNumber {
+      // If the caller requested an ABI version higher than the current Swift
+      // compiler version and it's not an ABI version we've explicitly defined,
+      // then we assume we don't know what they're talking about and return nil.
+      //
+      // Note that it is possible for the Swift compiler version to be lower
+      // than the highest defined ABI version (e.g. if you use a 6.2 toolchain
+      // to build this package's release/6.3 branch with a 6.3 ABI defined.)
+      //
+      // Note also that building an old version of Swift Testing with a newer
+      // compiler may produce incorrect results here. We don't generally support
+      // that configuration though.
+      if versionNumber > swiftCompilerVersion() {
+        return nil
+      }
+    }
+
+    return switch versionNumber {
+    case ABI.v6_4.versionNumber...:
+      ABI.v6_4.self
+    case ABI.v6_3.versionNumber...:
+      ABI.v6_3.self
+    case ABI.v0.versionNumber...:
+      ABI.v0.self
+#if !SWT_NO_SNAPSHOT_TYPES
+    case ABI.Xcode16.versionNumber:
+      // Legacy support for Xcode 16. Support for this undocumented version will
+      // be removed in a future update. Do not use it.
+      ABI.Xcode16.self
+#endif
+    default:
+      nil
+    }
+  }
+}
+
+// MARK: - Experimental fields
+
+/// The value of the environment variable flag which enables experimental event
+/// stream fields, if any.
+private let _shouldIncludeExperimentalFlags = Environment.flag(named: "SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED")
+
+extension ABI.Version {
+  /// Whether or not experimental fields should be included when using this
+  /// ABI version.
+  ///
+  /// The value of this property is `true` if any of the following conditions
+  /// are satisfied:
+  ///
+  /// - The version number is less than 6.3. This is to preserve compatibility
+  ///   with existing clients before the inclusion of experimental fields became
+  ///   opt-in starting in 6.3.
+  /// - The version number is greater than or equal to 6.3 and the environment
+  ///   variable flag `SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED` is set to a
+  ///   true value.
+  /// - The version number is greater than or equal to that of ``ABI/ExperimentalVersion``.
+  ///
+  /// Otherwise, the value of this property is `false`.
+  static var includesExperimentalFields: Bool {
+    switch versionNumber {
+    case ABI.ExperimentalVersion.versionNumber...:
+      true
+    case ABI.v6_3.versionNumber...:
+      _shouldIncludeExperimentalFlags == true
+    default:
+      // Maintain behavior for pre-6.3 versions.
+      true
+    }
+  }
 }
 
 // MARK: - Concrete ABI versions
@@ -53,34 +163,102 @@ extension ABI {
   /// A namespace and version type for Xcode&nbsp;16 compatibility.
   ///
   /// - Warning: This type will be removed in a future update.
-  enum Xcode16: Sendable, Version {
-    static var versionNumber: Int {
-      -1
+  enum Xcode16: Sendable, Version, _Version {
+    static var versionNumber: VersionNumber {
+      VersionNumber(-1, 0)
     }
   }
 #endif
 
   /// A namespace and type for ABI version 0 symbols.
-  public enum v0: Sendable, Version {
-    static var versionNumber: Int {
-      0
+  public enum v0: Sendable, Version, _Version {
+    public static var versionNumber: VersionNumber {
+      VersionNumber(0, 0)
     }
   }
 
-  /// A namespace and type for ABI version 1 symbols.
+  /// A namespace and type for ABI version 6.3 symbols.
   ///
   /// @Metadata {
-  ///   @Available("Swift Testing ABI", introduced: 1)
+  ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
+  public enum v6_3: Sendable, Version, _Version {
+    public static var versionNumber: VersionNumber {
+      VersionNumber(6, 3)
+    }
+  }
+
+  /// A namespace and type for ABI version 6.4 symbols.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.4)
+  /// }
+  public enum v6_4: Sendable, Version, _Version {
+    public static var versionNumber: VersionNumber {
+      VersionNumber(6, 4)
+    }
+  }
+
+  /// A namespace and type representing the ABI version whose symbols are
+  /// considered experimental.
   @_spi(Experimental)
-  public enum v1: Sendable, Version {
-    static var versionNumber: Int {
-      1
+  public enum ExperimentalVersion: Sendable, Version, _Version {
+    public static var versionNumber: VersionNumber {
+      VersionNumber(99, 0)
     }
   }
 }
 
-/// A namespace for ABI version 0 symbols.
-@_spi(ForToolsIntegrationOnly)
-@available(*, deprecated, renamed: "ABI.v0")
-public typealias ABIv0 = ABI.v0
+#if !SWT_NO_CODABLE
+// MARK: -
+
+/// The set of keys accepted by `_swift_testing_copyMetadataValue(_:_:)`.
+private enum _MetadataKey: String, Sendable, CaseIterable {
+  /// The minimum supported ABI version.
+  case minimumSupportedABIVersion = "_minimumSupportedABIVersion"
+
+  /// The maximum supported ABI version.
+  case maximumSupportedABIVersion = "_maximumSupportedABIVersion"
+}
+
+/// An exported C function that allows querying information about the testing
+/// library without running any tests.
+///
+/// - Parameters:
+///   - key: The name of the value of interest. See the `_MetadataKey`
+///     enumeration for a list of supported values.
+///   - reserved: Reserved for future use. Pass `0`.
+///
+/// - Returns: A pointer to a UTF-8 C string containing the JSON representation
+///   of the requested information, or `nil` if that information was not
+///   available. The caller is responsible for freeing this memory with C's
+///   `free()` function.
+@c
+@usableFromInline
+func _swift_testing_copyMetadataValue(_ key: UnsafePointer<CChar>, _ reserved: UInt) -> UnsafeMutablePointer<CChar>? {
+  func copyJSON(for value: some Encodable) -> UnsafeMutablePointer<CChar>? {
+    try? JSON.withEncoding(of: value) { json in
+      json.withMemoryRebound(to: CChar.self) { json in
+        // The JSON produced by Foundation is not null-terminated, so to avoid
+        // an intermediate copy we call `calloc()` instead of `strdup()`.
+        let result = calloc(json.count + 1, MemoryLayout<CChar>.stride)
+        guard let result = result?.assumingMemoryBound(to: CChar.self) else {
+          return nil
+        }
+        result.initialize(from: json.baseAddress!, count: json.count)
+        return result
+      }
+    }
+  }
+
+  switch String(validatingCString: key).flatMap(_MetadataKey.init) {
+  case .minimumSupportedABIVersion:
+    return copyJSON(for: ABI.v0.versionNumber)
+  case .maximumSupportedABIVersion:
+    return copyJSON(for: ABI.CurrentVersion.versionNumber)
+  case nil:
+    return nil
+  }
+}
+#endif
