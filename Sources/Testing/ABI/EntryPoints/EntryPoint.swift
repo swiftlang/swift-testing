@@ -661,18 +661,33 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     var tagPatterns = [String]()
     var idPatterns = [String]()
 
+    // If one of the patterns we encounter is surrounded by backticks, we can
+    // surmize the user intended to express a Swift raw identifier. In that
+    // case, we should alert the user that it's not going to match what the
+    // user expects and strip the backticks for them.
+    func stripBackticksAndAlertIfEncountered(string: inout String) {
+      let backtickRegex = /^`[^`]*`$/
+      if string.contains(backtickRegex) {
+        let originalString = string
+        string = String(string.dropFirst().dropLast())
+        try? FileHandle.stderr.write("Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.\n")
+      }
+    }
+
     // Loop through all the option arguments, separating tags from regex filters
     for var optionArg in optionArguments ?? [] {
       if let prefix = FilterPrefix.allCases.first(where: { optionArg.hasPrefix($0.rawValue) }) {
         // We have encountered a prefix, so trim it off and add the supplied
         // argument to the appropriate filter list
         optionArg.trimPrefix(prefix.rawValue)
+        stripBackticksAndAlertIfEncountered(string: &optionArg)
         switch prefix {
           case .id: idPatterns.append(optionArg)
           case .tag: tagPatterns.append(optionArg)
         }
       } else {
         // No prefix was detected, so we treat this as a regex matching a test ID.
+        stripBackticksAndAlertIfEncountered(string: &optionArg)
         idPatterns.append(optionArg)
       }
     }
