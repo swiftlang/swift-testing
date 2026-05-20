@@ -142,7 +142,7 @@ extension Event.HumanReadableOutputRecorder {
   /// - Returns: A formatted string representing the comments attached to `test`,
   ///   or `nil` if there are none.
   private func _formattedComments(for test: Test) -> [Message] {
-    _formattedComments(test.comments(from: Comment.self))
+    _formattedComments(test.traits.compactMap { $0.__as(Comment.self) })
   }
 
   /// Get the total number of issues recorded in a graph of test data

@@ -136,7 +136,7 @@ extension Runner.Plan {
   /// node.
   private static func _recursivelyApplyTraits(_ parentTraits: [any SuiteTrait] = [], to testGraph: inout Graph<String, Test?>) {
     let traits: [any SuiteTrait] = parentTraits + (testGraph.value?.traits ?? []).lazy
-      .compactMap { $0 as? any SuiteTrait }
+      .compactMap { $0.__as((any SuiteTrait).self) }
       .filter(\.isRecursive)
 
     testGraph.children = testGraph.children.mapValues { child in
@@ -147,6 +147,7 @@ extension Runner.Plan {
     }
   }
 
+#if !hasFeature(Embedded)
   /// Recursively deduplicate traits on the given test by calling
   /// ``ReducibleTrait/reduce(_:)`` across all nodes in the graph.
   ///
@@ -186,6 +187,7 @@ extension Runner.Plan {
       return test
     }
   }
+#endif
 
   /// Recursively synthesize test instances representing suites for all missing
   /// values in the specified test graph.
@@ -396,11 +398,13 @@ extension Runner.Plan {
     // filtered out.
     _recursivelyApplyTraits(to: &testGraph)
 
+#if !hasFeature(Embedded)
     // Recursively reduce traits in the graph.
     //
     // As with `_recursivelyApplyTraits(to:)`, we must call this function before
     // calling `prepare(for:)` to ensure correct operation.
     _recursivelyReduceTraits(in: &testGraph)
+#endif
 
     // For each test value, determine the appropriate action for it.
     testGraph = await testGraph.mapValues { keyPath, test in
