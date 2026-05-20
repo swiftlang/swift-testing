@@ -110,9 +110,53 @@ extension Comment: ExpressibleByStringInterpolation {
       rawValue += literal
     }
 
+#if !hasFeature(Embedded)
     @inlinable public mutating func appendInterpolation(_ value: (some Any)?) {
       rawValue += String(describingForTest: value)
     }
+#else
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomTestStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomStringConvertible & CustomTestStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomDebugStringConvertible & CustomTestStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomDebugStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomStringConvertible & CustomDebugStringConvertible & CustomTestStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomStringConvertible & CustomDebugStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @_disfavoredOverload
+    @available(*, deprecated, message: "String representations of arbitrary values are not supported in Embedded Swift")
+    mutating func appendInterpolation(_ value: borrowing some ~Copyable & ~Escapable) {
+      rawValue += String(describingForTest: value)
+    }
+
+    mutating func appendInterpolation(_ value: (some ~Copyable & ~Escapable).Type) {
+      rawValue += String(describingForTest: value)
+    }
+
+    mutating func appendInterpolation(_ value: any Error) {
+      rawValue += String(describingForTest: value)
+    }
+#endif
 
     @inlinable public mutating func appendInterpolation(_ value: (some StringProtocol)?) {
       // Special-case strings to not include the quotation marks added by
