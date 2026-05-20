@@ -8,6 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
+#if SWT_NO_CODABLE
+#error("Platform-specific misconfiguration: support for the ABI JSON schema requires support for 'Codable'")
+#endif
+
 extension ABI {
   /// A type implementing the JSON encoding of records for the ABI entry point
   /// and event stream output.
@@ -58,7 +63,6 @@ extension ABI.Record {
   }
 }
 
-#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.Record: Codable {
@@ -88,13 +92,11 @@ extension ABI.Record: Codable {
       if versionNumber == V.versionNumber {
         return
       }
-#if !hasFeature(Embedded)
       // Allow for alternate version numbers if they correspond to the expected
       // record version (e.g. "1.2.3" might map to `v1_2_0` without a problem.)
       if ABI.version(forVersionNumber: versionNumber) == V.self {
         return
       }
-#endif
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath + CollectionOfOne(CodingKeys.version as any CodingKey),

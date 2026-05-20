@@ -215,6 +215,7 @@ let glibcVersion: VersionNumber = {
   var major = Int(clamping: __GLIBC__)
   var minor = Int(clamping: __GLIBC_MINOR__)
 
+#if !hasFeature(Embedded)
   if let strVersion = gnu_get_libc_version() {
     withUnsafeMutablePointer(to: &major) { major in
       withUnsafeMutablePointer(to: &minor) { minor in
@@ -224,6 +225,7 @@ let glibcVersion: VersionNumber = {
       }
     }
   }
+#endif
 
   return VersionNumber(majorComponent: .init(clamping: major), minorComponent: .init(clamping: minor))
 }()

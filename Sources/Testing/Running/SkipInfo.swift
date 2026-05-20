@@ -80,6 +80,7 @@ extension SkipInfo {
   }
 }
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 // MARK: - Conversion to/from ABI types
 
 extension SkipInfo {
@@ -108,6 +109,7 @@ extension SkipInfo {
     self.init(comment: comment, sourceContext: sourceContext)
   }
 }
+#endif
 
 // MARK: - Deprecated
 

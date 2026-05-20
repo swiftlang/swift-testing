@@ -122,8 +122,12 @@ public struct __Expression: Sendable {
       debugDescription = String(reflecting: subject)
       typeInfo = TypeInfo(describingTypeOf: subject)
 
+#if !hasFeature(Embedded)
       let mirror = Mirror(reflectingForTest: subject)
       isCollection = mirror.displayStyle?.isCollection ?? false
+#else
+      isCollection = false
+#endif
     }
 
     /// Initialize an instance of this type with a previously-generated
@@ -207,6 +211,7 @@ public struct __Expression: Sendable {
       self.init(describing: subject)
       self.label = label
 
+#if !hasFeature(Embedded)
       let mirror = Mirror(reflectingForTest: subject)
 
       // If the subject being reflected is an instance of a reference type (e.g.
@@ -263,6 +268,7 @@ public struct __Expression: Sendable {
         }
         self.children = children
       }
+#endif
     }
   }
 
@@ -445,7 +451,7 @@ extension __Expression: CustomStringConvertible, CustomDebugStringConvertible {
   }
 
   public var debugDescription: String {
-    String(reflecting: kind)
+    sourceCode
   }
 }
 
@@ -467,6 +473,7 @@ extension __Expression.Value: CustomStringConvertible, CustomDebugStringConverti
 @_spi(ForToolsIntegrationOnly)
 public typealias Expression = __Expression
 
+#if !hasFeature(Embedded)
 extension Mirror.DisplayStyle {
   /// Whether or not this display style represents a collection of values.
   fileprivate var isCollection: Bool {
@@ -480,3 +487,4 @@ extension Mirror.DisplayStyle {
     }
   }
 }
+#endif

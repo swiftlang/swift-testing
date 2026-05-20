@@ -51,12 +51,14 @@ extension Configuration {
       ///   - membership: How to interpret the result when predicating tests.
       case tags(_ tags: Set<Tag>, anyOf: Bool, membership: Membership)
 
+#if canImport(_StringProcessing)
       /// The test filter contains a pattern to predicate test IDs against.
       ///
       /// - Parameters:
       ///   - patterns: The patterns to predicate test IDs against.
       ///   - membership: How to interpret the result when predicating tests.
       case patterns(_ patterns: [String], membership: Membership)
+#endif
 
       /// The test filter is a combination of other test filter kinds.
       ///
@@ -121,6 +123,7 @@ extension Configuration.TestFilter {
     self.init(_kind: .testIDs(Set(testIDs), membership: .excluding))
   }
 
+#if canImport(_StringProcessing)
   /// Initialize this instance to represent a pattern expression matched against
   /// a test's ID.
   ///
@@ -143,6 +146,7 @@ extension Configuration.TestFilter {
 
     self.init(_kind: .patterns(Array(patterns), membership: membership))
   }
+#endif
 
   /// Initialize this instance to include tests with a given set of tags.
   ///
@@ -247,12 +251,14 @@ extension Configuration.TestFilter.Kind {
         { $0.tags.isSuperset(of: tags) }
       }
       return .function(predicate, membership: membership)
+#if canImport(_StringProcessing)
     case let .patterns(patterns, membership):
       nonisolated(unsafe) let regexes = try patterns.map(Regex.init)
       return .function({ item in
         let id = String(describing: item.test.id)
         return regexes.contains { id.contains($0) }
       }, membership: membership)
+#endif
     case let .combination(lhs, rhs, op):
       return try .combination(lhs.operation(), rhs.operation(), op)
     }
@@ -495,10 +501,12 @@ extension Configuration.TestFilter.Kind {
   /// propagation can be skipped for filters which don't require such knowledge.
   fileprivate var requiresTraitPropagation: Bool {
     switch self {
-    case .unfiltered,
-         .testIDs,
-         .patterns:
+    case .unfiltered, .testIDs:
       false
+#if canImport(_StringProcessing)
+    case .patterns:
+      false
+#endif
     case .tags:
       true
     case let .combination(lhs, rhs, _):
