@@ -48,12 +48,6 @@ extension Interop {
   }
 }
 
-extension Interop {
-  /// Name of the environment variable flag to set when opting-in to the
-  /// experimental interop feature.
-  static let experimentalOptInKey = "SWT_EXPERIMENTAL_INTEROP_ENABLED"
-}
-
 extension Interop.Mode {
   /// The name for the environment variable which if set, overrides the default
   /// interop mode.
@@ -62,7 +56,7 @@ extension Interop.Mode {
   /// Whether this interop mode causes Swift Testing to install a fallback event
   /// handler ahead of running tests.
   var requiresInstallation: Bool {
-    Environment.flag(named: Interop.experimentalOptInKey) == true && self != .none
+    self != .none
   }
 
   /// Current interop mode, which should not be changed after tests start
