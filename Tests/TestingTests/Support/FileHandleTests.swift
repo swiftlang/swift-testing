@@ -67,7 +67,7 @@ struct FileHandleTests {
         nil
       )
     )
-    let fileHandle = try FileHandle(init(unsafeWindowsHANDLE: windowsHANDLE, options: [.readAccess]))
+    let fileHandle = try FileHandle(unsafeWindowsHANDLE: windowsHANDLE, options: [.readAccess])
     try fileHandle.withUnsafeWindowsHANDLE { ownedHANDLE in
       #expect(windowsHANDLE == ownedHANDLE)
     }

@@ -339,15 +339,15 @@ struct FileHandle: ~Copyable, Sendable {
   /// it is deinitialized or if an error is thrown from this initializer.
   init(unsafeWindowsHANDLE handle: consuming HANDLE, options: OpenOptions) throws {
     var flags: CInt = _O_BINARY
-    flags |= switch (options.contains(.readAccess), options.contains(.writeAccess)) {
+    switch (options.contains(.readAccess), options.contains(.writeAccess)) {
     case (true, true):
-      _O_RDWR
+      flags |= _O_RDWR
     case (true, false):
-      _O_RDONLY
+      flags |= _O_RDONLY
     case (false, true):
-      _O_WRONLY
+      flags |= _O_WRONLY
     case (false, false):
-      0
+      break
     }
     if !options.contains(.inheritedByChild) {
       flags |= _O_NOINHERIT
