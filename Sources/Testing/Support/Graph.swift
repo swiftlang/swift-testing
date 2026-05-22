@@ -389,8 +389,12 @@ extension Graph {
   /// The recursive implementation of `forEach(_:)`.
   ///
   /// - Parameters:
-  ///   - keyPath: The key path to use for the root node when passing it to
-  ///     `body`.
+  ///   - keyPath: The key path corresponding to the current node. The same
+  ///     array is reused across the entire traversal: each descent appends
+  ///     the child key, and the recursive call pops it on the way back up.
+  ///     This avoids the per-descent COW copy that
+  ///     `var childKeyPath = keyPath; childKeyPath.append(key)` would
+  ///     trigger.
   ///   - body: A closure that is invoked once per element in the graph. The key
   ///     path and leaf value of each node are passed to the closure.
   ///
@@ -407,8 +411,8 @@ extension Graph {
   /// The recursive implementation of `forEach(_:)`.
   ///
   /// - Parameters:
-  ///   - keyPath: The key path to use for the root node when passing it to
-  ///     `body`.
+  ///   - keyPath: The key path corresponding to the current node, reused
+  ///     across the traversal; see the synchronous overload for the rationale.
   ///   - body: A closure that is invoked once per element in the graph. The
   ///     key path and leaf value of each node are passed to the closure.
   ///
@@ -557,8 +561,12 @@ extension Graph {
   /// The recursive implementation of `compactMapValues(_:)`.
   ///
   /// - Parameters:
-  ///   - keyPath: The key path to use for the root node when passing it to
-  ///     `transform`.
+  ///   - keyPath: The key path corresponding to the current node. The same
+  ///     array is reused across the entire traversal: each descent appends
+  ///     the child key, and the recursive call pops it on the way back up.
+  ///     This avoids the per-descent COW copy that
+  ///     `var childKeyPath = keyPath; childKeyPath.append(key)` would
+  ///     trigger.
   ///   - transform: A closure that is invoked once per element in the graph.
   ///     The key path and leaf value of each node are passed to this closure.
   ///     The result of the closure is a tuple containing the new value and
@@ -618,8 +626,8 @@ extension Graph {
   /// The recursive implementation of `compactMapValues(_:)`.
   ///
   /// - Parameters:
-  ///   - keyPath: The key path to use for the root node when passing it to
-  ///     `transform`.
+  ///   - keyPath: The key path corresponding to the current node, reused
+  ///     across the traversal; see the synchronous overload for the rationale.
   ///   - transform: A closure that is invoked once per element in the graph.
   ///     The key path and leaf value of each node are passed to this closure.
   ///     The result of the closure is a tuple containing the new value and
