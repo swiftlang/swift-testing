@@ -691,32 +691,18 @@ extension ExitTest {
     // Erase the environment variable so that it cannot accidentally be opened
     // twice (nor, in theory, affect the code of the exit test.)
     Environment.setVariable(nil, named: name)
-    var fd: CInt?
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
-    fd = CInt(environmentVariable)
-#elseif os(Windows)
-    if let handle = UInt(environmentVariable).flatMap(HANDLE.init(bitPattern:)) {
-      var flags: CInt = switch (options.contains(.readAccess), options.contains(.writeAccess)) {
-      case (true, true):
-        _O_RDWR
-      case (true, false):
-        _O_RDONLY
-      case (false, true):
-        _O_WRONLY
-      case (false, false):
-        0
-      }
-      flags |= _O_BINARY | _O_NOINHERIT
-      fd = _open_osfhandle(Int(bitPattern: handle), flags)
+    guard let fd = CInt(environmentVariable), fd >= 0 else {
+      return nil
     }
+    return try? FileHandle(unsafePOSIXFileDescriptor: fd, options: options)
+#elseif os(Windows)
+    return UInt(environmentVariable)
+      .flatMap(HANDLE.init(bitPattern:))
+      .flatMap { try? FileHandle(unsafeWindowsHANDLE: $0, options: options) }
 #else
 #warning("Platform-specific implementation missing: additional file descriptors unavailable")
 #endif
-    guard let fd, fd >= 0 else {
-      return nil
-    }
-
-    return try? FileHandle(unsafePOSIXFileDescriptor: fd, options: options)
   }
 
   /// Make a string suitable for use as the value of an environment variable
