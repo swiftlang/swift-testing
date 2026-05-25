@@ -63,7 +63,7 @@ struct FileHandleTests {
   }
 #endif
 
-#if SWT_TARGET_OS_APPLE || (os(Linux) && SWT_GNU_SOURCE_DEFINED) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
   @Test("close() function")
   func closeFunction() async throws {
     try await confirmation("File handle closed") { closed in
@@ -159,7 +159,7 @@ struct FileHandleTests {
     #expect(writeEnd.isPipe as Bool)
   }
 
-#if SWT_TARGET_OS_APPLE || (os(Linux) && SWT_GNU_SOURCE_DEFINED) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
   @Test("Can close ends of a pipe")
   func closeEndsOfPipe() async throws {
     try await confirmation("File handle closed", expectedCount: 2) { closed in
@@ -299,7 +299,20 @@ func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> Fil
   )
   return FileHandle(unsafeCFILEHandle: file, closeWhenDone: false)
 }
-#elseif os(Linux) && SWT_GNU_SOURCE_DEFINED
+#elseif os(Linux)
+typealias cookie_io_functions_t = (
+  read: (@convention(c) (_ cookie: UnsafeMutableRawPointer?, _ buf: UnsafeMutablePointer<CChar>, _ nbytes: Int) -> Int)?,
+  write: UnsafeRawPointer?,
+  seek: UnsafeRawPointer?,
+  close: (@convention(c) (_ cookie: UnsafeMutableRawPointer?) -> Int)?
+)
+
+@_extern(c) func fopencookie(
+  _ cookie: UnsafeMutableRawPointer?,
+  _ modes: UnsafePointer<CChar>,
+  _ funcs: cookie_io_functions_t
+) -> SWT_FILEHandle?
+
 func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> FileHandle {
   let context = Unmanaged.passRetained(confirmation as AnyObject).toOpaque()
   var functions = cookie_io_functions_t()
