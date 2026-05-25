@@ -52,7 +52,7 @@ static const int *_Nullable swt_EX_IOERR(void) {
 #endif
 }
 
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__USE_MISC)
 typedef struct {
   ssize_t (* read)(void *cookie, char *buf, size_t nbytes);
   void *write;

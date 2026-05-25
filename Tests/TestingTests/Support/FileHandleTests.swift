@@ -302,16 +302,13 @@ func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> Fil
 #elseif os(Linux)
 func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> FileHandle {
   let context = Unmanaged.passRetained(confirmation as AnyObject).toOpaque()
-  let functions: cookie_io_functions_t = (
-    read: { _, _, _ in 0 },
-    write: nil,
-    seek: nil,
-    close: { context in
-      let confirmation = Unmanaged<AnyObject>.fromOpaque(context!).takeRetainedValue() as! Confirmation
-      confirmation()
-      return 0
-    }
-  )
+  var functions = cookie_io_functions_t()
+  functions.read = { _, _, _ in 0 }
+  functions.close = { context in
+    let confirmation = Unmanaged<AnyObject>.fromOpaque(context!).takeRetainedValue() as! Confirmation
+    confirmation()
+    return 0
+  }
   let file = try #require(fopencookie(context, "rb", functions))
   return FileHandle(unsafeCFILEHandle: file, closeWhenDone: false)
 }
