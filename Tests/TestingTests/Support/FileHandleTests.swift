@@ -304,6 +304,9 @@ func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> Fil
   let fopencookie = symbol(named: "fopencookie").map {
     castCFunction(at: $0, to: (@convention(c) (UnsafeMutableRawPointer?, UnsafePointer<CChar>, SWT_cookie_io_functions_t) -> SWT_FILEHandle?).self)
   }
+  guard let fopencookie else {
+    try Test.cancel("fopencookie() not available")
+  }
   let context = Unmanaged.passRetained(confirmation as AnyObject).toOpaque()
   var functions = SWT_cookie_io_functions_t()
   functions.read = { _, _, _ in 0 }
