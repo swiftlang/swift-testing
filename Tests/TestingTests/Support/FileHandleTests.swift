@@ -63,7 +63,7 @@ struct FileHandleTests {
   }
 #endif
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
   @Test("close() function")
   func closeFunction() async throws {
     try await confirmation("File handle closed") { closed in
@@ -159,7 +159,7 @@ struct FileHandleTests {
     #expect(writeEnd.isPipe as Bool)
   }
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
   @Test("Can close ends of a pipe")
   func closeEndsOfPipe() async throws {
     try await confirmation("File handle closed", expectedCount: 2) { closed in
@@ -299,10 +299,13 @@ func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> Fil
   )
   return FileHandle(unsafeCFILEHandle: file, closeWhenDone: false)
 }
-#elseif os(Linux)
+#elseif os(Linux) && !SWT_NO_DYNAMIC_LINKING
 func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> FileHandle {
+  let fopencookie = symbol(named: "fopencookie").map {
+    castCFunction(at: $0, to: (@convention(c) (UnsafeMutableRawPointer?, UnsafePointer<CChar>, SWT_cookie_io_functions_t) -> SWT_FILEHandle?).self)
+  }
   let context = Unmanaged.passRetained(confirmation as AnyObject).toOpaque()
-  var functions = cookie_io_functions_t()
+  var functions = SWT_cookie_io_functions_t()
   functions.read = { _, _, _ in 0 }
   functions.close = { context in
     let confirmation = Unmanaged<AnyObject>.fromOpaque(context!).takeRetainedValue() as! Confirmation
