@@ -63,7 +63,7 @@ struct FileHandleTests {
   }
 #endif
 
-#if SWT_TARGET_OS_APPLE || (os(Linux) && SWT_GNU_SOURCE_DEFINED) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || (os(Linux) && _GNU_SOURCE) || os(FreeBSD) || os(OpenBSD)
   @Test("close() function")
   func closeFunction() async throws {
     try await confirmation("File handle closed") { closed in
@@ -159,7 +159,7 @@ struct FileHandleTests {
     #expect(writeEnd.isPipe as Bool)
   }
 
-#if SWT_TARGET_OS_APPLE || (os(Linux) && SWT_GNU_SOURCE_DEFINED) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || (os(Linux) && _GNU_SOURCE) || os(FreeBSD) || os(OpenBSD)
   @Test("Can close ends of a pipe")
   func closeEndsOfPipe() async throws {
     try await confirmation("File handle closed", expectedCount: 2) { closed in
@@ -299,7 +299,7 @@ func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> Fil
   )
   return FileHandle(unsafeCFILEHandle: file, closeWhenDone: false)
 }
-#elseif os(Linux) && SWT_GNU_SOURCE_DEFINED
+#elseif os(Linux) && _GNU_SOURCE
 func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> FileHandle {
   let context = Unmanaged.passRetained(confirmation as AnyObject).toOpaque()
   var functions = cookie_io_functions_t()

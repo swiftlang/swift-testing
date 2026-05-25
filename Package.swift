@@ -348,6 +348,9 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static func packageSettings(isTestTarget: Bool = false) -> Self {
     var result = availabilityMacroSettings
 
+    // Define _GNU_SOURCE on Linux.
+    result.append(.define("_GNU_SOURCE", .when(platforms: [.linux])))
+
     // treatWarning(..., as: .warning) cannot be used in packages which are
     // used as dependencies, since the package manager suppresses all warnings
     // for dependencies. (See: rdar://170562285)
@@ -464,6 +467,7 @@ extension Array where Element: _CFamilyLanguageBuildSetting {
   static func packageSettings(isTestTarget: Bool = false) -> Self {
     var result = Self()
 
+    // Define _GNU_SOURCE on Linux.
     result.append(.define("_GNU_SOURCE", .when(platforms: [.linux])))
 
     // Define a compiler condition so we can discover at macro expansion time if
