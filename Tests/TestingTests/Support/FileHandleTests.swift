@@ -60,10 +60,10 @@ struct FileHandleTests {
       CreateFileA(
         "NUL",
         GENERIC_READ,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE),
         nil,
-        OPEN_ALWAYS,
-        FILE_ATTRIBUTE_NORMAL,
+        DWORD(OPEN_ALWAYS),
+        DWORD(FILE_ATTRIBUTE_NORMAL),
         nil
       )
     )
