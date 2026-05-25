@@ -129,6 +129,7 @@ let package = Package(
         buildingForEmbedded ? [] : ["TestingMacros"]
       }(),
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
+      cSettings: .packageSettings(),
       cxxSettings: .packageSettings(),
       swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("Testing"),
       linkerSettings: [
@@ -196,12 +197,14 @@ let package = Package(
     .target(
       name: "_TestingInternals",
       exclude: ["CMakeLists.txt"],
+      cSettings: .packageSettings(),
       cxxSettings: .packageSettings()
     ),
     .target(
       name: "_TestDiscovery",
       dependencies: ["_TestingInternals",],
       exclude: ["CMakeLists.txt"],
+      cSettings: .packageSettings(),
       cxxSettings: .packageSettings(),
       swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_TestDiscovery")
     ),
@@ -212,6 +215,7 @@ let package = Package(
       dependencies: ["_TestingInternals",],
       path: "Sources/_TestingInterop",
       exclude: ["CMakeLists.txt"],
+      cSettings: .packageSettings(),
       cxxSettings: .packageSettings(),
       swiftSettings: .packageSettings() + .moduleABIName("_TestingInterop")
     ),
@@ -454,11 +458,13 @@ extension Array where Element == PackageDescription.SwiftSetting {
   }
 }
 
-extension Array where Element == PackageDescription.CXXSetting {
+extension Array where Element: _CFamilyLanguageBuildSetting {
   /// Settings intended to be applied to every C++ target in this package.
   /// Analogous to project-level build settings in an Xcode project.
   static func packageSettings(isTestTarget: Bool = false) -> Self {
     var result = Self()
+
+    result.append(.define("_GNU_SOURCE", .when(platforms: [.linux])))
 
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
@@ -550,9 +556,20 @@ private protocol _LanguageBuildSetting {
   static func define(_ name: String, _ condition: BuildSettingCondition?) -> Self
 }
 
-extension PackageDescription.SwiftSetting: _LanguageBuildSetting {}
-extension PackageDescription.CXXSetting: _LanguageBuildSetting {
+private protocol _CFamilyLanguageBuildSetting: _LanguageBuildSetting {
+  static func define(_ name: String, to value: String?, _ condition: BuildSettingCondition?) -> Self
+}
+
+extension _CFamilyLanguageBuildSetting {
+  static func define(_ name: String, to value: String? = nil, _ condition: BuildSettingCondition? = nil) -> Self {
+    .define(name, to: value, condition)
+  }
+
   static func define(_ name: String, _ condition: BuildSettingCondition?) -> Self {
     .define(name, to: nil, condition)
   }
 }
+
+extension PackageDescription.SwiftSetting: _LanguageBuildSetting {}
+extension PackageDescription.CXXSetting: _CFamilyLanguageBuildSetting {}
+extension PackageDescription.CSetting: _CFamilyLanguageBuildSetting {}
