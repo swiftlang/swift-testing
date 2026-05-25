@@ -300,19 +300,6 @@ func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> Fil
   return FileHandle(unsafeCFILEHandle: file, closeWhenDone: false)
 }
 #elseif os(Linux)
-private typealias cookie_io_functions_t = (
-  read: (@convention(c) (_ cookie: UnsafeMutableRawPointer?, _ buf: UnsafeMutablePointer<CChar>, _ nbytes: Int) -> Int)?,
-  write: UnsafeRawPointer?,
-  seek: UnsafeRawPointer?,
-  close: (@convention(c) (_ cookie: UnsafeMutableRawPointer?) -> Int)?
-)
-
-@_extern(c) private func fopencookie(
-  _ cookie: UnsafeMutableRawPointer?,
-  _ modes: UnsafePointer<CChar>,
-  _ funcs: cookie_io_functions_t
-) -> SWT_FILEHandle?
-
 func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> FileHandle {
   let context = Unmanaged.passRetained(confirmation as AnyObject).toOpaque()
   let functions: cookie_io_functions_t = (

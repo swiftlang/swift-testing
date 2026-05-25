@@ -52,6 +52,21 @@ static const int *_Nullable swt_EX_IOERR(void) {
 #endif
 }
 
+#if defined(__linux__)
+typedef struct {
+  ssize_t (* read)(void *cookie, char *buf, size_t nbytes);
+  void *write;
+  void *seek;
+  ssize_t (* close)(void *cookie);
+} cookie_io_functions_t;
+
+SWT_IMPORT_FROM_STDLIB FILE *fopencookie(
+  void *cookie,
+  const char *modes,
+  cookie_io_functions_t funcs
+);
+#endif
+
 SWT_ASSUME_NONNULL_END
 
 #endif
