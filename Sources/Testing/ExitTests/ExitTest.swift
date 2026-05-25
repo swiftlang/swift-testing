@@ -232,7 +232,7 @@ extension ExitTest {
     // a pipe instead of a regular file; that gets us our performance back.
     // SEE: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/coredump.c#n610
     var rl = rlimit(rlim_cur: 1, rlim_max: 1)
-    _ = setrlimit(CInt(RLIMIT_CORE.rawValue), &rl)
+    _ = setrlimit(RLIMIT_CORE, &rl)
 #elseif os(FreeBSD) || os(OpenBSD)
     // As with Linux, disable the generation core files. The BSDs do not, as far
     // as I can tell, special-case RLIMIT_CORE=1.
