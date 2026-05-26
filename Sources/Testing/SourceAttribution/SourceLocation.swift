@@ -24,7 +24,7 @@ public struct SourceLocation: Sendable {
   public var fileID: String {
     willSet {
       precondition(!newValue.isEmpty, "SourceLocation.fileID must not be empty (was \(newValue))")
-      precondition(newValue.contains("/"), "SourceLocation.fileID must be a well-formed file ID (was \(newValue))")
+      precondition(newValue.utf8.contains(UInt8(ascii: "/")), "SourceLocation.fileID must be a well-formed file ID (was \(newValue))")
     }
   }
 
@@ -74,6 +74,7 @@ public struct SourceLocation: Sendable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var filePath: String
 
@@ -113,14 +114,11 @@ public struct SourceLocation: Sendable {
   /// - Precondition: `column` must be greater than `0`.
   public init(fileID: String, filePath: String, line: Int, column: Int) {
     precondition(!fileID.isEmpty, "SourceLocation.fileID must not be empty (was \(fileID))")
-    precondition(fileID.contains("/"), "SourceLocation.fileID must be a well-formed file ID (was \(fileID))")
+    precondition(fileID.utf8.contains(UInt8(ascii: "/")), "SourceLocation.fileID must be a well-formed file ID (was \(fileID))")
     precondition(line > 0, "SourceLocation.line must be greater than 0 (was \(line))")
     precondition(column > 0, "SourceLocation.column must be greater than 0 (was \(column))")
 
-    self.fileID = fileID
-    self.filePath = filePath
-    self.line = line
-    self.column = column
+    self.init(__uncheckedFileID: fileID, filePath: filePath, line: line, column: column)
   }
 }
 
@@ -189,6 +187,7 @@ extension SourceLocation: CustomStringConvertible, CustomDebugStringConvertible 
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension SourceLocation: Codable {
@@ -222,11 +221,16 @@ extension SourceLocation: Codable {
     // For simplicity's sake, we won't be picky about which key contains the
     // file path.
     let filePath = try container.decodeIfPresent(String.self, forKey: .filePath)
-      ?? container.decode(String.self, forKey: ._filePath)
+    ?? container.decode(String.self, forKey: ._filePath)
 
     self.init(fileID: fileID, filePath: filePath, line: line, column: column)
   }
+}
+#endif
 
+// MARK: - File ID synthesis
+
+extension SourceLocation {
   init(fileIDSynthesizingIfNeeded fileID: String?, filePath: String, line: Int, column: Int) {
     // Synthesize the file ID if needed.
     let fileID = fileID ?? Self._synthesizeFileID(fromFilePath: filePath)
@@ -234,8 +238,14 @@ extension SourceLocation: Codable {
   }
 
   /// The name of the ersatz Swift module used for synthesized file IDs.
-  static var synthesizedModuleName: String {
+  @_spi(ForToolsIntegrationOnly)
+  public static var synthesizedModuleName: String {
     "__C"
+  }
+
+  /// An instance of this type representing an unknown source location.
+  static var unknown: Self {
+    Self(fileID: "<unknown>/<unknown>", filePath: "<unknown>", line: 1, column: 1)
   }
 
   /// Synthesize a file ID from the given file path and module name.

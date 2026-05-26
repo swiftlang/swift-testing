@@ -110,9 +110,53 @@ extension Comment: ExpressibleByStringInterpolation {
       rawValue += literal
     }
 
+#if !hasFeature(Embedded)
     @inlinable public mutating func appendInterpolation(_ value: (some Any)?) {
       rawValue += String(describingForTest: value)
     }
+#else
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomTestStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomStringConvertible & CustomTestStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomDebugStringConvertible & CustomTestStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomDebugStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomStringConvertible & CustomDebugStringConvertible & CustomTestStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomStringConvertible & CustomDebugStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @_disfavoredOverload
+    @available(*, deprecated, message: "String representations of arbitrary values are not supported in Embedded Swift")
+    mutating func appendInterpolation(_ value: borrowing some ~Copyable & ~Escapable) {
+      rawValue += String(describingForTest: value)
+    }
+
+    mutating func appendInterpolation(_ value: (some ~Copyable & ~Escapable).Type) {
+      rawValue += String(describingForTest: value)
+    }
+
+    mutating func appendInterpolation(_ value: any Error) {
+      rawValue += String(describingForTest: value)
+    }
+#endif
 
     @inlinable public mutating func appendInterpolation(_ value: (some StringProtocol)?) {
       // Special-case strings to not include the quotation marks added by
@@ -131,11 +175,12 @@ extension Comment: ExpressibleByStringInterpolation {
 
 extension Comment: Equatable, Hashable {}
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension Comment: Codable {}
-
 extension Comment.Kind: Codable {}
+#endif
 
 // MARK: - Trait, TestTrait, SuiteTrait
 
@@ -143,6 +188,12 @@ extension Comment: TestTrait, SuiteTrait {
   public var comments: [Comment] {
     [self]
   }
+
+#if hasFeature(Embedded)
+  public func __as(_: Comment.Type) -> Comment? {
+    self
+  }
+#endif
 }
 
 @_spi(Experimental)
@@ -173,19 +224,5 @@ extension Test {
   /// The complete set of comments about this test from all of its traits.
   public var comments: [Comment] {
     traits.flatMap(\.comments)
-  }
-
-  /// The complete set of comments about this test from all traits of a certain
-  /// type.
-  ///
-  /// - Parameters:
-  ///   - traitType: The type of ``Trait`` whose comments should be returned.
-  ///
-  /// - Returns: The comments found for the specified test trait type.
-  @_spi(Experimental)
-  public func comments<T>(from traitType: T.Type) -> [Comment] where T: Trait {
-    traits.lazy
-      .compactMap { $0 as? T }
-      .flatMap(\.comments)
   }
 }

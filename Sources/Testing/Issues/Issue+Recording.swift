@@ -63,7 +63,6 @@ extension Issue {
   /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
   /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
   @_disfavoredOverload
-  @_documentation(visibility: private)
   @available(*, deprecated, message: "Use record(_:severity:sourceLocation:) instead.")
   @discardableResult public static func record(
     _ comment: Comment? = nil,
@@ -90,6 +89,7 @@ extension Issue {
   /// 
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   @discardableResult public static func record(
     _ comment: Comment? = nil,

@@ -48,15 +48,97 @@ struct FileHandle: ~Copyable, Sendable {
     Self(unsafeCFILEHandle: swt_stderr(), closeWhenDone: false)
   }
 
+  /// Options to apply when opening a file.
+  ///
+  /// An instance of this type does _not_ represent a value of type `mode_t`.
+  /// Use its ``stringValue`` property to get a string you can pass to `fopen()`
+  /// and related functions.
+  struct OpenOptions: RawRepresentable, OptionSet {
+    var rawValue: Int
+
+    /// The file should be opened for reading.
+    ///
+    /// This option is equivalent to the `"r"` character or `O_RDONLY`. If you
+    /// also specify ``writeAccess``, the two options combined are equivalent to
+    /// the `"w+"` characters or `O_RDWR`.
+    static var readAccess: Self { .init(rawValue: 1 << 0) }
+
+    /// The file should be opened for writing.
+    ///
+    /// This option is equivalent to the `"w"` character or `O_WRONLY`. If you
+    /// also specify ``readAccess``, the two options combined are equivalent to
+    /// the `"w+"` characters or `O_RDWR`.
+    static var writeAccess: Self { .init(rawValue: 1 << 1) }
+
+    /// The underlying file descriptor or handle should be inherited by any
+    /// child processes created by the current process.
+    ///
+    /// By default, the resulting file handle is not inherited by any child
+    /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
+    /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
+    ///
+    /// This option is equivalent to the `"e"` character (`"N"` on Windows) or
+    /// `O_CLOEXEC` (`_O_NOINHERIT` on Windows).
+    static var inheritedByChild: Self { .init(rawValue: 1 << 2) }
+
+    /// The file must be created when opened.
+    ///
+    /// When you use this option and a file already exists at the given path
+    /// when you try to open it, the testing library throws an error equivalent
+    /// to `EEXIST`.
+    ///
+    /// This option is equivalent to the `"x"` character or `O_CREAT | O_EXCL`.
+    static var creationRequired: Self { .init(rawValue: 1 << 3) }
+
+    /// The string representation of this instance, suitable for passing to
+    /// `fopen()` and related functions.
+    var stringValue: String {
+      var result = ""
+      result.reserveCapacity(8)
+
+      if contains(.writeAccess) {
+        result.append("w")
+      } else if contains(.readAccess) {
+        result.append("r")
+      }
+      // Always open files in binary mode, not text mode.
+      result.append("b")
+
+      if contains(.readAccess) && contains(.writeAccess) {
+        result.append("+")
+      }
+
+      if contains(.creationRequired) {
+        result.append("x")
+      }
+
+      if !contains(.inheritedByChild) {
+#if os(Windows)
+        // On Windows, "N" is used rather than "e" to signify that a file
+        // handle is not inherited.
+        result.append("N")
+#else
+        result.append("e")
+#endif
+      }
+
+#if DEBUG
+      assert(result.isContiguousUTF8, "Constructed a file mode string '\(result)' that isn't UTF-8.")
+#endif
+
+      return result
+    }
+  }
+
   /// Initialize an instance of this type by opening a file at the given path
-  /// with the given mode.
+  /// with the given options.
   ///
   /// - Parameters:
   ///   - path: The path to open.
-  ///   - mode: The mode to open `path` with, such as `"wb"`.
+  ///   - options: The options to open `path` with.
   ///
   /// - Throws: Any error preventing the stream from being opened.
-  init(atPath path: String, mode: String) throws {
+  init(atPath path: String, options: OpenOptions) throws {
 #if os(Windows)
     // Special-case CONOUT$ to map to stdout. This way, if somebody specifies
     // CONOUT$ as the target path for XML or JSON output from `swift test`,
@@ -68,21 +150,14 @@ struct FileHandle: ~Copyable, Sendable {
     // To our knowledge, this sort of special-casing is not required on
     // POSIX-like platforms (i.e. when opening "/dev/stdout"), but it can be
     // adapted for use there if some POSIX-like platform does need it.
-    if path == "CONOUT$" && mode.contains("w") {
+    if path == "CONOUT$" && options.contains(.writeAccess) {
       self = .stdout
       return
     }
 
-    // On Windows, "N" is used rather than "e" to signify that a file handle is
-    // not inherited.
-    var mode = mode
-    if let eIndex = mode.firstIndex(of: "e") {
-      mode.replaceSubrange(eIndex ... eIndex, with: "N")
-    }
-
     // Windows deprecates fopen() as insecure, so call _wfopen_s() instead.
     let fileHandle = try path.withCString(encodedAs: UTF16.self) { path in
-      try mode.withCString(encodedAs: UTF16.self) { mode in
+      try options.stringValue.withCString(encodedAs: UTF16.self) { mode in
         var file: SWT_FILEHandle?
         let result = _wfopen_s(&file, path, mode)
         guard let file, result == 0 else {
@@ -92,7 +167,7 @@ struct FileHandle: ~Copyable, Sendable {
       }
     }
 #else
-    guard let fileHandle = fopen(path, mode) else {
+    guard let fileHandle = fopen(path, options.stringValue) else {
       throw CError(rawValue: swt_errno())
     }
 #endif
@@ -103,28 +178,32 @@ struct FileHandle: ~Copyable, Sendable {
   ///
   /// - Parameters:
   ///   - path: The path to read from.
+  ///   - options: The options to open the file in. ``OpenOptions/readAccess``
+  ///     is added to this value automatically.
   ///
   /// - Throws: Any error preventing the stream from being opened.
   ///
   /// By default, the resulting file handle is not inherited by any child
   /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
   /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
-  init(forReadingAtPath path: String) throws {
-    try self.init(atPath: path, mode: "reb")
+  init(forReadingAtPath path: String, options: OpenOptions = []) throws {
+    try self.init(atPath: path, options: options.union(.readAccess))
   }
 
   /// Initialize an instance of this type to write to the given path.
   ///
   /// - Parameters:
   ///   - path: The path to write to.
+  ///   - options: The options to open the file in. ``OpenOptions/writeAccess``
+  ///     is added to this value automatically.
   ///
   /// - Throws: Any error preventing the stream from being opened.
   ///
   /// By default, the resulting file handle is not inherited by any child
   /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
   /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
-  init(forWritingAtPath path: String) throws {
-    try self.init(atPath: path, mode: "web")
+  init(forWritingAtPath path: String, options: OpenOptions = []) throws {
+    try self.init(atPath: path, options: options.union(.writeAccess))
   }
 
   /// Initialize an instance of this type with an existing C file handle.
@@ -148,17 +227,17 @@ struct FileHandle: ~Copyable, Sendable {
   ///   - fd: The POSIX file descriptor to wrap. The caller is responsible for
   ///     ensuring that this file handle is open in the expected mode and that
   ///     another part of the system won't close it.
-  ///   - mode: The mode `fd` was opened with, such as `"wb"`.
+  ///   - options: The options `fd` was opened with.
   ///
   /// - Throws: Any error preventing the stream from being opened.
   ///
   /// The resulting file handle takes ownership of `fd` and closes it when it is
   /// deinitialized or if an error is thrown from this initializer.
-  init(unsafePOSIXFileDescriptor fd: CInt, mode: String) throws {
+  init(unsafePOSIXFileDescriptor fd: CInt, options: OpenOptions) throws {
 #if os(Windows)
-    let fileHandle = _fdopen(fd, mode)
+    let fileHandle = _fdopen(fd, options.stringValue)
 #else
-    let fileHandle = fdopen(fd, mode)
+    let fileHandle = fdopen(fd, options.stringValue)
 #endif
     guard let fileHandle else {
       let errorCode = swt_errno()
@@ -460,18 +539,77 @@ extension FileHandle {
 #if !SWT_NO_PIPES
 // MARK: - Pipes
 
-#if !SWT_TARGET_OS_APPLE && !os(Windows) && !SWT_NO_DYNAMIC_LINKING
-/// Create a pipe with flags.
-///
-/// This function declaration is provided because `pipe2()` is only declared if
-/// `_GNU_SOURCE` is set, but setting it causes build errors due to conflicts
-/// with Swift's Glibc module.
-private let _pipe2 = symbol(named: "pipe2").map {
-  castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<CInt>, CInt) -> CInt).self)
-}
+extension FileHandle {
+#if os(Linux) && !SWT_NO_DYNAMIC_LINKING
+  /// Create a pipe with flags.
+  ///
+  /// This function declaration is provided because `pipe2()` is only declared
+  /// if `_GNU_SOURCE` is set, but setting it causes build errors due to
+  /// conflicts with Swift's Glibc module.
+  private static let _pipe2 = symbol(named: "pipe2").map {
+    castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<CInt>, CInt) -> CInt).self)
+  }
 #endif
 
-extension FileHandle {
+  /// A wrapper around either `pipe2()` or `pipe()` that passes `O_CLOEXEC` (or
+  /// sets `FD_CLOEXEC`).
+  ///
+  /// - Parameters:
+  ///   - fds: A pointer to two integers. On successful return, initialized to two
+  ///     file descriptors (as per `pipe2()` and `pipe()`).
+  ///
+  /// - Returns: On success, `0`. On failure, any other value. Check `errno` for
+  ///   more information about the failure that occurred.
+  ///
+  /// This function abstracts away the platform-specific differences in
+  /// availability for `pipe2()`. On Windows, it calls `_pipe()` and passes
+  /// `_O_NOINHERIT` (Windows' equivalent of `O_CLOEXEC`).
+  private static func _pipeWithO_CLOEXEC(_ fds: UnsafeMutablePointer<CInt>) -> CInt {
+#if os(Windows)
+    return _pipe(fds, 0, _O_BINARY | _O_NOINHERIT)
+#else
+    func simulatePipe2Call(_ fds: UnsafeMutablePointer<CInt>) -> CInt {
+      // pipe2() is not available. Use pipe() instead and simulate O_CLOEXEC to the
+      // best of our ability.
+      let result = pipe(fds)
+      guard result == 0 else {
+        return result
+      }
+      do {
+        try setFD_CLOEXEC(true, onFileDescriptor: fds[0])
+        try setFD_CLOEXEC(true, onFileDescriptor: fds[1])
+      } catch {
+        // Failed to set FD_CLOEXEC on either end of the pipe. This is unexpected
+        // and may in practice be unreachable.
+        _close(fds[0])
+        fds[0] = -1
+        _close(fds[1])
+        fds[1] = -1
+        return -1
+      }
+      return 0
+    }
+
+#if SWT_TARGET_OS_APPLE
+    // pipe2() is not implemented on Darwin. BUG: rdar://138426570
+    return simulatePipe2Call(fds)
+#elseif os(Linux)
+#if !SWT_NO_DYNAMIC_LINKING
+    if let _pipe2 {
+      return _pipe2(fds, O_CLOEXEC)
+    }
+#endif
+    return simulatePipe2Call(fds)
+#elseif os(FreeBSD) || os(OpenBSD) || os(Android)
+    // These platforms implement pipe2() without constraints.
+    return pipe2(fds, O_CLOEXEC)
+#else
+#warning("Platform-specific implementation missing: cannot call pipe2()")
+    return simulatePipe2Call(fds)
+#endif
+#endif
+  }
+
   /// Make a pipe connecting two new file handles.
   ///
   /// - Parameters:
@@ -492,33 +630,10 @@ extension FileHandle {
   /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
   /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
   static func makePipe(readEnd: inout FileHandle?, writeEnd: inout FileHandle?) throws {
-#if !os(Windows)
-    var pipe2Called = false
-#endif
-
     var (fdReadEnd, fdWriteEnd) = try withUnsafeTemporaryAllocation(of: CInt.self, capacity: 2) { fds in
-#if os(Windows)
-      guard 0 == _pipe(fds.baseAddress, 0, _O_BINARY | _O_NOINHERIT) else {
+      guard 0 == _pipeWithO_CLOEXEC(fds.baseAddress!) else {
         throw CError(rawValue: swt_errno())
       }
-#else
-#if !SWT_TARGET_OS_APPLE && !os(Windows) && !SWT_NO_DYNAMIC_LINKING
-      if let _pipe2 {
-        guard 0 == _pipe2(fds.baseAddress!, O_CLOEXEC) else {
-          throw CError(rawValue: swt_errno())
-        }
-        pipe2Called = true
-      }
-#endif
-
-      if !pipe2Called {
-        // pipe2() is not available. Use pipe() instead and simulate O_CLOEXEC
-        // to the best of our ability.
-        guard 0 == pipe(fds.baseAddress!) else {
-          throw CError(rawValue: swt_errno())
-        }
-      }
-#endif
       return (fds[0], fds[1])
     }
     defer {
@@ -526,24 +641,15 @@ extension FileHandle {
       Self._close(fdWriteEnd)
     }
 
-#if !os(Windows)
-    if !pipe2Called {
-      // pipe2() is not available. Use pipe() instead and simulate O_CLOEXEC
-      // to the best of our ability.
-      try setFD_CLOEXEC(true, onFileDescriptor: fdReadEnd)
-      try setFD_CLOEXEC(true, onFileDescriptor: fdWriteEnd)
-    }
-#endif
-
     do {
       defer {
         fdReadEnd = -1
       }
-      try readEnd = FileHandle(unsafePOSIXFileDescriptor: fdReadEnd, mode: "rb")
+      try readEnd = FileHandle(unsafePOSIXFileDescriptor: fdReadEnd, options: .readAccess)
       defer {
         fdWriteEnd = -1
       }
-      try writeEnd = FileHandle(unsafePOSIXFileDescriptor: fdWriteEnd, mode: "wb")
+      try writeEnd = FileHandle(unsafePOSIXFileDescriptor: fdWriteEnd, options: .writeAccess)
     } catch {
       // Don't leak file handles! Ensure we've cleared both pointers before
       // returning so the state is consistent in the caller.

@@ -109,6 +109,38 @@ public protocol Trait: Sendable {
   ///   @Available(Xcode, introduced: 16.3)
   /// }
   func scopeProvider(for test: Test, testCase: Test.Case?) -> TestScopeProvider?
+
+#if hasFeature(Embedded)
+  /// Get this value as an instance of ``TestTrait``.
+  ///
+  /// - Warning: This function is used to implement traits under Embedded Swift.
+  ///   Do not use it or provide an implementation for it.
+  func __as(_: (any TestTrait).Type) -> (any TestTrait)?
+
+  /// Get this value as an instance of ``SuiteTrait``.
+  ///
+  /// - Warning: This function is used to implement traits under Embedded Swift.
+  ///   Do not use it or provide an implementation for it.
+  func __as(_: (any SuiteTrait).Type) -> (any SuiteTrait)?
+
+  /// Get this value as an instance of ``Tag/List``.
+  ///
+  /// - Warning: This function is used to implement traits under Embedded Swift.
+  ///   Do not use it or provide an implementation for it.
+  func __as(_: Comment.Type) -> Comment?
+
+  /// Get this value as an instance of ``IssueHandlingTrait``.
+  ///
+  /// - Warning: This function is used to implement traits under Embedded Swift.
+  ///   Do not use it or provide an implementation for it.
+  func __as(_: IssueHandlingTrait.Type) -> IssueHandlingTrait?
+
+  /// Get this value as an instance of ``Tag/List``.
+  ///
+  /// - Warning: This function is used to implement traits under Embedded Swift.
+  ///   Do not use it or provide an implementation for it.
+  func __as(_: Tag.List.Type) -> Tag.List?
+#endif
 }
 
 /// A protocol that tells the test runner to run custom code before or after it
@@ -285,3 +317,45 @@ extension SuiteTrait {
     false
   }
 }
+
+#if !hasFeature(Embedded)
+extension Trait {
+  func __as<T>(_: T.Type) -> T? {
+    self as? T
+  }
+}
+#else
+extension Trait {
+  public func __as(_: (any TestTrait).Type) -> (any TestTrait)? {
+    nil
+  }
+
+  public func __as(_: (any SuiteTrait).Type) -> (any SuiteTrait)? {
+    nil
+  }
+
+  public func __as(_: Comment.Type) -> Comment? {
+    nil
+  }
+
+  public func __as(_: IssueHandlingTrait.Type) -> IssueHandlingTrait? {
+    nil
+  }
+
+  public func __as(_: Tag.List.Type) -> Tag.List? {
+    nil
+  }
+}
+
+extension Trait where Self: TestTrait {
+  public func __as(_: (any TestTrait).Type) -> (any TestTrait)? {
+    self
+  }
+}
+
+extension Trait where Self: SuiteTrait {
+  public func __as(_: (any SuiteTrait).Type) -> (any SuiteTrait)? {
+    self
+  }
+}
+#endif

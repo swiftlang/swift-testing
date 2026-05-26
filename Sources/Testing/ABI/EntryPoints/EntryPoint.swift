@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -30,7 +30,7 @@ private import Synchronization
 /// ``ABI/v0/entryPoint-swift.type.property`` to get a reference to an
 /// ABI-stable version of this function.
 func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
-  let exitCode = Mutex(EXIT_SUCCESS)
+  let exitCode = Atomic(EXIT_SUCCESS)
 
   do {
 #if !SWT_NO_EXIT_TESTS
@@ -47,9 +47,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // Set up the event handler.
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
       if case let .issueRecorded(issue) = event.kind, issue.isFailure {
-        exitCode.withLock { exitCode in
-          exitCode = EXIT_FAILURE
-        }
+        exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
       }
       oldEventHandler(event, context)
     }
@@ -59,7 +57,9 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // Configure the event recorder to write events to stderr.
     if configuration.verbosity > .min {
       // Check for experimental console output flag
-      if Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true {
+      let useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
+#if !SWT_NO_ABI_JSON_SCHEMA
+      if useExperimentalConsoleOutput {
         // Use experimental AdvancedConsoleOutputRecorder
         var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>.Options()
         advancedOptions.base = .for(.stderr)
@@ -72,7 +72,10 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
           eventRecorder.record(event, in: context)
           oldEventHandler(event, context)
         }
-      } else {
+      }
+#endif
+
+      if !useExperimentalConsoleOutput {
         // Use the standard console output recorder (default behavior)
         let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
           try? FileHandle.stderr.write(string)
@@ -95,7 +98,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
     // The set of matching tests (or, in the case of `swift test list`, the set
     // of all tests.)
-    let tests: [Test]
+    var tests: [Test]
 
     if args.listTests ?? false {
       tests = await Array(Test.all)
@@ -111,9 +114,13 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
         }
       }
 
+      // Synthesize any missing suites. Note we write to stdout before this
+      // step because we don't emit suites to stdout anyway.
+      tests = Runner.Plan.synthesizeSuites(for: tests)
+
       // Post an event for every discovered test. These events are turned into
       // JSON objects if JSON output is enabled.
-      for test in tests {
+      for test in tests where !test.isHidden {
         Event.post(.testDiscovered, for: (test, nil), configuration: configuration)
       }
     } else {
@@ -127,23 +134,21 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // the caller (assumed to be Swift Package Manager) can implement special
     // handling.
     if tests.isEmpty {
-      exitCode.withLock { exitCode in
-        if exitCode == EXIT_SUCCESS {
-          exitCode = EXIT_NO_TESTS_FOUND
-        }
-      }
+      _ = exitCode.compareExchange(
+        expected: EXIT_SUCCESS,
+        desired: EXIT_NO_TESTS_FOUND,
+        ordering: .sequentiallyConsistent
+      )
     }
   } catch {
 #if !SWT_NO_FILE_IO
     try? FileHandle.stderr.write("\(String(describingForTest: error))\n")
 #endif
 
-    exitCode.withLock { exitCode in
-      exitCode = EXIT_FAILURE
-    }
+    exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
   }
 
-  return exitCode.rawValue
+  return exitCode.load(ordering: .sequentiallyConsistent)
 }
 
 // MARK: - Listing tests
@@ -337,6 +342,7 @@ public struct __CommandLineArguments_v0: Sendable {
   public var attachmentsPath: String?
 }
 
+#if !SWT_NO_CODABLE
 extension __CommandLineArguments_v0: Codable {
   // Explicitly list the coding keys so that storage properties like _verbosity
   // do not end up with leading underscores when encoded.
@@ -359,6 +365,7 @@ extension __CommandLineArguments_v0: Codable {
     case attachmentsPath
   }
 }
+#endif
 
 extension RandomAccessCollection<String> {
   /// Get the value of the command line argument with the given name.
@@ -414,7 +421,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   let args = args.dropFirst()
 
 #if !SWT_NO_FILE_IO
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
   // Configuration for the test run passed in as a JSON file (experimental)
   //
   // This argument should always be the first one we parse.
@@ -433,6 +440,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     // allowed to pass a configuration AND e.g. "--verbose" and they'll both be
     // respected (it should be the least "surprising" outcome of passing both.)
   }
+#endif
 
   // Event stream output
   if let path = args.argumentValue(forLabel: "--event-stream-output-path") ?? args.argumentValue(forLabel: "--experimental-event-stream-output") {
@@ -479,7 +487,6 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   if let attachmentsPath = args.argumentValue(forLabel: "--attachments-path") ?? args.argumentValue(forLabel: "--experimental-attachments-path") {
     result.attachmentsPath = attachmentsPath
   }
-#endif
 
   if args.contains("--list-tests") {
     result.listTests = true
@@ -604,7 +611,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     configuration.attachmentsPath = attachmentsPath
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_ABI_JSON_SCHEMA
   // Event stream output
   if let eventStreamOutputPath = args.eventStreamOutputPath {
     let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
@@ -622,6 +629,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 #endif
 #endif
 
+#if canImport(_StringProcessing)
   // Filtering
   var filters = [Configuration.TestFilter]()
   func testFilter(forRegularExpressions regexes: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
@@ -640,6 +648,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   if args.includeHiddenTests == true {
     configuration.testFilter.includeHiddenTests = true
   }
+#endif
 
   // Set up the iteration policy for the test run.
   var repetitionPolicy: Configuration.RepetitionPolicy = .once
@@ -690,7 +699,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   return configuration
 }
 
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
+#if !SWT_NO_ABI_JSON_SCHEMA
 /// Create an event handler that streams events to the given file using the
 /// specified ABI version.
 ///
@@ -711,7 +720,7 @@ func eventHandlerForStreamingEvents(
   forwardingTo targetEventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
 ) throws -> Event.Handler {
   let versionNumber = versionNumber ?? ABI.CurrentVersion.versionNumber
-  guard let abi = ABI.version(forVersionNumber: versionNumber) else {
+  guard let abi = ABI._version(forVersionNumber: versionNumber) else {
     throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(versionNumber)")
   }
   return abi.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: targetEventHandler)

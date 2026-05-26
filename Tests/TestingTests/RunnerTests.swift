@@ -720,7 +720,11 @@ final class RunnerTests: XCTestCase {
     // emitted.
     let plan = await Runner.Plan(selecting: ObsoletedTests.self)
     for step in plan.steps where !step.test.isSuite {
-      XCTAssertNotNil(step.test.comments(from: ConditionTrait.self).map(\.rawValue).first { $0.contains("999.0") })
+      let conditionComments = step.test.traits
+        .compactMap { $0.__as(ConditionTrait.self) }
+        .flatMap(\.comments)
+        .map(\.rawValue)
+      XCTAssertNotNil(conditionComments.first { $0.contains("999.0") })
     }
   }
 #endif
@@ -959,9 +963,7 @@ final class RunnerTests: XCTestCase {
   }
 
   func testSerializedSortOrder() async {
-    OrderedTests.state.withLock { state in
-      state = 0
-    }
+    OrderedTests.state.store(0, ordering: .sequentiallyConsistent)
     await runTest(for: OrderedTests.self, configuration: .init())
   }
 }
@@ -969,29 +971,33 @@ final class RunnerTests: XCTestCase {
 // MARK: - Fixtures
 
 extension OrderedTests.Inner {
-  @Test(.hidden) func s() { XCTAssertEqual(OrderedTests.state.increment(), 5) }
+  @Test(.hidden) func s() { XCTAssertEqual(OrderedTests.state.add(1, ordering: .sequentiallyConsistent).newValue, 5) }
 }
 
 @Suite(.hidden, .serialized) struct OrderedTests {
-  static let state = Mutex(0)
+  static let state = Atomic(0)
 
-  @Test(.hidden) func z() { XCTAssertEqual(Self.state.increment(), 1) }
-  @Test(.hidden) func y() { XCTAssertEqual(Self.state.increment(), 2) }
-  @Test(.hidden) func x() { XCTAssertEqual(Self.state.increment(), 3) }
-  @Test(.hidden) func w() { XCTAssertEqual(Self.state.increment(), 4) }
+  func increment() -> Int {
+    Self.state.add(1, ordering: .sequentiallyConsistent).newValue
+  }
+
+  @Test(.hidden) func z() { XCTAssertEqual(increment(), 1) }
+  @Test(.hidden) func y() { XCTAssertEqual(increment(), 2) }
+  @Test(.hidden) func x() { XCTAssertEqual(increment(), 3) }
+  @Test(.hidden) func w() { XCTAssertEqual(increment(), 4) }
   @Suite(.hidden) struct Inner {
     // s() in extension above, numbered 5
-    @Test(.hidden) func t() { XCTAssertEqual(OrderedTests.state.increment(), 6) }
+    @Test(.hidden) func t() { XCTAssertEqual(OrderedTests.state.add(1, ordering: .sequentiallyConsistent).newValue, 6) }
     // u() in extension below, numbered 7
   }
 
-  @Test(.hidden) func d() { XCTAssertEqual(Self.state.increment(), 8) }
-  @Test(.hidden) func c() { XCTAssertEqual(Self.state.increment(), 9) }
-  @Test(.hidden) func b() { XCTAssertEqual(Self.state.increment(), 10) }
-  @Test(.hidden) func a() { XCTAssertEqual(Self.state.increment(), 11) }
+  @Test(.hidden) func d() { XCTAssertEqual(increment(), 8) }
+  @Test(.hidden) func c() { XCTAssertEqual(increment(), 9) }
+  @Test(.hidden) func b() { XCTAssertEqual(increment(), 10) }
+  @Test(.hidden) func a() { XCTAssertEqual(increment(), 11) }
 }
 
 extension OrderedTests.Inner {
-  @Test(.hidden) func u() { XCTAssertEqual(OrderedTests.state.increment(), 7) }
+  @Test(.hidden) func u() { XCTAssertEqual(OrderedTests.state.add(1, ordering: .sequentiallyConsistent).newValue, 7) }
 }
 #endif

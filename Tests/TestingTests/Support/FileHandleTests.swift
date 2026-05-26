@@ -48,7 +48,7 @@ struct FileHandleTests {
   @Test("Init from invalid file descriptor")
   func invalidFileDescriptor() throws {
     #expect(throws: CError.self) {
-      _ = try FileHandle(unsafePOSIXFileDescriptor: -1, mode: "")
+      _ = try FileHandle(unsafePOSIXFileDescriptor: -1, options: [])
     }
   }
 #endif
@@ -63,7 +63,7 @@ struct FileHandleTests {
   }
 #endif
 
-#if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
   @Test("close() function")
   func closeFunction() async throws {
     try await confirmation("File handle closed") { closed in
@@ -86,7 +86,7 @@ struct FileHandleTests {
   @Test("Writing requires contiguous storage")
   func writeIsContiguous() async {
     await #expect(processExitsWith: .failure) {
-      let fileHandle = try FileHandle.null(mode: "wb")
+      let fileHandle = try FileHandle.null(options: [.writeAccess])
       try fileHandle.write([1, 2, 3, 4, 5].lazy.filter { $0 == 1 })
     }
   }
@@ -110,7 +110,7 @@ struct FileHandleTests {
 
   @Test("Cannot write bytes to a read-only file")
   func cannotWriteBytesToReadOnlyFile() throws {
-    let fileHandle = try FileHandle.null(mode: "rb")
+    let fileHandle = try FileHandle.null(options: [.readAccess])
     #expect(throws: CError.self) {
       try fileHandle.write([0, 1, 2, 3, 4, 5])
     }
@@ -118,7 +118,7 @@ struct FileHandleTests {
 
   @Test("Cannot write string to a read-only file")
   func cannotWriteStringToReadOnlyFile() throws {
-    let fileHandle = try FileHandle.null(mode: "rb")
+    let fileHandle = try FileHandle.null(options: [.readAccess])
     #expect(throws: CError.self) {
       try fileHandle.write("Impossible!")
     }
@@ -158,9 +158,8 @@ struct FileHandleTests {
     #expect(readEnd.isPipe as Bool)
     #expect(writeEnd.isPipe as Bool)
   }
-#endif
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_PIPES
+#if SWT_TARGET_OS_APPLE || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
   @Test("Can close ends of a pipe")
   func closeEndsOfPipe() async throws {
     try await confirmation("File handle closed", expectedCount: 2) { closed in
@@ -178,10 +177,11 @@ struct FileHandleTests {
     }
   }
 #endif
+#endif
 
   @Test("/dev/null is not a TTY or pipe")
   func devNull() throws {
-    let fileHandle = try FileHandle.null(mode: "wb")
+    let fileHandle = try FileHandle.null(options: [.writeAccess])
     #expect(!Bool(fileHandle.isTTY))
 #if !SWT_NO_PIPES
     #expect(!Bool(fileHandle.isPipe))
@@ -216,6 +216,30 @@ struct FileHandleTests {
 
 // MARK: - Fixtures
 
+extension FileHandle {
+  static func temporary() throws -> FileHandle {
+#if os(Windows)
+    let tmpFile: SWT_FILEHandle = try {
+      var file: SWT_FILEHandle?
+      try #require(0 == tmpfile_s(&file))
+      return file!
+    }()
+#else
+    let tmpFile = try #require(tmpfile())
+#endif
+    return FileHandle(unsafeCFILEHandle: tmpFile, closeWhenDone: true)
+  }
+
+  static func null(options: FileHandle.OpenOptions) throws -> FileHandle {
+#if os(Windows)
+    try FileHandle(atPath: "NUL", options: options)
+#else
+    try FileHandle(atPath: "/dev/null", options: options)
+#endif
+  }
+}
+#endif
+
 func withTemporaryPath<R>(_ body: (_ path: String) throws -> R) throws -> R {
   // NOTE: we are not trying to test mkstemp() here. We are trying to test the
   // capacity of FileHandle to open a file for reading or writing and we need a
@@ -233,30 +257,6 @@ func withTemporaryPath<R>(_ body: (_ path: String) throws -> R) throws -> R {
   }
   return try body(path)
 }
-
-extension FileHandle {
-  static func temporary() throws -> FileHandle {
-#if os(Windows)
-    let tmpFile: SWT_FILEHandle = try {
-      var file: SWT_FILEHandle?
-      try #require(0 == tmpfile_s(&file))
-      return file!
-    }()
-#else
-    let tmpFile = try #require(tmpfile())
-#endif
-    return FileHandle(unsafeCFILEHandle: tmpFile, closeWhenDone: true)
-  }
-
-  static func null(mode: String) throws -> FileHandle {
-#if os(Windows)
-    try FileHandle(atPath: "NUL", mode: mode)
-#else
-    try FileHandle(atPath: "/dev/null", mode: mode)
-#endif
-  }
-}
-#endif
 
 func temporaryDirectory() throws -> String {
 #if SWT_TARGET_OS_APPLE
@@ -281,7 +281,7 @@ func temporaryDirectory() throws -> String {
 #endif
 }
 
-#if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
 func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> FileHandle {
   let context = Unmanaged.passRetained(confirmation as AnyObject).toOpaque()
   let file = try #require(
@@ -297,6 +297,25 @@ func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> Fil
       }
     ) as SWT_FILEHandle?
   )
+  return FileHandle(unsafeCFILEHandle: file, closeWhenDone: false)
+}
+#elseif os(Linux) && !SWT_NO_DYNAMIC_LINKING
+func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> FileHandle {
+  let fopencookie = symbol(named: "fopencookie").map {
+    castCFunction(at: $0, to: (@convention(c) (UnsafeMutableRawPointer?, UnsafePointer<CChar>, SWT_cookie_io_functions_t) -> SWT_FILEHandle?).self)
+  }
+  guard let fopencookie else {
+    try Test.cancel("fopencookie() not available")
+  }
+  let context = Unmanaged.passRetained(confirmation as AnyObject).toOpaque()
+  var functions = SWT_cookie_io_functions_t()
+  functions.read = { _, _, _ in 0 }
+  functions.close = { context in
+    let confirmation = Unmanaged<AnyObject>.fromOpaque(context!).takeRetainedValue() as! Confirmation
+    confirmation()
+    return 0
+  }
+  let file = try #require(fopencookie(context, "rb", functions))
   return FileHandle(unsafeCFILEHandle: file, closeWhenDone: false)
 }
 #endif

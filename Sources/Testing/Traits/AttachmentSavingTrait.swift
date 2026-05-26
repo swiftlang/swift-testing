@@ -114,7 +114,7 @@ extension AttachmentSavingTrait: TestScoping {
 
   public func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
     guard var configuration = Configuration.current else {
-      throw SystemError(description: "There is no current Configuration when attempting to provide scope for test '\(test.name)'. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      throw SystemError(description: "There is no current Configuration when attempting to provide scope for test '\(test.name)'. \(fileABugMessage)")
     }
     let oldConfiguration = configuration
 
@@ -191,7 +191,7 @@ extension AttachmentSavingTrait: TestScoping {
       }
 
       // Finally issue the attachment-recorded events that we deferred.
-      let eventContext = Event.Context(test: test, testCase: testCase, configuration: configuration)
+      let eventContext = Event.Context(test: test, testCase: testCase, iteration: nil, configuration: configuration)
       for event in context.deferredEvents {
 #if DEBUG
         var event = event

@@ -1,38 +1,59 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
-private import Foundation
-
+#if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI.Version {
-  static func eventHandler(
-    encodeAsJSONLines: Bool,
-    forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
+  /// Create an event handler that encodes instances of ``Event`` as instances
+  /// of ``ABI/Record`` and forwards them to a handler function.
+  ///
+  /// - Parameters:
+  ///   - recordHandler: The record handler to forward events to.
+  ///
+  /// - Returns: An event handler.
+  ///
+  /// You can use this event handler with ``Configuration/eventHandler`` to
+  /// automatically transform instances of ``Event`` to ``ABI/Record``.
+  public static func eventHandler(
+    forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
   ) -> Event.Handler {
-    // Encode as JSON Lines if requested.
-    var eventHandlerCopy = eventHandler
-    if encodeAsJSONLines {
-      eventHandlerCopy = { @Sendable in JSON.asJSONLine($0, eventHandler) }
-    }
+#if !SWT_NO_SNAPSHOT_TYPES && DEBUG
+    precondition(self != ABI.Xcode16.self, "Attempted to create an ABI.Record-generating event handler for the Xcode 16 compatibility path.")
+#endif
 
     let humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
-    return { [eventHandler = eventHandlerCopy] event, context in
+    return { event, context in
       if case .testDiscovered = event.kind, let test = context.test {
-        try? JSON.withEncoding(of: ABI.Record<Self>(encoding: test)) { testJSON in
-          eventHandler(testJSON)
-        }
+        let testRecord = ABI.Record<Self>(encoding: test)
+        recordHandler(testRecord)
       } else {
         let messages = humanReadableOutputRecorder.record(event, in: context, verbosity: 0)
         if let eventRecord = ABI.Record<Self>(encoding: event, in: context, messages: messages) {
-          try? JSON.withEncoding(of: eventRecord, eventHandler)
+          recordHandler(eventRecord)
         }
+      }
+    }
+  }
+
+  static func eventHandler(
+    encodeAsJSONLines: Bool,
+    forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
+  ) -> Event.Handler {
+    // Encode as JSON Lines if requested.
+    var recordHandlerCopy = recordHandler
+    if encodeAsJSONLines {
+      recordHandlerCopy = { @Sendable in JSON.asJSONLine($0, recordHandler) }
+    }
+
+    return eventHandler { [recordHandler = recordHandlerCopy] record in
+      try? JSON.withEncoding(of: record) { recordJSON in
+        recordHandler(recordJSON)
       }
     }
   }
@@ -44,7 +65,7 @@ extension ABI.Version {
 extension ABI.Xcode16 {
   static func eventHandler(
     encodeAsJSONLines: Bool,
-    forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
+    forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
     return { event, context in
       if case .testDiscovered = event.kind {
@@ -63,9 +84,7 @@ extension ABI.Xcode16 {
         eventContext: Event.Context.Snapshot(snapshotting: context)
       )
       try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
-        eventAndContextJSON.withUnsafeBytes { eventAndContextJSON in
-          eventHandler(eventAndContextJSON)
-        }
+        recordHandler(eventAndContextJSON)
       }
     }
   }

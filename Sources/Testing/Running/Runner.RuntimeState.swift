@@ -29,6 +29,9 @@ extension Runner {
     /// The test case that is running on the current task, if any.
     var testCase: Test.Case?
 
+    /// The current iteration of the test repetition policy, if any.
+    var iteration: Int?
+
     /// The runtime state related to the runner running on the current task,
     /// if any.
     @TaskLocal
@@ -76,7 +79,10 @@ extension Configuration {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ configuration: Self, perform body: () throws -> R) rethrows -> R {
+  static func withCurrent<R>(
+    _ configuration: Self,
+    perform body: () throws -> R
+  ) rethrows -> R {
     let id = configuration._addToAll()
     defer {
       configuration._removeFromAll(identifiedBy: id)
@@ -97,7 +103,10 @@ extension Configuration {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ configuration: Self, perform body: () async throws -> R) async rethrows -> R {
+  static func withCurrent<R>(
+    _ configuration: Self,
+    perform body: () async throws -> R
+  ) async rethrows -> R {
     let id = configuration._addToAll()
     defer {
       configuration._removeFromAll(identifiedBy: id)
@@ -137,7 +146,7 @@ extension Configuration {
   ///   passed to `_removeFromAll(identifiedBy:)`` to unregister it.
   private func _addToAll() -> UInt64 {
     if eventHandlingOptions.isExpectationCheckedEventEnabled {
-      Self._deliverExpectationCheckedEventsCount.increment()
+      Self._deliverExpectationCheckedEventsCount.add(1, ordering: .sequentiallyConsistent)
     }
     return Self._all.withLock { all in
       let id = all.nextID
@@ -157,7 +166,7 @@ extension Configuration {
       all.instances.removeValue(forKey: id)
     }
     if let configuration, configuration.eventHandlingOptions.isExpectationCheckedEventEnabled {
-      Self._deliverExpectationCheckedEventsCount.decrement()
+      Self._deliverExpectationCheckedEventsCount.subtract(1, ordering: .sequentiallyConsistent)
     }
   }
 
@@ -182,7 +191,7 @@ extension Configuration {
   /// An atomic counter that tracks the number of "current" configurations that
   /// have set ``EventHandlingOptions/isExpectationCheckedEventEnabled`` to
   /// `true`.
-  private static let _deliverExpectationCheckedEventsCount = Mutex(0)
+  private static let _deliverExpectationCheckedEventsCount = Atomic(0)
 
   /// Whether or not events of the kind
   /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
@@ -194,11 +203,11 @@ extension Configuration {
   /// ``Configuration/EventHandlingOptions/isExpectationCheckedEventEnabled``
   /// property.
   static var deliverExpectationCheckedEvents: Bool {
-    _deliverExpectationCheckedEventsCount.rawValue > 0
+    _deliverExpectationCheckedEventsCount.load(ordering: .sequentiallyConsistent) > 0
   }
 }
 
-// MARK: - Current test and test case
+// MARK: - Current test, test case, and iteration
 
 extension Test {
   /// The test that is running on the current task, if any.
@@ -231,6 +240,28 @@ extension Test {
     runtimeState.testCase = nil
     return try await Runner.RuntimeState.$current.withValue(runtimeState) {
       try await test.withCancellationHandling(body)
+    }
+  }
+
+  /// The current iteration of the currently-running test case, if any.
+  static var currentIteration: Int? {
+    Runner.RuntimeState.current?.iteration
+  }
+
+  /// Call a function while the value of ``Test/currentIteration`` is set.
+  ///
+  /// - Parameters:
+  ///   - iteration: The new value to set for ``Test/currentIteration``.
+  ///   - body: A function to call.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`.
+  static func withCurrentIteration<R>(_ iteration: Int?, perform body: () async throws -> R) async rethrows -> R {
+    var runtimeState = Runner.RuntimeState.current ?? .init()
+    runtimeState.iteration = iteration
+    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
+      try await body()
     }
   }
 }

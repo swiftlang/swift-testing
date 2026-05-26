@@ -1,0 +1,1 @@
+../../TestingMacros/Support/SHA256.swift

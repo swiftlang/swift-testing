@@ -247,18 +247,6 @@ extension Test {
 
 // MARK: -
 
-/// An error that is reported when a test times out.
-///
-/// This type is not part of the public interface of the testing library.
-struct TimeoutError: Error, CustomStringConvertible {
-  /// The time limit exceeded by the test that timed out.
-  var timeLimit: TimeValue
-
-  var description: String {
-    "Timed out after \(timeLimit) seconds."
-  }
-}
-
 #if !SWT_NO_UNSTRUCTURED_TASKS
 /// Invoke a function with a timeout.
 ///
@@ -286,7 +274,7 @@ func withTimeLimit(
       // If sleep() returns instead of throwing a CancellationError, that means
       // the timeout was reached before this task could be cancelled, so call
       // the timeout handler.
-      try await Test.Clock.sleep(for: timeLimit)
+      try await Test.Clock().sleep(for: timeLimit)
       timeoutHandler()
     }
     group.addTask(name: decorateTaskName(taskName, withAction: "running"), operation: body)
@@ -320,7 +308,7 @@ func withTimeLimit(
   for test: Test,
   configuration: Configuration,
   _ body: @escaping @Sendable () async throws -> Void,
-  timeoutHandler: @escaping @Sendable (_ timeLimit: (seconds: Int64, attoseconds: Int64)) -> Void
+  timeoutHandler: @escaping @Sendable (_ timeLimit: Duration) -> Void
 ) async throws {
   if let timeLimit = test.adjustedTimeLimit(configuration: configuration) {
 #if SWT_NO_UNSTRUCTURED_TASKS
@@ -330,7 +318,7 @@ func withTimeLimit(
     let start = Test.Clock.Instant.now
     defer {
       if start.duration(to: .now) > timeLimit {
-        timeoutHandler(timeLimit.components)
+        timeoutHandler(timeLimit)
       }
     }
     try await body()
@@ -338,7 +326,7 @@ func withTimeLimit(
     return try await withTimeLimit(timeLimit) {
       try await body()
     } timeoutHandler: {
-      timeoutHandler(timeLimit.components)
+      timeoutHandler(timeLimit)
     }
 #endif
   }

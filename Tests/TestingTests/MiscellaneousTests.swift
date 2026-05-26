@@ -12,10 +12,6 @@
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _TestDiscovery
 private import _TestingInternals
 
-#if canImport(Foundation)
-private import Foundation
-#endif
-
 @Test(/* name unspecified */ .hidden)
 @Sendable func freeSyncFunction() {}
 @Sendable func freeAsyncFunction() async {}
@@ -27,6 +23,15 @@ private import Foundation
 @Sendable func freeAsyncFunctionParameterized(_ s: String) async {}
 
 @Sendable func freeSyncFunctionParameterized2(_ i: Int, _ j: String) {}
+
+struct SuiteTypeWithModuleSelector {}
+
+extension TestingTests::SuiteTypeWithModuleSelector {
+  @Test(.hidden) func withModuleSelector() {}
+  @Suite(.hidden) struct NestedType {
+    @Test(.hidden) func nestedFunction() {}
+  }
+}
 
 // This type ensures the parser can correctly infer that f() is a member
 // function even though @Test is preceded by another attribute or is embedded in
@@ -607,7 +612,7 @@ struct MiscellaneousTests {
   func testMutationCount() throws {
     let test = try #require(Test.current)
     #expect(
-      test.mutationCount <= 2,
+      test.mutationCount <= 3,
       """
       More mutations than expected on test '\(test.name)'. This is not
       necessarily a bug. Please double-check where the additional mutations came
@@ -636,5 +641,15 @@ struct MiscellaneousTests {
       }
     }
     #expect(duration < .seconds(1))
+  }
+
+  @Test func `Expectation with a non-string literal comment and ambiguous 'Comment' type`() {
+    let comment: Comment = "foo"
+    do {
+      // Declare a custom type whose name conflicts with the testing library's
+      // built-in Comment type.
+      struct Comment {}
+      #expect(true as Bool, comment)
+    }
   }
 }

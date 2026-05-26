@@ -13,6 +13,18 @@ private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
 @Suite("Exit test tests") struct ExitTestTests {
+  @Test("Exit code names are reported (where supported)") func exitCodeName() {
+    #expect(String(describing: ExitStatus.exitCode(EXIT_SUCCESS)) == ".exitCode(EXIT_SUCCESS)")
+    #expect(String(describing: ExitStatus.exitCode(EXIT_FAILURE)) == ".exitCode(EXIT_FAILURE)")
+
+    if let EX_IOERR = swt_EX_IOERR()?.pointee {
+      let exitStatus = ExitStatus.exitCode(EX_IOERR)
+      #expect(exitStatus.code == EX_IOERR)
+      #expect(String(describing: exitStatus) == ".exitCode(EX_IOERR)")
+    }
+    #expect(String(describing: ExitStatus.exitCode(12345)) == ".exitCode(12345)")
+  }
+
   @Test("Signal names are reported (where supported)") func signalName() {
     var hasSignalNames = false
 #if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Android)
@@ -21,11 +33,14 @@ private import _TestingInternals
 #endif
 #elseif os(Linux) && !SWT_NO_DYNAMIC_LINKING
     hasSignalNames = (symbol(named: "sigabbrev_np") != nil)
+#elseif os(Windows)
+    hasSignalNames = true
 #endif
 
     let exitStatus = ExitStatus.signal(SIGABRT)
+    #expect(exitStatus.code == SIGABRT)
     if Bool(hasSignalNames) {
-      #expect(String(describing: exitStatus) == ".signal(SIGABRT → \(SIGABRT))")
+      #expect(String(describing: exitStatus) == ".signal(SIGABRT)")
     } else {
       #expect(String(describing: exitStatus) == ".signal(\(SIGABRT))")
     }
@@ -201,7 +216,7 @@ private import _TestingInternals
 
         await Test {
           await #expect(processExitsWith: .success) {
-            #expect(Bool(false), "Something went wrong!")
+            Issue.record("Something went wrong!")
             exit(0)
           }
           await #expect(processExitsWith: .failure) {
@@ -209,6 +224,66 @@ private import _TestingInternals
           }
         }.run(configuration: configuration)
       }
+    }
+  }
+
+  @Test("Exit test forwards .apiMisused and .system issues") func forwardsAPIMisusedAndSystemIssues() async {
+    await confirmation(".apiMisused recorded") { apiMisusedRecorded in
+      await confirmation(".system recorded") { systemRecorded in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          guard case let .issueRecorded(issue) = event.kind else {
+            return
+          }
+          switch issue.kind {
+          case .apiMisused:
+            apiMisusedRecorded()
+          case .system:
+            systemRecorded()
+          default:
+            break
+          }
+        }
+        configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+
+        await Test {
+          await #expect(processExitsWith: .success) {
+            Issue(kind: .apiMisused).record()
+          }
+          await #expect(processExitsWith: .failure) {
+            Issue(kind: .system).record()
+          }
+        }.run(configuration: configuration)
+      }
+    }
+  }
+
+  @Test("Exit test issues contain expression trees") func expressionsInIssues() async {
+    await confirmation("Expectation failed") { expectationFailed in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        guard case let .issueRecorded(issue) = event.kind else {
+          return
+        }
+        if case let .expectationFailed(expectation) = issue.kind,
+           expectation.evaluatedExpression.sourceCode == "lhs == rhs",
+           expectation.evaluatedExpression.subexpressions.count > 1 {
+          expectationFailed()
+        }
+      }
+      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+
+      await Test {
+        await #expect(processExitsWith: .success) {
+          struct S: Equatable {
+            var x: Int
+            var y: String
+          }
+          let lhs = S(x: 1, y: "abc")
+          let rhs = S(x: 2, y: "def")
+          #expect(lhs == rhs)
+        }
+      }.run(configuration: configuration)
     }
   }
 
@@ -405,6 +480,14 @@ private import _TestingInternals
     #expect(!result.standardErrorContent.contains(ExitTest.barrierValue))
   }
 
+  @Test("Empty stdout/stderr stream is actually empty")
+  func exitTestEmptyStreamIsActuallyEmpty() async throws {
+    let result = try await #require(processExitsWith: .success, observing: [\.standardErrorContent]) {
+      _Exit(EXIT_SUCCESS)
+    }
+    #expect(result.standardErrorContent.isEmpty)
+  }
+
   @Test("Arguments to the macro are not captured during expansion (do not need to be literals/const)")
   func argumentsAreNotCapturedDuringMacroExpansion() async throws {
     let unrelatedSourceLocation = #_sourceLocation
@@ -441,6 +524,37 @@ private import _TestingInternals
           Issue.record("Issue recorded", severity: .warning)
         }
       }.run(configuration: configuration)
+    }
+  }
+
+  @Test("Known issues")
+  func knownIssues() async {
+    await confirmation("Recorded issue was a known issue") { wasKnown in
+      await confirmation("Recorded issue had the expected known-issue comment") { hadComment in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          guard case let .issueRecorded(issue) = event.kind else {
+            return
+          }
+          if issue.isKnown {
+            wasKnown()
+          }
+          if issue.knownIssueContext?.comment?.rawValue == "ABC 123",
+             issue.comments.count == 1, issue.comments.first == "456 DEF" {
+            hadComment()
+          }
+        }
+
+        // Mock an exit test where the process exits successfully.
+        configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+        await Test {
+          await #expect(processExitsWith: .success) {
+            withKnownIssue("ABC 123") {
+              Issue.record("456 DEF")
+            }
+          }
+        }.run(configuration: configuration)
+      }
     }
   }
 

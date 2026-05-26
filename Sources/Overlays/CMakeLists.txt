@@ -9,6 +9,7 @@
 add_subdirectory(_Testing_AppKit)
 add_subdirectory(_Testing_CoreGraphics)
 add_subdirectory(_Testing_CoreImage)
+add_subdirectory(_Testing_CoreTransferable)
 add_subdirectory(_Testing_Foundation)
 add_subdirectory(_Testing_UIKit)
 add_subdirectory(_Testing_WinSDK)
