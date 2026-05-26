@@ -143,7 +143,7 @@ extension Test {
   /// Tags are associated with tests using the ``Trait/tags(_:)`` function.
   public var tags: Set<Tag> {
     traits.lazy
-      .compactMap { $0 as? Tag.List }
+      .compactMap { $0.__as(Tag.List.self) }
       .map(\.tags)
       .reduce(into: []) { $0.formUnion($1) }
   }

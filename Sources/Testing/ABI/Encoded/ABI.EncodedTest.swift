@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI {
   /// A type implementing the JSON encoding of ``Test`` for the ABI entry point
   /// and event stream output.
@@ -140,7 +141,6 @@ extension ABI {
   }
 }
 
-#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedTest: Codable {}
@@ -157,7 +157,6 @@ extension ABI.EncodedTest.ID: Codable {
     stringValue = try String(from: decoder)
   }
 }
-#endif
 
 // MARK: - Conversion to/from library types
 
@@ -384,3 +383,4 @@ extension ABI.EncodedTest {
     return (moduleName, testIDComponents, function)
   }
 }
+#endif

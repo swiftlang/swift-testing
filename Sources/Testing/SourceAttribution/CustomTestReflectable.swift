@@ -19,7 +19,9 @@
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.4)
 /// }
+@_unavailableInEmbedded
 public protocol CustomTestReflectable {
+#if !hasFeature(Embedded)
   /// The custom mirror for this instance.
   ///
   /// Do not use this property directly. To get the test reflection of a value,
@@ -29,8 +31,10 @@ public protocol CustomTestReflectable {
   ///   @Available(Swift, introduced: 6.4)
   /// }
   var customTestMirror: Mirror { get }
+#endif
 }
 
+#if !hasFeature(Embedded)
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.4)
 /// }
@@ -71,3 +75,4 @@ extension Mirror {
     }
   }
 }
+#endif

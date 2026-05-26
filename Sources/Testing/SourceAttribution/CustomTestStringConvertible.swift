@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A protocol describing types with a custom string representation when
 /// presented as part of a test's output.
 ///
@@ -32,7 +34,9 @@ extension String {
   /// ## See Also
   ///
   /// - ``CustomTestStringConvertible``
+  @_unavailableInEmbedded
   public init(describingForTest value: some Any) {
+#if !hasFeature(Embedded)
     // The mangled type name SPI doesn't handle generic types very well, so we
     // ask for the dynamic type of `value` (type(of:)) instead of just T.self.
     lazy var valueTypeInfo = TypeInfo(describingTypeOf: value)
@@ -61,11 +65,63 @@ extension String {
       // Use the generic description of the value.
       self.init(describing: value)
     }
+#else
+    swt_unreachable()
+#endif
   }
+
+#if hasFeature(Embedded)
+  public init(describingForTest value: borrowing some CustomTestStringConvertible) {
+    self = value.testDescription
+  }
+
+  public init(describingForTest value: borrowing some CustomStringConvertible & CustomTestStringConvertible) {
+    self = value.testDescription
+  }
+
+  public init(describingForTest value: borrowing some CustomStringConvertible) {
+    self.init(describing: value)
+  }
+
+  public init(describingForTest value: borrowing some CustomDebugStringConvertible & CustomTestStringConvertible) {
+    self = value.testDescription
+  }
+
+  public init(describingForTest value: borrowing some CustomDebugStringConvertible) {
+    self = value.debugDescription // FIXME: use init(reflecting:) in Embedded Swift
+  }
+
+  public init(describingForTest value: borrowing some CustomStringConvertible & CustomDebugStringConvertible & CustomTestStringConvertible) {
+    self = value.testDescription
+  }
+
+  public init(describingForTest value: borrowing some CustomStringConvertible & CustomDebugStringConvertible) {
+    self.init(describing: value)
+  }
+
+  @_disfavoredOverload
+  @available(*, deprecated, message: "String representations of arbitrary values are not supported in Embedded Swift")
+  @usableFromInline
+  init(describingForTest value: borrowing some ~Copyable & ~Escapable) {
+    // FIXME: need some sort of description functionality for arbitrary values
+    self = "<unknown value>"
+  }
+
+  init(describingForTest value: (some ~Copyable & ~Escapable).Type) {
+    // FIXME: need some sort of description functionality for types
+    self = "<unknown type>"
+  }
+
+  init(describingForTest value: any Error) {
+    // FIXME: need some sort of description functionality for errors
+    self = "<unknown error>"
+  }
+#endif
 }
 
 // MARK: - Built-in implementations
 
+#if !hasFeature(Embedded)
 /// The _de facto_ implementation of ``CustomTestStringConvertible`` for a
 /// metatype value.
 ///
@@ -77,12 +133,18 @@ extension String {
 private func _testDescription(of type: any Any.Type) -> String {
   TypeInfo(describing: type).unqualifiedName
 }
+#endif
 
 extension Optional: CustomTestStringConvertible {
   public var testDescription: String {
     switch self {
     case let .some(unwrappedValue):
+#if !hasFeature(Embedded)
       String(describingForTest: unwrappedValue)
+#else
+      // FIXME: need some sort of description functionality for arbitrary values
+      "<unknown value>"
+#endif
     case nil:
       "nil"
     }
@@ -106,6 +168,7 @@ extension CustomTestStringConvertible where Self: StringProtocol {
 extension String: CustomTestStringConvertible {}
 extension Substring: CustomTestStringConvertible {}
 
+#if !hasFeature(Embedded)
 // MARK: - Ranges
 
 extension ClosedRange: CustomTestStringConvertible {
@@ -137,3 +200,4 @@ extension Range: CustomTestStringConvertible {
     "\(String(describingForTest: lowerBound)) ..< \(String(describingForTest: upperBound))"
   }
 }
+#endif

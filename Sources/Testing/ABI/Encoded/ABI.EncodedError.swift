@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 private import _TestingInternals
 
 extension ABI {
@@ -64,11 +65,9 @@ extension ABI.EncodedError: Error {
   }
 }
 
-#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedError: Codable {}
-#endif
 
 // MARK: - CustomTestStringConvertible
 
@@ -91,14 +90,19 @@ extension ABI.EncodedError {
     if !description.isEmpty {
       self.description = description
     }
+#if !hasFeature(Embedded)
     let domain = error._domain
     if domain != Self.unknownDomain {
       self.domain = domain
     }
     code = error._code
+#else
+    code = -1
+#endif
   }
 }
 
 // Error.init(decoding:) is not implemented here because a) Error is a protocol
 // and cannot be instantiated directly, and b) ABI.EncodedError already conforms
 // to Error, so a cast is generally not necessary.
+#endif

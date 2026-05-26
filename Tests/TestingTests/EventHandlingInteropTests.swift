@@ -37,13 +37,6 @@ struct EventHandlingInteropTests {
     }
   }
 
-  /// Sets the env var that enables the experimental interop feature.
-  /// Must be set before we call `Event.installFallbackEventHandler()` which
-  /// will cache the install outcome.
-  static func enableExperimentalInterop() {
-    Environment.setVariable("1", named: Interop.experimentalOptInKey)
-  }
-
   /// Sets the env var that determines the interop mode.
   /// Must be set before we call `Event.installFallbackEventHandler()` which
   /// will cache the install outcome.
@@ -81,25 +74,16 @@ struct EventHandlingInteropTests {
     }
   }
 
-  @Test func `Enabling experimental interop lets you install the handler`() async {
+  @Test func `Interop handler installed by default`() async {
     await #expect(processExitsWith: .success) {
-      // Experimental interop not set
       let ok = Event.installFallbackEventHandler()
 
-      #expect(!ok, "Should fail because experimental interop not enabled")
-    }
-
-    await #expect(processExitsWith: .success) {
-      Self.enableExperimentalInterop()
-      let ok = Event.installFallbackEventHandler()
-
-      #expect(ok, "Should succeed because experimental interop is enabled")
+      #expect(ok, "Should succeed because interop is enabled by default")
     }
   }
 
   @Test func `Running tests installs the fallback handler`() async {
     await #expect(processExitsWith: .success) {
-      Self.enableExperimentalInterop()
       let handlerBefore = _swift_testing_getFallbackEventHandler()
 
       await Test {}.run()
@@ -137,7 +121,6 @@ struct EventHandlingInteropTests {
 
   @Test func `Sending fallback event to ourselves doesn't cause infinite loop`() async {
     await #expect(processExitsWith: .success) {
-      Self.enableExperimentalInterop()
       try #require(Event.installFallbackEventHandler(), "Should successfully install a handler")
 
       // Force the event to be handled by the fallback event handler
@@ -157,8 +140,6 @@ struct EventHandlingInteropTests {
 
   @Test func `Fallback handler records an issue if invalid event provided`() async throws {
     await #expect(processExitsWith: .success) {
-      Self.enableExperimentalInterop()
-
       // Pass an invalid record JSON to the event handler
       let issues = await Test {
         let emptyJSON = Array("{}".utf8)
@@ -178,8 +159,7 @@ struct EventHandlingInteropTests {
 
   @Test func `Fallback handler not installed if interop mode set to none`() async {
     await #expect(processExitsWith: .success) {
-      // Enable the interop feature but explicitly turn off the interop mode
-      Self.enableExperimentalInterop()
+      // Explicitly turn off the interop mode
       Self.setInteropMode(.none)
 
       // Running the test would normally lead to the handler being installed
@@ -195,7 +175,6 @@ struct EventHandlingInteropTests {
 
   @Test func `Limited interop mode uses warning severity`() async throws {
     await #expect(processExitsWith: .success) {
-      Self.enableExperimentalInterop()
       Self.setInteropMode(.limited)
       try #require(Event.installFallbackEventHandler())
 
@@ -213,7 +192,6 @@ struct EventHandlingInteropTests {
 
   @Test func `Complete interop mode uses error severity`() async throws {
     await #expect(processExitsWith: .success) {
-      Self.enableExperimentalInterop()
       Self.setInteropMode(.complete)
       try #require(Event.installFallbackEventHandler())
 
@@ -232,7 +210,6 @@ struct EventHandlingInteropTests {
   @available(macOS 15.0, *)  // String(validating:as:) is unavailable on older macOS
   @Test func `Strict interop mode causes a process exit`() async throws {
     let result = await #expect(processExitsWith: .failure, observing: [\.standardErrorContent]) {
-      Self.enableExperimentalInterop()
       Self.setInteropMode(.strict)
       try #require(Event.installFallbackEventHandler())
 
@@ -244,12 +221,14 @@ struct EventHandlingInteropTests {
 
     let stderr = try #require(
       String(validating: result?.standardErrorContent ?? [UInt8](), as: UTF8.self))
-    #expect(stderr.contains("Fatal error: XCTest API was used in a Swift Testing test"))
+    #expect(
+      stderr.contains(
+        "Fatal error: Replace XCTest API such as 'XCTAssert' with a Swift Testing equivalent such as '#expect'."
+      ))
   }
 
   @Test func `Handle fallback event warns issue about XCTest API usage`() async throws {
     await #expect(processExitsWith: .success) {
-      Self.enableExperimentalInterop()
       try #require(Event.installFallbackEventHandler())
 
       // Run the test, which should record two issues in response to the interop one
@@ -260,7 +239,7 @@ struct EventHandlingInteropTests {
 
       #expect(
         issues.map { $0.description }.sorted() == [
-          "An API was misused (warning): XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead.",
+          "An API was misused (warning): Replace XCTest API such as 'XCTAssert' with a Swift Testing equivalent such as '#expect'.",
           "Issue recorded (warning)",
         ]
       )
@@ -305,7 +284,6 @@ struct EventHandlingInteropTests {
   /// However, we don't want to clobber anything naturally reported as a warning.
   @Test func `Interop receive: warning issue stays as warning`() async throws {
     await #expect(processExitsWith: .success) {
-      Self.enableExperimentalInterop()
       Self.setInteropMode(.complete)
       try #require(Event.installFallbackEventHandler())
 
@@ -316,7 +294,7 @@ struct EventHandlingInteropTests {
 
       #expect(issues.map(\.severity) == [.warning, .warning])
       #expect(issues.map(\.description).sorted() == [
-          "An API was misused (warning): XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead.",
+          "An API was misused (warning): Replace XCTest API such as 'XCTAssert' with a Swift Testing equivalent such as '#expect'.",
           "Issue recorded (warning)"
         ]
       )

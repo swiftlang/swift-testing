@@ -12,17 +12,9 @@
 
 #if !SWT_NO_EXIT_TESTS && !SWT_NO_INTEROP
 @Suite struct `Unit tests for interop mode selection` {
-  @Test func `Installation not required if experimentalOptInKey not set`() async {
-    await #expect(processExitsWith: .success) {
-      Environment.setVariable("0", named: Interop.experimentalOptInKey)
-      #expect(Interop.Mode.limited.requiresInstallation == false)
-    }
-  }
-
   @Test(arguments: Interop.Mode.allCases)
   func `Not-none interop modes require installation`(mode: Interop.Mode) async {
     await #expect(processExitsWith: .success) { [mode] in
-      Environment.setVariable("1", named: Interop.experimentalOptInKey)
       switch mode {
       case .none:
         #expect(!mode.requiresInstallation)
@@ -33,7 +25,11 @@
   }
 
   @Test func `Default interop mode`() async {
-    #expect(Interop.Mode.current == .limited)
+    await #expect(processExitsWith: .success) {
+      // Explicitly disable any overrides if present
+      try #require(Environment.setVariable(nil, named: Interop.Mode.interopModeEnvKey))
+      #expect(Interop.Mode.current == .limited)
+    }
   }
 
   /// Run this test case in a separate process via exit tests since we will
