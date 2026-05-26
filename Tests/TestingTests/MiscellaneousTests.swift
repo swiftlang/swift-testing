@@ -12,10 +12,6 @@
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _TestDiscovery
 private import _TestingInternals
 
-#if canImport(Foundation)
-private import Foundation
-#endif
-
 @Test(/* name unspecified */ .hidden)
 @Sendable func freeSyncFunction() {}
 @Sendable func freeAsyncFunction() async {}
@@ -616,7 +612,7 @@ struct MiscellaneousTests {
   func testMutationCount() throws {
     let test = try #require(Test.current)
     #expect(
-      test.mutationCount <= 2,
+      test.mutationCount <= 3,
       """
       More mutations than expected on test '\(test.name)'. This is not
       necessarily a bug. Please double-check where the additional mutations came

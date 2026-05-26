@@ -26,7 +26,7 @@ extension ABI {
   /// A protocol that extends the public ``ABI/Version`` protocol with
   /// internal-only requirements.
   protocol _Version: Version {
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
+#if !SWT_NO_ABI_JSON_SCHEMA
     /// Create an event handler that encodes events as JSON and forwards them to
     /// an ABI-friendly event handler.
     ///
@@ -51,7 +51,6 @@ extension ABI {
   /// The current supported ABI version (ignoring any experimental versions.)
   public typealias CurrentVersion = v6_4
 
-#if !hasFeature(Embedded)
   /// Get the type representing a given ABI version.
   ///
   /// - Parameters:
@@ -120,7 +119,6 @@ extension ABI {
       nil
     }
   }
-#endif
 }
 
 // MARK: - Experimental fields
@@ -212,6 +210,7 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: -
 
 /// The set of keys accepted by `_swift_testing_copyMetadataValue(_:_:)`.
@@ -262,3 +261,4 @@ func _swift_testing_copyMetadataValue(_ key: UnsafePointer<CChar>, _ reserved: U
     return nil
   }
 }
+#endif

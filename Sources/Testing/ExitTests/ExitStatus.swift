@@ -141,7 +141,9 @@ extension ExitStatus: CustomStringConvertible {
         .flatMap(String.init(validatingCString:))
         .map { "SIG\($0)" }
 #endif
-#elseif os(Windows) || os(WASI)
+#elseif os(Windows)
+      result = windowsSignals[signal]
+#elseif os(WASI)
       // These platforms do not have API to get the programmatic name of a
       // signal constant.
 #else

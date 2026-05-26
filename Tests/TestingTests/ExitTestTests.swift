@@ -33,6 +33,8 @@ private import _TestingInternals
 #endif
 #elseif os(Linux) && !SWT_NO_DYNAMIC_LINKING
     hasSignalNames = (symbol(named: "sigabbrev_np") != nil)
+#elseif os(Windows)
+    hasSignalNames = true
 #endif
 
     let exitStatus = ExitStatus.signal(SIGABRT)
@@ -476,6 +478,14 @@ private import _TestingInternals
     #expect(result.standardOutputContent.isEmpty)
     #expect(result.standardErrorContent.contains("STANDARD ERROR".utf8.reversed()))
     #expect(!result.standardErrorContent.contains(ExitTest.barrierValue))
+  }
+
+  @Test("Empty stdout/stderr stream is actually empty")
+  func exitTestEmptyStreamIsActuallyEmpty() async throws {
+    let result = try await #require(processExitsWith: .success, observing: [\.standardErrorContent]) {
+      _Exit(EXIT_SUCCESS)
+    }
+    #expect(result.standardErrorContent.isEmpty)
   }
 
   @Test("Arguments to the macro are not captured during expansion (do not need to be literals/const)")

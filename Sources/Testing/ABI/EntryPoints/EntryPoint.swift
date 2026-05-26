@@ -57,7 +57,9 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // Configure the event recorder to write events to stderr.
     if configuration.verbosity > .min {
       // Check for experimental console output flag
-      if Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true {
+      let useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
+#if !SWT_NO_ABI_JSON_SCHEMA
+      if useExperimentalConsoleOutput {
         // Use experimental AdvancedConsoleOutputRecorder
         var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>.Options()
         advancedOptions.base = .for(.stderr)
@@ -70,7 +72,10 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
           eventRecorder.record(event, in: context)
           oldEventHandler(event, context)
         }
-      } else {
+      }
+#endif
+
+      if !useExperimentalConsoleOutput {
         // Use the standard console output recorder (default behavior)
         let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
           try? FileHandle.stderr.write(string)
@@ -337,6 +342,7 @@ public struct __CommandLineArguments_v0: Sendable {
   public var attachmentsPath: String?
 }
 
+#if !SWT_NO_CODABLE
 extension __CommandLineArguments_v0: Codable {
   // Explicitly list the coding keys so that storage properties like _verbosity
   // do not end up with leading underscores when encoded.
@@ -359,6 +365,7 @@ extension __CommandLineArguments_v0: Codable {
     case attachmentsPath
   }
 }
+#endif
 
 extension RandomAccessCollection<String> {
   /// Get the value of the command line argument with the given name.
@@ -414,7 +421,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   let args = args.dropFirst()
 
 #if !SWT_NO_FILE_IO
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
   // Configuration for the test run passed in as a JSON file (experimental)
   //
   // This argument should always be the first one we parse.
@@ -433,6 +440,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     // allowed to pass a configuration AND e.g. "--verbose" and they'll both be
     // respected (it should be the least "surprising" outcome of passing both.)
   }
+#endif
 
   // Event stream output
   if let path = args.argumentValue(forLabel: "--event-stream-output-path") ?? args.argumentValue(forLabel: "--experimental-event-stream-output") {
@@ -479,7 +487,6 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   if let attachmentsPath = args.argumentValue(forLabel: "--attachments-path") ?? args.argumentValue(forLabel: "--experimental-attachments-path") {
     result.attachmentsPath = attachmentsPath
   }
-#endif
 
   if args.contains("--list-tests") {
     result.listTests = true
@@ -604,7 +611,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     configuration.attachmentsPath = attachmentsPath
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_ABI_JSON_SCHEMA
   // Event stream output
   if let eventStreamOutputPath = args.eventStreamOutputPath {
     let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
@@ -622,6 +629,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 #endif
 #endif
 
+#if canImport(_StringProcessing)
   // Filtering
   var filters = [Configuration.TestFilter]()
   func testFilter(forRegularExpressions regexes: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
@@ -640,6 +648,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   if args.includeHiddenTests == true {
     configuration.testFilter.includeHiddenTests = true
   }
+#endif
 
   // Set up the iteration policy for the test run.
   var repetitionPolicy: Configuration.RepetitionPolicy = .once
@@ -690,7 +699,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   return configuration
 }
 
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
+#if !SWT_NO_ABI_JSON_SCHEMA
 /// Create an event handler that streams events to the given file using the
 /// specified ABI version.
 ///

@@ -65,6 +65,12 @@ public struct IssueHandlingTrait: TestTrait, SuiteTrait {
   public var isRecursive: Bool {
     true
   }
+
+#if hasFeature(Embedded)
+  public func __as(_: IssueHandlingTrait.Type) -> IssueHandlingTrait? {
+    self
+  }
+#endif
 }
 
 /// @Metadata {

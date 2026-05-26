@@ -50,7 +50,7 @@ extension TestContentKind: Equatable, Hashable {
   }
 }
 
-#if !hasFeature(Embedded)
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension TestContentKind: Codable {}

@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI {
   /// A type implementing the JSON encoding of ``SourceLocation`` for the ABI
   /// entry point and event stream output.
@@ -115,3 +116,4 @@ extension SourceLocation {
     self.init(fileIDSynthesizingIfNeeded: fileID, filePath: filePath, line: line, column: column)
   }
 }
+#endif

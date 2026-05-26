@@ -10,11 +10,17 @@
 
 private import _TestingInternals
 
+#if !SWT_NO_INTEROP
+#if SWT_NO_CODABLE
+#error("Platform-specific misconfiguration: support for the fallback event handler (XCTest interop) requires support for 'Codable'")
+#endif
+#endif
+
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public enum Interop: Sendable {}
 
 extension Interop {
-  public enum Mode: String, Sendable, Codable, CaseIterable {
+  public enum Mode: String, Sendable, CaseIterable {
     /// The interop feature is not active.
     case none
 
@@ -42,12 +48,6 @@ extension Interop {
   }
 }
 
-extension Interop {
-  /// Name of the environment variable flag to set when opting-in to the
-  /// experimental interop feature.
-  static let experimentalOptInKey = "SWT_EXPERIMENTAL_INTEROP_ENABLED"
-}
-
 extension Interop.Mode {
   /// The name for the environment variable which if set, overrides the default
   /// interop mode.
@@ -56,7 +56,7 @@ extension Interop.Mode {
   /// Whether this interop mode causes Swift Testing to install a fallback event
   /// handler ahead of running tests.
   var requiresInstallation: Bool {
-    Environment.flag(named: Interop.experimentalOptInKey) == true && self != .none
+    self != .none
   }
 
   /// Current interop mode, which should not be changed after tests start
@@ -81,8 +81,8 @@ extension Event {
   /// - Throws: Any error that prevented handling the encoded record.
   ///
   /// - Important: This function only handles a subset of event kinds.
-  static func handle<V>(_ recordJSON: UnsafeRawBufferPointer, encodedWith version: V.Type) throws
-  where V: ABI.Version {
+  static func handle<V>(_ recordJSON: UnsafeRawBufferPointer, encodedWith version: V.Type) throws where V: ABI.Version {
+#if !SWT_NO_INTEROP
     let record = try JSON.decode(ABI.Record<V>.self, from: recordJSON)
     guard case .event(let event) = record.kind,
       var issue = Issue(decoding: event)
@@ -91,9 +91,9 @@ extension Event {
     }
 
     let xctestWarningMessage =
-      "XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead."
+      "Replace XCTest API such as 'XCTAssert' with a Swift Testing equivalent such as '#expect'."
 
-    // For the time being, assume that foreign test events originate from XCTest
+    // For the time being, assume that cross-library issues originate from XCTest
     lazy var warnForXCTestUsageIssue =
       Issue(
         kind: .apiMisused, severity: .warning,
@@ -101,23 +101,24 @@ extension Event {
           .init(rawValue: xctestWarningMessage)
         ], sourceContext: issue.sourceContext)
 
+    // Unconditionally downgrade interop issues to warning for limited interop mode.
+    // Otherwise, preserve the issue severity.
     switch Interop.Mode.current {
-    case .none: return  // no-op
+    case .none: return  // In practice, this branch should be unreachable since we don't install our handler for mode == .none
     case .limited:
       issue.severity = .warning
       issue.record()
       warnForXCTestUsageIssue.record()
     case .complete:
-      issue.severity = .error
       issue.record()
       warnForXCTestUsageIssue.record()
     case .strict:
-      issue.severity = .error
       issue.record()
       fatalError(
         "\(xctestWarningMessage) This is a fatal error because strict interop mode is active (\(Interop.Mode.interopModeEnvKey)=strict)",
       )
     }
+#endif
   }
 
   /// Get the best available source location to use when diagnosing an issue
@@ -142,7 +143,7 @@ extension Event {
     return .unknown
   }
 
-  #if !SWT_NO_INTEROP
+#if !SWT_NO_INTEROP
   /// The fallback event handler to install when Swift Testing is the active
   /// testing library.
   private static let _ourFallbackEventHandler: SWTFallbackEventHandler = {
@@ -181,7 +182,7 @@ extension Event {
       ).record()
     }
   }
-  #endif
+#endif
 
   /// The implementation of ``installFallbackEventHandler()``.
   private static let _installFallbackEventHandler: Bool = {
@@ -218,14 +219,14 @@ extension Event {
   ///   currently-installed handler belongs to the testing library, returns
   ///   `false`.
   borrowing func postToFallbackEventHandler(in context: borrowing Context) -> Bool {
-    #if !SWT_NO_INTEROP
+#if !SWT_NO_INTEROP
     return Self._postToFallbackEventHandler?(self, context) != nil
-    #else
+#else
     return false
-    #endif
+#endif
   }
 
-  #if !SWT_NO_INTEROP
+#if !SWT_NO_INTEROP
   /// The implementation of ``postToFallbackEventHandler(in:)`` that actually
   /// invokes the installed fallback event handler.
   ///
@@ -257,5 +258,11 @@ extension Event {
       )
     }
   }()
-  #endif
+#endif
 }
+
+#if !SWT_NO_CODABLE
+// MARK: - Codable
+
+extension Interop.Mode: Codable {}
+#endif

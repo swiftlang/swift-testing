@@ -262,6 +262,7 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
   }
 }
 
+#if !hasFeature(Embedded)
 /// An empty protocol defining a type that conforms to `RangeExpression<Int>`.
 ///
 /// In the future, when our minimum deployment target supports casting a value
@@ -271,6 +272,7 @@ private protocol _RangeExpressionOverIntValues: RangeExpression & Sequence where
 extension ClosedRange<Int>: _RangeExpressionOverIntValues {}
 extension PartialRangeFrom<Int>: _RangeExpressionOverIntValues {}
 extension Range<Int>: _RangeExpressionOverIntValues {}
+#endif
 
 extension Issue.Kind: CustomStringConvertible {
   public var description: String {
@@ -289,6 +291,7 @@ extension Issue.Kind: CustomStringConvertible {
         "Expectation failed: \(expectation.evaluatedExpression.sourceCode)"
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
+#if !hasFeature(Embedded)
       if let expected = expected as? any _RangeExpressionOverIntValues {
         let lowerBound = expected.first { _ in true }
         if let lowerBound {
@@ -302,6 +305,9 @@ extension Issue.Kind: CustomStringConvertible {
         }
       }
       return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(String(describingForTest: expected)) time(s)"
+#else
+      return "Confirmation was confirmed \(actual.counting("time"))"
+#endif
     case let .errorCaught(error):
       return "Caught error: \(String(describingForTest: error))"
     case let .timeLimitExceeded(timeLimitComponents):

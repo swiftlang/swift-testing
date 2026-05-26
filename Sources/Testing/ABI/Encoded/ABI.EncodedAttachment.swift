@@ -8,8 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 #if canImport(Foundation)
-private import Foundation
+private import struct Foundation.Data
+private import struct Foundation.URL
 #endif
 
 extension ABI {
@@ -282,3 +284,4 @@ extension Attachment where AttachableValue == AnyAttachable {
     }
   }
 }
+#endif

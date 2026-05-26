@@ -94,9 +94,9 @@ public struct Test: Sendable {
       // traits to test suites.
       func traitsAreCorrectlyTyped() -> Bool {
         if isSuite {
-          return newValue.allSatisfy { $0 is any SuiteTrait }
+          return newValue.allSatisfy { $0.__as((any SuiteTrait).self) != nil }
         } else {
-          return newValue.allSatisfy { $0 is any TestTrait }
+          return newValue.allSatisfy { $0.__as((any TestTrait).self) != nil }
         }
       }
       precondition(traitsAreCorrectlyTyped(), "Programmatically added an inapplicable trait to test \(self)")
@@ -399,6 +399,10 @@ extension Test: Equatable, Hashable {
 
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
+
+#if SWT_NO_CODABLE
+#error("Platform-specific misconfiguration: support for snapshot types requires support for 'Codable'")
+#endif
 
 extension Test {
   /// A serializable snapshot of a ``Test`` instance.

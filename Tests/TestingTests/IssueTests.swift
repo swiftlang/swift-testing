@@ -1247,6 +1247,7 @@ final class IssueTests: XCTestCase {
     }
   }
 
+#if SWT_COLLECTION_DIFFING_ENABLED
   func testCollectionDifference() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -1319,6 +1320,7 @@ final class IssueTests: XCTestCase {
       #expect(range_int64 == 0...0, "both incorrect")
     }.run(configuration: configuration)
   }
+#endif
 
   func testNegatedExpressions() async {
     var configuration = Configuration()
@@ -1713,9 +1715,7 @@ final class IssueTests: XCTestCase {
 }
 #endif
 
-#if canImport(Foundation) && !SWT_NO_SNAPSHOT_TYPES
-import Foundation
-
+#if !SWT_NO_SNAPSHOT_TYPES
 @Suite("Issue Codable Conformance Tests")
 struct IssueCodingTests {
 
