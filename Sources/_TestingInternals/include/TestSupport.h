@@ -58,8 +58,8 @@ typedef cookie_io_functions_t SWT_cookie_io_functions_t;
 #else
 typedef struct {
   ssize_t (* _Nullable read)(void *_Nullable cookie, char *buf, size_t nbytes);
-  void *_Nullable write;
-  void *_Nullable seek;
+  ssize_t (* _Nullable write)(void *_Nullable cookie, const char *buf, size_t nbytes);
+  int (* _Nullable seek)(void *_Nullable cookie, off_t *pos, int w);
   ssize_t (* _Nullable close)(void *_Nullable cookie);
 } SWT_cookie_io_functions_t;
 #endif
