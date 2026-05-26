@@ -53,12 +53,16 @@ static const int *_Nullable swt_EX_IOERR(void) {
 }
 
 #if defined(__linux__)
+#if defined(__cookie_io_functions_t_defined)
+typedef cookie_io_functions_t SWT_cookie_io_functions_t;
+#else
 typedef struct {
   ssize_t (* _Nullable read)(void *_Nullable cookie, char *buf, size_t nbytes);
   void *_Nullable write;
   void *_Nullable seek;
   ssize_t (* _Nullable close)(void *_Nullable cookie);
 } SWT_cookie_io_functions_t;
+#endif
 #endif
 
 SWT_ASSUME_NONNULL_END
