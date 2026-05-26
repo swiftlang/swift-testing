@@ -211,7 +211,7 @@ extension _AttachableURLWrapper: FileClonable {
           nil
         )
         if !fileCloned {
-          Issue.record("ERROR REPORTED WHILE CLONING: \(Win32Error(rawValue: GetLastError()))")
+          Issue.record("ERROR REPORTED WHILE CLONING: \(Win32Error(rawValue: GetLastError()))", sourceLocation: .__here())
         }
         return fileCloned
       }()
