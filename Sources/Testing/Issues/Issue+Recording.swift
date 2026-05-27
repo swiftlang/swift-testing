@@ -159,26 +159,42 @@ extension Issue {
   ///
   /// - Parameters:
   ///   - comments: All comments that should be attached to the issue.
-  ///   - error: An error that was caught and produced this issue, if any.
   ///   - severity: The severity of the issue being recorded.
-  ///   - sourceContext: The context in which this issue was originally recorded.
+  ///   - sourceContext: The context in which this issue was originally
+  ///   recorded.
   ///
   /// - Returns: The issue that was recorded.
   /// - Note: This is only intended for use in interoperability.
   @_spi(ForToolsIntegrationOnly)
   @discardableResult public static func record(
     comments: [Comment],
-    error: (any Error)?,
     severity: Severity,
     sourceContext: SourceContext
   ) -> Self {
-    let kind: Kind = if let error {
-      .errorCaught(error)
-    } else {
-      .unconditional
-    }
+    let issue = Issue(kind: .unconditional, severity: severity, comments: comments, sourceContext: sourceContext)
+    return issue.record()
+  }
 
-    let issue = Issue(kind: kind, severity: severity, comments: comments, sourceContext: sourceContext)
+  /// Records an issue by explicitly providing all information up-front when a
+  /// running test unexpectedly catches an error.
+  ///
+  /// - Parameters:
+  ///   - comments: All comments that should be attached to the issue.
+  ///   - error: An error that was caught and produced this issue.
+  ///   - severity: The severity of the issue being recorded.
+  ///   - sourceContext: The context in which this issue was originally
+  ///   recorded.
+  ///
+  /// - Returns: The issue that was recorded.
+  /// - Note: This is only intended for use in interoperability.
+  @_spi(ForToolsIntegrationOnly)
+  @discardableResult public static func record(
+    comments: [Comment],
+    error: (any Error),
+    severity: Severity,
+    sourceContext: SourceContext
+  ) -> Self {
+    let issue = Issue(kind: .errorCaught(error), severity: severity, comments: comments, sourceContext: sourceContext)
     return issue.record()
   }
 

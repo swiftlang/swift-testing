@@ -1731,7 +1731,7 @@ final class IssueTests: XCTestCase {
 
     await Test {
       let sourceContext = SourceContext(backtrace: .current(), sourceLocation: nil)
-      Issue.record(comments: [], error: nil, severity: .warning, sourceContext: sourceContext)
+      Issue.record(comments: [], severity: .warning, sourceContext: sourceContext)
     }.run(configuration: configuration)
   }
 
