@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !hasFeature(Embedded)
 /// A protocol describing traits that can be reduced into other traits of the
 /// same conforming type.
 @_spi(Experimental)
@@ -29,3 +30,4 @@ public protocol ReducibleTrait: Trait {
   /// to child suites and test functions.
   func reduce(into other: Self) -> Self?
 }
+#endif
