@@ -1714,7 +1714,8 @@ final class IssueTests: XCTestCase {
   }
 
   func testExplicitSourceContextWithoutLocation() async {
-    // This just ensures that `Issue.record` with an explicit sourceContext doesn't infer the location via #_sourceLocation.
+    // This just ensures that `Issue.record` with an explicit sourceContext
+    // doesn't infer the location via #_sourceLocation.
 
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -1722,11 +1723,39 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertNil(issue.sourceLocation)
+      guard case .unconditional = issue.kind else {
+        XCTFail("Expected .unconditional issue kind")
+        return
+      }
     }
 
     await Test {
       let sourceContext = SourceContext(backtrace: .current(), sourceLocation: nil)
-      Issue.record(comments: [], kind: .unconditional, severity: .warning, sourceContext: sourceContext)
+      Issue.record(comments: [], error: nil, severity: .warning, sourceContext: sourceContext)
+    }.run(configuration: configuration)
+  }
+
+  func testExplicitIssueRecordingKind() async {
+    enum TestError: Error, Equatable {
+      case abc
+    }
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case .errorCaught(let error) = issue.kind,
+            let testError = error as? TestError
+      else {
+        XCTFail("Expected .errorCaught(TestError.abc) issue kind")
+        return
+      }
+      XCTAssertEqual(testError, TestError.abc)
+    }
+
+    await Test {
+      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: nil)
+      Issue.record(comments: [], error: TestError.abc, severity: .warning, sourceContext: sourceContext)
     }.run(configuration: configuration)
   }
 }

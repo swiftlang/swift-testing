@@ -159,7 +159,7 @@ extension Issue {
   ///
   /// - Parameters:
   ///   - comments: All comments that should be attached to the issue.
-  ///   - kind: The specific kind of issue being recorded.
+  ///   - error: An error that was caught and produced this issue, if any.
   ///   - severity: The severity of the issue being recorded.
   ///   - sourceContext: The context in which this issue was originally recorded.
   ///
@@ -168,10 +168,16 @@ extension Issue {
   @_spi(ForToolsIntegrationOnly)
   @discardableResult public static func record(
     comments: [Comment],
-    kind: Issue.Kind,
+    error: (any Error)?,
     severity: Severity,
     sourceContext: SourceContext
   ) -> Self {
+    let kind: Kind = if let error {
+      .errorCaught(error)
+    } else {
+      .unconditional
+    }
+
     let issue = Issue(kind: kind, severity: severity, comments: comments, sourceContext: sourceContext)
     return issue.record()
   }
