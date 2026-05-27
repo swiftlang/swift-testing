@@ -191,7 +191,7 @@ extension _AttachableURLWrapper: FileClonable {
           DWORD(MemoryLayout.stride(ofValue: eofInfo))
         )
         guard fileResized else {
-          Issue.record("ERROR REPORTED WHILE RESIZING: \(Win32Error(rawValue: GetLastError()))")
+          Issue.record("ERROR REPORTED WHILE RESIZING: \(Win32Error(rawValue: GetLastError()))", sourceLocation: .__here())
           return false
         }
 
