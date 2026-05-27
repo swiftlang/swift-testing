@@ -167,7 +167,7 @@ extension Issue {
   /// - Note: This is only intended for use in interoperability.
   @_spi(ForToolsIntegrationOnly)
   @discardableResult public static func record(
-    comments: [Comment] = [],
+    comments: [Comment],
     kind: Issue.Kind,
     severity: Severity,
     sourceContext: SourceContext
