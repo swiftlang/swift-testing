@@ -1712,6 +1712,23 @@ final class IssueTests: XCTestCase {
     let issue = Issue(kind: .errorCaught(error), severity: .error, comments: [], sourceContext: .init())
     #expect(String(describing: issue).contains("RIGHT"))
   }
+
+  func testExplicitSourceContextWithoutLocation() async {
+    // This just ensures that `Issue.record` with an explicit sourceContext doesn't infer the location via #_sourceLocation.
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      XCTAssertNil(issue.sourceLocation)
+    }
+
+    await Test {
+      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: nil)
+      Issue.record(comments: [], kind: .unconditional, severity: .warning, sourceContext: sourceContext)
+    }.run(configuration: configuration)
+  }
 }
 #endif
 

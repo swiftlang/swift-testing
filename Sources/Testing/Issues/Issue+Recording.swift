@@ -155,6 +155,27 @@ extension Issue {
     return issue.record()
   }
 
+  /// Records an issue by explicitly providing all information up-front.
+  ///
+  /// - Parameters:
+  ///   - comments: All comments that should be attached to the issue.
+  ///   - kind: The specific kind of issue being recorded.
+  ///   - severity: The severity of the issue being recorded.
+  ///   - sourceContext: The context in which this issue was originally recorded.
+  ///
+  /// - Returns: The issue that was recorded.
+  /// - Note: This is only intended for use in interoperability.
+  @_spi(ForToolsIntegrationOnly)
+  @discardableResult public static func record(
+    comments: [Comment] = [],
+    kind: Issue.Kind,
+    severity: Severity,
+    sourceContext: SourceContext
+  ) -> Self {
+    let issue = Issue(kind: kind, severity: severity, comments: comments, sourceContext: sourceContext)
+    return issue.record()
+  }
+
   /// Catch any error thrown from a closure and record it as an issue instead of
   /// allowing it to propagate to the caller.
   ///
