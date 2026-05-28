@@ -67,6 +67,9 @@ struct FileHandleTests {
         nil
       )
     )
+    if windowsHANDLE == INVALID_HANDLE_VALUE {
+      throw Win32Error(rawValue: GetLastError())
+    }
     let fileHandle = try FileHandle(unsafeWindowsHANDLE: windowsHANDLE, options: [.readAccess])
     try fileHandle.withUnsafeWindowsHANDLE { ownedHANDLE in
       #expect(windowsHANDLE == ownedHANDLE)
