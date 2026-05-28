@@ -1019,12 +1019,14 @@ final class IssueTests: XCTestCase {
     let _: Any = try #require(throws: Never.self) {}
 
     // Casting to any Error throws an API misuse error because Never cannot be
-    // instantiated. NOTE: inner function needed for lexical context.
-    @__testing(semantics: "nomacrowarnings")
-    func castToAnyError() throws {
-      let _: any Error = try #require(throws: Never.self) {}
+    // instantiated. NOTE: inner function needed to avoid real compiler warning
+    // about the unreachable result.
+    func castToAnyError<E>(_: E.Type) throws where E: Error {
+      let _: any Error = try #require(throws: E.self) {}
     }
-    #expect(throws: APIMisuseError.self, performing: castToAnyError)
+    #expect(throws: APIMisuseError.self) {
+      try castToAnyError(Never.self)
+    }
   }
 
   func testFail() async throws {
