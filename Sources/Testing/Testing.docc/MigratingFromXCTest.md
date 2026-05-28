@@ -23,7 +23,7 @@ convert XCTest-based content to use the testing library instead.
 
 ### Import the testing library
 
-XCTest and the testing library are available from different modules. Instead of 
+XCTest and the testing library are available from different modules. Instead of
 importing the XCTest module, import the Testing module:
 
 @Row {
@@ -41,8 +41,8 @@ importing the XCTest module, import the Testing module:
   }
 }
 
-A single source file can contain tests written with XCTest as well as other 
-tests written with the testing library. Import both XCTest and Testing if a 
+A single source file can contain tests written with XCTest as well as other
+tests written with the testing library. Import both XCTest and Testing if a
 source file contains mixed test content.
 
 ### Interoperability between Swift Testing and XCTest
@@ -309,7 +309,7 @@ As with XCTest, the testing library allows test functions to be marked `async`,
 For more information about test functions and how to declare and customize them,
 see <doc:DefiningTests>.
 
-### Check for expected values and outcomes 
+### Check for expected values and outcomes
 
 XCTest uses a family of approximately 40 functions to assert test requirements.
 These functions are collectively referred to as
@@ -438,7 +438,7 @@ their equivalents in the testing library:
 
 The testing library doesn’t provide an equivalent of
 [`XCTAssertEqual(_:_:accuracy:_:file:line:)`](https://developer.apple.com/documentation/xctest/3551607-xctassertequal).
-To compare two numeric values within a specified accuracy, 
+To compare two numeric values within a specified accuracy,
 use `isApproximatelyEqual()` from [swift-numerics](https://github.com/apple/swift-numerics).
 
 ### Continue or halt after test failures
@@ -619,7 +619,7 @@ and [`Sequence<Int>`](https://developer.apple.com/documentation/swift/sequence))
 can be used with ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il``.
 You must specify a lower bound for the number of confirmations because, without
 one, the testing library cannot tell if an issue should be recorded when there
-have been zero confirmations. 
+have been zero confirmations.
 
 ### Control whether a test runs
 
@@ -737,7 +737,7 @@ issue:
 - Note: The XCTest function [`XCTExpectFailure(_:options:)`](https://developer.apple.com/documentation/xctest/3727245-xctexpectfailure),
   which doesn't take a closure and which affects the remainder of the test,
   doesn't have a direct equivalent in the testing library. To mark an entire
-  test as having a known issue, wrap its body in a call to `withKnownIssue()`. 
+  test as having a known issue, wrap its body in a call to `withKnownIssue()`.
 
 If a test may fail intermittently, the call to
 `XCTExpectFailure(_:options:failingBlock:)` can be marked _non-strict_. When
@@ -764,7 +764,7 @@ instead:
     // After
     @Test func grillWorks() async {
       withKnownIssue(
-        "Grill may need fuel", 
+        "Grill may need fuel",
         isIntermittent: true
       ) {
         try FoodTruck.shared.grill.start()
@@ -822,7 +822,7 @@ of issues:
       } when: {
         FoodTruck.shared.hasGrill
       } matching: { issue in
-        issue.error != nil 
+        issue.error != nil
       }
       ...
     }
@@ -849,7 +849,7 @@ suite serially:
         try FoodTruck.shared.refrigerator.openDoor()
         XCTAssertEqual(FoodTruck.shared.refrigerator.lightState, .on)
       }
-      
+
       func testLightGoesOut() throws {
         try FoodTruck.shared.refrigerator.openDoor()
         try FoodTruck.shared.refrigerator.closeDoor()
@@ -867,7 +867,7 @@ suite serially:
         try FoodTruck.shared.refrigerator.openDoor()
         #expect(FoodTruck.shared.refrigerator.lightState == .on)
       }
-      
+
       @Test func lightGoesOut() throws {
         try FoodTruck.shared.refrigerator.openDoor()
         try FoodTruck.shared.refrigerator.closeDoor()
