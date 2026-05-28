@@ -14,20 +14,20 @@
 struct SourceLocationTests {
   @Test("SourceLocation.description property")
   func sourceLocationDescription() {
-    let sourceLocation = #_sourceLocation
+    let sourceLocation = #Testing::sourceLocation
     _ = String(describing: sourceLocation)
     _ = String(reflecting: sourceLocation)
   }
 
   @Test("SourceLocation.fileID property")
   func sourceLocationFileID() {
-    let sourceLocation = #_sourceLocation
+    let sourceLocation = #Testing::sourceLocation
     #expect(sourceLocation.fileID.hasSuffix("/SourceLocationTests.swift"))
   }
 
   @Test("SourceLocation.fileName property")
   func sourceLocationFileName() {
-    var sourceLocation = #_sourceLocation
+    var sourceLocation = #Testing::sourceLocation
     #expect(sourceLocation.fileName == "SourceLocationTests.swift")
 
     sourceLocation.fileID = "FakeModule/FakeFileID"
@@ -36,7 +36,7 @@ struct SourceLocationTests {
 
   @Test("SourceLocation.moduleName property")
   func sourceLocationModuleName() {
-    var sourceLocation = #_sourceLocation
+    var sourceLocation = #Testing::sourceLocation
     #expect(!sourceLocation.moduleName.contains("/"))
     #expect(!sourceLocation.moduleName.isEmpty)
 
@@ -100,7 +100,7 @@ struct SourceLocationTests {
 
   @Test("SourceLocation.line and .column properties")
   func sourceLocationLineAndColumn() {
-    var sourceLocation = #_sourceLocation
+    var sourceLocation = #Testing::sourceLocation
     #expect(sourceLocation.line > 0)
     #expect(sourceLocation.line < 500)
     #expect(sourceLocation.column > 0)
@@ -132,11 +132,11 @@ struct SourceLocationTests {
   @Test("SourceLocation.fileID property must be well-formed")
   func sourceLocationFileIDWellFormed() async {
     await #expect(processExitsWith: .failure) {
-      var sourceLocation = #_sourceLocation
+      var sourceLocation = #Testing::sourceLocation
       sourceLocation.fileID = ""
     }
     await #expect(processExitsWith: .failure) {
-      var sourceLocation = #_sourceLocation
+      var sourceLocation = #Testing::sourceLocation
       sourceLocation.fileID = "ABC"
     }
   }
@@ -144,11 +144,11 @@ struct SourceLocationTests {
   @Test("SourceLocation.line and column properties must be positive")
   func sourceLocationLineAndColumnPositive() async {
     await #expect(processExitsWith: .failure) {
-      var sourceLocation = #_sourceLocation
+      var sourceLocation = #Testing::sourceLocation
       sourceLocation.line = -1
     }
     await #expect(processExitsWith: .failure) {
-      var sourceLocation = #_sourceLocation
+      var sourceLocation = #Testing::sourceLocation
       sourceLocation.column = -1
     }
   }
@@ -156,7 +156,7 @@ struct SourceLocationTests {
 
   @Test("SourceLocation.filePath property")
   func sourceLocationFilePath() {
-    var sourceLocation = #_sourceLocation
+    var sourceLocation = #Testing::sourceLocation
     #expect(sourceLocation.filePath == #filePath)
 
     sourceLocation.filePath = "A"
@@ -166,7 +166,7 @@ struct SourceLocationTests {
   @available(swift, deprecated: 6.3)
   @Test("SourceLocation._filePath property")
   func sourceLocation_filePath() {
-    var sourceLocation = #_sourceLocation
+    var sourceLocation = #Testing::sourceLocation
     #expect(sourceLocation._filePath == #filePath)
 
     sourceLocation._filePath = "A"
@@ -236,5 +236,13 @@ struct SourceLocationTests {
         #expect(Bool(false), sourceLocation: SourceLocation(fileID: "A/B", filePath: "", line: lineNumber, column: 1))
       }.run(configuration: configuration)
     }
+  }
+
+  @Test("#_sourceLocation and #Testing::sourceLocation are equivalent")
+  func newAndOldMacrosAreEquivalent() {
+    let lhs = #_sourceLocation
+    var rhs = #Testing::sourceLocation
+    rhs.line -= 1
+    #expect(lhs == rhs)
   }
 }
