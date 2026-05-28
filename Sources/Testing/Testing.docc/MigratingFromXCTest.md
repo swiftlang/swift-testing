@@ -45,6 +45,111 @@ A single source file can contain tests written with XCTest as well as other
 tests written with the testing library. Import both XCTest and Testing if a 
 source file contains mixed test content.
 
+### Interoperability between Swift Testing and XCTest
+
+<!-- TODO: withKnownIssue and Test.cancel interop -->
+
+Interoperability is a feature that enables XCTest's assertions to work with
+Swift Testing, and Swift Testing's expectations to work with XCTest. You can use
+this to share common test helpers between XCTest and Swift Testing test cases.
+
+For example, you can replace
+[`XCTAssert()`](https://developer.apple.com/documentation/xctest/1500669-xctassert)
+with ``expect(_:_:sourceLocation:)`` in your XCTests and immediately get the
+benefits of the newer, more ergonomic API. In the meantime, you can
+incrementally migrate the rest of your test infrastructure to use Swift Testing
+at your own pace.
+
+```swift
+// XCTest
+
+class UniqueElementsTests: XCTestCase {
+  func testDups() {
+    // Fails as expected
+    assertUnique([1, 2, 1])
+  }
+}
+
+// Swift Testing
+
+@Test func `Duplicate elements`() {
+  // *Without* interop: passes despite XCTAssertEqual failure in the helper
+  // With interop: fails as expected
+  assertUnique([1, 2, 1])
+}
+
+func assertUnique(_ elements: [Int]) {
+  XCTAssertEqual(Set(elements).count, elements.count)
+  // With interop: safely replace XCTAssertEqual with #expect
+  // #expect(Set(elements).count == elements.count)
+}
+```
+
+Interoperability has a configurable mode which controls how it reports issues
+across test library boundaries.
+
+- **None**: the feature is disabled.
+
+For the remaining modes, **Swift Testing API will behave as expected when used
+in XCTest**. This includes reporting any assertion failures as errors within an
+XCTest test case. As a result, any interop mode will enable you to incrementally
+migrate your assertions to Swift Testing.
+
+**XCTest API used in Swift Testing tests** behaves differently based on mode:
+
+- **Limited**: Surfaces all test failures that were previously ignored as
+  warnings. Also include warnings for XCTest API usage in a Swift Testing test.
+
+- **Complete**: Surfaces all test failures that were previously ignored with
+  their original severity. Also include warnings for XCTest API usage in a Swift
+  Testing test.
+
+- **Strict**:
+  [`fatalError()`](https://developer.apple.com/documentation/swift/fatalerror(_:file:line:))
+  when XCTest API is used in a Swift Testing test.
+
+```swift
+// Calling XCTest API from Swift Testing
+@Test func `Test Interop`() {
+  // <Mode>:   <failure message>
+  // None:     No message
+  // Limited:  ⚠️ "Interop failure",
+  //           ⚠️ Replace XCTest API such as 'XCTAssert' with a Swift
+  //              Testing equivalent such as '#expect'.
+  // Complete: ❌ "Interop failure", ⚠️ Replace XCTest API...
+  // Strict:   💥 fatalError: Replace XCTest API...
+  XCTFail("Interop failure")
+}
+```
+
+```swift
+// Calling Swift Testing API from XCTest
+class InteropTests: XCTestCase {
+  func testInterop() {
+    // <Mode>:   <failure message>
+    // None:     No message
+    // Limited:  ❌ "Interop failure"
+    // Complete: ❌ "Interop failure"
+    // Strict:   ❌ "Interop failure"
+    Issue.record("Interop failure")
+  }
+}
+```
+
+When using the Swift 6.4 toolchain or newer, the default mode is `limited`. If
+the package also declares `swift-tools-version: 6.4` or newer, the default mode
+is `complete`.
+
+If you want to use the strict mode or opt-out of interop entirely, you'll need
+to override the default mode with the `SWIFT_TESTING_XCTEST_INTEROP_MODE`
+environment variable:
+| Interop Mode | `SWIFT_TESTING_XCTEST_INTEROP_MODE` |
+| ------------ | ----------------------------------- |
+| None         | `none`                              |
+| Limited      | `limited`                           |
+| Complete     | `complete`                          |
+| Strict       | `strict`                            |
+
 ### Convert test classes
 
 XCTest groups related sets of test methods in test classes: classes that inherit
