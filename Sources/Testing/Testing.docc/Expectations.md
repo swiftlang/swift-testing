@@ -54,6 +54,36 @@ the test when the code doesn't satisfy a requirement, use
 ``require(_:_:sourceLocation:)-5l63q`` throws an instance of
 ``ExpectationFailedError`` when your code fails to satisfy the requirement.
 
+### Decide between an expectation and a requirement
+
+``expect(_:_:sourceLocation:)`` and ``require(_:_:sourceLocation:)-5l63q``
+check the same kinds of conditions, but they differ in what happens when a
+check fails:
+
+- ``expect(_:_:sourceLocation:)`` records an issue and then _continues_
+  running the rest of the test. Use it when a single failed check doesn't
+  prevent the remaining checks in the test from producing meaningful results,
+  so that one test run can report several independent failures at once.
+- ``require(_:_:sourceLocation:)-5l63q`` records an issue and then throws an
+  error, which _ends_ the current test. Because it throws, you call it with
+  `try`. Use it when the rest of the test can't run meaningfully unless the
+  condition holds, to avoid reporting a cascade of failures that all stem from
+  the same root cause.
+
+As a rule of thumb, reach for ``expect(_:_:sourceLocation:)`` by default, and
+switch to ``require(_:_:sourceLocation:)-5l63q`` when continuing the test after
+the failure would be pointless or misleading. For example, if you fetch a value
+and every later check depends on it, require the value so that the test stops at
+the source of the problem instead of producing further failures that the
+original failure caused.
+
+The same distinction applies when you work with optionals.
+``require(_:_:sourceLocation:)-6w9oo`` unwraps an optional and returns its
+value, or records an issue and ends the test if the value is `nil`, which lets
+you use the unwrapped value safely in the rest of the test. If you only want to
+check that a value isn't `nil` without using it afterward, and you want the test
+to keep running, use ``expect(_:_:sourceLocation:)`` instead.
+
 ## Topics
 
 ### Checking expectations
