@@ -26,9 +26,9 @@ struct CErrorTests {
 struct Win32ErrorTests {
   @Test("Win32Error.description property",
     arguments: [
-      (DWORD(ERROR_OUTOFMEMORY), "Not enough memory resources are available to complete this operation."),
-      (DWORD(ERROR_INVALID_ACCESS), "The access code is invalid."),
-      (DWORD(ERROR_ARITHMETIC_OVERFLOW), "Arithmetic result exceeded 32 bits."),
+      (ERROR_OUTOFMEMORY, "Not enough memory resources are available to complete this operation."),
+      (ERROR_INVALID_ACCESS, "The access code is invalid."),
+      (ERROR_ARITHMETIC_OVERFLOW, "Arithmetic result exceeded 32 bits."),
       (999_999_999, "An unknown error occurred (999999999)."),
     ]
   )
