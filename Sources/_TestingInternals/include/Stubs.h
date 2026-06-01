@@ -118,7 +118,7 @@ SWT_DEFINE_ATOMIC_OPERATIONS(void const *_Nullable)
 ///
 /// This function is provided because `MAKELANGID()` is a complex macro and
 /// cannot be imported directly into Swift.
-static LANGID swt_MAKELANGID(unsigned short p, unsigned short s) {
+static LANGID swt_MAKELANGID(WORD p, WORD s) {
   return MAKELANGID(p, s);
 }
 
