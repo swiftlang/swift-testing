@@ -198,7 +198,9 @@ extension AnyAttachable: FileClonable {}
 
 // MARK: - Describing an attachment
 
+#if SWT_TARGET_OS_APPLE
 @_preInverseGenerics
+#endif
 extension Attachment: CustomStringConvertible where AttachableValue: ~Copyable {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
