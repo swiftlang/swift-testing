@@ -14,13 +14,14 @@
 import Synchronization
 #endif
 
-@Suite("Configuration.RepetitionPolicy Tests")
-struct PlanIterationTests {
+@Suite
+struct LegacyPlanIterationTests {
   @Test("One iteration (default behavior)")
   func oneIteration() async {
     await confirmation("N iterations started") { started in
       await confirmation("N iterations ended") { ended in
         var configuration = Configuration()
+        configuration.shouldUseLegacyPlanLevelRepetition = true
         configuration.eventHandler = { event, _ in
           if case .iterationStarted = event.kind {
             started()
@@ -42,6 +43,7 @@ struct PlanIterationTests {
     await confirmation("N iterations started", expectedCount: iterationCount) { started in
       await confirmation("N iterations ended", expectedCount: iterationCount) { ended in
         var configuration = Configuration()
+        configuration.shouldUseLegacyPlanLevelRepetition = true
         configuration.eventHandler = { event, _ in
           if case .iterationStarted = event.kind {
             started()
@@ -62,17 +64,16 @@ struct PlanIterationTests {
 
   @Test("Iteration until issue recorded")
   func iterationUntilIssueRecorded() async {
-    let iterationIndex = Mutex(0)
+    let iterationIndex = Atomic(0)
     let iterationCount = 10
     let iterationWithIssue = 5
     await confirmation("N iterations started", expectedCount: iterationWithIssue + 1) { started in
       await confirmation("N iterations ended", expectedCount: iterationWithIssue + 1) { ended in
         var configuration = Configuration()
+        configuration.shouldUseLegacyPlanLevelRepetition = true
         configuration.eventHandler = { event, _ in
           if case let .iterationStarted(index) = event.kind {
-            iterationIndex.withLock { iterationIndex in
-              iterationIndex = index
-            }
+            iterationIndex.store(index, ordering: .sequentiallyConsistent)
             started()
           } else if case .iterationEnded = event.kind {
             ended()
@@ -81,7 +82,8 @@ struct PlanIterationTests {
         configuration.repetitionPolicy = .repeating(.untilIssueRecorded, maximumIterationCount: iterationCount)
 
         await Test {
-          if iterationIndex.rawValue == iterationWithIssue {
+          let iterationIndex = iterationIndex.load(ordering: .sequentiallyConsistent)
+          if iterationIndex == iterationWithIssue {
             #expect(Bool(false))
           }
         }.run(configuration: configuration)
@@ -91,17 +93,16 @@ struct PlanIterationTests {
 
   @Test("Iteration while issue recorded")
   func iterationWhileIssueRecorded() async {
-    let iterationIndex = Mutex(0)
+    let iterationIndex = Atomic(0)
     let iterationCount = 10
     let iterationWithoutIssue = 5
     await confirmation("N iterations started", expectedCount: iterationWithoutIssue + 1) { started in
       await confirmation("N iterations ended", expectedCount: iterationWithoutIssue + 1) { ended in
         var configuration = Configuration()
+        configuration.shouldUseLegacyPlanLevelRepetition = true
         configuration.eventHandler = { event, _ in
           if case let .iterationStarted(index) = event.kind {
-            iterationIndex.withLock { iterationIndex in
-              iterationIndex = index
-            }
+            iterationIndex.store(index, ordering: .sequentiallyConsistent)
             started()
           } else if case .iterationEnded = event.kind {
             ended()
@@ -110,7 +111,8 @@ struct PlanIterationTests {
         configuration.repetitionPolicy = .repeating(.whileIssueRecorded, maximumIterationCount: iterationCount)
 
         await Test {
-          if iterationIndex.rawValue < iterationWithoutIssue {
+          let iterationIndex = iterationIndex.load(ordering: .sequentiallyConsistent)
+          if iterationIndex < iterationWithoutIssue {
             #expect(Bool(false))
           }
         }.run(configuration: configuration)

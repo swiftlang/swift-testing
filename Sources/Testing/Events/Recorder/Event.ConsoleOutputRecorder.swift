@@ -178,12 +178,10 @@ extension Event.Symbol {
           return "\(_ansiEscapeCodePrefix)90m\(symbolCharacter)\(_resetANSIEscapeCode)"
         }
         return "\(_ansiEscapeCodePrefix)92m\(symbolCharacter)\(_resetANSIEscapeCode)"
-      case .passWithWarnings:
+      case .warning:
         return "\(_ansiEscapeCodePrefix)93m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .fail:
         return "\(_ansiEscapeCodePrefix)91m\(symbolCharacter)\(_resetANSIEscapeCode)"
-      case .warning:
-        return "\(_ansiEscapeCodePrefix)93m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .attachment:
         return "\(_ansiEscapeCodePrefix)94m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .details:

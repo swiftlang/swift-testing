@@ -539,10 +539,14 @@ final class IssueTests: XCTestCase {
         throw MyParameterizedError(index: randomNumber)
       }
       #expect(throws: Never.self) {}
+      #expect(throws: Swift::Never.self) {}
+      #expect(throws: Swift::Swift.Never.self) {}
       func genericExpectThrows(_ type: (some Error).Type) {
         #expect(throws: type) {}
       }
       genericExpectThrows(Never.self)
+      genericExpectThrows(Swift::Never.self)
+      genericExpectThrows(Swift::Swift.Never.self)
       func nonVoidReturning() throws -> Int { throw MyError() }
       #expect(throws: MyError.self) {
         try nonVoidReturning()
@@ -960,10 +964,17 @@ final class IssueTests: XCTestCase {
   }
 
   func testErrorCheckingWithExpect_ResultValueIsNever() async throws {
-    let error: Never? = #expect(throws: Never.self) {
-      throw MyDescriptiveError(description: "abc123")
+    var configuration = Configuration()
+    configuration.eventHandler = { _, _ in
+      // I'm just here to suppress issue recording.
     }
-    #expect(error == nil)
+
+    await Test {
+      let error: Never? = #expect(throws: Never.self) {
+        throw MyDescriptiveError(description: "abc123")
+      }
+      #expect(error == nil)
+    }.run(configuration: configuration)
   }
 
   func testErrorCheckingWithRequire_ResultValueIsNever() async throws {
@@ -1008,12 +1019,14 @@ final class IssueTests: XCTestCase {
     let _: Any = try #require(throws: Never.self) {}
 
     // Casting to any Error throws an API misuse error because Never cannot be
-    // instantiated. NOTE: inner function needed for lexical context.
-    @__testing(semantics: "nomacrowarnings")
-    func castToAnyError() throws {
-      let _: any Error = try #require(throws: Never.self) {}
+    // instantiated. NOTE: inner function needed to avoid real compiler warning
+    // about the unreachable result.
+    func castToAnyError<E>(_: E.Type) throws where E: Error {
+      let _: any Error = try #require(throws: E.self) {}
     }
-    #expect(throws: APIMisuseError.self, performing: castToAnyError)
+    #expect(throws: APIMisuseError.self) {
+      try castToAnyError(Never.self)
+    }
   }
 
   func testFail() async throws {
@@ -1236,6 +1249,7 @@ final class IssueTests: XCTestCase {
     }
   }
 
+#if SWT_COLLECTION_DIFFING_ENABLED
   func testCollectionDifference() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -1308,6 +1322,7 @@ final class IssueTests: XCTestCase {
       #expect(range_int64 == 0...0, "both incorrect")
     }.run(configuration: configuration)
   }
+#endif
 
   func testNegatedExpressions() async {
     var configuration = Configuration()
@@ -1699,12 +1714,56 @@ final class IssueTests: XCTestCase {
     let issue = Issue(kind: .errorCaught(error), severity: .error, comments: [], sourceContext: .init())
     #expect(String(describing: issue).contains("RIGHT"))
   }
+
+  func testExplicitSourceContextWithoutLocation() async {
+    // This just ensures that `Issue.record` with an explicit sourceContext
+    // doesn't infer the location via #_sourceLocation.
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      XCTAssertNil(issue.sourceLocation)
+      guard case .unconditional = issue.kind else {
+        XCTFail("Expected .unconditional issue kind")
+        return
+      }
+    }
+
+    await Test {
+      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: nil)
+      Issue.record(comments: [], severity: .warning, sourceContext: sourceContext)
+    }.run(configuration: configuration)
+  }
+
+  func testExplicitIssueRecordingKind() async {
+    enum TestError: Error, Equatable {
+      case abc
+    }
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case .errorCaught(let error) = issue.kind,
+            let testError = error as? TestError
+      else {
+        XCTFail("Expected .errorCaught(TestError.abc) issue kind")
+        return
+      }
+      XCTAssertEqual(testError, TestError.abc)
+    }
+
+    await Test {
+      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: nil)
+      Issue.record(comments: [], error: TestError.abc, severity: .warning, sourceContext: sourceContext)
+    }.run(configuration: configuration)
+  }
 }
 #endif
 
-#if canImport(Foundation) && !SWT_NO_SNAPSHOT_TYPES
-import Foundation
-
+#if !SWT_NO_SNAPSHOT_TYPES
 @Suite("Issue Codable Conformance Tests")
 struct IssueCodingTests {
 
@@ -1714,7 +1773,7 @@ struct IssueCodingTests {
     Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .init("abc"), isPassing: true, isRequired: true, sourceLocation: #_sourceLocation)),
     Issue.Kind.knownIssueNotRecorded,
     Issue.Kind.system,
-    Issue.Kind.timeLimitExceeded(timeLimitComponents: (13, 42)),
+    Issue.Kind.timeLimitExceeded(timeLimitComponents: (123, 0)),
     Issue.Kind.unconditional,
   ]
 

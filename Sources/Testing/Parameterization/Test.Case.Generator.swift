@@ -87,9 +87,10 @@ extension Test.Case {
       parameters: [Test.Parameter],
       testFunction: @escaping @Sendable (S.Element) async throws -> Void
     ) where S: Collection {
+#if !hasFeature(Embedded)
       if parameters.count > 1 {
         self.init(sequence: collection) { element in
-          let mirror = Mirror(reflecting: element)
+          let mirror = Mirror(reflectingForTest: element)
           let values: [any Sendable] = if mirror.displayStyle == .tuple {
             mirror.children.map { unsafeBitCast($0.value, to: (any Sendable).self) }
           } else {
@@ -100,11 +101,13 @@ extension Test.Case {
             try await testFunction(element)
           }
         }
-      } else {
-        self.init(sequence: collection) { element in
-          Test.Case(values: [element], parameters: parameters) {
-            try await testFunction(element)
-          }
+        return
+      }
+#endif
+
+      self.init(sequence: collection) { element in
+        Test.Case(values: [element], parameters: parameters) {
+          try await testFunction(element)
         }
       }
     }
@@ -226,24 +229,24 @@ extension Test.Case {
     ///   - testFunction: The test function to which each generated test case
     ///     passes an argument value from `dictionary`.
     ///
-    /// This initializer overload is specialized for dictionary collections, to
-    /// efficiently de-structure their elements (which are known to be 2-tuples)
-    /// when appropriate. This overload is distinct from those for other
-    /// collections of 2-tuples because the `Element` tuple type for
-    /// `Dictionary` includes labels (`(key: Key, value: Value)`).
-    init<Key, Value>(
-      arguments dictionary: Dictionary<Key, Value>,
+    /// This initializer overload is specialized for dictionary-like collections
+    /// to efficiently de-structure their elements (which are known to be
+    /// 2-tuples) when appropriate. This overload is distinct from those for
+    /// other collections of 2-tuples because the `Element` tuple type for these
+    /// kinds of collections includes labels (`(key: Key, value: Value)`).
+    init(
+      arguments collection: S,
       parameters: [Test.Parameter],
-      testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
-    ) where S == Dictionary<Key, Value> {
+      testFunction: @escaping @Sendable ((S.Key, S.Value)) async throws -> Void
+    ) where S: ExpressibleByDictionaryLiteral, S.Element == (key: S.Key, value: S.Value) {
       if parameters.count > 1 {
-        self.init(sequence: dictionary) { element in
+        self.init(sequence: collection) { element in
           Test.Case(values: [element.key, element.value], parameters: parameters) {
             try await testFunction(element)
           }
         }
       } else {
-        self.init(sequence: dictionary) { element in
+        self.init(sequence: collection) { element in
           Test.Case(values: [element], parameters: parameters) {
             try await testFunction(element)
           }

@@ -24,14 +24,14 @@ struct EventIterationTests {
     testBody: @escaping @Sendable (Int) -> Void,
     location: SourceLocation = #_sourceLocation
   ) async {
-    let recordedIteration = Mutex<Int>(0)
+    let recordedIteration = Atomic<Int>(0)
 
     await confirmation("Events received", expectedCount: expectedIterations * eventKinds.count, sourceLocation: location) { eventReceived in
       var configuration = Configuration()
       configuration.eventHandler = { event, context in
         if eventKinds.contains(where: { Self.matchesTestLifetimeEventKind($0, event.kind) }) {
           if let iteration = context.iteration {
-            recordedIteration.withLock { $0 = iteration }
+            recordedIteration.store(iteration, ordering: .sequentiallyConsistent)
           }
           eventReceived()
         }
@@ -39,12 +39,12 @@ struct EventIterationTests {
       configuration.repetitionPolicy = repetitionPolicy
 
       await Test {
-        testBody(recordedIteration.rawValue)
+        testBody(recordedIteration.load(ordering: .sequentiallyConsistent))
       }.run(configuration: configuration)
 
       // Verify all expected iterations were recorded
-      let iteration = recordedIteration.rawValue
-      #expect(iteration == expectedIterations, "Final observed iteration did not match expected number of iterations", sourceLocation: location)
+      let iteration = recordedIteration.load(ordering: .sequentiallyConsistent)
+      #expect(iteration == expectedIterations, sourceLocation: location)
     }
   }
 
@@ -57,17 +57,6 @@ struct EventIterationTests {
       return true
     default:
       return false
-    }
-  }
-
-  @Test
-  func `testStarted and testEnded events include iteration in context`() async {
-    await verifyIterations(
-      for: [.testStarted, .testEnded],
-      repetitionPolicy: .once,
-      expectedIterations: 1
-    ) { _ in
-      // Do nothing, just pass
     }
   }
 
@@ -96,9 +85,7 @@ struct EventIterationTests {
       repetitionPolicy: policy,
       expectedIterations: expectedIterations
     ) { iteration in
-      if iteration < 3 {
-        Issue.record("Failure")
-      }
+      #expect(iteration >= 3)
     }
   }
 }

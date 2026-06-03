@@ -46,6 +46,18 @@ public struct __Expression: Sendable {
   /// instance of this type.
   var kind: Kind
 
+  init(
+    _ sourceCode: String,
+    isNegated: Bool = false,
+    runtimeValue: Value? = nil,
+    subexpressions: [Self] = []
+  ) {
+    self.kind = .generic(sourceCode)
+    self.isNegated = isNegated
+    self.runtimeValue = runtimeValue
+    self._subexpressions = subexpressions
+  }
+
   /// Whether or not this instance represents a negated expression (`!foo`).
   var isNegated = false
 
@@ -110,8 +122,29 @@ public struct __Expression: Sendable {
       debugDescription = String(reflecting: subject)
       typeInfo = TypeInfo(describingTypeOf: subject)
 
-      let mirror = Mirror(reflecting: subject)
+#if !hasFeature(Embedded)
+      let mirror = Mirror(reflectingForTest: subject)
       isCollection = mirror.displayStyle?.isCollection ?? false
+#else
+      isCollection = false
+#endif
+    }
+
+    /// Initialize an instance of this type with a previously-generated
+    /// description of some subject.
+    ///
+    /// - Parameters:
+    ///   - description: A description of the subject.
+    ///   - typeInfo: The type of the subject.
+    ///
+    /// This initializer is only used when decoding an instance of
+    /// ``ABI/EncodedExpression``. Callers should prefer other initializers
+    /// where possible.
+    init(description: String, typeInfo: TypeInfo) {
+      self.description = description
+      self.debugDescription = description
+      self.typeInfo = typeInfo
+      self.isCollection = false
     }
 
     /// Initialize an instance of this type with the specified description.
@@ -178,7 +211,8 @@ public struct __Expression: Sendable {
       self.init(describing: subject)
       self.label = label
 
-      let mirror = Mirror(reflecting: subject)
+#if !hasFeature(Embedded)
+      let mirror = Mirror(reflectingForTest: subject)
 
       // If the subject being reflected is an instance of a reference type (e.g.
       // a class), keep track of whether it has been seen previously. Later
@@ -234,6 +268,7 @@ public struct __Expression: Sendable {
         }
         self.children = children
       }
+#endif
     }
   }
 
@@ -340,9 +375,32 @@ public struct __Expression: Sendable {
     return result
   }
 
+  /// Storage for ``subexpressions``.
+  private var _subexpressions = [Self]()
+
   /// The set of parsed and captured subexpressions contained in this instance.
   @_spi(ForToolsIntegrationOnly)
-  public internal(set) var subexpressions = [Self]()
+  public internal(set) var subexpressions: [Self] {
+    get {
+      if !_subexpressions.isEmpty {
+        return _subexpressions
+      }
+      // If there were no explicitly-added subexpressions, look for any
+      // subexpressions captured via reflection instead.
+      if let children = runtimeValue?.children {
+        return children.compactMap { child in
+          guard let label = child.label else {
+            return nil
+          }
+          return __Expression(label, runtimeValue: child)
+        }
+      }
+      return []
+    }
+    set {
+      _subexpressions = newValue
+    }
+  }
 
   /// A description of the difference between the operands in this expression,
   /// if that difference could be determined.
@@ -363,11 +421,13 @@ public struct __Expression: Sendable {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension __Expression: Codable {}
 extension __Expression.Kind: Codable {}
 extension __Expression.Value: Codable {}
+#endif
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
@@ -383,7 +443,7 @@ extension __Expression: CustomStringConvertible, CustomDebugStringConvertible {
   /// This initializer does not attempt to parse `sourceCode`.
   @_spi(ForToolsIntegrationOnly)
   public init(_ sourceCode: String) {
-    self.init(kind: .generic(sourceCode))
+    self.init(sourceCode, isNegated: false)
   }
 
   public var description: String {
@@ -391,7 +451,7 @@ extension __Expression: CustomStringConvertible, CustomDebugStringConvertible {
   }
 
   public var debugDescription: String {
-    String(reflecting: kind)
+    sourceCode
   }
 }
 
@@ -413,6 +473,7 @@ extension __Expression.Value: CustomStringConvertible, CustomDebugStringConverti
 @_spi(ForToolsIntegrationOnly)
 public typealias Expression = __Expression
 
+#if !hasFeature(Embedded)
 extension Mirror.DisplayStyle {
   /// Whether or not this display style represents a collection of values.
   fileprivate var isCollection: Bool {
@@ -426,3 +487,4 @@ extension Mirror.DisplayStyle {
     }
   }
 }
+#endif

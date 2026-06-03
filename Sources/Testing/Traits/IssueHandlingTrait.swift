@@ -65,6 +65,12 @@ public struct IssueHandlingTrait: TestTrait, SuiteTrait {
   public var isRecursive: Bool {
     true
   }
+
+#if hasFeature(Embedded)
+  public func __as(_: IssueHandlingTrait.Type) -> IssueHandlingTrait? {
+    self
+  }
+#endif
 }
 
 /// @Metadata {
@@ -100,7 +106,7 @@ extension IssueHandlingTrait: TestScoping {
   /// issue.
   func provideScope(performing function: @Sendable () async throws -> Void) async throws {
     guard var configuration = Configuration.current else {
-      preconditionFailure("Configuration.current is nil when calling \(#function). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      preconditionFailure("Configuration.current is nil when calling \(#function). \(fileABugMessage)")
     }
 
     configuration.eventHandler = { [oldConfiguration = configuration] event, context in

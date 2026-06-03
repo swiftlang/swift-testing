@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 #if canImport(AppKit) && canImport(_Testing_AppKit)
 import AppKit
@@ -25,6 +25,10 @@ import CoreGraphics
 #if canImport(CoreImage) && canImport(_Testing_CoreImage)
 import CoreImage
 import _Testing_CoreImage
+#endif
+#if canImport(CoreTransferable) && canImport(_Testing_CoreTransferable)
+import CoreTransferable
+@_spi(Experimental) import _Testing_CoreTransferable
 #endif
 #if canImport(UIKit) && canImport(_Testing_UIKit)
 import UIKit
@@ -53,14 +57,12 @@ struct AttachmentTests {
     #expect(attachment.description.contains("MySendableAttachable("))
   }
 
-#if compiler(>=6.3) || !os(Windows) // WORKAROUND: swift-#84184
   @Test func moveOnlyDescription() {
     let attachableValue = MyAttachable(string: "<!doctype html>")
     let attachment = Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
     #expect(attachment.description.contains(#""\#(attachment.preferredName)""#))
     #expect(attachment.description.contains("'MyAttachable'"))
   }
-#endif
 
   @Test func preferredNameOfStringAttachment() {
     let attachment1 = Attachment("", named: "abc123")
@@ -72,7 +74,7 @@ struct AttachmentTests {
 
 #if !SWT_NO_FILE_IO
   func compare(_ attachableValue: borrowing MySendableAttachable, toContentsOfFileAtPath filePath: String) throws {
-    let file = try FileHandle(forReadingAtPath: filePath)
+    let file = try Testing.FileHandle(forReadingAtPath: filePath)
     let bytes = try file.readToEnd()
 
     let decodedValue = if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
@@ -260,7 +262,7 @@ struct AttachmentTests {
 
         #expect((attachment.attachableValue as Any) is AnyAttachable.Wrapped)
         #expect(attachment.sourceLocation.fileID == #fileID)
-       valueAttached()
+        valueAttached()
       }
 
       await Test {
@@ -385,6 +387,7 @@ struct AttachmentTests {
   }
 #endif
 
+#if !SWT_NO_CODABLE
   struct CodableAttachmentArguments: Sendable, CustomTestArgumentEncodable, CustomTestStringConvertible {
     var forSecureCoding: Bool
     var pathExtension: String?
@@ -485,6 +488,46 @@ struct AttachmentTests {
     let attachment = Attachment(attachableValue, named: "loremipsum.gif")
     #expect(throws: CocoaError.self) {
       try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
+    }
+  }
+#endif
+#endif
+
+#if canImport(CoreTransferable) && canImport(_Testing_CoreTransferable)
+  @available(_transferableAPI, *)
+  @Test("Attach Transferable-conformant value")
+  func transferable() async throws {
+    let value = MyTransferable()
+    let attachment = try await Attachment(exporting: value, as: .plainText)
+    #expect(value == attachment.attachableValue)
+    try attachment.withUnsafeBytes { bytes in
+      #expect(Array(bytes) == Array(MyTransferable.stringValue.utf8))
+    }
+  }
+
+  @available(_transferableAPI, *)
+  @Test("Attach Transferable-conformant value with a nonsensical type")
+  func transferableWithNonsensicalType() async throws {
+    let value = MyTransferable()
+    await #expect(throws: (any Error).self) {
+      _ = try await Attachment(exporting: value, as: .gif)
+    }
+  }
+
+  @available(_transferableAPI, *)
+  @Test("Preferred name of Transferable-conformant value")
+  func transferablePreferredName() async throws {
+    let value = MyTransferable()
+    let attachment = try await Attachment(exporting: value)
+    #expect(attachment.preferredName == "untitled.txt")
+  }
+
+  @available(_transferableAPI, *)
+  @Test("Attach Transferable-conformant value with no available type")
+  func transferableWithNoAvailableType() async throws {
+    let value = MyBadTransferable()
+    await #expect(throws: (any Error).self) {
+      _ = try await Attachment(exporting: value)
     }
   }
 #endif
@@ -949,6 +992,96 @@ extension AttachmentTests {
     }
 #endif
   }
+
+#if !SWT_NO_CODABLE
+#if !SWT_NO_FILE_IO
+  @Test("Decoding an encoded attachment with path")
+  func decodingAnEncodedAttachmentWithPath() throws {
+    let expectedBytes = "abc123".utf8
+    try withTemporaryPath { path in
+      let url = URL(fileURLWithPath: path, isDirectory: false)
+      try Data(expectedBytes).write(to: url)
+
+#if os(Windows)
+      let path = path.replacing(#"\"#, with: #"\\"#)
+#endif
+      var json = #"{"path": "\#(path)"}"#
+      let eattachment = try json.withUTF8 { json in
+        try JSON.decode(ABI.EncodedAttachment<ABI.v6_3>.self, from: UnsafeRawBufferPointer(json))
+      }
+      let attachment = Attachment(decoding: eattachment)
+      #expect(attachment != nil)
+      try attachment?.withUnsafeBytes { bytes in
+        #expect(bytes.count == expectedBytes.count)
+        #expect(bytes.elementsEqual(expectedBytes))
+      }
+    }
+  }
+#endif
+
+  @Test("Decoding an encoded attachment with bytes (experimental)")
+  func decodingAnEncodedAttachmentWithBytes() throws {
+    var json = #"{"_bytes": "YWJjMTIz"}"#
+    let eattachment = try json.withUTF8 { json in
+      try JSON.decode(ABI.EncodedAttachment<ABI.ExperimentalVersion>.self, from: UnsafeRawBufferPointer(json))
+    }
+    let attachment = Attachment(decoding: eattachment)
+    #expect(attachment != nil)
+    try attachment?.withUnsafeBytes { bytes in
+      #expect(bytes.count == 6)
+      #expect(bytes.elementsEqual("abc123".utf8))
+    }
+  }
+
+  @Test("Decoding an encoded attachment with bytes as UInt8 array (experimental)")
+  func decodingAnEncodedAttachmentWithBytesAsArray() throws {
+    var json = #"{"_bytes": [1, 2, 3, 4, 5, 6]}"#
+    let eattachment = try json.withUTF8 { json in
+      try JSON.decode(ABI.EncodedAttachment<ABI.ExperimentalVersion>.self, from: UnsafeRawBufferPointer(json))
+    }
+    let attachment = Attachment(decoding: eattachment)
+    #expect(attachment != nil)
+    try attachment?.withUnsafeBytes { bytes in
+      #expect(bytes.count == 6)
+      #expect(bytes.elementsEqual([1, 2, 3, 4, 5, 6]))
+    }
+  }
+
+  @Test("Decoding an encoded attachment with an error (experimental)")
+  func decodingAnEncodedAttachmentWithError() throws {
+    var json = #"{"_error": {"code": 123, "domain": "domain", "description": "text"}}"#
+    let eattachment = try json.withUTF8 { json in
+      try JSON.decode(ABI.EncodedAttachment<ABI.ExperimentalVersion>.self, from: UnsafeRawBufferPointer(json))
+    }
+    let attachment = Attachment(decoding: eattachment)
+    #expect(attachment != nil)
+    let error = #expect(throws: (any Error).self) {
+      try attachment?.withUnsafeBytes { _ in }
+    }
+    if let error {
+      #expect(error._domain == "domain")
+      #expect(error._code == 123)
+    }
+  }
+
+  @Test("Decoding an encoded attachment from an event")
+  func decodingAnEncodedAttachmentWithEvent() throws {
+    var json = #"""
+      {
+        "kind": "valueAttached",
+        "instant": { "since1970": 0, "absolute": 0 },
+        "messages": [],
+        "_sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
+        "attachment": { "_bytes": "YWJjMTIz" }
+      }
+      """#
+    let event = try json.withUTF8 { json in
+      try JSON.decode(ABI.EncodedEvent<ABI.ExperimentalVersion>.self, from: UnsafeRawBufferPointer(json))
+    }
+    let attachment = try #require(Attachment(decoding: event))
+    #expect(attachment.sourceLocation.line == 12345)
+  }
+#endif
 }
 
 // MARK: - Fixtures
@@ -995,10 +1128,32 @@ struct MySendableAttachableWithDefaultByteCount: Attachable, Sendable {
   }
 }
 
+#if canImport(CoreTransferable) && canImport(_Testing_CoreTransferable)
+struct MyTransferable: Transferable, Equatable {
+  static let stringValue = "This isn't even my exported form!"
+
+  static var transferRepresentation: some TransferRepresentation {
+    DataRepresentation(exportedContentType: .plainText) { instance in
+      Data(Self.stringValue.utf8)
+    }
+  }
+}
+
+struct MyBadTransferable: Transferable, Equatable {
+  static var transferRepresentation: some TransferRepresentation {
+    DataRepresentation(exportedContentType: .directory) { _ in
+      throw MyError()
+    }
+  }
+}
+#endif
+
 #if canImport(Foundation) && canImport(_Testing_Foundation)
+#if !SWT_NO_CODABLE
 struct MyCodableAttachable: Codable, Attachable, Sendable {
   var string: String
 }
+#endif
 
 final class MySecureCodingAttachable: NSObject, NSSecureCoding, Attachable, Sendable {
   let string: String
@@ -1020,6 +1175,7 @@ final class MySecureCodingAttachable: NSObject, NSSecureCoding, Attachable, Send
   }
 }
 
+#if !SWT_NO_CODABLE
 final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCoding, Attachable, Sendable {
   let string: String
 
@@ -1035,6 +1191,7 @@ final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCodin
     string = (coder.decodeObject(of: NSString.self, forKey: "string") as? String) ?? ""
   }
 }
+#endif
 #endif
 
 #if canImport(AppKit) && canImport(_Testing_AppKit)

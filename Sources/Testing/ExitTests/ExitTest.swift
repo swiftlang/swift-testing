@@ -29,6 +29,9 @@ private import CrashReporterSupport // NOTE: depends on Core Foundation!
 #if SWT_NO_PROCESS_SPAWNING
 #error("Platform-specific misconfiguration: support for exit tests requires support for process spawning")
 #endif
+#if SWT_NO_CODABLE
+#error("Platform-specific misconfiguration: support for exit tests requires support for 'Codable'")
+#endif
 #endif
 
 /// A type describing an exit test.
@@ -57,7 +60,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// time. Instances of this type are only guaranteed to be decodable by the
   /// same version of the testing library that encoded them.
   @_spi(ForToolsIntegrationOnly)
-  public struct ID: Sendable, Equatable, Codable {
+  public struct ID: Sendable, Equatable {
     /// Storage for the underlying bits of the ID.
     ///
     /// - Note: On Apple platforms, we deploy to OS versions that do not include
@@ -155,6 +158,12 @@ public struct ExitTest: Sendable, ~Copyable {
 }
 
 #if !SWT_NO_EXIT_TESTS
+#if !SWT_NO_CODABLE
+// MARK: - Codable
+
+extension ExitTest.ID: Codable {}
+#endif
+
 // MARK: - Current
 
 extension ExitTest {
@@ -277,7 +286,7 @@ extension ExitTest {
     // repository doesn't have an official GitHub mirror, but you can manually
     // navigate to misc/signal.cpp:481 to see the implementation of SIG_DFL
     // (which, again, calls `_exit(3)` unconditionally.)
-    for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT, SIGABRT_COMPAT] {
+    for sig in windowsSignals.keys {
       _ = signal(sig) { sig in
         _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
       }
@@ -294,7 +303,7 @@ extension ExitTest {
 
     // Set ExitTest.current before the test body runs.
     Self._current.withLock { current in
-      precondition(current == nil, "Set the current exit test twice in the same process. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      precondition(current == nil, "Set the current exit test twice in the same process. \(fileABugMessage)")
       current = self.unsafeCopy()
     }
 
@@ -317,7 +326,7 @@ extension ExitTest {
   /// A type representing an exit test as a test content record.
   fileprivate struct Record: Sendable, DiscoverableAsTestContent {
     static var testContentKind: TestContentKind {
-      "exit"
+      .exitTest
     }
 
     typealias TestContentAccessorHint = ID
@@ -527,11 +536,27 @@ func callExitTest(
   }
 
   // Plumb the exit test's result through the general expectation machinery.
-  let expression = __Expression(String(describingForTest: expectedExitCondition))
+  func expressionWithCapturedRuntimeValues() -> __Expression {
+    var expression = expression.capturingRuntimeValues(result.exitStatus)
+
+    expression.subexpressions = [expectedExitCondition.exitStatus, result.exitStatus]
+      .compactMap { exitStatus in
+        guard let exitStatus, let exitStatusName = exitStatus.name else {
+          return nil
+        }
+        return __Expression(
+          exitStatusName,
+          runtimeValue: __Expression.Value(describing: exitStatus.code)
+        )
+      }
+
+    return expression
+  }
   return __checkValue(
     expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(result.exitStatus),
+    expressionWithCapturedRuntimeValues: expressionWithCapturedRuntimeValues(),
+    mismatchedExitConditionDescription: #"expected exit status "\#(expectedExitCondition)", but "\#(result.exitStatus)" was reported instead"#,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -584,7 +609,7 @@ extension ExitTest {
     let firstBarrierByte = barrierValue[0]
 
     // If the buffer is too small to contain the barrier value, exit early.
-    guard buffer.count > barrierValue.count else {
+    guard buffer.count >= barrierValue.count else {
       return buffer
     }
 
@@ -658,7 +683,7 @@ extension ExitTest {
   ///
   /// The effect of calling this function more than once for the same
   /// environment variable is undefined.
-  private static func _makeFileHandle(forEnvironmentVariableNamed name: String, mode: String) -> FileHandle? {
+  private static func _makeFileHandle(forEnvironmentVariableNamed name: String, options: FileHandle.OpenOptions) -> FileHandle? {
     guard let environmentVariable = Environment.variable(named: name) else {
       return nil
     }
@@ -666,33 +691,18 @@ extension ExitTest {
     // Erase the environment variable so that it cannot accidentally be opened
     // twice (nor, in theory, affect the code of the exit test.)
     Environment.setVariable(nil, named: name)
-
-    var fd: CInt?
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
-    fd = CInt(environmentVariable)
-#elseif os(Windows)
-    if let handle = UInt(environmentVariable).flatMap(HANDLE.init(bitPattern:)) {
-      var flags: CInt = switch (mode.contains("r"), mode.contains("w")) {
-      case (true, true):
-        _O_RDWR
-      case (true, false):
-        _O_RDONLY
-      case (false, true):
-        _O_WRONLY
-      case (false, false):
-        0
-      }
-      flags |= _O_BINARY
-      fd = _open_osfhandle(Int(bitPattern: handle), flags)
+    guard let fd = CInt(environmentVariable), fd >= 0 else {
+      return nil
     }
+    return try? FileHandle(unsafePOSIXFileDescriptor: fd, options: options)
+#elseif os(Windows)
+    return UInt(environmentVariable)
+      .flatMap(HANDLE.init(bitPattern:))
+      .flatMap { try? FileHandle(unsafeWindowsHANDLE: $0, options: options) }
 #else
 #warning("Platform-specific implementation missing: additional file descriptors unavailable")
 #endif
-    guard let fd, fd >= 0 else {
-      return nil
-    }
-
-    return try? FileHandle(unsafePOSIXFileDescriptor: fd, mode: mode)
   }
 
   /// Make a string suitable for use as the value of an environment variable
@@ -752,7 +762,7 @@ extension ExitTest {
     // If an exit test was found, inject back channel handling into its body.
     // External tools authors should set up their own back channel mechanisms
     // and ensure they're installed before calling ExitTest.callAsFunction().
-    guard let backChannel = _makeFileHandle(forEnvironmentVariableNamed: "SWT_BACKCHANNEL", mode: "wb") else {
+    guard let backChannel = _makeFileHandle(forEnvironmentVariableNamed: "SWT_BACKCHANNEL", options: [.writeAccess]) else {
       return result
     }
 
@@ -863,9 +873,24 @@ extension ExitTest {
       // platform-specific changes.
       var childEnvironment = Environment.get()
 #if SWT_TARGET_OS_APPLE
-      // We need to remove Xcode's environment variables from the child
-      // environment to avoid accidentally accidentally recursing.
-      for key in childEnvironment.keys where key.starts(with: "XCTest") {
+      // If XCTest is hosting tests in an app, it uses DYLD_INSERT_LIBRARIES to
+      // inject its startup code, then strips the injected library path from the
+      // environment variable so as not to affect child processes. We want to
+      // add it back in!
+      if let bundleInjectPath = childEnvironment["XCTestBundleInjectPath"] {
+        let newValue = if let oldValue = childEnvironment["DYLD_INSERT_LIBRARIES"] {
+          "\(oldValue):\(bundleInjectPath)"
+        } else {
+          bundleInjectPath
+        }
+        childEnvironment["DYLD_INSERT_LIBRARIES"] = newValue
+        childEnvironment.removeValue(forKey: "XCTestBundleInjectPath")
+      }
+
+      // We need to remove the XCTest-related environment variables set by Xcode,
+      // except those known to be safe and relevant, from the child environment
+      // to avoid accidentally recursing.
+      for key in childEnvironment.keys where key.starts(with: "XCTest") && key != "XCTestBundlePath" {
         childEnvironment.removeValue(forKey: key)
       }
 #endif
@@ -1037,44 +1062,32 @@ extension ExitTest {
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
-    guard case let .event(event) = record.kind else {
+    guard case let .event(encodedEvent) = record.kind,
+      let event = Event(decoding: encodedEvent)
+    else {
       return
     }
 
-    lazy var comments: [Comment] = event._comments?.map(Comment.init(rawValue:)) ?? []
-    lazy var sourceContext = SourceContext(
-      backtrace: nil, // A backtrace from the child process will have the wrong address space.
-      sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)
-    )
-    lazy var skipInfo = SkipInfo(comment: comments.first, sourceContext: sourceContext)
-    if let issue = event.issue {
-      // Translate the issue back into a "real" issue and record it
-      // in the parent process. This translation is, of course, lossy
-      // due to the process boundary, but we make a best effort.
-      let issueKind: Issue.Kind = if let error = issue._error {
-        .errorCaught(error)
-      } else {
-        // TODO: improve fidelity of issue kind reporting (especially those without associated values)
-        .unconditional
-      }
-      let severity: Issue.Severity = switch issue.severity {
-      case .warning:
-        .warning
-      case .error, nil:
-        // Prior to 6.3, all Issues are errors
-        .error
-      }
-      var issueCopy = Issue(kind: issueKind, severity: severity, comments: comments, sourceContext: sourceContext)
-      if issue.isKnown {
-        // The known issue comment, if there was one, is already included in
-        // the `comments` array above.
-        issueCopy.knownIssueContext = Issue.KnownIssueContext()
-      }
-      issueCopy.record()
-    } else if let attachment = event.attachment {
-      Attachment.record(attachment, sourceLocation: event._sourceLocation.flatMap(SourceLocation.init)!)
-    } else if case .testCancelled = event.kind {
+    // Translate the event back into a "real" event (such as "issue recorded")
+    // and post it in the parent process. This translation is, of course, lossy
+    // due to the process boundary, but we make a best effort.
+    //
+    // Events containing a backtrace from the child process will have the wrong
+    // address space, so remove the backtrace if present before recording it.
+
+    switch event.kind {
+    case .issueRecorded(var issue):
+      issue.sourceContext.backtrace = nil
+      issue.record()
+    case .valueAttached(let attachment):
+      Attachment.record(attachment, sourceLocation: attachment.sourceLocation)
+    case .testCancelled(var skipInfo), .testCaseCancelled(var skipInfo), .testSkipped(var skipInfo):
+      // In practice, an exit test won't receive .testSkipped events because
+      // they would happen before the exit test body starts running.
+      skipInfo.sourceContext.backtrace = nil
       _ = try? Test.cancel(with: skipInfo)
+    default:
+      break
     }
   }
 
@@ -1089,12 +1102,12 @@ extension ExitTest {
   private mutating func _decodeCapturedValuesForEntryPoint() throws {
     // Read the content of the captured values stream provided by the parent
     // process above.
-    guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_CAPTURED_VALUES", mode: "rb") else {
+    guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_CAPTURED_VALUES", options: [.readAccess]) else {
       return
     }
     let capturedValuesJSON = try fileHandle.readToEnd()
     let capturedValuesJSONLines = capturedValuesJSON.split(whereSeparator: \.isASCIINewline)
-    assert(capturedValues.count == capturedValuesJSONLines.count, "Expected to decode \(capturedValues.count) captured value(s) for the current exit test, but received \(capturedValuesJSONLines.count). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+    assert(capturedValues.count == capturedValuesJSONLines.count, "Expected to decode \(capturedValues.count) captured value(s) for the current exit test, but received \(capturedValuesJSONLines.count). \(fileABugMessage)")
 
     // Walk the list of captured values' types, map them to their JSON blobs,
     // and decode them.

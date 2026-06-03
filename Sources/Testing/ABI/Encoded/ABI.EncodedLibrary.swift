@@ -19,7 +19,8 @@ extension ABI {
   /// expected to write their own decoders.
   ///
   /// - Warning: Testing libraries are not yet part of the JSON schema.
-  struct EncodedLibrary<V>: Sendable where V: ABI.Version {
+  @_spi(Experimental)
+  public struct EncodedLibrary<V>: Sendable where V: ABI.Version {
     /// The human-readable name of this library.
     var displayName: String
 

@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI {
   /// A type implementing the JSON encoding of
   /// ``Event/HumanReadableOutputRecorder/Message`` for the ABI entry point and
@@ -25,7 +26,6 @@ extension ABI {
       case `default`
       case skip
       case pass
-      case passWithWarnings = "_passWithWarnings"
       case passWithKnownIssue
       case fail
       case difference
@@ -45,8 +45,6 @@ extension ABI {
           } else {
             .pass
           }
-        case .passWithWarnings:
-          .passWithWarnings
         case .fail:
           .fail
         case .difference:
@@ -89,3 +87,4 @@ extension ABI {
 
 extension ABI.EncodedMessage: Codable {}
 extension ABI.EncodedMessage.Symbol: Codable {}
+#endif
