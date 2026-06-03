@@ -165,21 +165,23 @@ struct SwiftPMTests {
 
 #if !SWT_NO_EXIT_TESTS
   @Test("--filter suppresses console output when no tests found")
-  func suppressConsoleOutputWhenFilteredToNothing() async {
-    await #expect(processExitsWith: .exitCode(EXIT_NO_TESTS_FOUND), observing: [\.standardErrorContent]) {
+  func suppressConsoleOutputWhenFilteredToNothing() async throws {
+    let result = try await #require(processExitsWith: .exitCode(EXIT_NO_TESTS_FOUND), observing: [\.standardErrorContent]) {
       var args = __CommandLineArguments_v0()
       args.filter = ["$^"] // match "nothing"
       await __swiftPMEntryPoint(passing: args) as Never
     }
+    #expect(result.standardErrorContent.isEmpty)
   }
 
   @Test("--skip suppresses console output when no tests found")
-  func suppressConsoleOutputWhenSkippedToNothing() async {
-    await #expect(processExitsWith: .exitCode(EXIT_NO_TESTS_FOUND), observing: [\.standardErrorContent]) {
+  func suppressConsoleOutputWhenSkippedToNothing() async throws {
+    let result = try await #require(processExitsWith: .exitCode(EXIT_NO_TESTS_FOUND), observing: [\.standardErrorContent]) {
       var args = __CommandLineArguments_v0()
       args.skip = [".*"] // match "anything"
       await __swiftPMEntryPoint(passing: args) as Never
     }
+    #expect(result.standardErrorContent.isEmpty)
   }
 #endif
 
