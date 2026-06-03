@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 #if os(Windows)
-internal import _TestingInternals
+private import _TestingInternals
 #endif
 
 #if canImport(XCTest)
