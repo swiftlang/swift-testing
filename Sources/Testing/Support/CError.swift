@@ -100,7 +100,7 @@ extension Win32Error: CustomStringConvertible {
           FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
           nil,
           rawValue,
-          DWORD(swt_MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT)),
+          DWORD(swt_MAKELANGID(WORD(LANG_NEUTRAL), WORD(SUBLANG_DEFAULT))),
           buffer.baseAddress,
           0,
           nil
