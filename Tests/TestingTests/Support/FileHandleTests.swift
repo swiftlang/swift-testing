@@ -73,7 +73,7 @@ struct FileHandleTests {
           throw Win32Error(rawValue: GetLastError())
         }
         let fileHandle = try FileHandle(unsafeWindowsHANDLE: windowsHANDLE, options: [.readAccess])
-        try fileHandle.withUnsafeWindowsHANDLE { ownedHANDLE in
+        fileHandle.withUnsafeWindowsHANDLE { ownedHANDLE in
           #expect(windowsHANDLE == ownedHANDLE)
         }
       }

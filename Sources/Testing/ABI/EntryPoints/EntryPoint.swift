@@ -20,6 +20,8 @@ private import Synchronization
 ///   - args: A previously-parsed command-line arguments structure to interpret.
 ///     If `nil`, a new instance is created from the command-line arguments to
 ///     the current process.
+///   - forSwiftPackageManager: Whether or not this function is being called on
+///     behalf of Swift Package Manager (via `__swiftPMEntryPoint()`).
 ///   - eventHandler: An optional event handler. The testing library always
 ///     writes events to the standard error stream in addition to passing them
 ///     to this function.
@@ -29,7 +31,7 @@ private import Synchronization
 /// External callers cannot call this function directly. The can use
 /// ``ABI/v0/entryPoint-swift.type.property`` to get a reference to an
 /// ABI-stable version of this function.
-func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
+func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager: Bool = false, eventHandler: Event.Handler?) async -> CInt {
   let exitCode = Atomic(EXIT_SUCCESS)
 
   do {
@@ -55,6 +57,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
 #if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
+    let consoleOutputEnabled = Atomic(true)
     if configuration.verbosity > .min {
       // Check for experimental console output flag
       let useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
@@ -69,7 +72,9 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
         }
 
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          eventRecorder.record(event, in: context)
+          if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
+            eventRecorder.record(event, in: context)
+          }
           oldEventHandler(event, context)
         }
       }
@@ -81,7 +86,9 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
           try? FileHandle.stderr.write(string)
         }
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          eventRecorder.record(event, in: context)
+          if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
+            eventRecorder.record(event, in: context)
+          }
           oldEventHandler(event, context)
         }
       }
@@ -127,6 +134,14 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       // Run the tests.
       let runner = await Runner(configuration: configuration)
       tests = runner.tests
+      if forSwiftPackageManager && tests.isEmpty, args.filter != nil || args.skip != nil {
+        // Swift Package Manager handles "no tests found/run" console output
+        // when the user applies any filtering. Don't bother logging to the
+        // console in this case. Note that if something is consuming the event
+        // stream, we still want to generate .runStarted etc., so we still call
+        // runner.run() for that purpose.
+        consoleOutputEnabled.store(false, ordering: .sequentiallyConsistent)
+      }
       await runner.run()
     }
 
