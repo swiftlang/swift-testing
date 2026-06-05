@@ -29,6 +29,7 @@ names prefixed with `SWT_`.
 | `NO_COLOR`[\*](https://no-color.org) | `Any?` | If set to any value, disables color output regardless of terminal capabilities. |
 | `SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT` | `Bool` | Used to enable or disable experimental console output. |
 | `SWT_SF_SYMBOLS_ENABLED` | `Bool` | Used to explicitly enable or disable SF&nbsp;Symbols support on macOS. |
+| `SWT_FAILURE_SUMMARY_ENABLED` | `Bool` | Used to explicitly enable or disable failure summarization at the end of a test run. |
 | `TERM`[\*](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html) | `String` | Used to determine if the current terminal supports 4- or 8-bit color. Common across UNIX-like platforms. |
 
 ## Error handling
