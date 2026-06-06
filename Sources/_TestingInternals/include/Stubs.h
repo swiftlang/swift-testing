@@ -139,7 +139,7 @@ static const IMAGE_SECTION_HEADER *_Null_unspecified swt_IMAGE_FIRST_SECTION(con
 }
 #endif
 
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__ANDROID__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__)
 /// The environment block.
 ///
 /// By POSIX convention, the environment block variable is declared in client
