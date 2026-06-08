@@ -18,6 +18,7 @@
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.4)
+///   @Available(Xcode, introduced: 27.0)
 /// }
 @_unavailableInEmbedded
 public protocol CustomTestReflectable {
@@ -29,6 +30,7 @@ public protocol CustomTestReflectable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.4)
+  ///   @Available(Xcode, introduced: 27.0)
   /// }
   var customTestMirror: Mirror { get }
 #endif
@@ -37,6 +39,7 @@ public protocol CustomTestReflectable {
 #if !hasFeature(Embedded)
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.4)
+///   @Available(Xcode, introduced: 27.0)
 /// }
 extension Mirror {
   /// Initialize this instance so that it can be presented in a test's output.
@@ -50,6 +53,7 @@ extension Mirror {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.4)
+  ///   @Available(Xcode, introduced: 27.0)
   /// }
   public init(reflectingForTest subject: some CustomTestReflectable) {
     self = subject.customTestMirror
@@ -66,6 +70,7 @@ extension Mirror {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.4)
+  ///   @Available(Xcode, introduced: 27.0)
   /// }
   public init(reflectingForTest subject: some Any) {
     if let subject = subject as? any CustomTestReflectable {
