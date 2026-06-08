@@ -134,6 +134,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       // Run the tests.
       let runner = await Runner(configuration: configuration)
       tests = runner.tests
+#if !SWT_NO_FILE_IO
       if forSwiftPackageManager && tests.isEmpty, args.filter != nil || args.skip != nil {
         // Swift Package Manager handles "no tests found/run" console output
         // when the user applies any filtering. Don't bother logging to the
@@ -142,6 +143,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
         // runner.run() for that purpose.
         consoleOutputEnabled.store(false, ordering: .sequentiallyConsistent)
       }
+#endif
       await runner.run()
     }
 
