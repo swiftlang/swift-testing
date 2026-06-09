@@ -69,6 +69,49 @@ extension SectionBounds.Kind {
   }
 }
 
+/// Find the section bounds of the given kind in the given Mach header.
+///
+/// - Parameters:
+///   - kind: Which kind of metadata section to find.
+///   - mh: The Mach header of the image to inspect.
+///
+/// - Returns: A new instance of ``SectionBounds`` for the given inputs, or
+///   `nil` if one is not present.
+private func _findSectionBounds(_ kind: SectionBounds.Kind, in mh: UnsafePointer<mach_header>) -> SectionBounds? {
+#if _pointerBitWidth(_64)
+  let mh = UnsafeRawPointer(mh).assumingMemoryBound(to: mach_header_64.self)
+#endif
+
+  // Ignore this Mach header if it is in the shared cache. On platforms that
+  // support it (Darwin), most system images are contained in this range.
+  // System images can be expected not to contain test declarations, so we
+  // don't need to walk them.
+  guard 0 == mh.pointee.flags & MH_DYLIB_IN_CACHE else {
+    return nil
+  }
+
+  // If this image contains the Swift section(s) we need, construct the
+  // resulting value.
+  let (segmentName, sectionName) = kind.segmentAndSectionName
+  var size = CUnsignedLong(0)
+  guard let start = getsectiondata(mh, segmentName.utf8Start, sectionName.utf8Start, &size), size > 0 else {
+    return nil
+  }
+
+  let buffer = UnsafeRawBufferPointer(start: start, count: Int(clamping: size))
+  return SectionBounds(imageAddress: mh, buffer: buffer)
+}
+
+#if _runtime(_ObjC)
+/// Get an array of Mach headers that are loaded into the current process and
+/// contain Objective-C or Swift code.
+///
+/// This declaration is provided because the testing library still needs to
+/// build with older Apple SDKs that do not contain an equivalent declaration.
+@available(_objcCopyImageHeadersAPI, *)
+@_extern(c)
+private func objc_copyImageHeaders(_ outCount: UnsafeMutablePointer<UInt32>) -> UnsafeMutablePointer<UnsafePointer<mach_header>>
+
 /// An array containing all of the test content section bounds known to the
 /// testing library.
 ///
@@ -105,26 +148,8 @@ private let _startCollectingSectionBounds: Void = {
   _ = _sectionBounds
 
   func addSectionBounds(from mh: UnsafePointer<mach_header>) {
-#if _pointerBitWidth(_64)
-    let mh = UnsafeRawPointer(mh).assumingMemoryBound(to: mach_header_64.self)
-#endif
-
-    // Ignore this Mach header if it is in the shared cache. On platforms that
-    // support it (Darwin), most system images are contained in this range.
-    // System images can be expected not to contain test declarations, so we
-    // don't need to walk them.
-    guard 0 == mh.pointee.flags & MH_DYLIB_IN_CACHE else {
-      return
-    }
-
-    // If this image contains the Swift section(s) we need, acquire the lock and
-    // store the section's bounds.
     for kind in SectionBounds.Kind.allCases {
-      let (segmentName, sectionName) = kind.segmentAndSectionName
-      var size = CUnsignedLong(0)
-      if let start = getsectiondata(mh, segmentName.utf8Start, sectionName.utf8Start, &size), size > 0 {
-        let buffer = UnsafeRawBufferPointer(start: start, count: Int(clamping: size))
-        let sb = SectionBounds(imageAddress: mh, buffer: buffer)
+      if let sb = _findSectionBounds(kind, in: mh) {
         _sectionBounds.withUnsafeMutablePointers { sectionBounds, lock in
           pthread_mutex_lock(lock)
           defer {
@@ -136,16 +161,11 @@ private let _startCollectingSectionBounds: Void = {
     }
   }
 
-#if _runtime(_ObjC)
   objc_addLoadImageFunc { mh in
     addSectionBounds(from: mh)
   }
-#else
-  _dyld_register_func_for_add_image { mh, _ in
-    addSectionBounds(from: mh!)
-  }
-#endif
 }()
+#endif
 
 /// The Apple-specific implementation of ``SectionBounds/all(_:)``.
 ///
@@ -155,6 +175,17 @@ private let _startCollectingSectionBounds: Void = {
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessCollection<SectionBounds> {
+#if _runtime(_ObjC)
+  if #available(_objcCopyImageHeadersAPI, *) {
+    var imageCount = Int32(0)
+    let imageHeaders = objc_copyImageHeaders(&imageCount)
+    defer {
+      free(imageHeaders)
+    }
+    return UnsafeBufferPointer(start: imageHeaders, count: Int(imageCount))
+      .compactMap { _findSectionBounds(kind, in: $0) }
+  }
+
   _startCollectingSectionBounds
   return _sectionBounds.withUnsafeMutablePointers { sectionBounds, lock in
     pthread_mutex_lock(lock)
@@ -163,6 +194,12 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessColl
     }
     return sectionBounds.pointee[kind.rawValue]
   }
+#else
+  let imageCount = _dyld_image_count()
+  return (0 ..< imageCount)
+    .compactMap(_dyld_get_image_header)
+    .compactMap { _findSectionBounds(kind, in: $0) }
+#endif
 }
 
 #elseif (os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)) && !SWT_NO_DYNAMIC_LINKING
