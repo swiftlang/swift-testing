@@ -49,12 +49,6 @@ public struct Issue: Sendable {
     ///
     /// - Parameters:
     ///   - timeLimitComponents: The time limit reached by the test.
-    ///
-    /// @Comment {
-    ///   - Bug: The associated value of this enumeration case should be an
-    ///     instance of `Duration`, but the testing library's deployment target
-    ///     predates the introduction of that type.
-    /// }
     indirect case timeLimitExceeded(timeLimitComponents: (seconds: Int64, attoseconds: Int64))
 
     /// A known issue was expected, but was not recorded.
@@ -268,6 +262,7 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
   }
 }
 
+#if !hasFeature(Embedded)
 /// An empty protocol defining a type that conforms to `RangeExpression<Int>`.
 ///
 /// In the future, when our minimum deployment target supports casting a value
@@ -277,6 +272,7 @@ private protocol _RangeExpressionOverIntValues: RangeExpression & Sequence where
 extension ClosedRange<Int>: _RangeExpressionOverIntValues {}
 extension PartialRangeFrom<Int>: _RangeExpressionOverIntValues {}
 extension Range<Int>: _RangeExpressionOverIntValues {}
+#endif
 
 extension Issue.Kind: CustomStringConvertible {
   public var description: String {
@@ -295,6 +291,7 @@ extension Issue.Kind: CustomStringConvertible {
         "Expectation failed: \(expectation.evaluatedExpression.sourceCode)"
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
+#if !hasFeature(Embedded)
       if let expected = expected as? any _RangeExpressionOverIntValues {
         let lowerBound = expected.first { _ in true }
         if let lowerBound {
@@ -308,9 +305,12 @@ extension Issue.Kind: CustomStringConvertible {
         }
       }
       return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(String(describingForTest: expected)) time(s)"
+#else
+      return "Confirmation was confirmed \(actual.counting("time"))"
+#endif
     case let .errorCaught(error):
       return "Caught error: \(String(describingForTest: error))"
-    case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
+    case let .timeLimitExceeded(timeLimitComponents):
       return "Time limit was exceeded: \(TimeValue(timeLimitComponents))"
     case .knownIssueNotRecorded:
       return "Known issue was not recorded"
@@ -493,7 +493,7 @@ extension Issue.Kind {
           .unconditional
       case let .errorCaught(error), let .valueAttachmentFailed(error):
           .errorCaught(ErrorSnapshot(snapshotting: error))
-      case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
+      case let .timeLimitExceeded(timeLimitComponents):
           .timeLimitExceeded(timeLimitComponents: timeLimitComponents)
       case .knownIssueNotRecorded:
           .knownIssueNotRecorded
@@ -549,7 +549,7 @@ extension Issue.Kind {
                                                                  forKey: .errorCaught) {
         self = .errorCaught(try errorCaught.decode(ErrorSnapshot.self, forKey: .error))
       } else if let timeLimit = try container.decodeIfPresent(TimeValue.self, forKey: .timeLimitExceeded) {
-        self = .timeLimitExceeded(timeLimitComponents: timeLimit.components)
+        self = .timeLimitExceeded(timeLimitComponents: timeLimit.rawValue.components)
       } else if try container.decodeIfPresent(Bool.self, forKey: .knownIssueNotRecorded) != nil {
         self = .knownIssueNotRecorded
       } else if try container.decodeIfPresent(Bool.self, forKey: .apiMisused) != nil {

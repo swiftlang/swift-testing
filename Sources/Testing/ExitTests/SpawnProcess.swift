@@ -38,6 +38,14 @@ private let _posix_spawn_file_actions_addclosefrom_np = symbol(named: "posix_spa
 }
 #endif
 
+/// Whether or not to start child processes in an immediately suspended state on
+/// platforms that support doing so.
+///
+/// To resume a child process, send the `SIGCONT` signal to its process ID. On
+/// Windows, call [`ResumeThread()`](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-resumethread)
+/// and pass it a handle to the child process' main thread.
+private let _startChildProcessesSuspended = Environment.flag(named: "SWT_START_CHILD_PROCESSES_SUSPENDED") ?? false
+
 /// Spawn a child process.
 ///
 /// - Parameters:
@@ -129,7 +137,7 @@ func spawnExecutable(
       func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws {
         try fileHandle.withUnsafePOSIXFileDescriptor { fd in
           guard let fd else {
-            throw SystemError(description: "A child process cannot inherit a file handle without an associated file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+            throw SystemError(description: "A child process cannot inherit a file handle without an associated file descriptor. \(fileABugMessage)")
           }
           if let standardFD, standardFD != fd {
             _ = posix_spawn_file_actions_adddup2(fileActions, fd, standardFD)
@@ -198,8 +206,11 @@ func spawnExecutable(
 #warning("Platform-specific implementation missing: cannot close unused file descriptors")
 #endif
 
-#if SWT_TARGET_OS_APPLE && DEBUG
-      // Start the process suspended so we can attach a debugger if needed.
+#if SWT_TARGET_OS_APPLE
+      // Start the process suspended so we can attach a debugger if needed. We
+      // always start the child process in a suspended state even if the
+      // "SWT_START_CHILD_PROCESSES_SUSPENDED" environment variable isn't set so that
+      // the debugger has a chance to attach to the child.
       flags |= CShort(POSIX_SPAWN_START_SUSPENDED)
 #endif
 
@@ -229,9 +240,11 @@ func spawnExecutable(
       guard 0 == processSpawned else {
         throw CError(rawValue: processSpawned)
       }
-#if SWT_TARGET_OS_APPLE && DEBUG
-      // Resume the process.
-      _ = kill(pid, SIGCONT) // ignore-unacceptable-language
+#if SWT_TARGET_OS_APPLE
+      if !_startChildProcessesSuspended {
+        // Resume the process.
+        _ = kill(pid, SIGCONT) // ignore-unacceptable-language
+      }
 #endif
       return pid
     }
@@ -241,7 +254,7 @@ func spawnExecutable(
     func inherit(_ fileHandle: borrowing FileHandle) throws -> HANDLE? {
       try fileHandle.withUnsafeWindowsHANDLE { windowsHANDLE in
         guard let windowsHANDLE else {
-          throw SystemError(description: "A child process cannot inherit a file handle without an associated Windows handle. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+          throw SystemError(description: "A child process cannot inherit a file handle without an associated Windows handle. \(fileABugMessage)")
         }
 
         // Ensure the file handle can be inherited by the child process.
@@ -314,10 +327,12 @@ func spawnExecutable(
       let workingDirectoryPath = rootDirectoryPath
 
       var flags = DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT)
-#if DEBUG
-      // Start the process suspended so we can attach a debugger if needed.
+
+      // Start the process suspended so we can attach a debugger if needed. We
+      // always start the child process in a suspended state even if the
+      // "SWT_START_CHILD_PROCESSES_SUSPENDED" environment variable isn't set so that
+      // the debugger has a chance to attach to the child.
       flags |= DWORD(CREATE_SUSPENDED)
-#endif
 
       return try environ.withCString(encodedAs: UTF16.self) { environ in
         try workingDirectoryPath.withCString(encodedAs: UTF16.self) { workingDirectoryPath in
@@ -338,10 +353,10 @@ func spawnExecutable(
             throw Win32Error(rawValue: GetLastError())
           }
 
-#if DEBUG
-          // Resume the process.
-          _ = ResumeThread(processInfo.hThread!)
-#endif
+          if !_startChildProcessesSuspended {
+            // Resume the process.
+            _ = ResumeThread(processInfo.hThread!)
+          }
 
           _ = CloseHandle(processInfo.hThread)
           return processInfo.hProcess!

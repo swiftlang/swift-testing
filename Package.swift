@@ -84,19 +84,6 @@ let package = Package(
     )
 #endif
 
-    result += [
-      .library(
-        name: "_Testing_ExperimentalImageAttachments",
-        targets: [
-          "_Testing_AppKit",
-          "_Testing_CoreGraphics",
-          "_Testing_CoreImage",
-          "_Testing_UIKit",
-          "_Testing_WinSDK",
-        ]
-      )
-    ]
-
     result.append(
       .library(
         name: "_TestDiscovery",
@@ -137,11 +124,13 @@ let package = Package(
       dependencies: [
         "_TestDiscovery",
         "_TestingInternals",
-        "TestingMacros",
-      ],
+      ] + {
+        // TODO: get macro target building for host when the target is embedded
+        buildingForEmbedded ? [] : ["TestingMacros"]
+      }(),
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
-      cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("Testing"),
+      cxxSettings: .packageSettings(),
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("Testing"),
       linkerSettings: [
         .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd])),
         .linkedLibrary("_TestingInterop"),
@@ -154,12 +143,13 @@ let package = Package(
         "_Testing_AppKit",
         "_Testing_CoreGraphics",
         "_Testing_CoreImage",
+        "_Testing_CoreTransferable",
         "_Testing_Foundation",
         "_Testing_UIKit",
         "_Testing_WinSDK",
         "MemorySafeTestingTests",
       ],
-      swiftSettings: .packageSettings,
+      swiftSettings: .packageSettings(isTestTarget: true),
       linkerSettings: [
         .linkedLibrary("util", .when(platforms: [.openbsd]))
       ]
@@ -176,7 +166,7 @@ let package = Package(
         "Testing",
       ],
       path: "Tests/_MemorySafeTestingTests",
-      swiftSettings: .packageSettings + [.strictMemorySafety()]
+      swiftSettings: .packageSettings(isTestTarget: true) + [.strictMemorySafety()]
     ),
 
     .macro(
@@ -190,7 +180,7 @@ let package = Package(
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
       ],
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + [
+      swiftSettings: .packageSettings() + [
         // The only target which needs the ability to import this macro
         // implementation target's module is its unit test target. Users of the
         // macros this target implements use them via their declarations in the
@@ -206,14 +196,14 @@ let package = Package(
     .target(
       name: "_TestingInternals",
       exclude: ["CMakeLists.txt"],
-      cxxSettings: .packageSettings
+      cxxSettings: .packageSettings()
     ),
     .target(
       name: "_TestDiscovery",
       dependencies: ["_TestingInternals",],
       exclude: ["CMakeLists.txt"],
-      cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_TestDiscovery")
+      cxxSettings: .packageSettings(),
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_TestDiscovery")
     ),
     .target(
       // Build _TestingInterop for debugging/testing purposes only. It is
@@ -222,8 +212,8 @@ let package = Package(
       dependencies: ["_TestingInternals",],
       path: "Sources/_TestingInterop",
       exclude: ["CMakeLists.txt"],
-      cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings + .moduleABIName("_TestingInterop")
+      cxxSettings: .packageSettings(),
+      swiftSettings: .packageSettings() + .moduleABIName("_TestingInterop")
     ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
@@ -235,7 +225,7 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_AppKit",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("Testing")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("Testing")
     ),
     .target(
       name: "_Testing_CoreGraphics",
@@ -244,7 +234,7 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_CoreGraphics",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreGraphics")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreGraphics")
     ),
     .target(
       name: "_Testing_CoreImage",
@@ -254,7 +244,16 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_CoreImage",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreImage")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreImage")
+    ),
+    .target(
+      name: "_Testing_CoreTransferable",
+      dependencies: [
+        "Testing",
+      ],
+      path: "Sources/Overlays/_Testing_CoreTransferable",
+      exclude: ["CMakeLists.txt"],
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreTransferable")
     ),
     .target(
       name: "_Testing_Foundation",
@@ -267,7 +266,7 @@ let package = Package(
       // The Foundation module only has Library Evolution enabled on Apple
       // platforms, and since this target's module publicly imports Foundation,
       // it can only enable Library Evolution itself on those platforms.
-      swiftSettings: .packageSettings + .enableLibraryEvolution(.whenApple()) + .moduleABIName("_Testing_Foundation")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution(.whenApple()) + .moduleABIName("_Testing_Foundation")
     ),
     .target(
       name: "_Testing_UIKit",
@@ -278,7 +277,7 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_UIKit",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_Testing_UIKit")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_UIKit")
     ),
     .target(
       name: "_Testing_WinSDK",
@@ -287,7 +286,7 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_WinSDK",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_Testing_WinSDK")
+      swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_WinSDK")
     ),
 
     // Utility targets: These are utilities intended for use when developing
@@ -297,7 +296,7 @@ let package = Package(
       dependencies: [
         "Testing",
       ],
-      swiftSettings: .packageSettings
+      swiftSettings: .packageSettings()
     ),
   ],
 
@@ -313,36 +312,12 @@ package.targets.append(contentsOf: [
       "Testing",
       "TestingMacros",
     ],
-    swiftSettings: .packageSettings
+    swiftSettings: .packageSettings(isTestTarget: true)
   )
 ])
 #endif
 
 extension BuildSettingCondition {
-  /// Creates a build setting condition that evaluates to `true` for Embedded
-  /// Swift.
-  ///
-  /// - Parameters:
-  ///   - nonEmbeddedCondition: The value to return if the target is not
-  ///     Embedded Swift. If `nil`, the build condition evaluates to `false`.
-  ///
-  /// - Returns: A build setting condition that evaluates to `true` for Embedded
-  ///   Swift or is equal to `nonEmbeddedCondition` for non-Embedded Swift.
-  static func whenEmbedded(or nonEmbeddedCondition: @autoclosure () -> Self? = nil) -> Self? {
-    if !buildingForEmbedded {
-      if let nonEmbeddedCondition = nonEmbeddedCondition() {
-        nonEmbeddedCondition
-      } else {
-        // The caller did not supply a fallback. Specify a non-existent platform
-        // to ensure this condition never matches.
-        .when(platforms: [.custom("DoesNotExist")])
-      }
-    } else {
-      // Enable unconditionally because the target is Embedded Swift.
-      nil
-    }
-  }
-
   /// A build setting condition representing all Apple or non-Apple platforms.
   ///
   /// - Parameters:
@@ -351,18 +326,22 @@ extension BuildSettingCondition {
   /// - Returns: A build setting condition that evaluates to `isApple` for Apple
   ///   platforms.
   static func whenApple(_ isApple: Bool = true) -> Self {
-    if isApple {
-      .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])
-    } else {
-      .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android])
-    }
+    .when(platforms: isApple ? .applePlatforms : .nonApplePlatforms)
   }
+}
+
+extension Array where Element == PackageDescription.Platform {
+  /// All Apple platforms.
+  static let applePlatforms: Self = [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS]
+
+  /// All non-Apple platforms.
+  static let nonApplePlatforms: Self = [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android]
 }
 
 extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings intended to be applied to every Swift target in this package.
   /// Analogous to project-level build settings in an Xcode project.
-  static var packageSettings: Self {
+  static func packageSettings(isTestTarget: Bool = false) -> Self {
     var result = availabilityMacroSettings
 
     // treatWarning(..., as: .warning) cannot be used in packages which are
@@ -374,6 +353,19 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     if buildingForEmbedded {
       result.append(.enableExperimentalFeature("Embedded"))
+
+      // Swift's concurrency module is not implicitly imported when building for
+      // Embedded, so we must explicitly import it since this project uses
+      // async and other concurrency-related language features.
+      result.append(.unsafeFlags(["-Xfrontend", "-import-module", "-Xfrontend", "_Concurrency"]))
+    }
+
+    // Define a compiler condition so we can discover at macro expansion time if
+    // we're accidentally expanding our own macros in Swift Testing.
+    if !isTestTarget {
+      result += [
+        .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
+      ]
     }
 
     result += [
@@ -394,18 +386,9 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
 
       .define("SWT_TARGET_OS_APPLE", .whenApple()),
-
-      .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
-      .define("SWT_NO_PROCESS_SPAWNING", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
-      .define("SWT_NO_SNAPSHOT_TYPES", .whenEmbedded(or: .whenApple(false))),
-      .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
-      .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
-      .define("SWT_NO_FOUNDATION_FILE_COORDINATION", .whenEmbedded(or: .whenApple(false))),
-      .define("SWT_NO_IMAGE_ATTACHMENTS", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android]))),
-      .define("SWT_NO_FILE_CLONING", .whenEmbedded(or: .when(platforms: [.openbsd, .wasi, .android]))),
-
-      .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
+
+    result.appendFeatureFlags()
 
     return result
   }
@@ -420,6 +403,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("AvailabilityMacro=_uttypesAPI:macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0"),
       .enableExperimentalFeature("AvailabilityMacro=_clockAPI:macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0"),
       .enableExperimentalFeature("AvailabilityMacro=_typedThrowsAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_transferableAPI:macOS 15.2, iOS 18.2, watchOS 11.2, tvOS 18.2, visionOS 2.2"),
       .enableExperimentalFeature("AvailabilityMacro=_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
 
       .enableExperimentalFeature("AvailabilityMacro=_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0"),
@@ -435,7 +419,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static func enableLibraryEvolution(_ condition: BuildSettingCondition? = nil) -> Self {
     var result = [PackageDescription.SwiftSetting]()
 
-    if buildingForDevelopment {
+    if buildingForDevelopment && !buildingForEmbedded {
       result.append(.unsafeFlags(["-enable-library-evolution"], condition))
     }
 
@@ -473,21 +457,18 @@ extension Array where Element == PackageDescription.SwiftSetting {
 extension Array where Element == PackageDescription.CXXSetting {
   /// Settings intended to be applied to every C++ target in this package.
   /// Analogous to project-level build settings in an Xcode project.
-  static var packageSettings: Self {
+  static func packageSettings(isTestTarget: Bool = false) -> Self {
     var result = Self()
 
-    result += [
-      .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
-      .define("SWT_NO_PROCESS_SPAWNING", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
-      .define("SWT_NO_SNAPSHOT_TYPES", .whenEmbedded(or: .whenApple(false))),
-      .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
-      .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
-      .define("SWT_NO_FOUNDATION_FILE_COORDINATION", .whenEmbedded(or: .whenApple(false))),
-      .define("SWT_NO_IMAGE_ATTACHMENTS", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android]))),
-      .define("SWT_NO_FILE_CLONING", .whenEmbedded(or: .when(platforms: [.openbsd, .wasi, .android]))),
+    // Define a compiler condition so we can discover at macro expansion time if
+    // we're accidentally expanding our own macros in Swift Testing.
+    if !isTestTarget {
+      result += [
+        .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
+      ]
+    }
 
-      .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
-    ]
+    result.appendFeatureFlags()
 
     // Capture the testing library's commit info as C++ constants.
     if let git {
@@ -502,5 +483,75 @@ extension Array where Element == PackageDescription.CXXSetting {
     }
 
     return result
+  }
+}
+
+extension Array where Element: _LanguageBuildSetting {
+  /// Append defines for feature flags.
+  mutating func appendFeatureFlags() {
+    // The list of defines to set. Each may have associated conditions:
+    //
+    // - platforms: The list of platforms, if any, to include in a build setting
+    //   condition for this define.
+    // - embedded: Whether this define should be set unconditionally when
+    //   building for Embedded. (This is not currently expressible as a build
+    //   setting conditional.)
+    let defines: [String: (platforms: [Platform]?, embedded: Bool)] = [
+      "SWT_NO_EXIT_TESTS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
+      "SWT_NO_PROCESS_SPAWNING": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
+      "SWT_NO_SNAPSHOT_TYPES": (platforms: .nonApplePlatforms, embedded: true),
+      "SWT_NO_DYNAMIC_LINKING": (platforms: [.wasi], embedded: true),
+      "SWT_NO_PIPES": (platforms: [.wasi], embedded: true),
+      "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .nonApplePlatforms, embedded: true),
+      "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
+      "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
+      "SWT_NO_ABI_ENTRY_POINT": (platforms: .none, embedded: true),
+      "SWT_NO_ABI_JSON_SCHEMA": (platforms: .none, embedded: true),
+      "SWT_NO_CODABLE": (platforms: .none, embedded: true),
+      "SWT_NO_INTEROP": (platforms: .none, embedded: true),
+      "SWT_NO_UNSTRUCTURED_TASKS": (platforms: .none, embedded: true),
+      "SWT_NO_GLOBAL_ACTORS": (platforms: .none, embedded: true),
+      "SWT_NO_SUSPENDING_CLOCK": (platforms: .none, embedded: true),
+
+      "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),
+    ]
+
+    for (name, details) in defines {
+      if !buildingForEmbedded {
+        if let platforms = details.platforms {
+          append(.define(name, .when(platforms: platforms)))
+        } else {
+          // Since there was no condition and we're not building for Embedded,
+          // the intention was to never match so don't append this define.
+        }
+      } else if details.embedded {
+        // Since we're building for Embedded and this define is supposed to be
+        // included unconditionally when building as such, append it.
+        append(.define(name, nil))
+      }
+    }
+  }
+}
+
+/// A protocol representing a setting for a package target.
+///
+/// This abstraction facilitates utilities which simplify specifying common
+/// settings across targets of different language types.
+private protocol _LanguageBuildSetting {
+  /// Defines a value for a macro.
+  ///
+  /// - Parameters:
+  ///   - name: The name of the macro.
+  ///   - condition: A condition that restricts the application of the build
+  ///     setting.
+  ///
+  /// - Returns: An instance of this setting.
+  static func define(_ name: String, _ condition: BuildSettingCondition?) -> Self
+}
+
+extension PackageDescription.SwiftSetting: _LanguageBuildSetting {}
+extension PackageDescription.CXXSetting: _LanguageBuildSetting {
+  static func define(_ name: String, _ condition: BuildSettingCondition?) -> Self {
+    .define(name, to: nil, condition)
   }
 }

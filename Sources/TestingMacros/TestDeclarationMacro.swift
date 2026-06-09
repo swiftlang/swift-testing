@@ -9,6 +9,7 @@
 //
 
 import SwiftDiagnostics
+import SwiftIfConfig
 public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
@@ -128,6 +129,11 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
           diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: parameter, on: function))
         }
       }
+    }
+
+    // @Test should not use a generic argument clause.
+    if let genericArgumentClause = testAttribute.genericArgumentClause {
+      diagnostics.append(.genericAttributeNotSupported(testAttribute, on: function, becauseOf: genericArgumentClause, languageMode: context.buildConfiguration?.languageVersion))
     }
 
     return !diagnostics.lazy.map(\.severity).contains(.error)

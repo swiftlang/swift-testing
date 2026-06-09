@@ -14,7 +14,6 @@ private import _TestingInternals
 
 @Suite("Event Tests")
 struct EventTests {
-#if canImport(Foundation)
   @Test("Event's and Event.Kinds's Codable Conformances",
         arguments: [
           Event.Kind.expectationChecked(
@@ -76,6 +75,5 @@ struct EventTests {
     #expect(String(describing: decoded.testCase) == String(describing: eventContext.testCase.map(Test.Case.Snapshot.init(snapshotting:))))
     #expect(decoded.iteration == eventContext.iteration)
   }
-#endif
 }
 #endif

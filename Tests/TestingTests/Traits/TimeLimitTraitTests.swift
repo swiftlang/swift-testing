@@ -10,9 +10,6 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if canImport(Foundation)
-private import Foundation
-#endif
 #if canImport(Synchronization)
 private import Synchronization
 #endif
@@ -217,12 +214,6 @@ struct TimeLimitTraitTests {
         try await Test.Clock.sleep(for: .milliseconds(100))
       }.run(configuration: configuration)
     }
-  }
-
-  @Test("TimeoutError.description property")
-  func timeoutErrorDescription() async throws {
-    let timeLimit = TimeValue((0, 0))
-    #expect(String(describing: TimeoutError(timeLimit: timeLimit)).contains("0.000"))
   }
 
   @Test("Issue.Kind.timeLimitExceeded.description property",

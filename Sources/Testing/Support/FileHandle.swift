@@ -220,20 +220,19 @@ struct FileHandle: ~Copyable, Sendable {
     _closeWhenDone = closeWhenDone
   }
 
-  /// Initialize an instance of this type with an existing POSIX file descriptor
-  /// for reading.
+  /// Initialize an instance of this type with an existing POSIX file descriptor.
   ///
   /// - Parameters:
   ///   - fd: The POSIX file descriptor to wrap. The caller is responsible for
-  ///     ensuring that this file handle is open in the expected mode and that
-  ///     another part of the system won't close it.
+  ///     ensuring that this file descriptor is open in the expected mode and
+  ///     that another part of the system won't close it.
   ///   - options: The options `fd` was opened with.
   ///
   /// - Throws: Any error preventing the stream from being opened.
   ///
   /// The resulting file handle takes ownership of `fd` and closes it when it is
   /// deinitialized or if an error is thrown from this initializer.
-  init(unsafePOSIXFileDescriptor fd: CInt, options: OpenOptions) throws {
+  init(unsafePOSIXFileDescriptor fd: consuming CInt, options: OpenOptions) throws {
 #if os(Windows)
     let fileHandle = _fdopen(fd, options.stringValue)
 #else
@@ -290,7 +289,7 @@ struct FileHandle: ~Copyable, Sendable {
   ///
   /// Use this function when calling C I/O interfaces such as `fputs()` on the
   /// underlying C file handle.
-  borrowing func withUnsafeCFILEHandle<R>(_ body: (SWT_FILEHandle) throws -> R) rethrows -> R {
+  borrowing func withUnsafeCFILEHandle<R>(_ body: (borrowing SWT_FILEHandle) throws -> R) rethrows -> R {
     try body(_fileHandle)
   }
 
@@ -307,7 +306,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// that require a file descriptor instead of the standard `FILE *`
   /// representation. If the file handle cannot be converted to a file
   /// descriptor, `nil` is passed to `body`.
-  borrowing func withUnsafePOSIXFileDescriptor<R>(_ body: (CInt?) throws -> R) rethrows -> R {
+  borrowing func withUnsafePOSIXFileDescriptor<R>(_ body: (borrowing CInt?) throws -> R) rethrows -> R {
     try withUnsafeCFILEHandle { handle in
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
       let fd = fileno(handle)
@@ -326,6 +325,44 @@ struct FileHandle: ~Copyable, Sendable {
   }
 
 #if os(Windows)
+  /// Initialize an instance of this type with an existing Windows file handle.
+  ///
+  /// - Parameters:
+  ///   - handle: The Windows file handle to wrap. The caller is responsible for
+  ///     ensuring that this file handle is open in the expected mode and that
+  ///     another part of the system won't close it.
+  ///   - options: The options `handle` was opened with.
+  ///
+  /// - Throws: Any error preventing the stream from being opened.
+  ///
+  /// The resulting file handle takes ownership of `handle` and closes it when
+  /// it is deinitialized or if an error is thrown from this initializer.
+  init(unsafeWindowsHANDLE handle: consuming HANDLE, options: OpenOptions) throws {
+    var flags: CInt = _O_BINARY
+    switch (options.contains(.readAccess), options.contains(.writeAccess)) {
+    case (true, true):
+      flags |= _O_RDWR
+    case (true, false):
+      flags |= _O_RDONLY
+    case (false, true):
+      flags |= _O_WRONLY
+    case (false, false):
+      break
+    }
+    if !options.contains(.inheritedByChild) {
+      flags |= _O_NOINHERIT
+    }
+
+    let fd = _open_osfhandle(Int(bitPattern: handle), flags)
+    guard fd >= 0 else {
+      let errorCode = swt_errno()
+      _ = CloseHandle(handle)
+      throw CError(rawValue: errorCode)
+    }
+
+    try self.init(unsafePOSIXFileDescriptor: fd, options: options)
+  }
+
   /// Call a function and pass the underlying Windows file handle to it.
   ///
   /// - Parameters:
@@ -339,7 +376,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// that require the file's `HANDLE` representation instead of the standard
   /// `FILE *` representation. If the file handle cannot be converted to a
   /// Windows handle, `nil` is passed to `body`.
-  borrowing func withUnsafeWindowsHANDLE<R>(_ body: (HANDLE?) throws -> R) rethrows -> R {
+  borrowing func withUnsafeWindowsHANDLE<R>(_ body: (borrowing HANDLE?) throws -> R) rethrows -> R {
     try withUnsafePOSIXFileDescriptor { fd in
       guard let fd else {
         return try body(nil)

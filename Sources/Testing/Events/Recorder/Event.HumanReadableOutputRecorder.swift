@@ -142,7 +142,7 @@ extension Event.HumanReadableOutputRecorder {
   /// - Returns: A formatted string representing the comments attached to `test`,
   ///   or `nil` if there are none.
   private func _formattedComments(for test: Test) -> [Message] {
-    _formattedComments(test.comments(from: Comment.self))
+    _formattedComments(test.traits.compactMap { $0.__as(Comment.self) })
   }
 
   /// Get the total number of issues recorded in a graph of test data
@@ -360,6 +360,15 @@ extension Event.HumanReadableOutputRecorder {
       }
     }
 
+    // A helper function for displaying test durations.
+    func descriptionOfDuration(from start: Test.Clock.Instant, to end: Test.Clock.Instant) -> String {
+      String(describing: TimeValue(rawValue: start.duration(to: end)))
+    }
+
+    func testStartedMessage(for test: Test) -> String {
+      "\(_capitalizedTitle(for: test)) \(testName) started"
+    }
+
     // Finally, produce any messages for the event.
     switch event.kind {
     case .testDiscovered:
@@ -420,7 +429,7 @@ extension Event.HumanReadableOutputRecorder {
       return [
         Message(
           symbol: .default,
-          stringValue: "\(_capitalizedTitle(for: test)) \(testName) started."
+          stringValue: "\(testStartedMessage(for: test))."
         )
       ]
 
@@ -429,7 +438,7 @@ extension Event.HumanReadableOutputRecorder {
       let testDataGraph = context.testData.subgraph(at: keyPath)
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
-      let duration = testData.startInstant.descriptionOfDuration(to: instant)
+      let duration = descriptionOfDuration(from: testData.startInstant, to: instant)
       let testCasesCount = if test.isParameterized, let testDataGraph {
         " with \(testDataGraph.children.count.counting("test case"))"
       } else {
@@ -560,15 +569,26 @@ extension Event.HumanReadableOutputRecorder {
       return result
 
     case .testCaseStarted:
-      guard let testCase, testCase.isParameterized, let arguments = testCase.arguments else {
+      guard let test, let testCase else { break }
+      let iteration = eventContext.iteration ?? 1
+
+      var message: String
+      if testCase.isParameterized, let arguments = testCase.arguments {
+        message = "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started"
+      } else if iteration > 1 {
+        message = testStartedMessage(for: test)
+      } else {
         break
       }
 
+      if iteration > 1 {
+        message += " (repetition \(iteration))"
+      }
+
+      message += "."
+
       return [
-        Message(
-          symbol: .default,
-          stringValue: "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started."
-        )
+        Message(symbol: .default, stringValue: message)
       ]
 
     case .testCaseEnded:
@@ -579,7 +599,7 @@ extension Event.HumanReadableOutputRecorder {
       let testDataGraph = context.testData.subgraph(at: keyPath)
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
-      let duration = testData.startInstant.descriptionOfDuration(to: instant)
+      let duration = descriptionOfDuration(from: testData.startInstant, to: instant)
 
       var cancellationComment = "."
       let (symbol, verbed): (Event.Symbol, String)
@@ -608,7 +628,7 @@ extension Event.HumanReadableOutputRecorder {
       guard let iterationStartInstant = context.iterationStartInstant else {
         break
       }
-      let duration = iterationStartInstant.descriptionOfDuration(to: instant)
+      let duration = descriptionOfDuration(from: iterationStartInstant, to: instant)
 
       return [
         Message(
@@ -622,7 +642,7 @@ extension Event.HumanReadableOutputRecorder {
       let suiteCount = context.suiteCount
       let issues = _issueCounts(in: context.testData)
       let runStartInstant = context.runStartInstant ?? instant
-      let duration = runStartInstant.descriptionOfDuration(to: instant)
+      let duration = descriptionOfDuration(from: runStartInstant, to: instant)
 
       return if issues.errorIssueCount > 0 {
         [
@@ -670,6 +690,8 @@ extension Event.Context {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension Event.HumanReadableOutputRecorder.Message: Codable {}
+#endif

@@ -118,7 +118,7 @@ SWT_DEFINE_ATOMIC_OPERATIONS(void const *_Nullable)
 ///
 /// This function is provided because `MAKELANGID()` is a complex macro and
 /// cannot be imported directly into Swift.
-static LANGID swt_MAKELANGID(int p, int s) {
+static LANGID swt_MAKELANGID(WORD p, WORD s) {
   return MAKELANGID(p, s);
 }
 
@@ -303,6 +303,18 @@ typedef void (* SWTFallbackEventHandler)(const char *recordJSONSchemaVersionNumb
                                       const void *recordJSONBaseAddress,
                                       size_t recordJSONByteCount,
                                       const void *_Nullable reserved);
+
+/// Set the current fallback event handler if one has not already been set.
+///
+/// - Parameters:
+///   - handler: The handler function to set.
+///
+/// - Returns: Whether or not `handler` was installed.
+///
+/// The fallback event handler can only be installed once per process, typically
+/// by the first testing library to run. If this function has already been
+/// called and the handler set, it does not replace the previous handler.
+SWT_EXTERN bool _swift_testing_installFallbackEventHandler(SWTFallbackEventHandler handler);
 
 /// Get the current fallback event handler.
 /// Shadows the function with the same name in _TestingInterop.

@@ -151,7 +151,9 @@ struct Graph<K, V> where K: Hashable {
     let result: V?
 
     if let key = keyPath.first {
-      if var child = children[key] {
+      // The `.take()` here ensures we remove the item from the graph before mutating,
+      // preventing this from causing a cascading COW update down the tree.
+      if var child = children[key].take() {
         result = child.insertValue(newValue, at: keyPath.dropFirst(), intermediateValue: intermediateValue)
         children[key] = child
       } else {
@@ -387,36 +389,34 @@ extension Graph {
   /// The recursive implementation of `forEach(_:)`.
   ///
   /// - Parameters:
-  ///   - keyPath: The key path to use for the root node when passing it to
-  ///     `body`.
+  ///   - keyPath: The key path of the current node, passed to `body`.
   ///   - body: A closure that is invoked once per element in the graph. The key
   ///     path and leaf value of each node are passed to the closure.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  private func _forEach<E>(keyPath: [K], _ body: (Element) throws(E) -> Void) throws(E) {
+  private func _forEach<E>(keyPath: inout [K], _ body: (Element) throws(E) -> Void) throws(E) {
     try body((keyPath, value))
     for (key, child) in children {
-      var childKeyPath = keyPath
-      childKeyPath.append(key)
-      try child._forEach(keyPath: childKeyPath, body)
+      keyPath.append(key)
+      try child._forEach(keyPath: &keyPath, body)
+      keyPath.removeLast()
     }
   }
 
   /// The recursive implementation of `forEach(_:)`.
   ///
   /// - Parameters:
-  ///   - keyPath: The key path to use for the root node when passing it to
-  ///     `body`.
+  ///   - keyPath: The key path of the current node, passed to `body`.
   ///   - body: A closure that is invoked once per element in the graph. The
   ///     key path and leaf value of each node are passed to the closure.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  private func _forEach<E>(keyPath: [K], _ body: (Element) async throws(E) -> Void) async throws(E) {
+  private func _forEach<E>(keyPath: inout [K], _ body: (Element) async throws(E) -> Void) async throws(E) {
     try await body((keyPath, value))
     for (key, child) in children {
-      var childKeyPath = keyPath
-      childKeyPath.append(key)
-      try await child._forEach(keyPath: childKeyPath, body)
+      keyPath.append(key)
+      try await child._forEach(keyPath: &keyPath, body)
+      keyPath.removeLast()
     }
   }
 
@@ -430,7 +430,8 @@ extension Graph {
   ///
   /// This function iterates depth-first.
   func forEach<E>(_ body: (Element) throws(E) -> Void) throws(E) {
-    try _forEach(keyPath: []) { (element) throws(E) in
+    var keyPath: [K] = []
+    try _forEach(keyPath: &keyPath) { (element) throws(E) in
       try body(element)
     }
   }
@@ -445,7 +446,8 @@ extension Graph {
   ///
   /// This function iterates depth-first.
   func forEach<E>(_ body: (Element) async throws(E) -> Void) async throws(E) {
-    try await _forEach(keyPath: []) { (element) async throws(E) in
+    var keyPath: [K] = []
+    try await _forEach(keyPath: &keyPath) { (element) async throws(E) in
       try await body(element)
     }
   }
@@ -544,7 +546,8 @@ extension Graph {
   ///
   /// This function iterates depth-first.
   func compactMapValues<U, E>(_ transform: (Element) throws(E) -> (U, recursivelyApply: Bool)?) throws(E) -> Graph<K, U>? {
-    try _compactMapValues(keyPath: []) { (element) throws(E) in
+    var keyPath: [K] = []
+    return try _compactMapValues(keyPath: &keyPath) { (element) throws(E) in
       try transform(element)
     }
   }
@@ -552,8 +555,7 @@ extension Graph {
   /// The recursive implementation of `compactMapValues(_:)`.
   ///
   /// - Parameters:
-  ///   - keyPath: The key path to use for the root node when passing it to
-  ///     `transform`.
+  ///   - keyPath: The key path of the current node, passed to `transform`.
   ///   - transform: A closure that is invoked once per element in the graph.
   ///     The key path and leaf value of each node are passed to this closure.
   ///     The result of the closure is a tuple containing the new value and
@@ -563,7 +565,7 @@ extension Graph {
   ///     child nodes are omitted from the new graph.
   ///
   /// - Throws: Whatever is thrown by `transform`.
-  private func _compactMapValues<U, E>(keyPath: [K], _ transform: (Element) throws(E) -> (U, recursivelyApply: Bool)?) throws(E) -> Graph<K, U>? {
+  private func _compactMapValues<U, E>(keyPath: inout [K], _ transform: (Element) throws(E) -> (U, recursivelyApply: Bool)?) throws(E) -> Graph<K, U>? {
     guard let (newValue, recursivelyApply) = try transform((keyPath, value)) else {
       return nil
     }
@@ -571,13 +573,13 @@ extension Graph {
     var newChildren = [K: Graph<K,U>]()
     newChildren.reserveCapacity(children.count)
     for (key, child) in children {
-      var childKeyPath = keyPath
-      childKeyPath.append(key)
+      keyPath.append(key)
+      defer { keyPath.removeLast() }
 
       if recursivelyApply {
-        newChildren[key] = child._compactMapValues(keyPath: childKeyPath) { _ in (newValue, true) }
+        newChildren[key] = child._compactMapValues(keyPath: &keyPath) { _ in (newValue, true) }
       } else {
-        newChildren[key] = try child._compactMapValues(keyPath: childKeyPath, transform)
+        newChildren[key] = try child._compactMapValues(keyPath: &keyPath, transform)
       }
     }
 
@@ -604,7 +606,8 @@ extension Graph {
   ///
   /// This function iterates depth-first.
   func compactMapValues<U, E>(_ transform: (Element) async throws(E) -> (U, recursivelyApply: Bool)?) async throws(E) -> Graph<K, U>? {
-    try await _compactMapValues(keyPath: []) { (element) async throws(E) in
+    var keyPath: [K] = []
+    return try await _compactMapValues(keyPath: &keyPath) { (element) async throws(E) in
       try await transform(element)
     }
   }
@@ -612,8 +615,7 @@ extension Graph {
   /// The recursive implementation of `compactMapValues(_:)`.
   ///
   /// - Parameters:
-  ///   - keyPath: The key path to use for the root node when passing it to
-  ///     `transform`.
+  ///   - keyPath: The key path of the current node, passed to `transform`.
   ///   - transform: A closure that is invoked once per element in the graph.
   ///     The key path and leaf value of each node are passed to this closure.
   ///     The result of the closure is a tuple containing the new value and
@@ -623,7 +625,7 @@ extension Graph {
   ///     child nodes are omitted from the new graph.
   ///
   /// - Throws: Whatever is thrown by `transform`.
-  private func _compactMapValues<U, E>(keyPath: [K], _ transform: (Element) async throws(E) -> (U, recursivelyApply: Bool)?) async throws(E) -> Graph<K, U>? {
+  private func _compactMapValues<U, E>(keyPath: inout [K], _ transform: (Element) async throws(E) -> (U, recursivelyApply: Bool)?) async throws(E) -> Graph<K, U>? {
     guard let (newValue, recursivelyApply) = try await transform((keyPath, value)) else {
       return nil
     }
@@ -631,13 +633,13 @@ extension Graph {
     var newChildren = [K: Graph<K,U>]()
     newChildren.reserveCapacity(children.count)
     for (key, child) in children {
-      var childKeyPath = keyPath
-      childKeyPath.append(key)
+      keyPath.append(key)
+      defer { keyPath.removeLast() }
 
       if recursivelyApply {
-        newChildren[key] = child._compactMapValues(keyPath: childKeyPath) { _ in (newValue, true) }
+        newChildren[key] = child._compactMapValues(keyPath: &keyPath) { _ in (newValue, true) }
       } else {
-        newChildren[key] = try await child._compactMapValues(keyPath: childKeyPath, transform)
+        newChildren[key] = try await child._compactMapValues(keyPath: &keyPath, transform)
       }
     }
 

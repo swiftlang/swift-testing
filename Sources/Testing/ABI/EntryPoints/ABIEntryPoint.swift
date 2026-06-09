@@ -8,8 +8,15 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
+#if !SWT_NO_ABI_ENTRY_POINT
 private import _TestingInternals
+
+#if SWT_NO_CODABLE
+#error("Platform-specific misconfiguration: support for the ABI entry point function requires support for 'Codable'")
+#endif
+#if SWT_NO_ABI_JSON_SCHEMA
+#error("Platform-specific misconfiguration: support for the ABI entry point function requires support for the ABI JSON schema")
+#endif
 
 extension ABI.v0 {
   /// The type of the entry point to the testing library used by tools that want

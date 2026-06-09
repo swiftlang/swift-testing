@@ -19,7 +19,6 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedBacktrace.swift
   ABI/Encoded/ABI.EncodedError.swift
   ABI/Encoded/ABI.EncodedEvent.swift
-  ABI/Encoded/ABI.EncodedExpectation.swift
   ABI/Encoded/ABI.EncodedExpression.swift
   ABI/Encoded/ABI.EncodedInstant.swift
   ABI/Encoded/ABI.EncodedIssue.swift
@@ -36,7 +35,7 @@ add_library(Testing
   Attachments/Attachment.swift
   Events/Clock.swift
   Events/Event.swift
-  Events/Event+FallbackHandler.swift
+  Events/Event+FallbackEventHandler.swift
   Events/Recorder/Event.AdvancedConsoleOutputRecorder.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
   Events/Recorder/Event.HumanReadableOutputRecorder.swift
@@ -70,6 +69,7 @@ add_library(Testing
   Running/Runner.Plan+Dumping.swift
   Running/Runner.RuntimeState.swift
   Running/Runner.swift
+  Running/Runner+Repetition.swift
   Running/SkipInfo.swift
   SourceAttribution/Backtrace.swift
   SourceAttribution/Backtrace+Symbolication.swift
@@ -92,6 +92,7 @@ add_library(Testing
   Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
   Support/Allocated.swift
+  Support/BugReporting.swift
   Support/CartesianProduct.swift
   Support/CError.swift
   Support/CustomIssueRepresentable.swift
@@ -101,6 +102,7 @@ add_library(Testing
   Support/Graph.swift
   Support/JSON.swift
   Support/Serializer.swift
+  Support/SHA256.swift
   Support/VersionNumber.swift
   Support/Versions.swift
   Discovery+Macro.swift
@@ -119,6 +121,7 @@ add_library(Testing
   Traits/HiddenTrait.swift
   Traits/IssueHandlingTrait.swift
   Traits/ParallelizationTrait.swift
+  Traits/ReducibleTrait.swift
   Traits/Tags/Tag.Color.swift
   Traits/Tags/Tag.Color+Loading.swift
   Traits/Tags/Tag.List.swift

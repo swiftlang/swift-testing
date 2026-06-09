@@ -14,13 +14,14 @@
 import Synchronization
 #endif
 
-@Suite("Configuration.RepetitionPolicy Tests")
-struct PlanIterationTests {
+@Suite
+struct LegacyPlanIterationTests {
   @Test("One iteration (default behavior)")
   func oneIteration() async {
     await confirmation("N iterations started") { started in
       await confirmation("N iterations ended") { ended in
         var configuration = Configuration()
+        configuration.shouldUseLegacyPlanLevelRepetition = true
         configuration.eventHandler = { event, _ in
           if case .iterationStarted = event.kind {
             started()
@@ -42,6 +43,7 @@ struct PlanIterationTests {
     await confirmation("N iterations started", expectedCount: iterationCount) { started in
       await confirmation("N iterations ended", expectedCount: iterationCount) { ended in
         var configuration = Configuration()
+        configuration.shouldUseLegacyPlanLevelRepetition = true
         configuration.eventHandler = { event, _ in
           if case .iterationStarted = event.kind {
             started()
@@ -68,6 +70,7 @@ struct PlanIterationTests {
     await confirmation("N iterations started", expectedCount: iterationWithIssue + 1) { started in
       await confirmation("N iterations ended", expectedCount: iterationWithIssue + 1) { ended in
         var configuration = Configuration()
+        configuration.shouldUseLegacyPlanLevelRepetition = true
         configuration.eventHandler = { event, _ in
           if case let .iterationStarted(index) = event.kind {
             iterationIndex.store(index, ordering: .sequentiallyConsistent)
@@ -96,6 +99,7 @@ struct PlanIterationTests {
     await confirmation("N iterations started", expectedCount: iterationWithoutIssue + 1) { started in
       await confirmation("N iterations ended", expectedCount: iterationWithoutIssue + 1) { ended in
         var configuration = Configuration()
+        configuration.shouldUseLegacyPlanLevelRepetition = true
         configuration.eventHandler = { event, _ in
           if case let .iterationStarted(index) = event.kind {
             iterationIndex.store(index, ordering: .sequentiallyConsistent)

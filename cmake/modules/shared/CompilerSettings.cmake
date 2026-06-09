@@ -23,6 +23,9 @@ add_compile_options(
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend MemberImportVisibility>"
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend InferIsolatedConformances>")
 
+# We don't build test targets with CMake, so everything is content.
+add_compile_definitions("SWT_BUILDING_SWIFT_TESTING_CONTENT")
+
 # Platform-specific definitions.
 if(APPLE)
   add_compile_definitions("SWT_TARGET_OS_APPLE")

@@ -94,9 +94,9 @@ public struct Test: Sendable {
       // traits to test suites.
       func traitsAreCorrectlyTyped() -> Bool {
         if isSuite {
-          return newValue.allSatisfy { $0 is any SuiteTrait }
+          return newValue.allSatisfy { $0.__as((any SuiteTrait).self) != nil }
         } else {
-          return newValue.allSatisfy { $0 is any TestTrait }
+          return newValue.allSatisfy { $0.__as((any TestTrait).self) != nil }
         }
       }
       precondition(traitsAreCorrectlyTyped(), "Programmatically added an inapplicable trait to test \(self)")
@@ -207,7 +207,7 @@ public struct Test: Sendable {
         // error (because the test cannot be run.) If an error was thrown, a
         // `Runner.Plan` is expected to record issue for the test, rather than
         // attempt to run it, and thus never access this property.
-        preconditionFailure("Attempting to access test cases with invalid state. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new and include this information: \(String(reflecting: testCasesState))")
+        preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage(context: String(reflecting: testCasesState)))")
       }
       return AnySequence(testCases)
     }
@@ -400,6 +400,10 @@ extension Test: Equatable, Hashable {
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
 
+#if SWT_NO_CODABLE
+#error("Platform-specific misconfiguration: support for snapshot types requires support for 'Codable'")
+#endif
+
 extension Test {
   /// A serializable snapshot of a ``Test`` instance.
   @_spi(ForToolsIntegrationOnly)
@@ -466,7 +470,7 @@ extension Test {
 
     /// The maximum amount of time a test may run for before timing out.
     public var timeLimit: Duration? {
-      _timeLimit.map(Duration.init)
+      _timeLimit?.rawValue
     }
 
     /// Initialize an instance of this type by snapshotting the specified test.

@@ -11,15 +11,12 @@
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
-#if canImport(Foundation)
-private import Foundation
-#endif
-
 private func configurationForEntryPoint(withArguments args: [String]) throws -> Configuration {
   let args = try parseCommandLineArguments(from: args)
   return try configurationForEntryPoint(from: args)
 }
 
+#if !SWT_NO_CODABLE
 /// Reads event stream output from the provided file matching event stream
 /// version `V`.
 private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String) throws -> [ABI.Record<V>] {
@@ -31,6 +28,7 @@ private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String
       }
     }
 }
+#endif
 
 @Suite("Swift Package Manager Integration Tests")
 struct SwiftPMTests {
@@ -165,6 +163,28 @@ struct SwiftPMTests {
     _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
   }
 
+#if !SWT_NO_EXIT_TESTS
+  @Test("--filter suppresses console output when no tests found")
+  func suppressConsoleOutputWhenFilteredToNothing() async throws {
+    let result = try await #require(processExitsWith: .exitCode(EXIT_NO_TESTS_FOUND), observing: [\.standardErrorContent]) {
+      var args = __CommandLineArguments_v0()
+      args.filter = ["$^"] // match "nothing"
+      await __swiftPMEntryPoint(passing: args) as Never
+    }
+    #expect(result.standardErrorContent.isEmpty)
+  }
+
+  @Test("--skip suppresses console output when no tests found")
+  func suppressConsoleOutputWhenSkippedToNothing() async throws {
+    let result = try await #require(processExitsWith: .exitCode(EXIT_NO_TESTS_FOUND), observing: [\.standardErrorContent]) {
+      var args = __CommandLineArguments_v0()
+      args.skip = [".*"] // match "anything"
+      await __swiftPMEntryPoint(passing: args) as Never
+    }
+    #expect(result.standardErrorContent.isEmpty)
+  }
+#endif
+
   @Test(".hidden trait", .tags(.traitRelated))
   func hidden() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH"])
@@ -230,7 +250,6 @@ struct SwiftPMTests {
     #expect(fileContents.contains(UInt8(ascii: ">")))
   }
 
-#if canImport(Foundation)
   @Test("--configuration-path argument", arguments: [
     "--configuration-path", "--experimental-configuration-path",
   ])
@@ -328,6 +347,7 @@ struct SwiftPMTests {
   }
 #endif
 
+#if !SWT_NO_CODABLE
   @Test("Severity and isFailure fields included in version 6.3")
   func validateEventStreamContents() async throws {
     let tempDirPath = try temporaryDirectory()
@@ -509,6 +529,12 @@ struct SwiftPMTests {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repetitions", "2468", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
     #expect(configuration.repetitionPolicy.continuationCondition == .whileIssueRecorded)
+  }
+
+  @Test
+  func `Per-test-case iteration enabled by default`() throws {
+    let defaultConfig = try configurationForEntryPoint(withArguments: ["PATH"])
+    #expect(!defaultConfig.shouldUseLegacyPlanLevelRepetition)
   }
 
   @Test("list subcommand")

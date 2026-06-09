@@ -10,28 +10,24 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if canImport(Foundation)
-private import Foundation
-#endif
-
 @Suite("SourceLocation Tests")
 struct SourceLocationTests {
   @Test("SourceLocation.description property")
   func sourceLocationDescription() {
-    let sourceLocation = #_sourceLocation
+    let sourceLocation = #Testing::sourceLocation
     _ = String(describing: sourceLocation)
     _ = String(reflecting: sourceLocation)
   }
 
   @Test("SourceLocation.fileID property")
   func sourceLocationFileID() {
-    let sourceLocation = #_sourceLocation
+    let sourceLocation = #Testing::sourceLocation
     #expect(sourceLocation.fileID.hasSuffix("/SourceLocationTests.swift"))
   }
 
   @Test("SourceLocation.fileName property")
   func sourceLocationFileName() {
-    var sourceLocation = #_sourceLocation
+    var sourceLocation = #Testing::sourceLocation
     #expect(sourceLocation.fileName == "SourceLocationTests.swift")
 
     sourceLocation.fileID = "FakeModule/FakeFileID"
@@ -40,7 +36,7 @@ struct SourceLocationTests {
 
   @Test("SourceLocation.moduleName property")
   func sourceLocationModuleName() {
-    var sourceLocation = #_sourceLocation
+    var sourceLocation = #Testing::sourceLocation
     #expect(!sourceLocation.moduleName.contains("/"))
     #expect(!sourceLocation.moduleName.isEmpty)
 
@@ -69,7 +65,7 @@ struct SourceLocationTests {
     #expect(sourceLocation.fileName == "D.swift")
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
   @Test("SourceLocation.fileID property is synthesized if not decoded")
   func sourceLocationFileIDSynthesizedWhenNeeded() throws {
 #if os(Windows)
@@ -80,17 +76,31 @@ struct SourceLocationTests {
     let esl = try json.withUTF8 { json in
       try JSON.decode(ABI.EncodedSourceLocation<ABI.v6_3>.self, from: UnsafeRawBufferPointer(json))
     }
-    let sourceLocation = try #require(SourceLocation(esl))
+    let sourceLocation = try #require(SourceLocation(decoding: esl))
     #expect(SourceLocation.synthesizedModuleName == "__C")
     #expect(sourceLocation.fileID == "\(SourceLocation.synthesizedModuleName)/FileName.swift")
     #expect(sourceLocation.moduleName == SourceLocation.synthesizedModuleName)
     #expect(sourceLocation.fileName == "FileName.swift")
   }
+
+  @Test("SourceLocation does not accept a bad file ID from an EncodedSourceLocation")
+  func badFileIDInEncodedSourceLocation() throws {
+#if os(Windows)
+    var json = #"{"filePath": "C:\fake/dir/FileName.swift/", "fileID": "bad", "line": 1, "column": 1}"#
+#else
+    var json = #"{"filePath": "/fake/dir/FileName.swift/", "fileID": "bad", "line": 1, "column": 1}"#
+#endif
+    let esl = try json.withUTF8 { json in
+      try JSON.decode(ABI.EncodedSourceLocation<ABI.v6_3>.self, from: UnsafeRawBufferPointer(json))
+    }
+    let sourceLocation = SourceLocation(decoding: esl)
+    #expect(sourceLocation == nil)
+  }
 #endif
 
   @Test("SourceLocation.line and .column properties")
   func sourceLocationLineAndColumn() {
-    var sourceLocation = #_sourceLocation
+    var sourceLocation = #Testing::sourceLocation
     #expect(sourceLocation.line > 0)
     #expect(sourceLocation.line < 500)
     #expect(sourceLocation.column > 0)
@@ -122,11 +132,11 @@ struct SourceLocationTests {
   @Test("SourceLocation.fileID property must be well-formed")
   func sourceLocationFileIDWellFormed() async {
     await #expect(processExitsWith: .failure) {
-      var sourceLocation = #_sourceLocation
+      var sourceLocation = #Testing::sourceLocation
       sourceLocation.fileID = ""
     }
     await #expect(processExitsWith: .failure) {
-      var sourceLocation = #_sourceLocation
+      var sourceLocation = #Testing::sourceLocation
       sourceLocation.fileID = "ABC"
     }
   }
@@ -134,11 +144,11 @@ struct SourceLocationTests {
   @Test("SourceLocation.line and column properties must be positive")
   func sourceLocationLineAndColumnPositive() async {
     await #expect(processExitsWith: .failure) {
-      var sourceLocation = #_sourceLocation
+      var sourceLocation = #Testing::sourceLocation
       sourceLocation.line = -1
     }
     await #expect(processExitsWith: .failure) {
-      var sourceLocation = #_sourceLocation
+      var sourceLocation = #Testing::sourceLocation
       sourceLocation.column = -1
     }
   }
@@ -146,7 +156,7 @@ struct SourceLocationTests {
 
   @Test("SourceLocation.filePath property")
   func sourceLocationFilePath() {
-    var sourceLocation = #_sourceLocation
+    var sourceLocation = #Testing::sourceLocation
     #expect(sourceLocation.filePath == #filePath)
 
     sourceLocation.filePath = "A"
@@ -156,7 +166,7 @@ struct SourceLocationTests {
   @available(swift, deprecated: 6.3)
   @Test("SourceLocation._filePath property")
   func sourceLocation_filePath() {
-    var sourceLocation = #_sourceLocation
+    var sourceLocation = #Testing::sourceLocation
     #expect(sourceLocation._filePath == #filePath)
 
     sourceLocation._filePath = "A"
@@ -226,5 +236,13 @@ struct SourceLocationTests {
         #expect(Bool(false), sourceLocation: SourceLocation(fileID: "A/B", filePath: "", line: lineNumber, column: 1))
       }.run(configuration: configuration)
     }
+  }
+
+  @Test("#_sourceLocation and #Testing::sourceLocation are equivalent")
+  func newAndOldMacrosAreEquivalent() {
+    let lhs = #_sourceLocation
+    var rhs = #Testing::sourceLocation
+    rhs.line -= 1
+    #expect(lhs == rhs)
   }
 }

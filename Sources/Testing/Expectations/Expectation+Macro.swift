@@ -936,6 +936,7 @@ public macro require(
   performing expression: @escaping @Sendable () async throws -> Void
 ) -> ExitTest.Result = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
 
+#if !SWT_NO_CODABLE
 /// Capture a sendable and codable value to pass to an exit test.
 ///
 /// - Parameters:
@@ -953,6 +954,7 @@ public macro __capturedValue<T>(
   _ name: String,
   _ expectedType: T.Type
 ) -> T = #externalMacro(module: "TestingMacros", type: "ExitTestCapturedValueMacro") where T: Sendable & Codable
+#endif
 
 /// Emit a compile-time diagnostic when an unsupported value is captured by an
 /// exit test.

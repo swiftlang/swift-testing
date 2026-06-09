@@ -607,6 +607,7 @@ public func __checkPropertyAccess<T, U>(
 ) -> Result<Void, any Error> where T: BidirectionalCollection, T.Element: Equatable {
   let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
   func difference() -> String? {
+#if SWT_COLLECTION_DIFFING_ENABLED
     guard let rhs else {
       return nil
     }
@@ -623,6 +624,9 @@ public func __checkPropertyAccess<T, U>(
     case (false, false):
       return ""
     }
+#else
+    return nil
+#endif
   }
 
   return __checkValue(
@@ -1213,10 +1217,10 @@ public func __checkClosureCall<each T>(
 ///
 /// - Returns: A string equivalent to `String(describingForTest: error)` with
 ///   information about its type added if not already present.
-private func _description(of error: some Error) -> String {
+private func _description(of error: any Error) -> String {
   let errorDescription = "\"\(String(describingForTest: error))\""
   let errorType = type(of: error as Any)
-  if errorDescription.contains(String(describing: errorType)) {
+  if errorDescription.contains(String(describingForTest: errorType)) {
     return errorDescription
   }
   return "\(errorDescription) of type \(errorType)"
