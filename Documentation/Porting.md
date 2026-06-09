@@ -131,13 +131,9 @@ When porting to a new platform, you may need to provide a new implementation for
 on Swift metadata discovery which is an inherently platform-specific operation.
 
 _Most_ platforms in use today use the ELF image format and will be able to reuse
-the implementation used by Linux, FreeBSD, etc.
-
-> [!NOTE]
-> We are not using `objectFormat()` in this file yet in order to maintain
-> compatibility with the Swift 6.2 toolchain. We will migrate to
-> `objectFormat()` when the `_TestDiscovery` target drops Swift 6.2 toolchain
-> support in the future.
+the implementation used by Linux, FreeBSD, etc. On platforms that use the ELF
+image format, the Swift runtime exports a function that Swift Testing uses
+during test discovery, and you likely do not need to make changes here.
 
 Classic does not use the ELF image format, so you'll need to write a custom
 implementation of `_sectionBounds(_:)` instead. Assuming that the Swift compiler
@@ -150,7 +146,7 @@ to load that information:
 +++ b/Sources/_TestDiscovery/SectionBounds.swift
 
  // ...
-+#elseif os(Classic)
++#elseif os(Classic) && objectFormat(CFM)
 +private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 +  let resourceName: Str255 = switch kind {
 +  case .testContent:
@@ -194,11 +190,6 @@ to load that information:
  }
  #endif
 ```
-
-> [!NOTE]
-> We are not using `objectFormat()` yet to maintain compatibility with the Swift
-> 6.2 toolchain. We will migrate to `objectFormat()` when we drop Swift 6.2
-> toolchain support (presumably after Swift 6.3 ships).
 
 You may also need to update the `makeTestContentRecordDecl()` function in the
 `TestingMacros` target to emit the correct `@section` attribute for your

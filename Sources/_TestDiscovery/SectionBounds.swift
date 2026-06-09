@@ -40,7 +40,7 @@ struct SectionBounds: Sendable, BitwiseCopyable {
   }
 }
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+#if SWT_TARGET_OS_APPLE && objectFormat(MachO) && !SWT_NO_DYNAMIC_LINKING
 // MARK: - Apple implementation
 
 extension SectionBounds.Kind {
@@ -156,7 +156,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessColl
   }
 }
 
-#elseif (os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)) && !SWT_NO_DYNAMIC_LINKING
+#elseif objectFormat(ELF) && !SWT_NO_DYNAMIC_LINKING
 // MARK: - ELF implementation
 
 private import SwiftShims // For MetadataSections
@@ -206,7 +206,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
   return context.result
 }
 
-#elseif os(Windows)
+#elseif os(Windows) && objectFormat(COFF)
 // MARK: - Windows implementation
 
 /// Find the section with the given name in the given module.
@@ -322,10 +322,10 @@ private struct _SectionBound: Sendable, ~Copyable {
   }
 }
 
-#if SWT_TARGET_OS_APPLE
+#if objectFormat(MachO)
 @_silgen_name(raw: "section$start$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
 @_silgen_name(raw: "section$end$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#elseif objectFormat(ELF) || objectFormat(Wasm)
 @_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
 @_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
 #else
