@@ -97,7 +97,7 @@ extension Win32Error: CustomStringConvertible {
       // we need to temporarily mis-cast the pointer before we can pass it in.
       let count = buffer.withMemoryRebound(to: CWideChar.self) { buffer in
         FormatMessageW(
-          DWORD(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK),
+          FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
           nil,
           rawValue,
           DWORD(swt_MAKELANGID(WORD(LANG_NEUTRAL), WORD(SUBLANG_DEFAULT))),

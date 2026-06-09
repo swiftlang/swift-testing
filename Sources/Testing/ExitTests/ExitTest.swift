@@ -242,8 +242,8 @@ extension ExitTest {
     // On Windows, similarly disable Windows Error Reporting and the Windows
     // Error Reporting UI. Note we expect to be the first component to call
     // these functions, so we don't attempt to preserve any previously-set bits.
-    _ = SetErrorMode(UINT(SEM_NOGPFAULTERRORBOX))
-    _ = WerSetFlags(DWORD(WER_FAULT_REPORTING_NO_UI))
+    _ = SetErrorMode(SEM_NOGPFAULTERRORBOX)
+    _ = WerSetFlags(WER_FAULT_REPORTING_NO_UI)
 #else
 #warning("Platform-specific implementation missing: unable to disable crash reporting")
 #endif
