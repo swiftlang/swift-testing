@@ -47,8 +47,6 @@ source file contains mixed test content.
 
 ### Use interoperability between Swift Testing and XCTest
 
-<!-- TODO: withKnownIssue and Test.cancel interop -->
-
 Interoperability is a feature that enables XCTest's assertions to work with
 Swift Testing, and Swift Testing's expectations to work with XCTest. You can use
 interoperability to share common test helpers between XCTest and Swift Testing
@@ -81,33 +79,37 @@ class UniqueElementsTests: XCTestCase {
 
 func assertUnique(_ elements: [Int]) {
   XCTAssertEqual(Set(elements).count, elements.count)
+
   // With interop: safely replace XCTAssertEqual with #expect
   // #expect(Set(elements).count == elements.count)
 }
 ```
 
+#### Modes
+
 Interoperability has a configurable mode that controls how it reports issues
-across test library boundaries.
+across test library boundaries. There are two directions of interop: Swift
+Testing API usage in XCTest test cases, and XCT
 
-- **None**: The feature is disabled.
-
-For the remaining modes, **Swift Testing API behaves as expected when used in
-XCTest**. This includes reporting any assertion failures as errors within an
-XCTest test case. As a result, any interop mode lets you incrementally migrate
-your assertions to Swift Testing.
+<!-- For all modes where interop is enabled, **Swift -->
+<!-- Testing API behaves as expected when used in XCTest**. This includes reporting -->
+<!-- any assertion failures as errors within an XCTest test case. As a result, any -->
+<!-- interop mode lets you incrementally migrate your assertions to Swift Testing. -->
 
 **XCTest API used in Swift Testing tests** behaves differently based on mode:
 
-- **Limited**: Surfaces all test failures the library previously ignored as
+- term None: The feature is disabled.
+
+- term Limited: Surfaces all test failures the library previously ignored as
   warnings. Also includes warnings for XCTest API usage in a Swift Testing test.
 
-- **Complete**: Surfaces all test failures the library previously ignored with
-  their original severity. Also includes warnings for XCTest API usage in a
-  Swift Testing test.
+- term Complete: Issues across both directions of test library boundaries are
+  reported and keep their original severity. Also includes warnings for XCTest
+  API usage in a Swift Testing test.
 
-- **Strict**:
+- term Strict:
   [`fatalError()`](https://developer.apple.com/documentation/swift/fatalerror(_:file:line:))
-  when a Swift Testing test uses XCTest API.
+  for failures from XCTest API.
 
 ```swift
 // Calling XCTest API from Swift Testing
@@ -694,6 +696,32 @@ to cancel the task associated with the current test:
   }
 }
 
+Interoperability allows ``Test/cancel(_:sourceLocation:)`` to also end XCTest
+test functions early. This lets you share cancellation logic between testing
+libraries using test helper functions:
+
+```swift
+func skipIfEmptyRegister() throws {
+  let cashRegister = CashRegister()
+  let drawer = cashRegister.open()
+  if drawer.isEmpty {
+    try Test.cancel("Cash register is empty")
+  }
+}
+
+// XCTest
+func testCashRegister() throws {
+  try skipIfEmptyRegister()
+  ...
+}
+
+// Swift Testing
+@Test func cashRegister() throws {
+  try skipIfEmptyRegister()
+  ...
+}
+```
+
 ### Annotate known issues
 
 A test may have a known issue that sometimes or always prevents it from passing.
@@ -829,6 +857,16 @@ of issues:
     ```
   }
 }
+
+Interoperability allows `withKnownIssue()` to also match XCTest issues:
+
+```swift
+@Test func `Mark an XCTest assertion failure as known`() {
+  withKnownIssue {
+    XCTFail("Interop failure")
+  }
+}
+```
 
 ### Run tests sequentially
 
