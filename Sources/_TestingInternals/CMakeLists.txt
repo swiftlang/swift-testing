@@ -11,7 +11,6 @@ set(CMAKE_CXX_SCAN_FOR_MODULES 0)
 include(GitCommit)
 include(TargetTriple)
 add_library(_TestingInternals STATIC
-  Discovery.cpp
   ExecutablePath.cpp
   Versions.cpp
   WillThrow.cpp)
