@@ -237,4 +237,13 @@ extension DiscoverableAsTestContent {
       }
     }
   }
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+  @available(swift, deprecated: 6.5, obsoleted: 6.6, message: "Unimplemented")
+  public static func allTypeMetadataBasedTestContentRecords(
+    loadingWith loader: @escaping @Sendable (Any.Type, UnsafeMutableRawBufferPointer) -> Bool
+  ) -> some Sequence<TestContentRecord<Self>> {
+    EmptyCollection()
+  }
+#endif
 }
