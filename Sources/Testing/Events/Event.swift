@@ -532,7 +532,9 @@ extension Event.Kind.Snapshot {
   ///
   /// - Parameters:
   ///   - kind: The original event kind to snapshot.
+#if hasAttribute(diagnose)
   @diagnose(DeprecatedDeclaration, as: ignored)
+#endif
   public init(snapshotting kind: Event.Kind) {
     switch kind {
     case .testDiscovered:
