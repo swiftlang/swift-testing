@@ -440,17 +440,7 @@ extension Event.Kind {
     /// ``testDiscovered`` has been posted for all tests in the runner's plan.
     case runStarted
 
-    /// An iteration of the test run started.
-    ///
-    /// - Parameters:
-    ///   - index: The index of the iteration. The first iteration has an index
-    ///     of `0`.
-    ///
-    /// This event is posted at the start of each test plan iteration.
-    ///
-    /// By default, a test plan runs for one iteration, but the
-    /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
-    /// allow for more iterations.
+    /// Deprecated; this is no longer emitted.
     indirect case iterationStarted(_ index: Int)
 
     /// A step in the runner plan started.
@@ -542,17 +532,7 @@ extension Event.Kind {
     /// ``Runner/Plan/Step``.
     case planStepEnded
 
-    /// An iteration of the test run ended.
-    ///
-    /// - Parameters:
-    ///   - index: The index of the iteration. The first iteration has an index
-    ///     of `0`.
-    ///
-    /// This event is posted at the end of each test plan iteration.
-    ///
-    /// By default, a test plan runs for one iteration, but the
-    /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
-    /// allow for more iterations.
+    /// Deprecated; this is no longer emitted.
     indirect case iterationEnded(_ index: Int)
 
     /// A test run ended.
