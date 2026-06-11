@@ -21,4 +21,5 @@ if(APPLE)
     -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_Testing_UIKit,Swift_MODULE_DIRECTORY>/_Testing_UIKit.swiftinterface)
 
   _swift_testing_install_target(_Testing_UIKit)
+  _swift_testing_install_swiftmodule(_Testing_UIKit)
 endif()
