@@ -31,19 +31,6 @@ public struct Event: Sendable {
     /// ``testDiscovered`` has been posted for all tests in the runner's plan.
     case runStarted
 
-    /// An iteration of the test run started.
-    ///
-    /// - Parameters:
-    ///   - index: The index of the iteration. The first iteration has an index
-    ///     of `0`.
-    ///
-    /// This event is posted at the start of each test plan iteration.
-    ///
-    /// By default, a test plan runs for one iteration, but the
-    /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
-    /// allow for more iterations.
-    indirect case iterationStarted(_ index: Int)
-
     /// A step in the runner plan started.
     ///
     /// - Parameters:
@@ -154,23 +141,18 @@ public struct Event: Sendable {
     /// ``Runner/Plan/Step``.
     indirect case planStepEnded(Runner.Plan.Step)
 
-    /// An iteration of the test run ended.
-    ///
-    /// - Parameters:
-    ///   - index: The index of the iteration. The first iteration has an index
-    ///     of `0`.
-    ///
-    /// This event is posted at the end of each test plan iteration.
-    ///
-    /// By default, a test plan runs for one iteration, but the
-    /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
-    /// allow for more iterations.
-    indirect case iterationEnded(_ index: Int)
-
     /// A test run ended.
     ///
     /// This event is the last event posted before ``Runner/run()`` returns.
     case runEnded
+
+    // MARK: Deprecated events
+
+    @available(*, deprecated, message: "This event is no longer emitted")
+    indirect case iterationStarted(_ index: Int)
+
+    @available(*, deprecated, message: "This event is no longer emitted")
+    indirect case iterationEnded(_ index: Int)
   }
 
   /// The kind of event.
@@ -440,9 +422,6 @@ extension Event.Kind {
     /// ``testDiscovered`` has been posted for all tests in the runner's plan.
     case runStarted
 
-    /// Deprecated; this is no longer emitted.
-    indirect case iterationStarted(_ index: Int)
-
     /// A step in the runner plan started.
     ///
     /// - Parameters:
@@ -532,57 +511,65 @@ extension Event.Kind {
     /// ``Runner/Plan/Step``.
     case planStepEnded
 
-    /// Deprecated; this is no longer emitted.
-    indirect case iterationEnded(_ index: Int)
-
     /// A test run ended.
     ///
     /// This is the last event posted before ``Runner/run()`` returns.
     case runEnded
 
-    /// Initialize an instance of this type by snapshotting the specified event
-    /// kind.
-    ///
-    /// - Parameters:
-    ///   - kind: The original event kind to snapshot.
-    public init(snapshotting kind: Event.Kind) {
-      switch kind {
-      case .testDiscovered:
-        self = .testDiscovered
-      case .runStarted:
-        self = .runStarted
-      case let .iterationStarted(index):
-        self = .iterationStarted(index)
-      case .planStepStarted:
-        self = .planStepStarted
-      case .testStarted:
-        self = .testStarted
-      case .testCaseStarted:
-        self = .testCaseStarted
-      case .testCaseEnded:
-        self = .testCaseEnded
-      case let .testCaseCancelled(skipInfo):
-        self = .testCaseCancelled(skipInfo)
-      case let .expectationChecked(expectation):
-        let expectationSnapshot = Expectation.Snapshot(snapshotting: expectation)
-        self = Snapshot.expectationChecked(expectationSnapshot)
-      case let .issueRecorded(issue):
-        self = .issueRecorded(Issue.Snapshot(snapshotting: issue))
-      case .valueAttached:
-        self = .valueAttached
-      case .testEnded:
-        self = .testEnded
-      case let .testSkipped(skipInfo):
-        self = .testSkipped(skipInfo)
-      case let .testCancelled(skipInfo):
-        self = .testCancelled(skipInfo)
-      case .planStepEnded:
-        self = .planStepEnded
-      case let .iterationEnded(index):
-        self = .iterationEnded(index)
-      case .runEnded:
-        self = .runEnded
-      }
+    // MARK: Deprecated events
+
+    @available(*, deprecated, message: "This event is no longer emitted")
+    indirect case iterationStarted(_ index: Int)
+
+    @available(*, deprecated, message: "This event is no longer emitted")
+    indirect case iterationEnded(_ index: Int)
+  }
+}
+
+extension Event.Kind.Snapshot {
+  /// Initialize an instance of this type by snapshotting the specified event
+  /// kind.
+  ///
+  /// - Parameters:
+  ///   - kind: The original event kind to snapshot.
+  @diagnose(DeprecatedDeclaration, as: ignored)
+  public init(snapshotting kind: Event.Kind) {
+    switch kind {
+    case .testDiscovered:
+      self = .testDiscovered
+    case .runStarted:
+      self = .runStarted
+    case .planStepStarted:
+      self = .planStepStarted
+    case .testStarted:
+      self = .testStarted
+    case .testCaseStarted:
+      self = .testCaseStarted
+    case .testCaseEnded:
+      self = .testCaseEnded
+    case let .testCaseCancelled(skipInfo):
+      self = .testCaseCancelled(skipInfo)
+    case let .expectationChecked(expectation):
+      let expectationSnapshot = Expectation.Snapshot(snapshotting: expectation)
+      self = .expectationChecked(expectationSnapshot)
+    case let .issueRecorded(issue):
+      self = .issueRecorded(Issue.Snapshot(snapshotting: issue))
+    case .valueAttached:
+      self = .valueAttached
+    case .testEnded:
+      self = .testEnded
+    case let .testSkipped(skipInfo):
+      self = .testSkipped(skipInfo)
+    case let .testCancelled(skipInfo):
+      self = .testCancelled(skipInfo)
+    case .planStepEnded:
+      self = .planStepEnded
+    case let .iterationStarted(index):
+      self = .iterationStarted(index)
+    case let .iterationEnded(index):
+      self = .iterationEnded(index)
+    case .runEnded:
+      self = .runEnded
     }
   }
 }

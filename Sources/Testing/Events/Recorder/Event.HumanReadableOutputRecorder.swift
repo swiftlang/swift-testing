@@ -296,9 +296,6 @@ extension Event.HumanReadableOutputRecorder {
       case .runStarted:
         context.runStartInstant = instant
 
-      case .iterationStarted:
-        break
-
       case .testStarted:
         let test = test!
         context.testData[keyPath] = .init(startInstant: instant)
@@ -402,10 +399,6 @@ extension Event.HumanReadableOutputRecorder {
           stringValue: "Test run started."
         )
       ) + _formattedComments(comments)
-
-    case .iterationStarted:
-      // Iteration events are not emitted.
-      break
 
     case .planStepStarted, .planStepEnded:
       // Suppress events of these kinds from output as they are not generally
@@ -612,7 +605,7 @@ extension Event.HumanReadableOutputRecorder {
       // Handled in .testEnded and .testCaseEnded
       break
 
-    case .iterationEnded:
+    case .iterationStarted, .iterationEnded:
       // Iteration events are not emitted.
       break
 
