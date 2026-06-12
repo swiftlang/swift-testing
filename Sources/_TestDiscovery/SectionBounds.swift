@@ -167,6 +167,7 @@ private let _startCollectingSectionBounds: Void = {
 ///   content sections in the current process.
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessCollection<SectionBounds> {
 #if _runtime(_ObjC)
+#if compiler(>=6.4)
   if #available(_objcCopyImageHeadersAPI, *) {
     var imageCount = Int32(0)
     let imageHeaders = objc_copyImageHeaders(&imageCount)
@@ -176,6 +177,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessColl
     return UnsafeBufferPointer(start: imageHeaders, count: Int(imageCount))
       .compactMap { _findSectionBounds(kind, in: $0) }
   }
+#endif
 
   _startCollectingSectionBounds
   return _sectionBounds.withUnsafeMutablePointers { sectionBounds, lock in
