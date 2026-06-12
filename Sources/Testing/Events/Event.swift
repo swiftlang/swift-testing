@@ -532,7 +532,7 @@ extension Event.Kind.Snapshot {
   ///
   /// - Parameters:
   ///   - kind: The original event kind to snapshot.
-#if hasAttribute(diagnose)
+#if compiler(>=6.4)
   @diagnose(DeprecatedDeclaration, as: ignored)
 #endif
   public init(snapshotting kind: Event.Kind) {
