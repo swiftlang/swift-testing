@@ -17,6 +17,12 @@ private func configurationForEntryPoint(withArguments args: [String]) throws -> 
 }
 
 #if !SWT_NO_CODABLE
+
+private extension Tag {
+  @Tag static var testTag: Self
+  @Tag static var testTagOther: Self
+  @Tag static var unrelatedTag: Self
+}
 /// Reads event stream output from the provided file matching event stream
 /// version `V`.
 private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String) throws -> [ABI.Record<V>] {
@@ -114,6 +120,18 @@ struct SwiftPMTests {
     #expect(!planTests.contains(test2))
   }
 
+
+  @Test("--filter argument with tag: prefix")
+  func filterByTag() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:testTag"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(name: "goodbye") {}
+    let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+  }
+
   @Test("Multiple --filter arguments")
   func multipleFilter() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello", "--filter", "sorry"])
@@ -155,6 +173,94 @@ struct SwiftPMTests {
     let planTests = plan.steps.map(\.test)
     #expect(!planTests.contains(test1))
     #expect(planTests.contains(test2))
+  }
+
+  @Test("--skip argument with tag: prefix")
+  func skipByTag() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--skip", "tag:testTag"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(name: "goodbye") {}
+    let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(!planTests.contains(test1))
+    #expect(planTests.contains(test2))
+  }
+
+  @Test("--filter argument with tag: prefix supports regex patterns")
+  func filterByTagRegex() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:testTag.*"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(.tags(.testTagOther), name: "hi") {}
+    let test3 = Test(.tags(.unrelatedTag), name: "goodbye") {}
+    let test4 = Test(name: "untagged") {}
+    let plan = await Runner.Plan(tests: [test1, test2, test3, test4], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(planTests.contains(test2))
+    #expect(!planTests.contains(test3))
+    #expect(!planTests.contains(test4))
+  }
+
+  @Test("--filter tag: argument strips backticks around tag names")
+  func filterByTagStripsBackticks() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:`testTag`"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(name: "goodbye") {}
+    let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+  }
+
+  @Test("--filter combining tag: and id: patterns AND's them together")
+  func mixedPrefixedAndUnprefixedFilters() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:testTag", "--filter", "hello"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(.tags(.testTag), name: "goodbye") {}
+    let test3 = Test(name: "hello") {}
+    let test4 = Test(name: "goodbye") {}
+    let plan = await Runner.Plan(tests: [test1, test2, test3, test4], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+    #expect(!planTests.contains(test3))
+    #expect(!planTests.contains(test4))
+  }
+
+  @Test("--filter argument with explicit id: prefix")
+  func filterByExplicitIdPrefix() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "id:hello"])
+    let test1 = Test(name: "hello") {}
+    let test2 = Test(name: "goodbye") {}
+    let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+  }
+
+  @Test("--filter tag: combined with --skip id: in the same execution")
+  func filterByTagAndSkipById() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:testTag", "--skip", "id:goodbye"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(.tags(.testTag), name: "goodbye") {}
+    let test3 = Test(.tags(.unrelatedTag), name: "hello") {}
+    let test4 = Test(name: "untagged") {}
+    let plan = await Runner.Plan(tests: [test1, test2, test3, test4], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+    #expect(!planTests.contains(test3))
+    #expect(!planTests.contains(test4))
+  }
+
+  @Test("--filter or --skip tag: argument with bad regex")
+  func filterByTagWithBadRegex() throws {
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:("])
+    }
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip", "tag:)"])
+    }
   }
 
   @Test("--filter or --skip argument as last argument")
