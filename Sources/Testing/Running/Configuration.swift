@@ -62,7 +62,7 @@ public struct Configuration: Sendable {
   /// ``Backtrace/symbolicate(_:)`` function to symbolicate it.
   public var backtraceSymbolicationMode: Backtrace.SymbolicationMode?
 
-  /// A type describing whether or not, and how, to iterate a test plan
+  /// A type describing whether or not, and how, to iterate a test case
   /// repeatedly.
   ///
   /// When a ``Runner`` is run, it will run all tests in its corresponding
@@ -74,9 +74,9 @@ public struct Configuration: Sendable {
   /// .repeating(.untilIssueRecorded, count: 10)
   /// ```
   ///
-  /// The entire test plan will be run repeatedly, up to 10 times. If an issue
+  /// All test cases will be run repeatedly, up to 10 times. If an issue
   /// is recorded, the current iteration will complete, but no further
-  /// iterations will be attempted.
+  /// iterations of that test case will be attempted.
   ///
   /// If the value of an instance's ``maximumIterationCount`` property is `1`,
   /// the value of its ``continuationCondition-swift.property`` property has no
@@ -85,7 +85,7 @@ public struct Configuration: Sendable {
     /// An enumeration describing the conditions under which test iterations
     /// should continue.
     public enum ContinuationCondition: Sendable {
-      /// The test plan should continue iterating until an unknown issue is
+      /// The test case should continue iterating until an unknown issue is
       /// recorded.
       ///
       /// When this continuation condition is used and an issue is recorded, the
@@ -93,19 +93,19 @@ public struct Configuration: Sendable {
       /// attempted.
       case untilIssueRecorded
 
-      /// The test plan should continue iterating until an iteration completes
+      /// The test case should continue iterating until an iteration completes
       /// with no unknown issues recorded.
       case whileIssueRecorded
     }
 
     /// The conditions under which test iterations should continue.
     ///
-    /// If the value of this property is `nil`, a test plan will be run
+    /// If the value of this property is `nil`, a test case will be run
     /// ``maximumIterationCount`` times regardless of whether or not issues are
     /// encountered while running.
     public var continuationCondition: ContinuationCondition?
 
-    /// The maximum number of times the test run should iterate.
+    /// The maximum number of times test cases should iterate.
     ///
     /// - Precondition: The value of this property must be greater than `0`.
     public var maximumIterationCount: Int {
@@ -120,8 +120,8 @@ public struct Configuration: Sendable {
     ///   - continuationCondition: The conditions under which test iterations
     ///     should continue. If `nil`, the iterations should continue
     ///     unconditionally `count` times.
-    ///   - maximumIterationCount: The maximum number of times the test run
-    ///     should iterate.
+    ///   - maximumIterationCount: The maximum number of times repeated test
+    ///     cases should iterate.
     public static func repeating(_ continuationCondition: ContinuationCondition? = nil, maximumIterationCount: Int) -> Self {
       Self(continuationCondition: continuationCondition, maximumIterationCount: maximumIterationCount)
     }
@@ -132,11 +132,12 @@ public struct Configuration: Sendable {
     }
   }
 
-  /// Whether to perform test repetition at the plan level or on a per-test-
-  /// case basis.
+  /// Unused
+  @available(*, deprecated, message: "This value is unused; legacy plan-level repetation is no longer available")
   public var shouldUseLegacyPlanLevelRepetition: Bool = false
 
-  /// Whether or not, and how, to iterate the test plan repeatedly.
+  /// Whether or not, and how, to iterate test cases within the test plan
+  /// repeatedly.
   ///
   /// By default, the value of this property allows for a single iteration.
   public var repetitionPolicy: RepetitionPolicy = .once
