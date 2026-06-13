@@ -29,7 +29,11 @@ extension ABI.Version {
 
     let humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
     return { event, context in
-      if case .testDiscovered = event.kind, let test = context.test {
+      if case let .libraryDiscovered(library) = event.kind {
+        if let libraryRecord = ABI.Record<Self>(encoding: library) {
+          recordHandler(libraryRecord)
+        }
+      } else if case .testDiscovered = event.kind, let test = context.test {
         let testRecord = ABI.Record<Self>(encoding: test)
         recordHandler(testRecord)
       } else {
@@ -68,23 +72,24 @@ extension ABI.Xcode16 {
     forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
     return { event, context in
-      if case .testDiscovered = event.kind {
+      switch event.kind {
+      case .libraryDiscovered, .testDiscovered:
         // Discard events of this kind rather than forwarding them to avoid a
         // crash in Xcode 16 (which does not expect any events to occur before
         // .runStarted.)
         return
-      }
-
-      struct EventAndContextSnapshot: Codable {
-        var event: Event.Snapshot
-        var eventContext: Event.Context.Snapshot
-      }
-      let snapshot = EventAndContextSnapshot(
-        event: Event.Snapshot(snapshotting: event),
-        eventContext: Event.Context.Snapshot(snapshotting: context)
-      )
-      try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
-        recordHandler(eventAndContextJSON)
+      default:
+        struct EventAndContextSnapshot: Codable {
+          var event: Event.Snapshot
+          var eventContext: Event.Context.Snapshot
+        }
+        let snapshot = EventAndContextSnapshot(
+          event: Event.Snapshot(snapshotting: event),
+          eventContext: Event.Context.Snapshot(snapshotting: context)
+        )
+        try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
+          recordHandler(eventAndContextJSON)
+        }
       }
     }
   }
