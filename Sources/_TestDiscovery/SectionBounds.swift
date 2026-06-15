@@ -169,7 +169,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessColl
 #if _runtime(_ObjC)
   if #available(_objcCopyImageHeadersAPI, *) {
     var imageCount = UInt32(0)
-    let imageHeaders = objc_copyImageHeaders(&imageCount)
+    let imageHeaders = swt_objc_copyImageHeaders(&imageCount)
     defer {
       free(imageHeaders)
     }
