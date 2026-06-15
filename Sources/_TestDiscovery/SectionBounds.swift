@@ -103,15 +103,6 @@ private func _findSectionBounds(_ kind: SectionBounds.Kind, in mh: UnsafePointer
 }
 
 #if _runtime(_ObjC)
-/// Get an array of Mach headers that are loaded into the current process and
-/// contain Objective-C or Swift code.
-///
-/// This declaration is provided because the testing library still needs to
-/// build with older Apple SDKs that do not contain an equivalent declaration.
-@available(_objcCopyImageHeadersAPI, *)
-@_extern(c)
-private func objc_copyImageHeaders(_ outCount: UnsafeMutablePointer<UInt32>) -> UnsafeMutablePointer<UnsafePointer<mach_header>>
-
 /// An array containing all of the test content section bounds known to the
 /// testing library.
 ///
