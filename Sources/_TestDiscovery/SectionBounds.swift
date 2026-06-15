@@ -177,12 +177,12 @@ private let _startCollectingSectionBounds: Void = {
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessCollection<SectionBounds> {
 #if _runtime(_ObjC)
   if #available(_objcCopyImageHeadersAPI, *) {
-    var imageCount = Int32(0)
+    var imageCount = UInt32(0)
     let imageHeaders = objc_copyImageHeaders(&imageCount)
     defer {
       free(imageHeaders)
     }
-    return UnsafeBufferPointer(start: imageHeaders, count: Int(imageCount))
+    return UnsafeBufferPointer(start: imageHeaders, count: Int(clamping: imageCount))
       .compactMap { _findSectionBounds(kind, in: $0) }
   }
 
