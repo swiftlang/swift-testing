@@ -114,6 +114,12 @@ public func __swiftPMHarnessEntryPoint() async throws -> CInt {
     try? FileHandle.stderr.write(line)
   }
 
+  // Set up a configuration instance. We mostly use this to select the verbosity
+  // of our console output.
+  let commandLineArgs = try parseCommandLineArguments(from: Array(actualArguments))
+  var configuration = try configurationForEntryPoint(from: commandLineArgs)
+  configuration.verbosity = commandLineArgs.verbosity
+
   var exitStatuses = [ExitStatus]()
   for (pathIndex, binaryPath) in binaryPaths.enumerated() {
     if binaryPaths.count > 1 {
@@ -163,7 +169,7 @@ public func __swiftPMHarnessEntryPoint() async throws -> CInt {
     let source = eventStreamReadEnd.withUnsafePOSIXFileDescriptor { fd in
       DispatchSource.makeReadSource(fileDescriptor: fd!)
     }
-    source.setEventHandler {
+    source.setEventHandler { [configuration] in
       let (line, _) = try! eventStreamReadEnd.read(until: \.isASCIINewline)
       if line.isEmpty {
         return
@@ -199,7 +205,7 @@ public func __swiftPMHarnessEntryPoint() async throws -> CInt {
           let test = encodedEvent.testID.flatMap { testID in
             tests.withLock { tests in tests[testID] }
           }
-          let context = Event.Context(test: test, testCase: nil, iteration: encodedEvent._iteration, configuration: nil)
+          let context = Event.Context(test: test, testCase: nil, iteration: encodedEvent._iteration, configuration: configuration)
           outputRecorder.record(event, in: context)
         }
       }
