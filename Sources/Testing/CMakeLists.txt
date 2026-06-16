@@ -136,7 +136,7 @@ target_link_libraries(Testing PRIVATE
   _TestingInternals
   _TestingInterop)
 if(NOT APPLE)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
     target_link_libraries(Testing PUBLIC
       dispatch)
   endif()
