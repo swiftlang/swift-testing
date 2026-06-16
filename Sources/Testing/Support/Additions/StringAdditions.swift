@@ -16,3 +16,16 @@ extension String {
   }
 #endif
 }
+
+// MARK: -
+
+extension StaticString {
+  /// This string as a compile-time constant C string.
+  ///
+  /// - Precondition: This instance of `StaticString` must have been constructed
+  ///   from a string literal, not a Unicode scalar value.
+  var constUTF8CString: UnsafePointer<CChar> {
+    precondition(hasPointerRepresentation, "Cannot construct a compile-time constant C string from a StaticString without pointer representation.")
+    return UnsafeRawPointer(utf8Start).bindMemory(to: CChar.self, capacity: utf8CodeUnitCount)
+  }
+}

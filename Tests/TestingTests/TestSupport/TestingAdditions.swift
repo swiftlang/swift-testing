@@ -9,6 +9,9 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+#if os(Windows)
+private import _TestingInternals
+#endif
 
 #if canImport(XCTest)
 import XCTest
@@ -16,6 +19,10 @@ import XCTest
 
 #if canImport(Synchronization)
 private import Synchronization
+#endif
+
+#if os(Windows)
+let strcasecmp = _stricmp
 #endif
 
 /// The ABI name of the testing library's main module.
