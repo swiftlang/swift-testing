@@ -17,7 +17,7 @@ extension Runner {
   /// This keeps track of tests that recorded an issue during a test repetition
   /// and is used by the repetition machinery to determine if an issue was recorded
   /// during a run.
-  final class TestIssueRecorder: Sendable {
+  final class TestIssueRecorder<T>: Sendable {
     /// A composite identifier uniquely naming a test case within a test.
     private struct _ID: Hashable {
       var testID: Test.ID
@@ -103,7 +103,7 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - testIssueRecorder: The recorder to notify of any recorded issues.
-  mutating func configureIssueRecordingEventHandling(testIssueRecorder: TestIssueRecorder) {
+  mutating func configureIssueRecordingEventHandling<T>(testIssueRecorder: TestIssueRecorder<T>) {
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
       if case .issueRecorded = event.kind, let testID = event.testID, let testCaseID = event.testCaseID {
         testIssueRecorder.recordIssue(for: testID, testCase: testCaseID)

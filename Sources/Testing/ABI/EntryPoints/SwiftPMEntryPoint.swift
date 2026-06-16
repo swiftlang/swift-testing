@@ -81,3 +81,152 @@ public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) 
   let exitCode: CInt = await __swiftPMEntryPoint(passing: args)
   exit(exitCode)
 }
+
+extension ABI {
+  typealias HarnessVersion = ABI.ExperimentalVersion
+}
+
+public func __swiftPMHarnessEntryPoint() async throws -> CInt {
+  // Ensure that stdout is line- rather than block-buffered. Swift Package
+  // Manager reroutes standard I/O through pipes, so we tend to end up with
+  // block-buffered streams.
+  FileHandle.stdout.withUnsafeCFILEHandle { stdout in
+    _ = setvbuf(stdout, nil, _IOLBF, Int(BUFSIZ))
+  }
+
+  let args = CommandLine.arguments
+  guard args.count >= 3, args[1] == "--test-binary-paths" else {
+    return EXIT_FAILURE
+  }
+  let dashDashIndex = args.firstIndex(of: "--") ?? args.endIndex
+  let binaryPaths = args[2..<dashDashIndex]
+
+  var actualArguments = args[dashDashIndex...]
+  if !actualArguments.isEmpty {
+    actualArguments = actualArguments.dropFirst()
+  }
+
+  let environment = Environment.get()
+  let testingHelperPath = Environment.variable(named: "SWIFTPM_TESTING_HELPER_PATH")!
+
+  let tests = Mutex<[ABI.EncodedTest<ABI.HarnessVersion>.ID: Test]>()
+  let outputRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { line in
+    try? FileHandle.stderr.write(line)
+  }
+
+  var exitStatuses = [ExitStatus]()
+  for (pathIndex, binaryPath) in binaryPaths.enumerated() {
+    if binaryPaths.count > 1 {
+      try? FileHandle.stderr.write("\u{001B}[38;2;99;215;192m\u{101838}\u{001B}[0m  Starting \(binaryPath)...\n")
+    }
+
+    var eventStreamReadEnd: FileHandle!
+    var eventStreamWriteEnd: FileHandle!
+    try FileHandle.makePipe(readEnd: &eventStreamReadEnd, writeEnd: &eventStreamWriteEnd)
+
+    let arguments = try {
+      var arguments = [
+        "--test-bundle-path", binaryPath,
+        "--testing-library", "swift-testing"
+      ]
+      arguments += actualArguments
+
+      let harnessConfigurationJSON = try eventStreamWriteEnd.withUnsafePOSIXFileDescriptor { fd in
+        let harnessConfiguration = HarnessConfiguration(version: ABI.HarnessVersion.versionNumber, eventStreamFD: fd!)
+        return try JSON.withEncoding(of: harnessConfiguration) { json in
+          String(
+            decoding: json,
+            as: UTF8.self
+          )
+        }
+      }
+      arguments += [
+        "--experimental-harness-configuration", harnessConfigurationJSON,
+        "--verbosity", "\(Int.min)",
+      ]
+
+      return arguments
+    }()
+
+    let processID = try withUnsafePointer(to: eventStreamReadEnd) { eventStreamReadEnd in
+      try withUnsafePointer(to: eventStreamWriteEnd) { eventStreamWriteEnd in
+        try spawnExecutable(
+          atPath: testingHelperPath,
+          arguments: arguments,
+          environment: environment,
+          standardOutput: FileHandle.stdout,
+          standardError: FileHandle.stderr,
+          additionalFileHandles: [eventStreamReadEnd, eventStreamWriteEnd]
+        )
+      }
+    }
+    eventStreamWriteEnd.close()
+
+    let source = eventStreamReadEnd.withUnsafePOSIXFileDescriptor { fd in
+      DispatchSource.makeReadSource(fileDescriptor: fd!)
+    }
+    source.setEventHandler {
+      let (line, _) = try! eventStreamReadEnd.read(until: \.isASCIINewline)
+      if line.isEmpty {
+        return
+      }
+      let record = try! line.withUnsafeBytes { line in
+        try JSON.decode(ABI.Record<ABI.HarnessVersion>.self, from: line)
+      }
+      switch record.kind {
+      case let .test(encodedTest):
+        if let test = Test(decoding: encodedTest) {
+          tests.withLock { tests in
+            tests[encodedTest.id] = test
+          }
+        } else {
+          try? FileHandle.stderr.write("Failed to decode \(encodedTest)")
+        }
+      case let .event(encodedEvent):
+        guard let event = Event(decoding: encodedEvent) else {
+          try? FileHandle.stderr.write("Failed to decode \(encodedEvent)")
+          return
+        }
+        switch event.kind {
+        case .runStarted where pathIndex > 0:
+          // Suppress this event for all but the first target.
+          break
+        case .runEnded where pathIndex < (binaryPaths.count - 1):
+          // Suppress this event for all but the last target.
+          break
+        case .testCaseStarted, .testCaseCancelled, .testCaseEnded:
+          // TODO: handle these (no representation of test cases in JSON yet)
+          break
+        default:
+          let test = encodedEvent.testID.flatMap { testID in
+            tests.withLock { tests in tests[testID] }
+          }
+          let context = Event.Context(test: test, testCase: nil, iteration: encodedEvent._iteration, configuration: nil)
+          outputRecorder.record(event, in: context)
+        }
+      }
+    }
+    source.activate()
+
+    let exitStatus = try await wait(for: processID)
+    exitStatuses.append(exitStatus)
+
+    extendLifetime(source)
+    extendLifetime(eventStreamReadEnd)
+  }
+
+  let noTestsFound = exitStatuses.allSatisfy { $0 == .exitCode(EXIT_NO_TESTS_FOUND) }
+  if noTestsFound {
+    return EXIT_NO_TESTS_FOUND
+  }
+  let succeeded = exitStatuses.allSatisfy { $0 == .exitCode(EXIT_SUCCESS) }
+  if succeeded {
+    return EXIT_SUCCESS
+  }
+  return EXIT_FAILURE
+}
+
+public func __swiftPMHarnessEntryPoint() async throws -> Never {
+  let exitCode: CInt = try await __swiftPMHarnessEntryPoint()
+  exit(exitCode)
+}

@@ -144,6 +144,10 @@ extension ABI {
   }
 }
 
+// MARK: - Equatable, Hashable
+
+extension ABI.EncodedTest.ID: Equatable, Hashable {}
+
 // MARK: - Codable
 
 extension ABI.EncodedTest: Codable {}
