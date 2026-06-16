@@ -122,10 +122,6 @@ public func __swiftPMHarnessEntryPoint() async throws -> CInt {
 
   var exitStatuses = [ExitStatus]()
   for (pathIndex, binaryPath) in binaryPaths.enumerated() {
-    if binaryPaths.count > 1 {
-      try? FileHandle.stderr.write("\u{001B}[38;2;99;215;192m\u{101838}\u{001B}[0m  Starting \(binaryPath)...\n")
-    }
-
     var eventStreamReadEnd: FileHandle!
     var eventStreamWriteEnd: FileHandle!
     try FileHandle.makePipe(readEnd: &eventStreamReadEnd, writeEnd: &eventStreamWriteEnd)
@@ -191,10 +187,22 @@ public func __swiftPMHarnessEntryPoint() async throws -> CInt {
           try? FileHandle.stderr.write("Failed to decode \(encodedEvent)")
           return
         }
+        func outputEvent(_ event: Event) {
+          let test = encodedEvent.testID.flatMap { testID in
+            tests.withLock { tests in tests[testID] }
+          }
+          let context = Event.Context(test: test, testCase: nil, iteration: encodedEvent._iteration, configuration: configuration)
+          outputRecorder.record(event, in: context)
+        }
         switch event.kind {
-        case .runStarted where pathIndex > 0:
+        case .runStarted:
           // Suppress this event for all but the first target.
-          break
+          if pathIndex == 0 {
+            outputEvent(event)
+          }
+          if binaryPaths.count > 1 {
+            try? FileHandle.stderr.write("\u{001B}[38;2;99;215;192m\u{101838}\u{001B}[0m  Starting \(binaryPath)...\n")
+          }
         case .runEnded where pathIndex < (binaryPaths.count - 1):
           // Suppress this event for all but the last target.
           break
@@ -202,11 +210,7 @@ public func __swiftPMHarnessEntryPoint() async throws -> CInt {
           // TODO: handle these (no representation of test cases in JSON yet)
           break
         default:
-          let test = encodedEvent.testID.flatMap { testID in
-            tests.withLock { tests in tests[testID] }
-          }
-          let context = Event.Context(test: test, testCase: nil, iteration: encodedEvent._iteration, configuration: configuration)
-          outputRecorder.record(event, in: context)
+          outputEvent(event)
         }
       }
     }
