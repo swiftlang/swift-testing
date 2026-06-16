@@ -61,7 +61,7 @@ extension ABI {
 
     /// Human-readable messages associated with this event that can be presented
     /// to the user.
-    var messages: [EncodedMessage<V>]
+    var messages: [EncodedMessage<V>]?
 
     /// The ID of the test associated with this event, if any.
     var testID: EncodedTest<V>.ID?
@@ -111,7 +111,7 @@ extension ABI {
     /// - Warning: Iteration indices are not yet part of the JSON schema.
     var _iteration: Int?
 
-    init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
+    init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: @autoclosure () -> [Event.HumanReadableOutputRecorder.Message]) {
       switch event.kind {
       case .runStarted:
         kind = .runStarted
@@ -160,7 +160,14 @@ extension ABI {
         return nil
       }
       instant = EncodedInstant(encoding: event.instant)
-      self.messages = messages.map(EncodedMessage.init)
+      if V.includesExperimentalFields {
+        // The experimental version of the JSON schema no longer includes
+        // human-readable messages by default.
+        // TODO: plumb through an option to generate them anyway
+        self.messages = nil
+      } else {
+        self.messages = messages().map(EncodedMessage.init)
+      }
       testID = event.testID.map(EncodedTest.ID.init)
 
       // Experimental fields

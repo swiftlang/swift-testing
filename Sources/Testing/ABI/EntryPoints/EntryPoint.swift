@@ -219,6 +219,10 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [St
 
 // MARK: - Command-line arguments and configuration
 
+struct HarnessConfiguration: Codable {
+  var eventStreamFD: CInt
+}
+
 /// A type describing the command-line arguments passed by Swift Package Manager
 /// to the testing library's entry point.
 ///
@@ -336,6 +340,9 @@ public struct __CommandLineArguments_v0: Sendable {
     }
   }
 
+  /// The value(s) of the `--experimental-harness-configuration` argument.
+  var experimentalHarnessConfiguration: HarnessConfiguration?
+
   /// The value(s) of the `--filter` argument.
   public var filter: [String]?
 
@@ -375,6 +382,7 @@ extension __CommandLineArguments_v0: Codable {
     case xunitOutput
     case eventStreamOutputPath
     case eventStreamVersionNumber = "eventStreamVersion"
+    case experimentalHarnessConfiguration = "_experimentalHarnessConfiguration"
     case filter
     case skip
     case repetitions
@@ -491,6 +499,12 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
       }
 
       result.eventStreamVersionNumber = eventStreamVersion
+    }
+  }
+
+  if var experimentalHarnessConfigurationJSON = args.argumentValue(forLabel: "--experimental-harness-configuration") {
+    result.experimentalHarnessConfiguration = try experimentalHarnessConfigurationJSON.withUTF8 { json in
+      try JSON.decode(HarnessConfiguration.self, from: .init(json))
     }
   }
 #endif
@@ -633,6 +647,21 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   if let eventStreamOutputPath = args.eventStreamOutputPath {
     let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
     let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
+      _ = try? file.withLock {
+        try file.write(json)
+        try file.write("\n")
+      }
+    }
+    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+      eventHandler(event, context)
+      oldEventHandler(event, context)
+    }
+  }
+
+  // Experimental test harness configuration(s).
+  if let harnessConfiguration = args.experimentalHarnessConfiguration {
+    let file = try FileHandle(unsafePOSIXFileDescriptor: harnessConfiguration.eventStreamFD, options: [.writeAccess])
+    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: ABI.HarnessVersion.versionNumber, encodeAsJSONLines: true) { json in
       _ = try? file.withLock {
         try file.write(json)
         try file.write("\n")

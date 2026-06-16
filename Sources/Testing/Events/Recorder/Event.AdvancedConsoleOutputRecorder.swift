@@ -463,7 +463,9 @@ extension Event.AdvancedConsoleOutputRecorder {
            let issue = encodedEvent.issue {
           var testData = context.testData[testID] ?? _TestData()
           testData.issues.append(issue)
-          testData.issueMessages.append(encodedEvent.messages)
+          if let messages = encodedEvent.messages {
+            testData.issueMessages.append(messages)
+          }
           context.testData[testID] = testData
         }
         

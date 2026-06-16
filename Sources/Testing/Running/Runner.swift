@@ -86,7 +86,7 @@ extension Runner {
     /// A set of test+case IDs that have recorded at least one issue during a
     /// test run. This is consumed by the per-test-case repetition machinery to
     /// determine whether a test case's iteration recorded an issue.
-    let testIssueRecorder = TestIssueRecorder()
+    let testIssueRecorder = TestIssueRecorder<Void>()
   }
 
   /// Apply the custom scope for any test scope providers of the traits
