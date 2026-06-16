@@ -148,17 +148,15 @@ public func __swiftPMHarnessEntryPoint() async throws -> CInt {
       return arguments
     }()
 
-    let processID = try withUnsafePointer(to: eventStreamReadEnd) { eventStreamReadEnd in
-      try withUnsafePointer(to: eventStreamWriteEnd) { eventStreamWriteEnd in
-        try spawnExecutable(
-          atPath: testingHelperPath,
-          arguments: arguments,
-          environment: environment,
-          standardOutput: FileHandle.stdout,
-          standardError: FileHandle.stderr,
-          additionalFileHandles: [eventStreamReadEnd, eventStreamWriteEnd]
-        )
-      }
+    let processID = try withUnsafePointer(to: eventStreamWriteEnd) { eventStreamWriteEnd in
+      try spawnExecutable(
+        atPath: testingHelperPath,
+        arguments: arguments,
+        environment: environment,
+        standardOutput: FileHandle.stdout,
+        standardError: FileHandle.stderr,
+        additionalFileHandles: [eventStreamWriteEnd]
+      )
     }
     eventStreamWriteEnd.close()
 
@@ -175,12 +173,12 @@ public func __swiftPMHarnessEntryPoint() async throws -> CInt {
       }
       switch record.kind {
       case let .test(encodedTest):
-        if let test = Test(decoding: encodedTest) {
-          tests.withLock { tests in
-            tests[encodedTest.id] = test
-          }
-        } else {
+        guard let test = Test(decoding: encodedTest) else {
           try? FileHandle.stderr.write("Failed to decode \(encodedTest)")
+          return
+        }
+        tests.withLock { tests in
+          tests[encodedTest.id] = test
         }
       case let .event(encodedEvent):
         guard let event = Event(decoding: encodedEvent) else {
