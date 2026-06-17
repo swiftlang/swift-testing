@@ -92,6 +92,7 @@ extension ABI {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.4)
+    ///   @Available(Xcode, introduced: 27.0)
     /// }
     var tags: [String]?
 
@@ -99,6 +100,7 @@ extension ABI {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.4)
+    ///   @Available(Xcode, introduced: 27.0)
     /// }
     var bugs: [Bug]?
 
@@ -106,6 +108,7 @@ extension ABI {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.4)
+    ///   @Available(Xcode, introduced: 27.0)
     /// }
     var timeLimit: Double?
   }

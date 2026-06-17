@@ -15,4 +15,5 @@ add_compile_options(
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -define-availability -Xfrontend \"_typedThrowsAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0\">"
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -define-availability -Xfrontend \"_transferableAPI:macOS 15.2, iOS 18.2, watchOS 11.2, tvOS 18.2, visionOS 2.2\">"
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -define-availability -Xfrontend \"_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0\">"
+  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -define-availability -Xfrontend \"_objcCopyImageHeadersAPI:macOS 27.0, iOS 27.0, watchOS 27.0, tvOS 27.0, visionOS 27.0\">"
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -define-availability -Xfrontend \"_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0\">")
