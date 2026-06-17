@@ -53,9 +53,6 @@ extension Event {
       /// The instant at which the run started.
       var runStartInstant: Test.Clock.Instant?
 
-      /// The instant at which the current iteration started.
-      var iterationStartInstant: Test.Clock.Instant?
-
       /// The number of tests started or skipped during the run.
       ///
       /// This value does not include test suites.
@@ -291,7 +288,6 @@ extension Event.HumanReadableOutputRecorder {
     let keyPath = eventContext.keyPath
     let testName = test?.humanReadableName(withVerbosity: verbosity) ?? "«unknown»"
     let instant = event.instant
-    let iterationCount = eventContext.configuration?.repetitionPolicy.maximumIterationCount
 
     // First, make any updates to the context/state associated with this
     // recorder.
@@ -299,11 +295,6 @@ extension Event.HumanReadableOutputRecorder {
       switch event.kind {
       case .runStarted:
         context.runStartInstant = instant
-
-      case .iterationStarted:
-        if let iterationCount, iterationCount > 1 {
-          context.iterationStartInstant = instant
-        }
 
       case .testStarted:
         let test = test!
@@ -408,16 +399,6 @@ extension Event.HumanReadableOutputRecorder {
           stringValue: "Test run started."
         )
       ) + _formattedComments(comments)
-
-    case let .iterationStarted(index):
-      if let iterationCount, iterationCount > 1 {
-        return [
-          Message(
-            symbol: .default,
-            stringValue: "Iteration \(index + 1) started."
-          )
-        ]
-      }
 
     case .planStepStarted, .planStepEnded:
       // Suppress events of these kinds from output as they are not generally
@@ -624,18 +605,9 @@ extension Event.HumanReadableOutputRecorder {
       // Handled in .testEnded and .testCaseEnded
       break
 
-    case let .iterationEnded(index):
-      guard let iterationStartInstant = context.iterationStartInstant else {
-        break
-      }
-      let duration = descriptionOfDuration(from: iterationStartInstant, to: instant)
-
-      return [
-        Message(
-          symbol: .default,
-          stringValue: "Iteration \(index + 1) ended after \(duration)."
-        )
-      ]
+    case .iterationStarted, .iterationEnded:
+      // Iteration events are not emitted.
+      break
 
     case .runEnded:
       let testCount = context.testCount
