@@ -84,6 +84,25 @@ static mach_port_t swt_mach_task_self(void) {
 }
 #endif
 
+#if defined(__APPLE__) && defined(__OBJC2__) && !SWT_NO_DYNAMIC_LINKING
+/// Get an array of Mach headers that are loaded into the current process and
+/// contain Objective-C or Swift code.
+///
+/// This function is provided because the testing library still needs to
+/// build with older Apple SDKs that do not contain a declaration of the runtime
+/// `objc_copyImageHeaders()` function.
+///
+/// - Bug: This declaration should be removed once Apple has shipped an updated
+///   SDK that includes `objc_copyImageHeaders()`.
+static struct mach_header const *_Nonnull *_Nullable swt_objc_copyImageHeaders(unsigned int *_Nullable outCount) {
+  __auto_type objc_copyImageHeaders = (__typeof__(&swt_objc_copyImageHeaders))dlsym(RTLD_DEFAULT, "objc_copyImageHeaders");
+  if (objc_copyImageHeaders) {
+    return (* objc_copyImageHeaders)(outCount);
+  }
+  return 0;
+}
+#endif
+
 #if defined(__APPLE__)
 /// Define the minimal set of atomic operations supported and used by the
 /// testing library for a given C type.
