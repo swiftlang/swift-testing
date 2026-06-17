@@ -109,7 +109,7 @@ public func __swiftPMHarnessEntryPoint() async throws -> CInt {
   let environment = Environment.get()
   let testingHelperPath = Environment.variable(named: "SWIFTPM_TESTING_HELPER_PATH")!
 
-  let tests = Mutex<[ABI.EncodedTest<ABI.HarnessVersion>.ID: Test]>()
+  let context = Mutex(ABI.Context())
   let outputRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { line in
     try? FileHandle.stderr.write(line)
   }
@@ -175,30 +175,22 @@ public func __swiftPMHarnessEntryPoint() async throws -> CInt {
       }
       switch record.kind {
       case let .test(encodedTest):
-        guard let test = Test(decoding: encodedTest) else {
-          try? FileHandle.stderr.write("Failed to decode \(encodedTest)")
-          return
-        }
-        tests.withLock { tests in
-          tests[encodedTest.id] = test
+        context.withLock { context in
+          _ = Test(decoding: encodedTest, in: &context)
         }
       case let .event(encodedEvent):
-        guard let event = Event(decoding: encodedEvent) else {
+        let eventKind = Event(decoding: encodedEvent)?.kind
+        guard let eventKind else {
           try? FileHandle.stderr.write("Failed to decode \(encodedEvent)")
           return
         }
-        func outputEvent(_ event: Event) {
-          let test = encodedEvent.testID.flatMap { testID in
-            tests.withLock { tests in tests[testID] }
-          }
-          let context = Event.Context(test: test, testCase: nil, iteration: encodedEvent._iteration, configuration: configuration)
-          outputRecorder.record(event, in: context)
-        }
-        switch event.kind {
+        switch eventKind {
         case .runStarted:
           // Suppress this event for all but the first target.
           if pathIndex == 0 {
-            outputEvent(event)
+            context.withLock { context in
+              _ = outputRecorder.record(encodedEvent, in: &context, configuration: configuration)
+            }
           }
           if binaryPaths.count > 1 {
             try? FileHandle.stderr.write("\u{001B}[38;2;99;215;192m\u{101838}\u{001B}[0m  Starting \(binaryPath)...\n")
@@ -210,7 +202,9 @@ public func __swiftPMHarnessEntryPoint() async throws -> CInt {
           // TODO: handle these (no representation of test cases in JSON yet)
           break
         default:
-          outputEvent(event)
+          context.withLock { context in
+            _ = outputRecorder.record(encodedEvent, in: &context, configuration: configuration)
+          }
         }
       }
     }
