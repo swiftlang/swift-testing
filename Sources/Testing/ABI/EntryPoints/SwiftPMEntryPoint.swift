@@ -134,7 +134,7 @@ public func __swiftPMHarnessEntryPoint() async throws -> CInt {
       arguments += actualArguments
 
       let harnessConfigurationJSON = try eventStreamWriteEnd.withUnsafePOSIXFileDescriptor { fd in
-        let harnessConfiguration = HarnessConfiguration(version: ABI.HarnessVersion.versionNumber, eventStreamFD: fd!)
+        let harnessConfiguration = HarnessConfiguration(eventStreamFD: fd!)
         return try JSON.withEncoding(of: harnessConfiguration) { json in
           String(
             decoding: json,

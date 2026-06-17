@@ -220,7 +220,6 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [St
 // MARK: - Command-line arguments and configuration
 
 struct HarnessConfiguration: Codable {
-  var version: ABI.VersionNumber
   var eventStreamFD: CInt
 }
 
@@ -662,7 +661,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   // Experimental test harness configuration(s).
   if let harnessConfiguration = args.experimentalHarnessConfiguration {
     let file = try FileHandle(unsafePOSIXFileDescriptor: harnessConfiguration.eventStreamFD, options: [.writeAccess])
-    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: harnessConfiguration.version, encodeAsJSONLines: true) { json in
+    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: ABI.HarnessVersion.versionNumber, encodeAsJSONLines: true) { json in
       _ = try? file.withLock {
         try file.write(json)
         try file.write("\n")
