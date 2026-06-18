@@ -28,9 +28,9 @@ jobs:
       linux_static_sdk_versions: '["6.4", "nightly-main", "nightly-6.4"]'
       windows_swift_versions: '["6.4", "nightly-main", "nightly-6.4"]'
       enable_macos_checks: true
-      macos_xcode_versions: '["swift_6.3"]'
+      macos_xcode_versions: '["swift_6.4"]'
       enable_ios_checks: true
-      ios_host_xcode_versions: '["swift_6.3"]'
+      ios_host_xcode_versions: '["swift_6.4"]'
       enable_wasm_sdk_build: true
       wasm_sdk_versions: '["6.4", "nightly-main", "nightly-6.4"]'
       enable_android_sdk_build: true
