@@ -514,7 +514,6 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_GLOBAL_ACTORS": (platforms: .none, embedded: true),
       "SWT_NO_SUSPENDING_CLOCK": (platforms: .none, embedded: true),
 
-      "SWT_NO_LEGACY_TEST_DISCOVERY": (platforms: .none, embedded: true),
       "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),
     ]
 
