@@ -27,7 +27,7 @@ extension Trait {
 ///
 /// To add this trait to a test, use ``Trait/taskLocal(_:_:)``.
 public struct TaskLocalTrait<Value: Sendable>: SuiteTrait, TestScoping, TestTrait {
-  public let isRecursive = true
+  public var isRecursive: Bool { true }
 
   fileprivate let taskLocal: TaskLocal<Value>
   fileprivate let value: Value
