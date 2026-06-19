@@ -23,8 +23,8 @@ types that customize the behavior of your tests.
 
 ### Customizing runtime behaviors
 
-- <doc:EnablingAndDisabling>
-- <doc:LimitingExecutionTime>
+- <doc:enabling-and-disabling>
+- <doc:limiting-execution-time>
 - ``Trait/enabled(if:_:sourceLocation:)``
 - ``Trait/enabled(_:sourceLocation:_:)``
 - ``Trait/disabled(_:sourceLocation:)``
@@ -34,15 +34,15 @@ types that customize the behavior of your tests.
 
 ### Running tests serially or in parallel
 
-- <doc:Parallelization>
+- <doc:parallelization>
 - ``Trait/serialized``
 
 ### Annotating tests
 
-- <doc:AddingTags>
-- <doc:AddingComments>
-- <doc:AssociatingBugs>
-- <doc:BugIdentifiers>
+- <doc:adding-tags>
+- <doc:adding-comments>
+- <doc:associating-bugs>
+- <doc:bug-identifiers>
 - ``Tag()``
 - ``Trait/bug(_:_:)``
 - ``Trait/bug(_:id:_:)-10yf5``

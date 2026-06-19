@@ -46,11 +46,11 @@ take any arguments, then prefix its name with the `@Test` attribute:
 This test function can be present at file scope or within a type. A type
 containing test functions is automatically a _test suite_ and can be optionally
 annotated with the `@Suite` attribute. For more information about suites, see
-<doc:OrganizingTests>.
+<doc:organizing-tests>.
 
 Note that, while this function is a valid test function, it doesn't actually
 perform any action or test any code. To check for expected values and outcomes
-in test functions, add [expectations](doc:Expectations) to the test function.
+in test functions, add [expectations](doc:expectations) to the test function.
 
 ### Customize a test's name
 
@@ -62,7 +62,7 @@ line, supply a string literal as an argument to the `@Test` attribute:
 ```
 
 To further customize the appearance and behavior of a test function, use
-[traits](doc:Traits) such as ``Trait/tags(_:)``.
+[traits](doc:traits) such as ``Trait/tags(_:)``.
 
 ### Write concurrent or throwing tests
 

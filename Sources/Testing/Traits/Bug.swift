@@ -26,7 +26,7 @@ public struct Bug {
   /// available.
   ///
   /// For more information on how the testing library interprets bug
-  /// identifiers, see <doc:BugIdentifiers>.
+  /// identifiers, see <doc:bug-identifiers>.
   public var id: String?
 
   /// The human-readable title of the bug, if specified by the test author.

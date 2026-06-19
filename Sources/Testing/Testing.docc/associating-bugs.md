@@ -61,7 +61,7 @@ func engineWorks() async {
 A bug's URL is passed as a string and must be parseable according to
 [RFC&nbsp;3986](https://www.ietf.org/rfc/rfc3986.txt). A bug's unique identifier
 can be passed as an integer or as a string. For more information on the formats
-recognized by the testing library, see <doc:BugIdentifiers>.
+recognized by the testing library, see <doc:bug-identifiers>.
 
 ## Add titles to associated bugs
 

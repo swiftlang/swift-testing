@@ -94,4 +94,4 @@ As in normal code, comments on tests are generally most useful when they:
 - Provide useful information about the operation or motivation of a test
 
 If a test is related to a bug or issue, consider using the ``Bug`` trait instead
-of comments. For more information, see <doc:AssociatingBugs>.
+of comments. For more information, see <doc:associating-bugs>.
