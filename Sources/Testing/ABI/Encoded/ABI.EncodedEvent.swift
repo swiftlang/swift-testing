@@ -263,8 +263,8 @@ extension Event {
   ///   - event: The encoded event to initialize this instance from.
   ///   - context: A context value that tracks decoded tests and events.
   ///
-  /// ``testID`` and ``testCaseID`` are always `nil` because we need information
-  /// from the associated `ABI.EncodedTest` to properly decode those values.
+  /// ``testCaseID`` is always `nil` because test cases are not currently
+  /// supported in the JSON event stream.
   public init?<V>(decoding event: ABI.EncodedEvent<V>, in context: inout ABI.Context) {
     self.init(decoding: event)
 
