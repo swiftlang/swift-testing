@@ -19,12 +19,12 @@
 /// ``encodeTestArgument(to:)`` on the argument. A type that conforms to this
 /// protocol is not required to conform to either `Encodable` or `Decodable`.
 ///
-/// See <doc:ParameterizedTesting> for a list of the other supported ways to
+/// See <doc:parameterized-testing> for a list of the other supported ways to
 /// allow running selected test cases.
 ///
 /// ## See Also
 ///
-/// - <doc:ParameterizedTesting>
+/// - <doc:parameterized-testing>
 public protocol CustomTestArgumentEncodable: Sendable {
   /// Encode this test argument.
   ///

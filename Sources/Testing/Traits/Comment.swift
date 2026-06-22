@@ -15,7 +15,7 @@
 /// which may be helpful when diagnosing issues recorded by a test.
 ///
 /// To add a comment to a test or suite, add a code comment before its `@Test`
-/// or `@Suite` attribute. See <doc:AddingComments> for more details.
+/// or `@Suite` attribute. See <doc:adding-comments> for more details.
 ///
 /// - Note: To reference bugs related to a test, use ``Trait/bug(_:_:)``,
 ///   ``Trait/bug(_:id:_:)-10yf5``, or ``Trait/bug(_:id:_:)-3vtpl``.

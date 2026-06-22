@@ -93,7 +93,7 @@ var swiftTestingDirectoryPath: String? {
 /// in the directory specified by `swiftTestingDirectoryPath`. The file is
 /// assumed to contain a JSON object (a dictionary) where the keys are tags'
 /// string values and the values represent tag colors. For a list of the
-/// supported formats for tag colors in this dictionary, see <doc:AddingTags>.
+/// supported formats for tag colors in this dictionary, see <doc:adding-tags>.
 func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? = swiftTestingDirectoryPath) throws -> [Tag: Tag.Color] {
 #if !SWT_NO_CODABLE
   guard let swiftTestingDirectoryPath else {

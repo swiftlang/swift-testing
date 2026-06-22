@@ -47,7 +47,7 @@
 ///
 /// You do not generally need to add your own conformances to this protocol. For
 /// a list of types that automatically conform to this protocol, see
-/// <doc:Attachments#Attach-images>.
+/// <doc:attachments#Attach-images>.
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)

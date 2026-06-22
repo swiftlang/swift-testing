@@ -36,7 +36,7 @@ within them. To add a nested test suite type, simply declare an additional type
 within the scope of the outer test suite type.
 
 By default, tests contained within a suite run in parallel with each other.
-For more information about test parallelization, see <doc:Parallelization>.
+For more information about test parallelization, see <doc:parallelization>.
 
 ### Customize a suite's name
 
@@ -50,7 +50,7 @@ To customize a test suite's name, supply a string literal as an argument to the
 ```
 
 To further customize the appearance and behavior of a test function, use
-[traits](doc:Traits) such as ``Trait/tags(_:)``.
+[traits](doc:traits) such as ``Trait/tags(_:)``.
 
 ## Test functions in test suite types
 
