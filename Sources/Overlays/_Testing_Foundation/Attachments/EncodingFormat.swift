@@ -10,17 +10,15 @@
 
 #if canImport(Foundation)
 import Testing
-import Foundation
+public import Foundation
+
+#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+import UniformTypeIdentifiers
+#endif
 
 /// An enumeration describing the encoding formats we support for `Encodable`
 /// and `NSSecureCoding` types that conform to `Attachable`.
-enum EncodingFormat {
-  /// The encoding format to use by default.
-  ///
-  /// The specific format this case corresponds to depends on if we are encoding
-  /// an `Encodable` value or an `NSSecureCoding` value.
-  case `default`
-
+public enum EncodingFormat: Sendable {
   /// A property list format.
   ///
   /// - Parameters:
@@ -34,14 +32,14 @@ enum EncodingFormat {
   /// type of the specified attachment.
   ///
   /// - Parameters:
-  ///   - attachment: The attachment that will be encoded.
+  ///   - preferredName: The preferred name of the attachment.
   ///
   /// - Throws: If the attachment's content type or media type is unsupported.
-  init(for attachment: borrowing Attachment<some Attachable>) throws {
-    let ext = (attachment.preferredName as NSString).pathExtension
+  init?(forPreferredName preferredName: String) throws {
+    let ext = (preferredName as NSString).pathExtension
     if ext.isEmpty {
       // No path extension? No problem! Default data.
-      self = .default
+      return nil
     } else if ext.caseInsensitiveCompare("plist") == .orderedSame {
       self = .propertyListFormat(.binary)
     } else if ext.caseInsensitiveCompare("xml") == .orderedSame {
@@ -49,8 +47,35 @@ enum EncodingFormat {
     } else if ext.caseInsensitiveCompare("json") == .orderedSame {
       self = .json
     } else {
+#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+      if let encodingFormat = UTType(filenameExtension: ext).flatMap(Self.init(for:)) {
+        self = encodingFormat
+        return
+      }
+#endif
       throw CocoaError(.propertyListWriteInvalid, userInfo: [NSLocalizedDescriptionKey: "The path extension '.\(ext)' cannot be used to attach an instance of \(type(of: self)) to a test."])
     }
   }
+
+#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+  /// Initialize an instance of this type representing the given content type.
+  ///
+  /// - Parameters:
+  ///   - contentType: The content type of the attachment.
+  ///
+  /// This initializer returns `nil` if `contentType` does not conform to a
+  /// supported encoding format.
+  init?(for contentType: UTType) {
+    if contentType.conforms(to: .binaryPropertyList) {
+      self = .propertyListFormat(.binary)
+    } else if contentType.conforms(to: .xmlPropertyList) {
+      self = .propertyListFormat(.xml)
+    } else if contentType.conforms(to: .json) {
+      self = .json
+    } else {
+      return nil
+    }
+  }
+#endif
 }
 #endif
