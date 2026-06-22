@@ -24,7 +24,7 @@ extension Trait {
   /// ```
   ///
   /// - Note: You must define the task local outside the test target where the trait is used.
-  public static func taskLocal<Value>(
+  public static func taskLocal<Value: Sendable>(
     _ taskLocal: TaskLocal<Value>,
     _ value: Value
   ) -> Self
@@ -36,7 +36,7 @@ extension Trait {
 /// A type that that binds a task local value for the duration of a test or suite.
 ///
 /// To add this trait to a test, use ``Trait/taskLocal(_:_:)``.
-public struct TaskLocalTrait<Value: Sendable>: SuiteTrait, TestScoping, TestTrait {
+public struct TaskLocalTrait<Value: Sendable>: SuiteTrait, TestTrait, TestScoping {
   /// This trait's task local.
   fileprivate var taskLocal: TaskLocal<Value>
 
