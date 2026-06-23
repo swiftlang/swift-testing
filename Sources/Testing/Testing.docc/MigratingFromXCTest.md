@@ -83,10 +83,10 @@ A *cross-library issue* is an issue created by an XCTest assertion in
 a Swift Testing test case, or a Swift Testing expectation in an XCTest test
 case.
 
-In the example above, `assertUnique()` wraps
+In the example above, `assertUnique` wraps
 [`XCTAssertEqual()`](https://developer.apple.com/documentation/xctest/xctassertequal(_:_:_:file:line:)).
-It creates a "cross-library issue from XCTest" when called in the `Duplicate
-elements` Swift Testing test case.
+So, calling `assertUnique` in the `Duplicate
+elements` Swift Testing test case creates a _cross-library issue from XCTest_.
 
 ### Select an interoperability mode
 
@@ -106,17 +106,20 @@ cross-library issues:
 The default interoperability mode depends on your toolchain and the
 `swift-tools-version` declared in your package.
 
-| Toolchain Version | `swift-tools-version` | Default Interoperability Mode |
+| Toolchain version | `swift-tools-version` | Default interoperability mode |
 | ----------------- | --------------------- | ----------------------------- |
 | <6.4              | Any                   | `none`                        |
 | >=6.4             | <6.4                  | `limited`                     |
 | >=6.4             | >=6.4                 | `complete`                    |
 
-To explicitly choose a mode, set the `SWIFT_TESTING_XCTEST_INTEROP_MODE`
-environment variable to the name of the mode before running tests.
+To explicitly choose an interoperability mode, set the
+`SWIFT_TESTING_XCTEST_INTEROP_MODE` environment variable to the name of the mode
+before running tests.
 
-As long as you don't set the mode to `none`, cross-library issues from Swift
-Testing maintain their original severity.
+As long as you don't set the interoperability mode to `none`, cross-library
+issues from Swift Testing maintain their original severity. So, in the following
+example, the test failure message is `❌ "Interop failure"` -- except when the
+interoperability mode is `none`, then there is no test failure message.
 
 ```swift
 // Cross-library issues from Swift Testing
@@ -127,7 +130,7 @@ class InteropTests: XCTestCase {
 }
 ```
 
-You should consider the `complete` mode to ensure cross-library issues from
+Use `complete` mode to ensure cross-library issues from
 XCTest maintain their original severity.
 
 ```swift
@@ -136,12 +139,13 @@ XCTest maintain their original severity.
   XCTFail("Interop failure")
 }
 ```
-| Mode       | Test Failure Message                            |
-| ---------- | ----------------------------------------------- |
-| `none`     | No message                                      |
-| `limited`  | ⚠️ "Interop failure", ⚠️ Replace XCTest API ... |
-| `complete` | ❌ "Interop failure", ⚠️ Replace XCTest API ... |
-| `strict`   | `fatalError`: Replace XCTest API ...            |
+
+| Interoperability mode | Test failure message                            |
+| --------------------- | ----------------------------------------------- |
+| `none`                | No message                                      |
+| `limited`             | ⚠️ "Interop failure", ⚠️ Replace XCTest API ... |
+| `complete`            | ❌ "Interop failure", ⚠️ Replace XCTest API ... |
+| `strict`              | `fatalError`: Replace XCTest API ...            |
 
 ### Convert test classes
 
@@ -406,8 +410,9 @@ function. To record an unconditional issue using the testing library, use the
   }
 }
 
-The following table includes a list of the various [`XCTAssert()`](https://developer.apple.com/documentation/xctest/1500669-xctassert) functions and
-their equivalents in the testing library:
+The following table includes a list of the various
+[`XCTAssert()`](https://developer.apple.com/documentation/xctest/1500669-xctassert)
+functions and their equivalents in the testing library:
 
 | XCTest | Swift Testing |
 |-|-|
