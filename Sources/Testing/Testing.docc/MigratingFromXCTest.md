@@ -116,7 +116,7 @@ To explicitly choose an interoperability mode, set the
 `SWIFT_TESTING_XCTEST_INTEROP_MODE` environment variable to the name of the mode
 before running tests.
 
-As long as you don't set the interoperability mode to `none`, cross-library
+In the `limited`, `complete`, and `strict` interoperability modes, cross-library
 issues from Swift Testing maintain their original severity. So, in the following
 example, the test failure message is `❌ "Interop failure"` -- except when the
 interoperability mode is `none`, then there is no test failure message.
