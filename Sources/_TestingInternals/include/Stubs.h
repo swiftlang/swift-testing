@@ -95,11 +95,9 @@ static mach_port_t swt_mach_task_self(void) {
 /// - Bug: This declaration should be removed once Apple has shipped an updated
 ///   SDK that includes `objc_copyImageHeaders()`.
 static struct mach_header const *_Nonnull *_Nullable swt_objc_copyImageHeaders(unsigned int *_Nullable outCount) {
-  if (__builtin_available(anyAppleOS 27.0, *)) {
-    __auto_type objc_copyImageHeaders = (__typeof__(&swt_objc_copyImageHeaders))dlsym(RTLD_DEFAULT, "objc_copyImageHeaders");
-    if (objc_copyImageHeaders) {
-      return (* objc_copyImageHeaders)(outCount);
-    }
+  __auto_type objc_copyImageHeaders = (__typeof__(&swt_objc_copyImageHeaders))dlsym(RTLD_DEFAULT, "objc_copyImageHeaders");
+  if (objc_copyImageHeaders) {
+    return (* objc_copyImageHeaders)(outCount);
   }
   return 0;
 }
