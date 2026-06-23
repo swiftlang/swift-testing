@@ -51,8 +51,9 @@ You can use interoperability to share test helpers between XCTest and Swift
 Testing tests. Interoperability is a feature that enables XCTest's assertions to
 work with Swift Testing, and Swift Testing's expectations to work with XCTest.
 
-> Note: **Cross-library issue:** An issue created by an XCTest assertion in a Swift
-> Testing test case, or a Swift Testing expectation in an XCTest test case.
+> Note: A **cross-library issue** is an issue created by an XCTest assertion in
+> a Swift Testing test case, or a Swift Testing expectation in an XCTest test
+> case.
 >
 > An example of a "cross-library issue from XCTest" would be calling
 > [`XCTAssert()`](https://developer.apple.com/documentation/xctest/1500669-xctassert)
@@ -61,52 +62,52 @@ work with Swift Testing, and Swift Testing's expectations to work with XCTest.
 For example, you can replace
 [`XCTAssert()`](https://developer.apple.com/documentation/xctest/1500669-xctassert)
 with ``expect(_:_:sourceLocation:)`` in your XCTests and immediately get the
-benefits of the newer, more ergonomic API. In the meantime, you can
-incrementally migrate the rest of your test infrastructure to use Swift Testing
-at your own pace.
+benefits of Swift Testing. In the meantime, you can incrementally migrate the
+rest of your test infrastructure to use Swift Testing at your own pace.
 
 ```swift
 class UniqueElementsTests: XCTestCase {
   func testDups() {
-    // Fails as expected
+    // This test is expected to fail.
     assertUnique([1, 2, 1])
   }
 }
 
 @Test func `Duplicate elements`() {
-  // Cross-library issue from XCTest
-  // Without interop: passes despite XCTAssertEqual failure in the helper
-  // With interop: fails as expected
+  // This is a cross-library issue from XCTest.
+  // Without interoperability the test passes despite the `XCTAssertEqual` failure in the helper.
+  // With interoperability, the test fails.
   assertUnique([1, 2, 1])
 }
 
 func assertUnique(_ elements: [Int]) {
   XCTAssertEqual(Set(elements).count, elements.count)
 
-  // With interop: safely replace XCTAssertEqual with #expect
-  // #expect(Set(elements).count == elements.count)
+  // With interoperability you can safely replace `XCTAssertEqual` with `#expect`.
+  // The replacement is: `#expect(Set(elements).count == elements.count)`.
 }
 ```
 
-#### Modes
+### Change interoperability modes
 
-You can change how cross-library issues are reported by adjusting the
+You can change how Swift Testing reports cross-library issues by adjusting the
 interoperability mode.
 
-> Note: Default mode:
-> - `limited` when using the Swift 6.4 toolchain or newer.
-> - `complete` if the package also declares `swift-tools-version: 6.4` or newer.
+The default interoperability mode depends on your toolchain. When you're using
+the Swift 6.4 toolchain or newer, the default mode is `limited`. If you're using
+the Swift 6.4 toolchain or newer and your package also declares
+`swift-tools-version: 6.4` or newer, the default mode is `complete`.
 
-- term None: The feature is disabled. All cross-library issues are ignored.
+To change the interoperability mode, set the `SWIFT_TESTING_XCTEST_INTEROP_MODE`
+environment variable to one of the following modes:
 
-- term Limited: Cross-library issues from Swift Testing maintain their original
+- term `none`: Interoperability is off. Swift Testing and XCTest ignore cross-library issues.
+- term `limited`: Cross-library issues from Swift Testing maintain their original
   severity. Cross-library issues from XCTest are warnings and are accompanied by
   modernization hints.
-
-- term Complete: All cross-library issues maintain their original severity.
+- term `complete`: All cross-library issues maintain their original severity.
   Cross-library issues from XCTest are accompanied by modernization hints.
-
-- term Strict: Cross-library issues from Swift Testing maintain their original
+- term `strict`: Cross-library issues from Swift Testing maintain their original
   severity. Cross-library issues from XCTest are reported with
   [`fatalError()`](https://developer.apple.com/documentation/swift/fatalerror(_:file:line:)).
 
@@ -137,16 +138,6 @@ class InteropTests: XCTestCase {
   }
 }
 ```
-
-To use strict mode or opt out of interop entirely, override the default mode
-with the `SWIFT_TESTING_XCTEST_INTEROP_MODE` environment variable:
-
-| Interop Mode | `SWIFT_TESTING_XCTEST_INTEROP_MODE` |
-| ------------ | ----------------------------------- |
-| None         | `none`                              |
-| Limited      | `limited`                           |
-| Complete     | `complete`                          |
-| Strict       | `strict`                            |
 
 ### Convert test classes
 
@@ -296,7 +287,7 @@ the presence of the `@Test` attribute:
 
 As with XCTest, the testing library allows test functions to be marked `async`,
 `throws`, or `async`-`throws`, and to be isolated to a global actor (for example, by using the
-`@MainActor` attribute.)
+`@MainActor` attribute).
 
 - Note: XCTest runs synchronous test methods on the main actor by default, while
   the testing library runs all test functions on an arbitrary task. If a test
@@ -411,7 +402,7 @@ function. To record an unconditional issue using the testing library, use the
   }
 }
 
-The following table includes a list of the various `XCTAssert()` functions and
+The following table includes a list of the various [`XCTAssert()`](https://developer.apple.com/documentation/xctest/1500669-xctassert) functions and
 their equivalents in the testing library:
 
 | XCTest | Swift Testing |
