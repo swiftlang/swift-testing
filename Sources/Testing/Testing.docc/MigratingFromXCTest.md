@@ -51,14 +51,6 @@ You can use interoperability to share test helpers between XCTest and Swift
 Testing tests. Interoperability is a feature that enables XCTest's assertions to
 work with Swift Testing, and Swift Testing's expectations to work with XCTest.
 
-> Note: A **cross-library issue** is an issue created by an XCTest assertion in
-> a Swift Testing test case, or a Swift Testing expectation in an XCTest test
-> case.
->
-> An example of a "cross-library issue from XCTest" would be calling
-> [`XCTAssert()`](https://developer.apple.com/documentation/xctest/1500669-xctassert)
-> within a Swift Testing test.
-
 For example, you can replace
 [`XCTAssert()`](https://developer.apple.com/documentation/xctest/1500669-xctassert)
 with ``expect(_:_:sourceLocation:)`` in your XCTests and immediately get the
@@ -74,7 +66,6 @@ class UniqueElementsTests: XCTestCase {
 }
 
 @Test func `Duplicate elements`() {
-  // This is a cross-library issue from XCTest.
   // Without interoperability the test passes despite the `XCTAssertEqual` failure in the helper.
   // With interoperability, the test fails.
   assertUnique([1, 2, 1])
@@ -88,18 +79,19 @@ func assertUnique(_ elements: [Int]) {
 }
 ```
 
-### Change interoperability modes
+A *cross-library issue* is an issue created by an XCTest assertion in
+a Swift Testing test case, or a Swift Testing expectation in an XCTest test
+case.
 
-You can change how Swift Testing reports cross-library issues by adjusting the
-interoperability mode.
+In the example above, `assertUnique()` wraps
+[`XCTAssertEqual()`](https://developer.apple.com/documentation/xctest/xctassertequal(_:_:_:file:line:)).
+It creates a "cross-library issue from XCTest" when called in the `Duplicate
+elements` Swift Testing test case.
 
-The default interoperability mode depends on your toolchain. When you're using
-the Swift 6.4 toolchain or newer, the default mode is `limited`. If you're using
-the Swift 6.4 toolchain or newer and your package also declares
-`swift-tools-version: 6.4` or newer, the default mode is `complete`.
+### Select an interoperability mode
 
-To change the interoperability mode, set the `SWIFT_TESTING_XCTEST_INTEROP_MODE`
-environment variable to one of the following modes:
+Interoperability has multiple modes that control how Swift Testing reports
+cross-library issues:
 
 - term `none`: Interoperability is off. Swift Testing and XCTest ignore cross-library issues.
 - term `limited`: Cross-library issues from Swift Testing maintain their original
@@ -111,33 +103,45 @@ environment variable to one of the following modes:
   severity. Cross-library issues from XCTest are reported with
   [`fatalError()`](https://developer.apple.com/documentation/swift/fatalerror(_:file:line:)).
 
-```swift
-// Cross-library issues from XCTest
-@Test func `Test Interop`() {
-  // <Mode>:   <failure message>
-  // None:     No message
-  // Limited:  ⚠️ "Interop failure",
-  //           ⚠️ Replace XCTest API such as 'XCTAssert' with a Swift
-  //              Testing equivalent such as '#expect'.
-  // Complete: ❌ "Interop failure", ⚠️ Replace XCTest API...
-  // Strict:   💥 fatalError: Replace XCTest API...
-  XCTFail("Interop failure")
-}
-```
+The default interoperability mode depends on your toolchain and the
+`swift-tools-version` declared in your package.
+
+| Toolchain Version | `swift-tools-version` | Default Interoperability Mode |
+| ----------------- | --------------------- | ----------------------------- |
+| <6.4              | Any                   | `none`                        |
+| >=6.4             | <6.4                  | `limited`                     |
+| >=6.4             | >=6.4                 | `complete`                    |
+
+To explicitly choose a mode, set the `SWIFT_TESTING_XCTEST_INTEROP_MODE`
+environment variable to the name of the mode before running tests.
+
+As long as you don't set the mode to `none`, cross-library issues from Swift
+Testing maintain their original severity.
 
 ```swift
 // Cross-library issues from Swift Testing
 class InteropTests: XCTestCase {
   func testInterop() {
-    // <Mode>:   <failure message>
-    // None:     No message
-    // Limited:  ❌ "Interop failure"
-    // Complete: ❌ "Interop failure"
-    // Strict:   ❌ "Interop failure"
     Issue.record("Interop failure")
   }
 }
 ```
+
+You should consider the `complete` mode to ensure cross-library issues from
+XCTest maintain their original severity.
+
+```swift
+// Cross-library issues from XCTest
+@Test func `Test Interop`() {
+  XCTFail("Interop failure")
+}
+```
+| Mode       | Test Failure Message                            |
+| ---------- | ----------------------------------------------- |
+| `none`     | No message                                      |
+| `limited`  | ⚠️ "Interop failure", ⚠️ Replace XCTest API ... |
+| `complete` | ❌ "Interop failure", ⚠️ Replace XCTest API ... |
+| `strict`   | `fatalError`: Replace XCTest API ...            |
 
 ### Convert test classes
 
