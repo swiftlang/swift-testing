@@ -95,12 +95,46 @@ static mach_port_t swt_mach_task_self(void) {
 /// - Bug: This declaration should be removed once Apple has shipped an updated
 ///   SDK that includes `objc_copyImageHeaders()`.
 static struct mach_header const *_Nonnull *_Nullable swt_objc_copyImageHeaders(unsigned int *_Nullable outCount) {
-  __auto_type objc_copyImageHeaders = (__typeof__(&swt_objc_copyImageHeaders))dlsym(RTLD_DEFAULT, "objc_copyImageHeaders");
-  if (objc_copyImageHeaders) {
-    return (* objc_copyImageHeaders)(outCount);
+  if (__builtin_available(anyAppleOS 27.0, *)) {
+    __auto_type objc_copyImageHeaders = (__typeof__(&swt_objc_copyImageHeaders))dlsym(RTLD_DEFAULT, "objc_copyImageHeaders");
+    if (objc_copyImageHeaders) {
+      return (* objc_copyImageHeaders)(outCount);
+    }
   }
   return 0;
 }
+
+/// Get an array of the names of Mach images that are loaded into the current
+/// process and contain Objective-C or Swift code.
+///
+/// This function is provided because `objc_copyImageNames()` is unreliable when
+/// TSAN or XOJIT is enabled in the current process:
+///
+///   - If TSAN is enabled, calling `dlclose()` in a loop becomes a quadratic
+///     operation.
+///   - If XOJIT is enabled, it inserts multiple images into the dyld image list
+///     with the same name, so we cannot call `dlopen()` for all loaded images.
+static const char *_Nonnull *_Nullable swt_objc_copyImageNames(unsigned int *_Nullable outCount) {
+  if (dlsym(RTLD_DEFAULT, "__tsan_acquire") != 0) {
+    // TSAN appears to be enabled.
+    return 0;
+  }
+
+  if (getenv("XCODE_RUNNING_FOR_PLAYGROUNDS") != 0) {
+    // XOJIT appears to be enabled.
+    return 0;
+  }
+
+  return objc_copyImageNames(outCount);
+}
+
+/// Get the Mach header corresponding to the given `dlopen()` handle.
+///
+/// This declaration is provided because the function is only _declared_ in the
+/// anyAppleOS 27 SDKs and newer, but is _exported_ in all anyAppleOS releases
+/// we support.
+SWT_IMPORT_FROM_STDLIB const struct mach_header *_Nullable _dyld_get_dlopen_image_header(void *handle)
+__API_AVAILABLE(macos(13.0), ios(16.0), watchos(9.0), tvos(16.0));
 #endif
 
 #if defined(__APPLE__)
