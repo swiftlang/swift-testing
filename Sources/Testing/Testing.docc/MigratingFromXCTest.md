@@ -23,7 +23,7 @@ convert XCTest-based content to use the testing library instead.
 
 ### Import the testing library
 
-XCTest and the testing library are available from different modules. Instead of 
+XCTest and the testing library are available from different modules. Instead of
 importing the XCTest module, import the Testing module:
 
 @Row {
@@ -41,9 +41,111 @@ importing the XCTest module, import the Testing module:
   }
 }
 
-A single source file can contain tests written with XCTest as well as other 
-tests written with the testing library. Import both XCTest and Testing if a 
+A single source file can contain tests written with XCTest as well as other
+tests written with the testing library. Import both XCTest and Testing if a
 source file contains mixed test content.
+
+### Use interoperability between Swift Testing and XCTest
+
+You can use interoperability to share test helpers between XCTest and Swift
+Testing tests. Interoperability is a feature that enables XCTest's assertions to
+work with Swift Testing, and Swift Testing's expectations to work with XCTest.
+
+For example, you can replace
+[`XCTAssert()`](https://developer.apple.com/documentation/xctest/1500669-xctassert)
+with ``expect(_:_:sourceLocation:)`` in your XCTests and immediately get the
+benefits of Swift Testing. In the meantime, you can incrementally migrate the
+rest of your test infrastructure to use Swift Testing at your own pace.
+
+```swift
+class UniqueElementsTests: XCTestCase {
+  func testDups() {
+    // This test is expected to fail.
+    assertUnique([1, 2, 1])
+  }
+}
+
+@Test func `Duplicate elements`() {
+  // Without interoperability the test passes despite the `XCTAssertEqual` failure in the helper.
+  // With interoperability, the test fails.
+  assertUnique([1, 2, 1])
+}
+
+func assertUnique(_ elements: [Int]) {
+  XCTAssertEqual(Set(elements).count, elements.count)
+
+  // With interoperability you can safely replace `XCTAssertEqual` with `#expect`.
+  // The replacement is: `#expect(Set(elements).count == elements.count)`.
+}
+```
+
+A *cross-library issue* is an issue created by an XCTest assertion in
+a Swift Testing test case, or a Swift Testing expectation in an XCTest test
+case.
+
+In the example above, `assertUnique` wraps
+[`XCTAssertEqual()`](https://developer.apple.com/documentation/xctest/xctassertequal(_:_:_:file:line:)).
+So, calling `assertUnique` in the `Duplicate
+elements` Swift Testing test case creates a _cross-library issue from XCTest_.
+
+### Select an interoperability mode
+
+Interoperability has multiple modes that control how Swift Testing reports
+cross-library issues:
+
+- term `none`: Interoperability is off. Swift Testing and XCTest ignore cross-library issues.
+- term `limited`: Cross-library issues from Swift Testing maintain their original
+  severity. Cross-library issues from XCTest are warnings and are accompanied by
+  modernization hints.
+- term `complete`: All cross-library issues maintain their original severity.
+  Cross-library issues from XCTest are accompanied by modernization hints.
+- term `strict`: Cross-library issues from Swift Testing maintain their original
+  severity. Cross-library issues from XCTest are reported with
+  [`fatalError()`](https://developer.apple.com/documentation/swift/fatalerror(_:file:line:)).
+
+The default interoperability mode depends on your toolchain and the
+`swift-tools-version` declared in your package.
+
+| Toolchain version | `swift-tools-version` | Default interoperability mode |
+| ----------------- | --------------------- | ----------------------------- |
+| <6.4              | Any                   | `none`                        |
+| >=6.4             | <6.4                  | `limited`                     |
+| >=6.4             | >=6.4                 | `complete`                    |
+
+To explicitly choose an interoperability mode, set the
+`SWIFT_TESTING_XCTEST_INTEROP_MODE` environment variable to the name of the mode
+before running tests.
+
+As long as you don't set the interoperability mode to `none`, cross-library
+issues from Swift Testing maintain their original severity. So, in the following
+example, the test failure message is `❌ "Interop failure"` -- except when the
+interoperability mode is `none`, then there is no test failure message.
+
+```swift
+// Cross-library issues from Swift Testing
+class InteropTests: XCTestCase {
+  func testInterop() {
+    Issue.record("Interop failure")
+  }
+}
+```
+
+Use `complete` mode to ensure cross-library issues from
+XCTest maintain their original severity.
+
+```swift
+// Cross-library issues from XCTest
+@Test func `Test Interop`() {
+  XCTFail("Interop failure")
+}
+```
+
+| Interoperability mode | Test failure message                            |
+| --------------------- | ----------------------------------------------- |
+| `none`                | No message                                      |
+| `limited`             | ⚠️ "Interop failure", ⚠️ Replace XCTest API ... |
+| `complete`            | ❌ "Interop failure", ⚠️ Replace XCTest API ... |
+| `strict`              | `fatalError`: Replace XCTest API ...            |
 
 ### Convert test classes
 
@@ -193,7 +295,7 @@ the presence of the `@Test` attribute:
 
 As with XCTest, the testing library allows test functions to be marked `async`,
 `throws`, or `async`-`throws`, and to be isolated to a global actor (for example, by using the
-`@MainActor` attribute.)
+`@MainActor` attribute).
 
 - Note: XCTest runs synchronous test methods on the main actor by default, while
   the testing library runs all test functions on an arbitrary task. If a test
@@ -204,7 +306,7 @@ As with XCTest, the testing library allows test functions to be marked `async`,
 For more information about test functions and how to declare and customize them,
 see <doc:DefiningTests>.
 
-### Check for expected values and outcomes 
+### Check for expected values and outcomes
 
 XCTest uses a family of approximately 40 functions to assert test requirements.
 These functions are collectively referred to as
@@ -308,8 +410,9 @@ function. To record an unconditional issue using the testing library, use the
   }
 }
 
-The following table includes a list of the various `XCTAssert()` functions and
-their equivalents in the testing library:
+The following table includes a list of the various
+[`XCTAssert()`](https://developer.apple.com/documentation/xctest/1500669-xctassert)
+functions and their equivalents in the testing library:
 
 | XCTest | Swift Testing |
 |-|-|
@@ -333,7 +436,7 @@ their equivalents in the testing library:
 
 The testing library doesn’t provide an equivalent of
 [`XCTAssertEqual(_:_:accuracy:_:file:line:)`](https://developer.apple.com/documentation/xctest/3551607-xctassertequal).
-To compare two numeric values within a specified accuracy, 
+To compare two numeric values within a specified accuracy,
 use `isApproximatelyEqual()` from [swift-numerics](https://github.com/apple/swift-numerics).
 
 ### Continue or halt after test failures
@@ -514,7 +617,7 @@ and [`Sequence<Int>`](https://developer.apple.com/documentation/swift/sequence))
 can be used with ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il``.
 You must specify a lower bound for the number of confirmations because, without
 one, the testing library cannot tell if an issue should be recorded when there
-have been zero confirmations. 
+have been zero confirmations.
 
 ### Control whether a test runs
 
@@ -589,6 +692,32 @@ to cancel the task associated with the current test:
   }
 }
 
+Interoperability allows ``Test/cancel(_:sourceLocation:)`` to also end XCTest
+test functions early. This lets you share cancellation logic between testing
+libraries using test helper functions:
+
+```swift
+func skipIfEmptyRegister() throws {
+  let cashRegister = CashRegister()
+  let drawer = cashRegister.open()
+  if drawer.isEmpty {
+    try Test.cancel("Cash register is empty")
+  }
+}
+
+// XCTest
+func testCashRegister() throws {
+  try skipIfEmptyRegister()
+  ...
+}
+
+// Swift Testing
+@Test func cashRegister() throws {
+  try skipIfEmptyRegister()
+  ...
+}
+```
+
 ### Annotate known issues
 
 A test may have a known issue that sometimes or always prevents it from passing.
@@ -632,7 +761,7 @@ issue:
 - Note: The XCTest function [`XCTExpectFailure(_:options:)`](https://developer.apple.com/documentation/xctest/3727245-xctexpectfailure),
   which doesn't take a closure and which affects the remainder of the test,
   doesn't have a direct equivalent in the testing library. To mark an entire
-  test as having a known issue, wrap its body in a call to `withKnownIssue()`. 
+  test as having a known issue, wrap its body in a call to `withKnownIssue()`.
 
 If a test may fail intermittently, the call to
 `XCTExpectFailure(_:options:failingBlock:)` can be marked _non-strict_. When
@@ -659,7 +788,7 @@ instead:
     // After
     @Test func grillWorks() async {
       withKnownIssue(
-        "Grill may need fuel", 
+        "Grill may need fuel",
         isIntermittent: true
       ) {
         try FoodTruck.shared.grill.start()
@@ -717,13 +846,23 @@ of issues:
       } when: {
         FoodTruck.shared.hasGrill
       } matching: { issue in
-        issue.error != nil 
+        issue.error != nil
       }
       ...
     }
     ```
   }
 }
+
+Interoperability allows `withKnownIssue()` to also match XCTest issues:
+
+```swift
+@Test func `Mark an XCTest assertion failure as known`() {
+  withKnownIssue {
+    XCTFail("Interop failure")
+  }
+}
+```
 
 ### Run tests sequentially
 
@@ -744,7 +883,7 @@ suite serially:
         try FoodTruck.shared.refrigerator.openDoor()
         XCTAssertEqual(FoodTruck.shared.refrigerator.lightState, .on)
       }
-      
+
       func testLightGoesOut() throws {
         try FoodTruck.shared.refrigerator.openDoor()
         try FoodTruck.shared.refrigerator.closeDoor()
@@ -762,7 +901,7 @@ suite serially:
         try FoodTruck.shared.refrigerator.openDoor()
         #expect(FoodTruck.shared.refrigerator.lightState == .on)
       }
-      
+
       @Test func lightGoesOut() throws {
         try FoodTruck.shared.refrigerator.openDoor()
         try FoodTruck.shared.refrigerator.closeDoor()
