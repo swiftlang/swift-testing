@@ -35,20 +35,6 @@ extension Attachment {
     self.init(wrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 
-  public init<T>(
-    encoding encodableValue: T,
-    as propertyListFormat: PropertyListSerialization.PropertyListFormat,
-    named preferredName: String? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
-  ) throws where AttachableValue == _AttachableEncodableWrapper<T, Void> {
-    try self.init(
-      encoding: encodableValue,
-      as: .propertyListFormat(propertyListFormat),
-      named: preferredName,
-      sourceLocation: sourceLocation
-    )
-  }
-
 #if canImport(Combine)
   public init<T, E>(
     encoding encodableValue: T,

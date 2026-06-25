@@ -113,13 +113,15 @@ extension _AttachableEncodableWrapper: AttachableWrapper {
       return (suggestedName as NSString).appendingPathExtension(for: contentType)
     }
 #else
+    let pathExtension = (suggestedName as NSString).pathExtension
+    guard pathExtension.isEmpty else {
+      // The developer specified a path extension. This path extension may
+      // reflect some file format that uses Encodable for serialization, so
+      // use it verbatim.
+      return suggestedName
+    }
     if let encodingFormat = _encodingFormat {
-      let pathExtension = (suggestedName as NSString).pathExtension
-      let validPathExtensions = encodingFormat.pathExtensions
-      let extensionMatches = validPathExtensions.contains { $0.caseInsensitiveCompare(pathExtension) == .orderedSame }
-      if !extensionMatches {
-        return (suggestedName as NSString).appendingPathExtension(validPathExtensions[0])
-      }
+      return (suggestedName as NSString).appendingPathExtension(encodingFormat.preferredPathExtension)
     }
 #endif
     return suggestedName

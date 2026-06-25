@@ -91,15 +91,13 @@ public enum EncodingFormat: Sendable {
     }
   }
 #else
-  /// The set of path extensions known to correspond to this instance.
-  var pathExtensions: [String] {
+  /// The preferred path extension corresponding to this instance.
+  var preferredPathExtension: String {
     switch self {
-    case .propertyListFormat(.xml):
-      ["plist", "xml"]
     case .propertyListFormat:
-      ["plist"]
+      "plist"
     case .json:
-      ["json"]
+      "json"
     }
   }
 #endif
