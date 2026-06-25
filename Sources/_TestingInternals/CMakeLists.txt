@@ -36,7 +36,7 @@ if(NOT BUILD_SHARED_LIBS)
     ARCHIVE DESTINATION "${SwiftTesting_INSTALL_LIBDIR}")
 
   # We don't necessarily want to export _TestingInternals, but it is unavoidable
-  # when building statically since _TestingInterop depends on it
+  # when building statically since _TestingInterop/Testing depends on it
   # https://gitlab.kitware.com/cmake/cmake/-/issues/20041
   set_property(GLOBAL APPEND PROPERTY SwiftTesting_EXPORTS _TestingInternals)
 endif()
