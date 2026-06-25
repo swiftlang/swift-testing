@@ -116,8 +116,8 @@ extension _AttachableEncodableWrapper: AttachableWrapper {
     let pathExtension = (suggestedName as NSString).pathExtension
     guard pathExtension.isEmpty else {
       // The developer specified a path extension. This path extension may
-      // reflect some file format that uses Encodable for serialization, so
-      // use it verbatim.
+      // reflect some file format that uses Encodable for serialization, so use
+      // it verbatim.
       return suggestedName
     }
     if let encodingFormat = _encodingFormat {
