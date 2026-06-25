@@ -14,6 +14,9 @@ import Foundation
 #if canImport(Combine)
 import Combine
 #endif
+#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+private import UniformTypeIdentifiers
+#endif
 
 /// A wrapper type representing values that can be attached using their
 /// conformances to the `Encodable` protocol.
@@ -24,6 +27,9 @@ import Combine
 public struct _AttachableEncodableWrapper<T, E> where T: Encodable {
   /// The underlying encodable value.
   private var _encodableValue: T
+
+  /// The encoding format used by
+  private var _encodingFormat: EncodingFormat?
 
   /// A function that encodes `_encodableValue` and passes its encoded form to
   /// another function, `body`.
@@ -42,6 +48,7 @@ public struct _AttachableEncodableWrapper<T, E> where T: Encodable {
   ///   - encodingFormat: The encoding format to use.
   init(encoding encodableValue: T, as encodingFormat: EncodingFormat) where E == Void {
     _encodableValue = encodableValue
+    _encodingFormat = encodingFormat
     _encode = { encodableValue, body in
       let data: Data
       switch encodingFormat {
@@ -70,6 +77,11 @@ public struct _AttachableEncodableWrapper<T, E> where T: Encodable {
   ///   - encoder: The encoder to use.
   init(encoding encodableValue: T, using encoder: E) where E: TopLevelEncoder, E.Output: ContiguousBytes {
     _encodableValue = encodableValue
+    if let plistEncoder = encoder as? PropertyListEncoder {
+      _encodingFormat = .propertyListFormat(plistEncoder.outputFormat)
+    } else if let jsonEncoder = encoder as? JSONEncoder {
+      _encodingFormat = .json
+    }
     _encode = { encodableValue, body in
       let buffer = try encoder.encode(encodableValue)
       try buffer.withUnsafeBytes(body)
@@ -96,12 +108,20 @@ extension _AttachableEncodableWrapper: AttachableWrapper {
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<_AttachableEncodableWrapper>, basedOn suggestedName: String) -> String {
-    let pathExtension = (suggestedName as NSString).pathExtension
-    guard pathExtension.isEmpty else {
-      return suggestedName
+#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+    if let contentType = _encodingFormat?.contentType {
+      return (suggestedName as NSString).appendingPathExtension(for: contentType)
     }
-
-    // TODO: tack on good extension
+#else
+    if let encodingFormat = _encodingFormat {
+      let pathExtension = (suggestedName as NSString).pathExtension
+      let validPathExtensions = encodingFormat.pathExtensions
+      let extensionMatches = validPathExtensions.contains { $0.caseInsensitiveCompare(pathExtension) == .orderedSame }
+      if !extensionMatches {
+        return (suggestedName as NSString).appendingPathExtension(validPathExtensions[0])
+      }
+    }
+#endif
     return suggestedName
   }
 }

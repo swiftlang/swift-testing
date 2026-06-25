@@ -76,6 +76,32 @@ public enum EncodingFormat: Sendable {
       return nil
     }
   }
+
+  /// The content type corresponding to this instance.
+  var contentType: UTType {
+    switch self {
+    case .propertyListFormat(.binary):
+      .binaryPropertyList
+    case .propertyListFormat(.xml):
+      .xmlPropertyList
+    case .propertyListFormat:
+      .propertyList
+    case .json:
+      .json
+    }
+  }
+#else
+  /// The set of path extensions known to correspond to this instance.
+  var pathExtensions: [String] {
+    switch self {
+    case .propertyListFormat(.xml):
+      ["plist", "xml"]
+    case .propertyListFormat:
+      ["plist"]
+    case .json:
+      ["json"]
+    }
+  }
 #endif
 }
 #endif
