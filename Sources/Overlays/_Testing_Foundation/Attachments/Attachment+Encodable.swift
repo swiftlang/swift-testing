@@ -11,6 +11,9 @@
 #if canImport(Foundation)
 public import Testing
 public import Foundation
+#if canImport(Combine)
+public import Combine
+#endif
 
 @_spi(Experimental)
 extension Attachment {
@@ -19,7 +22,7 @@ extension Attachment {
     as encodingFormat: EncodingFormat? = nil,
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) throws where AttachableValue == _AttachableEncodableWrapper<T> {
+  ) throws where AttachableValue == _AttachableEncodableWrapper<T, Void> {
     let encodingFormat: EncodingFormat = if let encodingFormat {
       encodingFormat
     } else if let encodingFormat = try preferredName.flatMap(EncodingFormat.init(forPreferredName:)) {
@@ -37,7 +40,7 @@ extension Attachment {
     as propertyListFormat: PropertyListSerialization.PropertyListFormat,
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) throws where AttachableValue == _AttachableEncodableWrapper<T> {
+  ) throws where AttachableValue == _AttachableEncodableWrapper<T, Void> {
     try self.init(
       encoding: encodableValue,
       as: .propertyListFormat(propertyListFormat),
@@ -45,5 +48,17 @@ extension Attachment {
       sourceLocation: sourceLocation
     )
   }
+
+#if canImport(Combine)
+  public init<T, E>(
+    encoding encodableValue: T,
+    using encoder: E,
+    named preferredName: String? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) throws where AttachableValue == _AttachableEncodableWrapper<T, E>, E: TopLevelEncoder, E.Output: ContiguousBytes {
+    let wrapper = _AttachableEncodableWrapper(encoding: encodableValue, using: encoder)
+    self.init(wrapper, named: preferredName, sourceLocation: sourceLocation)
+  }
+#endif
 }
 #endif
