@@ -56,11 +56,11 @@ extension Attachable where Self: NSSecureCoding {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    let format = try EncodingFormat(for: attachment)
+    let format = try EncodingFormat(forPreferredName: attachment.preferredName)
 
     var data = try NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: true)
     switch format {
-    case .default:
+    case nil:
       // The default format is just what NSKeyedArchiver produces.
       break
     case let .propertyListFormat(propertyListFormat):
