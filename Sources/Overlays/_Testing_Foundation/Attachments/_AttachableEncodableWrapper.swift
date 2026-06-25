@@ -78,7 +78,7 @@ public struct _AttachableEncodableWrapper<T, E> where T: Encodable {
 #endif
 }
 
-extension _AttachableEncodableWrapper: Sendable where T: Sendable & SendableMetatype, E: Sendable {}
+extension _AttachableEncodableWrapper: Sendable where T: Sendable, E: Sendable {}
 
 // MARK: -
 
