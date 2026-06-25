@@ -79,7 +79,7 @@ public struct _AttachableEncodableWrapper<T, E> where T: Encodable {
     _encodableValue = encodableValue
     if let plistEncoder = encoder as? PropertyListEncoder {
       _encodingFormat = .propertyListFormat(plistEncoder.outputFormat)
-    } else if let jsonEncoder = encoder as? JSONEncoder {
+    } else if encoder is JSONEncoder {
       _encodingFormat = .json
     }
     _encode = { encodableValue, body in
