@@ -28,55 +28,7 @@ public enum EncodingFormat: Sendable {
   /// The JSON format.
   case json
 
-  /// Initialize an instance of this type representing the content type or media
-  /// type of the specified attachment.
-  ///
-  /// - Parameters:
-  ///   - preferredName: The preferred name of the attachment.
-  ///
-  /// - Throws: If the attachment's content type or media type is unsupported.
-  init?(forPreferredName preferredName: String) throws {
-    let ext = (preferredName as NSString).pathExtension
-    if ext.isEmpty {
-      // No path extension? No problem! Default data.
-      return nil
-    } else if ext.caseInsensitiveCompare("plist") == .orderedSame {
-      self = .propertyListFormat(.binary)
-    } else if ext.caseInsensitiveCompare("xml") == .orderedSame {
-      self = .propertyListFormat(.xml)
-    } else if ext.caseInsensitiveCompare("json") == .orderedSame {
-      self = .json
-    } else {
 #if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
-      if let encodingFormat = UTType(filenameExtension: ext).flatMap(Self.init(for:)) {
-        self = encodingFormat
-        return
-      }
-#endif
-      throw CocoaError(.propertyListWriteInvalid, userInfo: [NSLocalizedDescriptionKey: "The path extension '.\(ext)' cannot be used to attach an instance of \(type(of: self)) to a test."])
-    }
-  }
-
-#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
-  /// Initialize an instance of this type representing the given content type.
-  ///
-  /// - Parameters:
-  ///   - contentType: The content type of the attachment.
-  ///
-  /// This initializer returns `nil` if `contentType` does not conform to a
-  /// supported encoding format.
-  init?(for contentType: UTType) {
-    if contentType.conforms(to: .binaryPropertyList) {
-      self = .propertyListFormat(.binary)
-    } else if contentType.conforms(to: .xmlPropertyList) {
-      self = .propertyListFormat(.xml)
-    } else if contentType.conforms(to: .json) {
-      self = .json
-    } else {
-      return nil
-    }
-  }
-
   /// The content type corresponding to this instance.
   var contentType: UTType {
     switch self {
@@ -101,5 +53,29 @@ public enum EncodingFormat: Sendable {
     }
   }
 #endif
+
+  /// Construct an attachment name based on a suggested name and this encoding
+  /// format.
+  ///
+  /// - Parameters:
+  ///   - suggestedName: A suggested name to use as the basis of the preferred
+  ///     name.
+  ///
+  /// - Returns: The preferred name for an attachment. The result may or may not
+  ///   equal `suggestedName`.
+  func preferredName(basedOn suggestedName: String) -> String {
+#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+    return (suggestedName as NSString).appendingPathExtension(for: contentType)
+#else
+    let pathExtension = (suggestedName as NSString).pathExtension
+    guard pathExtension.isEmpty else {
+      // The developer specified a path extension. This path extension may
+      // reflect some file format that uses Encodable for serialization, so use
+      // it verbatim.
+      return suggestedName
+    }
+    return (suggestedName as NSString).appendingPathExtension(preferredPathExtension)
+#endif
+  }
 }
 #endif

@@ -494,7 +494,7 @@ struct AttachmentTests {
   @Test("Attach Codable-conformant value using Attachment.init")
   func attachCodableWithInit() async throws {
     let attachableValue = MyCodableAttachable(string: "stringly speaking")
-    let attachment = try Attachment(encoding: attachableValue, using: JSONEncoder())
+    let attachment = Attachment(encoding: attachableValue, using: JSONEncoder())
   }
 #endif
 #endif
