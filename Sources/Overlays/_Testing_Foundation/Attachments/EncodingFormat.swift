@@ -74,7 +74,7 @@ public enum EncodingFormat: Sendable {
       // it verbatim.
       return suggestedName
     }
-    return (suggestedName as NSString).appendingPathExtension(preferredPathExtension)
+    return (suggestedName as NSString).appendingPathExtension(preferredPathExtension) ?? suggestedName
 #endif
   }
 }
