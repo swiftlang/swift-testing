@@ -125,6 +125,25 @@
     }
   }
 
+  @Test func `Cancelling one test while evaluating traits does not affect sibling tests`() async {
+    // Plan construction now resolves each test's action concurrently, so a test
+    // cancelling itself in a trait's `prepare(for:)` must not leak cancellation to
+    // the others being resolved at the same time.
+    await testCancellation(testSkipped: 1, issueRecorded: 7) { configuration in
+      var configuration = configuration
+      configuration.isParallelizationEnabled = true
+      var tests = [Test(CancelledTrait(), name: "Canceller") {
+        Issue.record("Cancelled test's body should not run")
+      }]
+      for i in 0 ..< 7 {
+        tests.append(Test(name: "Sibling\(i)") {
+          Issue.record("Sibling \(i) ran")
+        })
+      }
+      await Runner(testing: tests, configuration: configuration).run()
+    }
+  }
+
   @Test func `Cancelling the current task while evaluating traits skips the test`() async {
     await testCancellation(testSkipped: 1) { configuration in
       await Test(CancelledTrait(cancelsTask: true)) {

@@ -406,19 +406,11 @@ extension Runner.Plan {
     _recursivelyReduceTraits(in: &testGraph)
 #endif
 
-    // For each test value, determine the appropriate action for it.
-    testGraph = await testGraph.mapValues { keyPath, test in
-      // Skip any nil test, which implies this node is just a placeholder and
-      // not actual test content.
-      guard var test else {
-        return nil
-      }
-
-      // Walk all the traits and tell each to prepare to run the test.
-      // If any throw a `SkipInfo` error at this stage, stop walking further.
-      // But if any throw another kind of error, keep track of the first error
-      // but continue walking, because if any subsequent traits throw a
-      // `SkipInfo`, the error should not be recorded.
+    // Resolve a single test's action by preparing its traits and evaluating its
+    // test cases. Factored into a closure because it runs concurrently below, so
+    // it must not touch the shared `actionGraph`.
+    let resolveAction: @Sendable (Test) async -> (test: Test, action: Action) = { test in
+      var test = test
       var action = await _determineAction(for: &test)
 
       // If the test is parameterized but has no cases, mark it as skipped.
@@ -426,9 +418,48 @@ extension Runner.Plan {
         action = .skip(SkipInfo(comment: "No test cases found.", sourceContext: .init(backtrace: nil, sourceLocation: test.sourceLocation)))
       }
 
-      actionGraph.updateValue(action, at: keyPath)
+      return (test, action)
+    }
 
-      return test
+    // Gather the non-placeholder tests paired with their key paths.
+    var keyPathsAndTests = [(keyPath: [String], test: Test)]()
+    testGraph.forEach { keyPath, test in
+      if let test {
+        keyPathsAndTests.append((keyPath, test))
+      }
+    }
+
+    // Resolving each test's action is independent, so run it concurrently. This is
+    // planning work that runs once before any test, so it honors `--no-parallel`
+    // but is not throttled by `maximumParallelizationWidth` (which bounds how many
+    // test *cases* run at once). Actions are collected, then applied serially below.
+    var resolvedTests = [[String]: (test: Test, action: Action)](minimumCapacity: keyPathsAndTests.count)
+    if configuration.isParallelizationEnabled {
+      resolvedTests = await withTaskGroup(of: (keyPath: [String], resolved: (test: Test, action: Action)).self) { taskGroup in
+        for (keyPath, test) in keyPathsAndTests {
+          taskGroup.addTask {
+            (keyPath: keyPath, resolved: await resolveAction(test))
+          }
+        }
+        var resolvedTests = [[String]: (test: Test, action: Action)](minimumCapacity: keyPathsAndTests.count)
+        for await (keyPath, resolved) in taskGroup {
+          resolvedTests[keyPath] = resolved
+        }
+        return resolvedTests
+      }
+    } else {
+      // Parallelization is disabled (e.g. `--no-parallel`): resolve serially.
+      for (keyPath, test) in keyPathsAndTests {
+        resolvedTests[keyPath] = await resolveAction(test)
+      }
+    }
+
+    // Apply the resolved tests and their actions back into the graphs.
+    testGraph = testGraph.mapValues { keyPath, test in
+      test != nil ? (resolvedTests[keyPath]?.test ?? test) : nil
+    }
+    for (keyPath, resolved) in resolvedTests {
+      actionGraph.updateValue(resolved.action, at: keyPath)
     }
 
     // Now that we have allowed all the traits to update their corresponding
