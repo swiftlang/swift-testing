@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && !SWT_NO_CODABLE
+#if canImport(Foundation)
 public import Testing
 public import Foundation
 #if canImport(Combine)
@@ -21,6 +21,7 @@ import UniformTypeIdentifiers
 
 @_spi(Experimental)
 extension Attachment {
+#if !SWT_NO_CODABLE
   /// Derive an instance of `EncodingFormat` from the arguments to one of the
   /// initializers in this file.
   ///
@@ -165,6 +166,7 @@ extension Attachment {
     let wrapper = _AttachableEncodableWrapper(encoding: encodableValue, using: encoder)
     self.init(wrapper, named: preferredName, sourceLocation: sourceLocation)
   }
+#endif
 #endif
 
   /// Initialize an instance of this type representing a value that conforms to
