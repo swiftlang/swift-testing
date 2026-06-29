@@ -26,7 +26,7 @@ extension Trait {
   /// - Note: You must define the task local outside the test target where the trait is used.
   public static func taskLocal<Value: Sendable>(
     _ taskLocal: TaskLocal<Value>,
-    _ value: Value
+    _ value: @autoclosure @escaping @Sendable () throws -> Value
   ) -> Self
   where Self == TaskLocalTrait<Value> {
     TaskLocalTrait(taskLocal: taskLocal, value: value)
@@ -41,14 +41,14 @@ public struct TaskLocalTrait<Value: Sendable>: SuiteTrait, TestTrait, TestScopin
   fileprivate var taskLocal: TaskLocal<Value>
 
   /// This trait's value.
-  fileprivate var value: Value
+  fileprivate var value: @Sendable () throws -> Value
 
   public func provideScope(
     for test: Test,
     testCase: Test.Case?,
     performing function: @concurrent () async throws -> Void
   ) async throws {
-    try await taskLocal.withValue(value, operation: function)
+    try await taskLocal.withValue(value(), operation: function)
   }
 }
 
