@@ -8,8 +8,10 @@
 
 include(ModuleABIName)
 add_library(_Testing_Foundation
+  Attachments/_AttachableEncodableWrapper.swift
   Attachments/_AttachableURLWrapper.swift
   Attachments/AttachableEncodingFormat.swift
+  Attachments/Attachment+Encodable&NSSecureCoding.swift
   Attachments/Attachment+URL.swift
   Attachments/Attachable+NSSecureCoding.swift
   Attachments/Data+Attachable.swift
