@@ -16,8 +16,17 @@ public import Foundation
 import UniformTypeIdentifiers
 #endif
 
-/// An enumeration describing the encoding formats we support for `Encodable`
-/// and `NSSecureCoding` types that conform to `Attachable`.
+/// An enumeration describing the encoding formats that you can use when
+/// attaching a value that conforms to [`Encodable`](https://developer.apple.com/documentation/swift/encodable).
+///
+/// Pass an instance of this type to ``Testing/Attachment/init(encoding:as:named:sourceLocation:)``
+/// to specify what encoder and format to use when the testing library saves the
+/// resulting attachment.
+///
+/// If you want to attach a value that conforms to [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
+/// use [`PropertyListFormat`](https://developer.apple.com/documentation/foundation/propertylistserialization/propertylistformat)
+/// instead.
+@_spi(Experimental)
 public enum EncodingFormat: Sendable {
   /// A property list format.
   ///
