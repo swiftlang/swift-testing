@@ -199,9 +199,11 @@ extension Runner.Plan {
   private static func _recursivelySynthesizeSuites(in graph: inout Graph<String, Test?>, nameComponents: [String] = []) {
     // The recursive function. This is a local function to simplify the initial
     // call which does not need to pass the `sourceLocation:` inout argument.
-    func synthesizeSuites(in graph: inout Graph<String, Test?>, nameComponents: [String] = [], sourceLocation: inout SourceLocation?) {
+    func synthesizeSuites(in graph: inout Graph<String, Test?>, nameComponents: inout [String], sourceLocation: inout SourceLocation?) {
       for (key, var childGraph) in graph.children {
-        synthesizeSuites(in: &childGraph, nameComponents: nameComponents + [key], sourceLocation: &sourceLocation)
+        nameComponents.append(key)
+        synthesizeSuites(in: &childGraph, nameComponents: &nameComponents, sourceLocation: &sourceLocation)
+        nameComponents.removeLast()
         graph.children[key] = childGraph
       }
 
@@ -231,8 +233,9 @@ extension Runner.Plan {
       }
     }
 
+    var nameComponents = nameComponents
     var sourceLocation: SourceLocation?
-    synthesizeSuites(in: &graph, sourceLocation: &sourceLocation)
+    synthesizeSuites(in: &graph, nameComponents: &nameComponents, sourceLocation: &sourceLocation)
   }
 
   /// Given an array of tests, synthesize any containing suites that are not
