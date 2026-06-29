@@ -22,30 +22,30 @@ import UniformTypeIdentifiers
 @_spi(Experimental)
 extension Attachment {
 #if !SWT_NO_CODABLE
-  /// Derive an instance of `EncodingFormat` from the arguments to one of the
-  /// initializers in this file.
+  /// Derive an instance of `AttachableEncodingFormat` from the arguments to one
+  /// of the initializers in this file.
   ///
   /// - Parameters:
-  ///   - encodingFormat: An explicit instance of `EncodingFormat`, if passed by
-  ///     the initializer's caller.
+  ///   - encodingFormat: An explicit instance of `AttachableEncodingFormat`, if
+  ///     passed by the initializer's caller.
   ///   - preferredName: The preferred name of the attachment.
   ///   - default: The value to return if neither `encodingFormat` nor
   ///     `preferredName` produces a useful value.
   ///
-  /// - Throws: If `preferredName` implies a format that `EncodingFormat` can't
-  ///   represent (e.g. "MP3 track" or "GIF image") or if it represents the
-  ///   OpenStep property list format.
+  /// - Throws: If `preferredName` implies a format that
+  ///   `AttachableEncodingFormat` can't represent (e.g. "MP3 track" or "GIF
+  ///   image") or if it represents the OpenStep property list format.
   ///
-  /// - Returns: An instance of `EncodingFormat` to use when later encoding an
-  ///   attachment.
+  /// - Returns: An instance of `AttachableEncodingFormat` to use when later
+  ///   saving an attachment.
   private static func _encodingFormat(
-    _ encodingFormat: EncodingFormat?,
+    _ encodingFormat: AttachableEncodingFormat?,
     forPreferredName preferredName: String?,
-    `default`: @autoclosure() -> EncodingFormat
-  ) throws -> EncodingFormat {
+    `default`: @autoclosure() -> AttachableEncodingFormat
+  ) throws -> AttachableEncodingFormat {
     if let encodingFormat {
       // The caller explicitly supplied an encoding format.
-      if case .propertyListFormat(.openStep) = encodingFormat {
+      if encodingFormat == .propertyListFormat(.openStep) {
         throw CocoaError(.propertyListWriteInvalid, userInfo: [NSLocalizedDescriptionKey: "The OpenStep property list format is not supported."])
       }
       return encodingFormat
@@ -127,7 +127,7 @@ extension Attachment {
   /// are `nil`, the testing library encodes `encodableValue` as JSON.
   public init<T>(
     encoding encodableValue: T,
-    as encodingFormat: EncodingFormat? = nil,
+    as encodingFormat: AttachableEncodingFormat? = nil,
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) throws where AttachableValue == _AttachableEncodableWrapper<T, Void>, T: Encodable {
@@ -242,15 +242,16 @@ extension Attachment {
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) throws where AttachableValue == _AttachableEncodableWrapper<T, NSKeyedArchiver>, T: NSSecureCoding {
-    // Convert the property list format to an instance of EncodingFormat. This
-    // is a bit roundabout, but it allows us to reuse logic in EncodingFormat to
-    // translate to/from path extensions and UTTypes.
+    // Convert the property list format to an instance of
+    // AttachableEncodingFormat. This is a bit roundabout, but it allows us to
+    // reuse logic in EncodingFormat to translate to/from path extensions and
+    // UTTypes.
     let encodingFormat = try Self._encodingFormat(
       propertyListFormat.map { .propertyListFormat($0) },
       forPreferredName: preferredName,
       default: .propertyListFormat(.binary)
     )
-    switch encodingFormat {
+    switch encodingFormat.kind {
     case let .propertyListFormat(propertyListFormat):
       // This format is supported. (The OpenStep case was handled above).
       let wrapper = _AttachableEncodableWrapper(encoding: encodableValue, as: propertyListFormat)

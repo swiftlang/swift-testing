@@ -26,7 +26,7 @@ public struct _AttachableEncodableWrapper<T, E> {
   private var _encodableValue: T
 
   /// The encoding format used when encoding the value.
-  private var _encodingFormat: EncodingFormat?
+  private var _encodingFormat: AttachableEncodingFormat?
 
   /// A function that encodes `_encodableValue` and passes its encoded form to
   /// another function, `body`.
@@ -43,12 +43,12 @@ public struct _AttachableEncodableWrapper<T, E> {
   /// - Parameters:
   ///   - encodableValue: The value to encode and attach.
   ///   - encodingFormat: The encoding format to use.
-  init(encoding encodableValue: T, as encodingFormat: EncodingFormat) where T: Encodable, E == Void {
+  init(encoding encodableValue: T, as encodingFormat: AttachableEncodingFormat) where T: Encodable, E == Void {
     _encodableValue = encodableValue
     _encodingFormat = encodingFormat
     _encode = { body in
       let data: Data
-      switch encodingFormat {
+      switch encodingFormat.kind {
       case let .propertyListFormat(propertyListFormat):
         let plistEncoder = PropertyListEncoder()
         plistEncoder.outputFormat = propertyListFormat

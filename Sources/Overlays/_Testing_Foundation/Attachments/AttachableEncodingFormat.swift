@@ -27,20 +27,42 @@ import UniformTypeIdentifiers
 /// use [`PropertyListFormat`](https://developer.apple.com/documentation/foundation/propertylistserialization/propertylistformat)
 /// instead.
 @_spi(Experimental)
-public enum EncodingFormat: Sendable {
-  /// A property list format.
+public struct AttachableEncodingFormat: Sendable {
+  /// An enumeration describing the various kinds of encoding format the testing
+  /// library supports.
+  enum Kind: Sendable {
+    /// A property list format.
+    ///
+    /// - Parameters:
+    ///   - format: The corresponding property list format.
+    case propertyListFormat(_ format: PropertyListSerialization.PropertyListFormat)
+
+    /// The JSON format.
+    case json
+  }
+
+  /// The kind of encoding format represented by this instance.
+  var kind: Kind
+
+  /// Create an instance of this type representing a property list format.
   ///
   /// - Parameters:
   ///   - format: The corresponding property list format.
-  case propertyListFormat(_ format: PropertyListSerialization.PropertyListFormat)
+  ///
+  /// - Returns: An instance of this type representing `format`.
+  public static func propertyListFormat(_ format: PropertyListSerialization.PropertyListFormat) -> Self {
+    .init(kind: .propertyListFormat(format))
+  }
 
-  /// The JSON format.
-  case json
+  /// An instance of this type representing the JSON format.
+  public static var json: Self {
+    .init(kind: .json)
+  }
 
 #if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
   /// The content type corresponding to this instance.
   var contentType: UTType {
-    switch self {
+    switch kind {
     case .propertyListFormat(.binary):
       .binaryPropertyList
     case .propertyListFormat(.xml):
@@ -54,7 +76,7 @@ public enum EncodingFormat: Sendable {
 #else
   /// The preferred path extension corresponding to this instance.
   var preferredPathExtension: String {
-    switch self {
+    switch kind {
     case .propertyListFormat:
       "plist"
     case .json:
@@ -87,4 +109,7 @@ public enum EncodingFormat: Sendable {
 #endif
   }
 }
+
+extension AttachableEncodingFormat: Equatable {}
+extension AttachableEncodingFormat.Kind: Equatable {}
 #endif

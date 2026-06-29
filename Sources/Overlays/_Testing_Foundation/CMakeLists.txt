@@ -9,7 +9,7 @@
 include(ModuleABIName)
 add_library(_Testing_Foundation
   Attachments/_AttachableURLWrapper.swift
-  Attachments/EncodingFormat.swift
+  Attachments/AttachableEncodingFormat.swift
   Attachments/Attachment+URL.swift
   Attachments/Attachable+NSSecureCoding.swift
   Attachments/Data+Attachable.swift
