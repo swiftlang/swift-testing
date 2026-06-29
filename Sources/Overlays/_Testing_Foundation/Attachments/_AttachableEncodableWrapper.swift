@@ -56,8 +56,8 @@ public struct _AttachableEncodableWrapper<T, E> {
       case .json:
         // We cannot use our own JSON encoding wrapper here because that would
         // require it be exported with (at least) package visibility which would
-        // create a visible external dependency on Foundation in the main testing
-        // library target.
+        // create a visible external dependency on Foundation in the main
+        // testing library target.
         data = try JSONEncoder().encode(encodableValue)
       }
 
@@ -79,6 +79,24 @@ public struct _AttachableEncodableWrapper<T, E> {
     } else if encoder is JSONEncoder {
       _encodingFormat = .json
     }
+    _encode = { body in
+      let buffer = try encoder.encode(encodableValue)
+      try buffer.withUnsafeBytes(body)
+    }
+  }
+#else
+  init(encoding encodableValue: T, using encoder: E) where T: Encodable, E: PropertyListEncoder {
+    _encodableValue = encodableValue
+    _encodingFormat = .propertyListFormat(encoder.outputFormat)
+    _encode = { body in
+      let buffer = try encoder.encode(encodableValue)
+      try buffer.withUnsafeBytes(body)
+    }
+  }
+
+  init(encoding encodableValue: T, using encoder: E) where T: Encodable, E: JSONEncoder {
+    _encodableValue = encodableValue
+    _encodingFormat = .json
     _encode = { body in
       let buffer = try encoder.encode(encodableValue)
       try buffer.withUnsafeBytes(body)

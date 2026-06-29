@@ -98,6 +98,9 @@ extension Attachment {
   ///     This value is used when recording issues associated with the
   ///     attachment.
   ///
+  /// - Throws: If an appropriate encoder could not be found given the
+  ///   `encodingFormat` and `preferredName` arguments.
+  ///
   /// Use this initializer to create an instance of ``Attachment`` from a value
   /// that conforms to the [`Encodable`](https://developer.apple.com/documentation/swift/encodable)
   /// protocol:
@@ -147,6 +150,8 @@ extension Attachment {
   ///     This value is used when recording issues associated with the
   ///     attachment.
   ///
+  /// - Throws: If `encoder` cannot be used to encode `encodableValue`.
+  ///
   /// Use this initializer to create an instance of ``Attachment`` from a value
   /// that conforms to the [`Encodable`](https://developer.apple.com/documentation/swift/encodable)
   /// protocol:
@@ -162,7 +167,27 @@ extension Attachment {
     using encoder: E,
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableEncodableWrapper<T, E>, T: Encodable, E: TopLevelEncoder, E.Output: ContiguousBytes {
+  ) throws where AttachableValue == _AttachableEncodableWrapper<T, E>, T: Encodable, E: TopLevelEncoder, E.Output: ContiguousBytes {
+    let wrapper = _AttachableEncodableWrapper(encoding: encodableValue, using: encoder)
+    self.init(wrapper, named: preferredName, sourceLocation: sourceLocation)
+  }
+#else
+  public init<T, E>(
+    encoding encodableValue: T,
+    using encoder: E,
+    named preferredName: String? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) throws where AttachableValue == _AttachableEncodableWrapper<T, E>, T: Encodable, E: PropertyListEncoder {
+    let wrapper = _AttachableEncodableWrapper(encoding: encodableValue, using: encoder)
+    self.init(wrapper, named: preferredName, sourceLocation: sourceLocation)
+  }
+
+  public init<T, E>(
+    encoding encodableValue: T,
+    using encoder: E,
+    named preferredName: String? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) throws where AttachableValue == _AttachableEncodableWrapper<T, E>, T: Encodable, E: JSONEncoder {
     let wrapper = _AttachableEncodableWrapper(encoding: encodableValue, using: encoder)
     self.init(wrapper, named: preferredName, sourceLocation: sourceLocation)
   }
@@ -182,6 +207,9 @@ extension Attachment {
   ///   - sourceLocation: The source location of the call to this initializer.
   ///     This value is used when recording issues associated with the
   ///     attachment.
+  ///
+  /// - Throws: If an appropriate encoder could not be found given the
+  ///   `propertyListFormat` and `preferredName` arguments.
   ///
   /// Use this initializer to create an instance of ``Attachment`` from a value
   /// that conforms to the [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding)

@@ -491,10 +491,28 @@ struct AttachmentTests {
     }
   }
 
-  @Test("Attach Codable-conformant value using Attachment.init")
-  func attachCodableWithInit() async throws {
+  @Test("Attach Codable-conformant value using Attachment.init(encoding:as:) and .json")
+  func attachCodableWithInitEncodingAsJSON() async throws {
     let attachableValue = MyCodableAttachable(string: "stringly speaking")
     let attachment = try Attachment(encoding: attachableValue, as: .json)
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
+    }
+  }
+
+  @Test("Attach Codable-conformant value using Attachment.init(encoding:using:) and PropertyListEncoder")
+  func attachCodableWithInitEncodingUsingPropertyListEncoder() async throws {
+    let attachableValue = MyCodableAttachable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, using: PropertyListEncoder())
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
+    }
+  }
+
+  @Test("Attach Codable-conformant value using Attachment.init(encoding:using:) and JSONEncoder")
+  func attachCodableWithInitEncodingUsingJSONEncoder() async throws {
+    let attachableValue = MyCodableAttachable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, using: JSONEncoder())
     try attachment.withUnsafeBytes { bytes in
       #expect(!bytes.isEmpty)
     }
