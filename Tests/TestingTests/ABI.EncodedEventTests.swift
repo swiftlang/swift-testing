@@ -11,7 +11,7 @@
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 #if !SWT_NO_CODABLE
-@Suite struct `ABI.EncodedEventTests` {
+@Suite struct `ABI.EncodedEvent Tests` {
   /// Creates an EncodedEvent from a JSON string.
   ///
   /// - Throws: If the JSON doesn't represent a valid EncodedEvent.

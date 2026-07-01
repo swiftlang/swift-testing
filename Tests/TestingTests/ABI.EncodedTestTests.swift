@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-@Suite struct `ABI.EncodedTestTests` {
+@Suite struct `ABI.EncodedTest Tests` {
   let fixture = ABI.EncodedTest<ABI.CurrentVersion>(
     kind: .function,
     name: "TestName",
