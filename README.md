@@ -75,11 +75,11 @@ can write less code. And all tests integrate seamlessly with Swift Concurrency
 and run in parallel by default.
 
 ```swift
-@Test("Continents mentioned in videos", arguments: [
+@Test("Each video mentions 3 or fewer continents", arguments: [
     "A Beach",
     "By the Lake",
     "Camping in the Woods"
-])
+]) // Runs once per video name above, passing it as `videoName` each time
 func mentionedContinents(videoName: String) async throws {
     let videoLibrary = try await VideoLibrary()
     let video = try #require(await videoLibrary.video(named: videoName))
