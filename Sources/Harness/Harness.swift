@@ -8,7 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if !SWT_NO_HARNESS
 @_spi(ForToolsIntegrationOnly) private import Testing
 private import ArgumentParser
 
@@ -22,4 +21,3 @@ private import ArgumentParser
     throw ValidationError("This tool is currently unimplemented.")
   }
 }
-#endif
