@@ -13,7 +13,7 @@ if(NOT (CMAKE_SYSTEM_NAME IN_LIST SWT_NO_HARNESS_LIST))
 
   add_executable(swift-testing-harness
     Harness.swift)
-  target_link_libraries(swift-test PRIVATE
+  target_link_libraries(swift-testing-harness PRIVATE
     ArgumentParser
     Testing)
 
