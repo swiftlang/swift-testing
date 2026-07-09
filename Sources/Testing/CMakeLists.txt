@@ -112,7 +112,6 @@ add_library(Testing
   Test.swift
   Test+Cancellation.swift
   Test+Discovery.swift
-  Test+Discovery+Legacy.swift
   Test+Macro.swift
   Traits/AttachmentSavingTrait.swift
   Traits/Bug.swift
@@ -167,3 +166,8 @@ _swift_testing_install_target(Testing)
 # Install the Swift cross-import overlay directory.
 _swift_testing_install_swiftcrossimport(Testing
   Testing.swiftcrossimport)
+
+# Make @_spi visible to other projects building against Testing in the toolchain (e.g. swift-corelibs-xctest)
+set_target_properties(Testing PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_Swift_MODULE_DIRECTORY})
+set_property(GLOBAL APPEND PROPERTY SwiftTesting_EXPORTS Testing)
