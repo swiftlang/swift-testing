@@ -11,6 +11,7 @@ add_library(Testing
   ABI/EntryPoints/ABIEntryPoint.swift
   ABI/EntryPoints/EntryPoint.swift
   ABI/EntryPoints/SwiftPMEntryPoint.swift
+  ABI/ABI.Context.swift
   ABI/ABI.Record.swift
   ABI/ABI.Record+Streaming.swift
   ABI/ABI.VersionNumber.swift
@@ -165,3 +166,8 @@ _swift_testing_install_target(Testing)
 # Install the Swift cross-import overlay directory.
 _swift_testing_install_swiftcrossimport(Testing
   Testing.swiftcrossimport)
+
+# Make @_spi visible to other projects building against Testing in the toolchain (e.g. swift-corelibs-xctest)
+set_target_properties(Testing PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_Swift_MODULE_DIRECTORY})
+set_property(GLOBAL APPEND PROPERTY SwiftTesting_EXPORTS Testing)

@@ -93,62 +93,6 @@ private func _findSectionBounds(_ kind: SectionBounds.Kind, in mh: UnsafePointer
   return SectionBounds(imageAddress: mh, buffer: buffer)
 }
 
-#if _runtime(_ObjC)
-/// An array containing all of the test content section bounds known to the
-/// testing library.
-///
-/// Indices into this array are equivalent to the `rawValue` values of instances
-/// of ``SectionBounds/Kind``.
-private nonisolated(unsafe) let _sectionBounds = {
-  // We generate a contiguous array here rather than a dictionary because the
-  // former has less overall bridging with the Objective-C runtime (reducing the
-  // risk of reentrance while holding the libobjc lock) and because the set of
-  // keys or indices is closed, so an array lookup is always more efficient than
-  // a hashtable lookup.
-  let kindCount = SectionBounds.Kind.allCases.count
-  let result = ManagedBuffer<ContiguousArray<ContiguousArray<SectionBounds>>, pthread_mutex_t>.create(
-    minimumCapacity: 1,
-    makingHeaderWith: { _ in .init(repeating: [], count: kindCount) }
-  )
-
-  result.withUnsafeMutablePointers { sectionBounds, lock in
-    _ = pthread_mutex_init(lock, nil)
-
-    let imageCount = Int(clamping: _dyld_image_count())
-    for kind in SectionBounds.Kind.allCases {
-      sectionBounds.pointee[kind.rawValue].reserveCapacity(imageCount)
-    }
-  }
-
-  return result
-}()
-
-/// A call-once function that initializes `_sectionBounds` and starts listening
-/// for loaded Mach headers.
-private let _startCollectingSectionBounds: Void = {
-  // Ensure _sectionBounds is initialized before we touch libobjc or dyld.
-  _ = _sectionBounds
-
-  func addSectionBounds(from mh: UnsafePointer<mach_header>) {
-    for kind in SectionBounds.Kind.allCases {
-      if let sb = _findSectionBounds(kind, in: mh) {
-        _sectionBounds.withUnsafeMutablePointers { sectionBounds, lock in
-          pthread_mutex_lock(lock)
-          defer {
-            pthread_mutex_unlock(lock)
-          }
-          sectionBounds.pointee[kind.rawValue].append(sb)
-        }
-      }
-    }
-  }
-
-  objc_addLoadImageFunc { mh in
-    addSectionBounds(from: mh)
-  }
-}()
-#endif
-
 /// The Apple-specific implementation of ``SectionBounds/all(_:)``.
 ///
 /// - Parameters:
@@ -156,32 +100,55 @@ private let _startCollectingSectionBounds: Void = {
 ///
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
-private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessCollection<SectionBounds> {
+private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 #if _runtime(_ObjC)
   if #available(_objcCopyImageHeadersAPI, *) {
     var imageCount = UInt32(0)
-    let imageHeaders = swt_objc_copyImageHeaders(&imageCount)
-    defer {
-      free(imageHeaders)
+    if let imageHeaders = swt_objc_copyImageHeaders(&imageCount) {
+      defer {
+        free(imageHeaders)
+      }
+      return UnsafeBufferPointer(start: imageHeaders, count: Int(clamping: imageCount))
+        .compactMap { _findSectionBounds(kind, in: $0) }
     }
-    return UnsafeBufferPointer(start: imageHeaders, count: Int(clamping: imageCount))
-      .compactMap { _findSectionBounds(kind, in: $0) }
   }
 
-  _startCollectingSectionBounds
-  return _sectionBounds.withUnsafeMutablePointers { sectionBounds, lock in
-    pthread_mutex_lock(lock)
+  var imageCount = UInt32(0)
+  if let imageNames = swt_objc_copyImageNames(&imageCount) {
     defer {
-      pthread_mutex_unlock(lock)
+      free(imageNames)
     }
-    return sectionBounds.pointee[kind.rawValue]
+    return UnsafeBufferPointer(start: imageNames, count: Int(clamping: imageCount))
+      .compactMap { imageName in
+        guard let handle = dlopen(imageName, RTLD_NOLOAD | RTLD_LAZY) else {
+          return nil
+        }
+        defer {
+          dlclose(handle)
+        }
+        guard let mh = _dyld_get_dlopen_image_header(handle) else {
+          return nil
+        }
+        return _findSectionBounds(kind, in: mh)
+      }
   }
-#else
-  let imageCount = _dyld_image_count()
-  return (0 ..< imageCount)
+#endif
+
+  // Fall back to a linear walk of all loaded images known to dyld using an
+  // older, thread-unsafe API.
+  //
+  // There is an inherent race condition here because an image might be loaded
+  // or unloaded on another thread while we're running this loop (hence using
+  // Objective-C API whenever possible).
+  //
+  // Unloading images is uncommon on Darwin in the first place. In a typical
+  // test process, this code will run after the initial image load operation and
+  // before any significant third-party code starts to run, so we should be in a
+  // period of dyld quiesence and should not encounter any unloaded images
+  // unless we're very unlucky.
+  return (0 ..< _dyld_image_count())
     .compactMap(_dyld_get_image_header)
     .compactMap { _findSectionBounds(kind, in: $0) }
-#endif
 }
 
 #elseif objectFormat(ELF) && !SWT_NO_DYNAMIC_LINKING
