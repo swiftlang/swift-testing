@@ -68,29 +68,33 @@ let package = Package(
     var result = [Product]()
 
 #if os(Windows)
-    result.append(
+    result += [
       .library(
         name: "Testing",
         type: .dynamic, // needed so Windows exports ABI entry point symbols
         targets: ["Testing"]
       )
-    )
+    ]
 #else
-    result.append(
+    result += [
       .library(
         name: "Testing",
         targets: ["Testing"]
       )
-    )
+    ]
 #endif
 
-    result.append(
+    result += [
       .library(
         name: "_TestDiscovery",
         type: .static,
         targets: ["_TestDiscovery"]
-      )
-    )
+      ),
+      .executable(
+        name: "swift-testing-harness",
+        targets: ["swift-testing-harness"]
+      ),
+    ]
 
 #if DEBUG
     // Build _TestingInterop for debugging/testing purposes only. It is
@@ -116,6 +120,9 @@ let package = Package(
     // specified semantic version, meaning the most recent "prerelease" tag will
     // always be used.
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "604.0.0-latest"),
+
+    // TODO: determine the best version range to depend on here
+    .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.8.0")),
   ],
 
   targets: [
@@ -287,6 +294,19 @@ let package = Package(
       path: "Sources/Overlays/_Testing_WinSDK",
       exclude: ["CMakeLists.txt"],
       swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_WinSDK")
+    ),
+
+    // Testing harness: a process that runs in between a host like SwiftPM and
+    // the actual test process(es) and which manages interactions between them.
+    .executableTarget(
+      name: "swift-testing-harness",
+      dependencies: [
+        "Testing",
+        .product(name: "ArgumentParser", package: "swift-argument-parser"),
+      ],
+      path: "Sources/Harness",
+      exclude: ["CMakeLists.txt"],
+      swiftSettings: .packageSettings()
     ),
 
     // Utility targets: These are utilities intended for use when developing
@@ -510,6 +530,7 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_ABI_JSON_SCHEMA": (platforms: .none, embedded: true),
       "SWT_NO_CODABLE": (platforms: .none, embedded: true),
       "SWT_NO_INTEROP": (platforms: .none, embedded: true),
+      "SWT_NO_HARNESS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
       "SWT_NO_UNSTRUCTURED_TASKS": (platforms: .none, embedded: true),
       "SWT_NO_GLOBAL_ACTORS": (platforms: .none, embedded: true),
       "SWT_NO_SUSPENDING_CLOCK": (platforms: .none, embedded: true),
