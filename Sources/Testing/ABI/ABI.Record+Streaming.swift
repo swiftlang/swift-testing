@@ -33,7 +33,9 @@ extension ABI.Version {
         let testRecord = ABI.Record<Self>(encoding: test)
         recordHandler(testRecord)
       } else {
-        let messages = humanReadableOutputRecorder.record(event, in: context, verbosity: 0)
+        var configuration = Configuration()
+        configuration.verbosity = 0
+        let messages = humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
         if let eventRecord = ABI.Record<Self>(encoding: event, in: context, messages: messages) {
           recordHandler(eventRecord)
         }

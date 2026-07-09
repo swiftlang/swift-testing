@@ -256,5 +256,27 @@ extension Event {
 
     self.init(kind, testID: nil, testCaseID: nil, instant: instant)
   }
+
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - event: The encoded event to initialize this instance from.
+  ///   - context: A context value that tracks decoded tests and events.
+  ///
+  /// ``testCaseID`` is always `nil` because test cases are not currently
+  /// supported in the JSON event stream.
+  public init?<V>(decoding event: ABI.EncodedEvent<V>, in context: inout ABI.Context) {
+    self.init(decoding: event)
+
+    if let encodedTestID = event.testID {
+      guard let testID = context.test(identifiedBy: encodedTestID)?.id else {
+        // Failed to find a corresponding test for the given test ID. The event
+        // is malformed or was sent before the corresponding test record (which
+        // should always be sent first).
+        return nil
+      }
+      self.testID = testID
+    }
+  }
 }
 #endif
