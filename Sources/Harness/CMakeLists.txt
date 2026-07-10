@@ -7,6 +7,7 @@
 # See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 if(NOT (CMAKE_SYSTEM_NAME IN_LIST SWT_NO_HARNESS_LIST))
+  include(FetchContent)
   include(ModuleABIName)
 
   find_package(ArgumentParser CONFIG)
