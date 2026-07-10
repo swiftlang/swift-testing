@@ -459,22 +459,58 @@ extension FileHandle {
       result.reserveCapacity(size)
     }
 
-    try withUnsafeCFILEHandle { file in
-      try withUnsafeTemporaryAllocation(byteCount: 1024, alignment: 1) { buffer in
-        repeat {
-          let countRead = fread(buffer.baseAddress!, 1, buffer.count, file)
-          if 0 != ferror(file) {
-            throw CError(rawValue: swt_errno())
-          }
-          if countRead > 0 {
-            let endIndex = buffer.index(buffer.startIndex, offsetBy: countRead)
-            result.append(contentsOf: buffer[..<endIndex])
-          }
-        } while 0 == feof(file)
+    try withLock {
+      try withUnsafeCFILEHandle { file in
+        try withUnsafeTemporaryAllocation(byteCount: 1024, alignment: 1) { buffer in
+          repeat {
+            let countRead = fread(buffer.baseAddress!, 1, buffer.count, file)
+            if 0 != ferror(file) {
+              throw CError(rawValue: swt_errno())
+            }
+            if countRead > 0 {
+              let endIndex = buffer.index(buffer.startIndex, offsetBy: countRead)
+              result.append(contentsOf: buffer[..<endIndex])
+            }
+          } while 0 == feof(file)
+        }
       }
     }
 
     return result
+  }
+
+  /// Read until a character that matches the given predicate.
+  ///
+  /// - Parameters:
+  ///   - isTerminator: A predicate function that is called for each byte read
+  ///     from the file stream. If it returns `true`, the read ends.
+  ///
+  /// - Returns: A tuple containing: a copy of the contents of the file handle
+  ///   starting at the current offset and ending at either the end of the file
+  ///   stream or the first byte that matches `isTerminator`; and the terminator
+  ///   byte if one was encountered.
+  ///
+  /// - Throws: Any error that occurred while reading the file.
+  func read(until isTerminator: (UInt8) throws -> Bool) throws -> (bytesRead: [UInt8], terminator: UInt8?) {
+    var bytesRead = [UInt8]()
+    var terminator: UInt8?
+
+    try withLock {
+      try withUnsafeCFILEHandle { file in
+        while terminator == nil, let byteRead = UInt8(exactly: fgetc(file)) {
+          if try isTerminator(byteRead) {
+            terminator = byteRead
+          } else {
+            bytesRead.append(byteRead)
+          }
+        }
+        if 0 != ferror(file) {
+          throw CError(rawValue: swt_errno())
+        }
+      }
+    }
+
+    return (bytesRead, terminator)
   }
 }
 
