@@ -705,7 +705,7 @@ extension ExitTest {
   /// - Returns: A string representation of `fileHandle` that can be converted
   ///   back to a (new) file handle with `_makeFileHandle()`, or `nil` if the
   ///   file handle could not be converted to a string.
-  private static func _makeEnvironmentVariable(for fileHandle: borrowing FileHandle) -> String? {
+  static func makeEnvironmentVariable(for fileHandle: borrowing FileHandle) -> String? {
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
     return fileHandle.withUnsafePOSIXFileDescriptor { fd in
       fd.map(String.init(describing:))
@@ -934,10 +934,10 @@ extension ExitTest {
         // Let the child process know how to find the back channel and
         // captured values channel by setting a known environment variable to
         // the corresponding file descriptor (HANDLE on Windows) for each.
-        if let backChannelEnvironmentVariable = _makeEnvironmentVariable(for: backChannelWriteEnd) {
+        if let backChannelEnvironmentVariable = Self.makeEnvironmentVariable(for: backChannelWriteEnd) {
           childEnvironment["SWT_BACKCHANNEL"] = backChannelEnvironmentVariable
         }
-        if let capturedValuesEnvironmentVariable = _makeEnvironmentVariable(for: capturedValuesReadEnd) {
+        if let capturedValuesEnvironmentVariable = Self.makeEnvironmentVariable(for: capturedValuesReadEnd) {
           childEnvironment["SWT_CAPTURED_VALUES"] = capturedValuesEnvironmentVariable
         }
 
