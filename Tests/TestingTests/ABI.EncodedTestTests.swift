@@ -10,6 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 @Suite struct `ABI.EncodedTest Tests` {
   let fixture = ABI.EncodedTest<ABI.CurrentVersion>(
     kind: .function,
@@ -17,7 +18,6 @@
     sourceLocation: .init(),
     id: .init(encoding: .init([])))  // Blank placeholder; should be set in each test case
 
-#if !SWT_NO_CODABLE
   /// Creates an EncodedTest.ID from a string.
   ///
   /// It doesn't really "decode" anything and just stores the string, so this
@@ -96,5 +96,5 @@
 
     #expect(test.decodeIDComponents() == nil)
   }
-#endif
 }
+#endif

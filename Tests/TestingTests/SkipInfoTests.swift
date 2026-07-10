@@ -29,7 +29,7 @@ struct SkipInfoTests {
     #expect(skipInfo.sourceLocation == sourceLocation2)
   }
 
-#if !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
   @Test(
     "Decode from event",
     arguments: [

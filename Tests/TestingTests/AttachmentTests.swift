@@ -1020,7 +1020,7 @@ extension AttachmentTests {
 #endif
   }
 
-#if !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
 #if !SWT_NO_FILE_IO
   @Test("Decoding an encoded attachment with path")
   func decodingAnEncodedAttachmentWithPath() throws {

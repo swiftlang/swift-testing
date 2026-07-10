@@ -586,6 +586,7 @@ struct EventRecorderTests {
     #expect(actualComments.starts(with: expectedComments))
   }
 
+#if !SWT_NO_ABI_JSON_SCHEMA
   @Test("HumanReadableOutputRecorder with encoded events")
   func encodedEvents() async throws {
     let test = Test(name: "Test Name") {}
@@ -629,6 +630,7 @@ struct EventRecorderTests {
       #expect(message.stringValue.contains(expectedMessage))
     }
   }
+#endif
 }
 
 // MARK: - Fixtures
