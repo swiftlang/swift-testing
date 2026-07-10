@@ -650,6 +650,7 @@ extension Event.HumanReadableOutputRecorder {
     return record(event, in: eventContext, configuration: configuration)
   }
 
+#if !SWT_NO_ABI_JSON_SCHEMA
   /// Record the specified event by generating zero or more messages that
   /// describe it.
   ///
@@ -686,6 +687,7 @@ extension Event.HumanReadableOutputRecorder {
       return record(event, in: eventContext, configuration: configuration)
     }
   }
+#endif
 }
 
 extension Test.ID {

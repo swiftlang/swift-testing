@@ -11,6 +11,9 @@
 private import _TestingInternals
 
 #if !SWT_NO_INTEROP
+#if SWT_NO_ABI_JSON_SCHEMA
+#error("Platform-specific misconfiguration: support for the fallback event handler (XCTest interop) requires support for the ABI JSON schema")
+#endif
 #if SWT_NO_CODABLE
 #error("Platform-specific misconfiguration: support for the fallback event handler (XCTest interop) requires support for 'Codable'")
 #endif

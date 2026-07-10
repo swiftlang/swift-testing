@@ -27,6 +27,7 @@ extension Date {
     self.init(timeIntervalSince1970: instant.durationSince1970 / .seconds(1))
   }
 
+#if !SWT_NO_ABI_JSON_SCHEMA
   /// Initialize this date to equal an instant from the testing library's event
   /// stream.
   ///
@@ -39,5 +40,6 @@ extension Date {
   public init?<V>(decoding instant: ABI.EncodedInstant<V>) {
     self.init(timeIntervalSince1970: instant.since1970)
   }
+#endif
 }
 #endif
