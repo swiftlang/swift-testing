@@ -43,31 +43,24 @@ let buildingForEmbedded: Bool = {
 let package = Package(
   name: "swift-testing",
 
-  platforms: {
-    if !buildingForEmbedded {
-      [
-        .macOS(.v14),
-        .iOS(.v17),
-        .watchOS(.v10),
-        .tvOS(.v17),
-        .macCatalyst(.v17),
-        .visionOS(.v1),
-      ]
-    } else {
-      // Open-source main-branch toolchains (currently required to build this
-      // package for Embedded Swift) have higher Apple platform deployment
-      // targets than we would otherwise require.
-      [
-        .macOS(.v14),
-        .iOS(.v18),
-        .watchOS(.v10),
-        .tvOS(.v18),
-        .macCatalyst(.v18),
-        .visionOS(.v1),
-      ]
-    }
-  }(),
-
+  platforms: !buildingForEmbedded ? [
+    .macOS(.v14),
+    .iOS(.v17),
+    .watchOS(.v10),
+    .tvOS(.v17),
+    .macCatalyst(.v17),
+    .visionOS(.v1),
+  ] : [
+    // Open-source main-branch toolchains (currently required to build this
+    // package for Embedded Swift) have higher Apple platform deployment
+    // targets than we would otherwise require.
+    .macOS(.v14),
+    .iOS(.v18),
+    .watchOS(.v10),
+    .tvOS(.v18),
+    .macCatalyst(.v18),
+    .visionOS(.v1),
+  ],
   products: {
     var result = [Product]()
 
@@ -114,10 +107,7 @@ let package = Package(
     return result
   }(),
 
-  dependencies: useLocalDependencies ? [
-    .package(path: "../swift-syntax"),
-    .package(path: "../swift-argument-parser"),
-  ] : [
+  dependencies: !useLocalDependencies ? [
     // swift-syntax periodically publishes a new tag with a suffix of the format
     // "-prerelease-YYYY-MM-DD". We always want to use the most recent tag
     // associated with a particular Swift version, without needing to hardcode
@@ -133,6 +123,9 @@ let package = Package(
     // toolchain updates its dependency, please update the version number here
     // and in Sources/Harness/CMakeLists.txt.
     .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.5.0")),
+  ] : [
+    .package(path: "../swift-syntax"),
+    .package(path: "../swift-argument-parser"),
   ],
 
   targets: [
