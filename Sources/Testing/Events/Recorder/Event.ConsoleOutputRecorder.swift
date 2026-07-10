@@ -374,6 +374,7 @@ extension Event.ConsoleOutputRecorder {
     return _record(messages, tags: context.test?.tags)
   }
 
+#if !SWT_NO_ABI_JSON_SCHEMA
   /// Record the specified event by generating a representation of it in this
   /// instance's output format and writing it to this instance's destination.
   ///
@@ -395,6 +396,7 @@ extension Event.ConsoleOutputRecorder {
     let messages = _humanReadableOutputRecorder.record(event, in: &context, configuration: configuration)
     return _record(messages, tags: nil)
   }
+#endif
 
   /// Get a message warning the user of some condition in the library that may
   /// affect test results.
