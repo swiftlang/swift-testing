@@ -262,27 +262,26 @@ extension Event.HumanReadableOutputRecorder {
   /// - Parameters:
   ///   - event: The event to record.
   ///   - eventContext: The context associated with the event.
-  ///   - verbosity: How verbose output should be. When the value of this
-  ///     argument is greater than `0`, additional output is provided. When the
-  ///     value of this argument is less than `0`, some output is suppressed.
-  ///     If the value of this argument is `nil`, the value set for the current
-  ///     configuration is used instead. The exact effects of this argument are
-  ///     implementation-defined and subject to change.
+  ///   - configuration: The configuration to use. Various properties of this
+  ///     configuration (in particular its `verbosity` property) are consulted
+  ///     when generating the resulting messages. If `nil`,
+  ///     `eventContext.configuration` is used instead. The exact effects of
+  ///     this argument are implementation-defined and subject to change.
   ///
   /// - Returns: An array of zero or more messages that can be displayed to the
   ///   user.
   @discardableResult public func record(
     _ event: borrowing Event,
     in eventContext: borrowing Event.Context,
-    verbosity: Int? = nil
+    configuration: Configuration? = nil
   ) -> [Message] {
-    let verbosity: Int = if let verbosity {
-      verbosity
-    } else if let verbosity = eventContext.configuration?.verbosity {
-      verbosity
+    let configuration: Configuration? = if let configuration {
+      configuration
     } else {
-      0
+      eventContext.configuration
     }
+    let verbosity = configuration?.verbosity ?? 0
+
     let test = eventContext.test
     let testCase = eventContext.testCase
     let keyPath = eventContext.keyPath
@@ -634,6 +633,58 @@ extension Event.HumanReadableOutputRecorder {
     }
 
     return []
+  }
+
+  @available(*, deprecated, message: "Use 'record(_:in:configuration:)' instead.")
+  @discardableResult public func record(
+    _ event: borrowing Event,
+    in eventContext: borrowing Event.Context,
+    verbosity: Int?
+  ) -> [Message] {
+    let eventContext = copy eventContext
+    let configuration = verbosity.flatMap { verbosity in
+      var configuration = eventContext.configuration
+      configuration?.verbosity = verbosity
+      return configuration
+    }
+    return record(event, in: eventContext, configuration: configuration)
+  }
+
+  /// Record the specified event by generating zero or more messages that
+  /// describe it.
+  ///
+  /// - Parameters:
+  ///   - encodedEvent: The previously-encoded event to record.
+  ///   - context: A context value that tracks decoded tests and events.
+  ///   - configuration: The configuration to use. Various properties of this
+  ///     configuration (in particular its `verbosity` property) are consulted
+  ///     when generating the resulting messages. The exact effects of this
+  ///     argument are implementation-defined and subject to change.
+  ///
+  /// - Returns: An array of zero or more messages that can be displayed to the
+  ///   user.
+  @discardableResult public func record<V>(
+    _ encodedEvent: borrowing ABI.EncodedEvent<V>,
+    in context: inout ABI.Context,
+    configuration: Configuration? = nil
+  ) -> [Message] {
+    guard let event = Event(decoding: copy encodedEvent, in: &context) else {
+      return []
+    }
+
+    switch event.kind {
+    case .testCaseStarted, .testCaseEnded, .testCaseCancelled:
+      // FIXME: handle test cases here (not supported in the JSON event stream)
+      return []
+    default:
+      let eventContext = Event.Context(
+        test: encodedEvent.testID.flatMap(context.test(identifiedBy:)),
+        testCase: nil,
+        iteration: encodedEvent._iteration,
+        configuration: nil
+      )
+      return record(event, in: eventContext, configuration: configuration)
+    }
   }
 }
 

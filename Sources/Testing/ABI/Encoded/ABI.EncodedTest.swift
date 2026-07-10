@@ -295,6 +295,22 @@ extension Test {
       )
     }
   }
+
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// - Parameters:
+  ///   - test: The encoded test to initialize this instance from.
+  ///   - context: A context value that tracks decoded tests and events.
+  ///
+  /// The resulting instance of ``Test`` cannot be run; attempting to do so will
+  /// throw an error.
+  public init?<V>(decoding test: ABI.EncodedTest<V>, in context: inout ABI.Context) {
+    self.init(decoding: test)
+
+    // Memoize the test by its ID so we can look it up later when decoding
+    // events that might need it.
+    context.setTest(self, identifiedBy: test.id)
+  }
 }
 
 @_spi(ForToolsIntegrationOnly)
