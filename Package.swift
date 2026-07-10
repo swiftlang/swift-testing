@@ -20,6 +20,10 @@ let git = Context.gitInformation
 /// distribution as a package dependency.
 let buildingForDevelopment = (git?.currentTag == nil)
 
+/// Whether or not to use package dependencies checked out next to the testing
+/// library's package directory instead of downloading them on demand.
+let useLocalDependencies = Context.environment["SWIFTCI_USE_LOCAL_DEPS"] != nil
+
 /// Whether or not this package is being built for Embedded Swift.
 ///
 /// This value is `true` if `SWT_EMBEDDED` is set in the environment to `true`
@@ -110,7 +114,10 @@ let package = Package(
     return result
   }(),
 
-  dependencies: [
+  dependencies: useLocalDependencies ? [
+    .package(path: "../swift-syntax"),
+    .package(path: "../swift-argument-parser"),
+  ] : [
     // swift-syntax periodically publishes a new tag with a suffix of the format
     // "-prerelease-YYYY-MM-DD". We always want to use the most recent tag
     // associated with a particular Swift version, without needing to hardcode
@@ -308,7 +315,6 @@ let package = Package(
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
       ],
       path: "Sources/Harness",
-      exclude: ["CMakeLists.txt"],
       swiftSettings: .packageSettings()
     ),
 
