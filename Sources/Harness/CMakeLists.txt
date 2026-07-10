@@ -7,17 +7,9 @@
 # See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 if(NOT (CMAKE_SYSTEM_NAME IN_LIST SWT_NO_HARNESS_LIST))
-  include(FetchContent)
   include(ModuleABIName)
 
-  find_package(ArgumentParser CONFIG)
-  if(NOT ArgumentParser_FOUND)
-    message("-- Vending swift-argument-parser")
-    FetchContent_Declare(ArgumentParser
-      GIT_REPOSITORY https://github.com/apple/swift-argument-parser
-      GIT_TAG 1.5.1)
-    FetchContent_MakeAvailable(ArgumentParser)
-  endif()
+  find_package(ArgumentParser CONFIG REQUIRED)
 
   add_executable(swift-testing-harness
     Harness.swift)
