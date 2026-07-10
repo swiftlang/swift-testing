@@ -9,7 +9,14 @@
 if(NOT (CMAKE_SYSTEM_NAME IN_LIST SWT_NO_HARNESS_LIST))
   include(ModuleABIName)
 
-  find_package(ArgumentParser CONFIG REQUIRED)
+  find_package(ArgumentParser CONFIG)
+  if(NOT ArgumentParser_FOUND)
+    message("-- Vending swift-argument-parser")
+    FetchContent_Declare(ArgumentParser
+      GIT_REPOSITORY https://github.com/apple/swift-argument-parser
+      GIT_TAG 1.5.1)
+    FetchContent_MakeAvailable(ArgumentParser)
+  endif()
 
   add_executable(swift-testing-harness
     Harness.swift)
@@ -18,5 +25,5 @@ if(NOT (CMAKE_SYSTEM_NAME IN_LIST SWT_NO_HARNESS_LIST))
     Testing)
 
   install(TARGETS swift-testing-harness
-    RUNTIME DESTINATION "libexec/swift/pm")
+    RUNTIME DESTINATION "libexec/swift/testing")
 endif()

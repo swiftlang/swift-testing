@@ -121,8 +121,11 @@ let package = Package(
     // always be used.
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "604.0.0-latest"),
 
-    // TODO: determine the best version range to depend on here
-    .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.8.0")),
+    // Add a dependency on Swift Argument Parser. Note that the rest of the
+    // toolchain (as of this writing) uses 1.5.x, so we match that; if the
+    // toolchain updates its dependency, please update the version number here
+    // and in Sources/Harness/CMakeLists.txt.
+    .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.5.0")),
   ],
 
   targets: [
