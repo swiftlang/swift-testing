@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 extension ABI {
   package typealias HarnessVersion = ExperimentalVersion
 }
