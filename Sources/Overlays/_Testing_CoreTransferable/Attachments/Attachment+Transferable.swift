@@ -16,6 +16,7 @@ public import UniformTypeIdentifiers
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.4)
+///   @Available(Xcode, introduced: 27.0)
 /// }
 @available(_transferableAPI, *)
 extension Attachment {
@@ -55,6 +56,7 @@ extension Attachment {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.4)
+  ///   @Available(Xcode, introduced: 27.0)
   /// }
   public init<T>(
     exporting transferableValue: T,

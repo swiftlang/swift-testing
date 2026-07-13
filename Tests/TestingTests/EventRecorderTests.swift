@@ -585,6 +585,52 @@ struct EventRecorderTests {
     let actualComments = messages.rawValue.dropFirst().map(\.stringValue)
     #expect(actualComments.starts(with: expectedComments))
   }
+
+#if !SWT_NO_ABI_JSON_SCHEMA
+  @Test("HumanReadableOutputRecorder with encoded events")
+  func encodedEvents() async throws {
+    let test = Test(name: "Test Name") {}
+    let encodedTest = ABI.EncodedTest<ABI.CurrentVersion>(encoding: test)
+    let encodedEvents = [
+      Event(.runStarted, testID: nil, testCaseID: nil),
+      Event(.testStarted, testID: test.id, testCaseID: nil),
+      Event(.issueRecorded(.init(kind: .unconditional)), testID: test.id, testCaseID: nil),
+      Event(.testEnded, testID: test.id, testCaseID: nil),
+      Event(.runEnded, testID: nil, testCaseID: nil),
+    ].compactMap { event in
+      return ABI.EncodedEvent<ABI.CurrentVersion>(
+        encoding: event,
+        in: Event.Context(
+          test: event.testID != nil ? test : nil,
+          testCase: nil,
+          iteration: event.testID != nil ? 0 : nil,
+          configuration: nil
+        ),
+        messages: []
+      )
+    }
+
+    // Memoize the test (we don't need the resulting `Test` instance though).
+    var context = ABI.Context()
+    _ = Test(decoding: encodedTest, in: &context)
+
+    // Generate the messages to compare against.
+    let recorder = Event.HumanReadableOutputRecorder()
+    let messages = encodedEvents.flatMap { recorder.record($0, in: &context) }
+
+    let expectedMessages = [
+      "Test run started.",
+      "Testing Library Version:",
+      #"Test "Test Name" started."#,
+      "Issue recorded",
+      #"Test "Test Name" failed"#,
+      "Test run with 1 test in 0 suites failed",
+    ]
+    for (message, expectedMessage) in zip(messages, expectedMessages) {
+      #expect(message.stringValue.contains(expectedMessage))
+    }
+  }
+#endif
 }
 
 // MARK: - Fixtures

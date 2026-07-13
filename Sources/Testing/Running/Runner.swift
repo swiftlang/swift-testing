@@ -449,14 +449,10 @@ extension Runner {
     within step: Plan.Step,
     in context: _Context,
   ) async {
-    if _configuration.shouldUseLegacyPlanLevelRepetition {
+    await _applyRepetitionPolicy(_configuration.repetitionPolicy) {
       await _runSingleTestCaseIteration(testCase, within: step)
-    } else {
-      await _applyRepetitionPolicy(_configuration.repetitionPolicy) {
-        await _runSingleTestCaseIteration(testCase, within: step)
-      } didRecordIssue: {
-        context.testIssueRecorder.consumeIssue(for: step.test.id, testCase: testCase.id)
-      }
+    } didRecordIssue: {
+      context.testIssueRecorder.consumeIssue(for: step.test.id, testCase: testCase.id)
     }
   }
 
@@ -551,26 +547,7 @@ extension Runner {
         Event.post(.runEnded, for: (nil, nil), configuration: runner.configuration)
       }
 
-      if runner.configuration.shouldUseLegacyPlanLevelRepetition {
-        await _applyRepetitionPolicy(runner.configuration.repetitionPolicy) { [runner] in
-          context.testIssueRecorder.clear()
-
-          let iteration = Test.currentIteration ?? 1
-
-          // Legacy clients expect these values to be zero-indexed.
-          let iterationIndex = iteration - 1
-          Event.post(.iterationStarted(iterationIndex), configuration: runner.configuration)
-          defer {
-            Event.post(.iterationEnded(iterationIndex), configuration: runner.configuration)
-          }
-
-          await runner._runAllTests(context: context)
-        } didRecordIssue: {
-          context.testIssueRecorder.hasIssues
-        }
-      } else {
-        await runner._runAllTests(context: context)
-      }
+      await runner._runAllTests(context: context)
     }
   }
 

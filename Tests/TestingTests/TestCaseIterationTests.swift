@@ -21,7 +21,6 @@ struct TestCaseIterationTests {
     await confirmation("N iterations started") { started in
       await confirmation("N iterations ended") { ended in
         var configuration = Configuration()
-        configuration.shouldUseLegacyPlanLevelRepetition = false
         configuration.eventHandler = { event, _ in
           if case .testCaseStarted = event.kind {
             started()
@@ -88,8 +87,8 @@ struct TestCaseIterationTests {
     }
   }
 
-  @Test("Iteration while issue recorded")
-  func iterationWhileIssueRecorded() async {
+  @Test
+  func `Iteration while issue recorded`() async {
     let iterations = Atomic(0)
     let iterationCount = 10
     let iterationWithoutIssue = 5

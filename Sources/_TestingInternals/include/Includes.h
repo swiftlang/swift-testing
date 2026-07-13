@@ -150,6 +150,10 @@
 #if !SWT_NO_FILE_CLONING
 #include <sys/clonefile.h>
 #endif
+
+#if defined(__OBJC2__)
+#include <objc/runtime.h>
+#endif
 #endif
 
 #if defined(__linux__)

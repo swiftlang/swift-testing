@@ -16,7 +16,7 @@ private func configurationForEntryPoint(withArguments args: [String]) throws -> 
   return try configurationForEntryPoint(from: args)
 }
 
-#if !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
 /// Reads event stream output from the provided file matching event stream
 /// version `V`.
 private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String) throws -> [ABI.Record<V>] {
@@ -347,7 +347,7 @@ struct SwiftPMTests {
   }
 #endif
 
-#if !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
   @Test("Severity and isFailure fields included in version 6.3")
   func validateEventStreamContents() async throws {
     let tempDirPath = try temporaryDirectory()
@@ -529,12 +529,6 @@ struct SwiftPMTests {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repetitions", "2468", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
     #expect(configuration.repetitionPolicy.continuationCondition == .whileIssueRecorded)
-  }
-
-  @Test
-  func `Per-test-case iteration enabled by default`() throws {
-    let defaultConfig = try configurationForEntryPoint(withArguments: ["PATH"])
-    #expect(!defaultConfig.shouldUseLegacyPlanLevelRepetition)
   }
 
   @Test("list subcommand")

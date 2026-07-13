@@ -20,6 +20,10 @@ let git = Context.gitInformation
 /// distribution as a package dependency.
 let buildingForDevelopment = (git?.currentTag == nil)
 
+/// Whether or not to use package dependencies checked out next to the testing
+/// library's package directory instead of downloading them on demand.
+let useLocalDependencies = Context.environment["SWIFTCI_USE_LOCAL_DEPS"] != nil
+
 /// Whether or not this package is being built for Embedded Swift.
 ///
 /// This value is `true` if `SWT_EMBEDDED` is set in the environment to `true`
@@ -39,58 +43,55 @@ let buildingForEmbedded: Bool = {
 let package = Package(
   name: "swift-testing",
 
-  platforms: {
-    if !buildingForEmbedded {
-      [
-        .macOS(.v14),
-        .iOS(.v17),
-        .watchOS(.v10),
-        .tvOS(.v17),
-        .macCatalyst(.v17),
-        .visionOS(.v1),
-      ]
-    } else {
-      // Open-source main-branch toolchains (currently required to build this
-      // package for Embedded Swift) have higher Apple platform deployment
-      // targets than we would otherwise require.
-      [
-        .macOS(.v14),
-        .iOS(.v18),
-        .watchOS(.v10),
-        .tvOS(.v18),
-        .macCatalyst(.v18),
-        .visionOS(.v1),
-      ]
-    }
-  }(),
-
+  platforms: !buildingForEmbedded ? [
+    .macOS(.v14),
+    .iOS(.v17),
+    .watchOS(.v10),
+    .tvOS(.v17),
+    .macCatalyst(.v17),
+    .visionOS(.v1),
+  ] : [
+    // Open-source main-branch toolchains (currently required to build this
+    // package for Embedded Swift) have higher Apple platform deployment
+    // targets than we would otherwise require.
+    .macOS(.v14),
+    .iOS(.v18),
+    .watchOS(.v10),
+    .tvOS(.v18),
+    .macCatalyst(.v18),
+    .visionOS(.v1),
+  ],
   products: {
     var result = [Product]()
 
 #if os(Windows)
-    result.append(
+    result += [
       .library(
         name: "Testing",
         type: .dynamic, // needed so Windows exports ABI entry point symbols
         targets: ["Testing"]
       )
-    )
+    ]
 #else
-    result.append(
+    result += [
       .library(
         name: "Testing",
         targets: ["Testing"]
       )
-    )
+    ]
 #endif
 
-    result.append(
+    result += [
       .library(
         name: "_TestDiscovery",
         type: .static,
         targets: ["_TestDiscovery"]
-      )
-    )
+      ),
+      .executable(
+        name: "swift-testing-harness",
+        targets: ["swift-testing-harness"]
+      ),
+    ]
 
 #if DEBUG
     // Build _TestingInterop for debugging/testing purposes only. It is
@@ -106,7 +107,7 @@ let package = Package(
     return result
   }(),
 
-  dependencies: [
+  dependencies: !useLocalDependencies ? [
     // swift-syntax periodically publishes a new tag with a suffix of the format
     // "-prerelease-YYYY-MM-DD". We always want to use the most recent tag
     // associated with a particular Swift version, without needing to hardcode
@@ -116,6 +117,15 @@ let package = Package(
     // specified semantic version, meaning the most recent "prerelease" tag will
     // always be used.
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "604.0.0-latest"),
+
+    // Add a dependency on Swift Argument Parser. Note that the rest of the
+    // toolchain (as of this writing) uses 1.5.x, so we match that; if the
+    // toolchain updates its dependency, please update the version number here
+    // and in Sources/Harness/CMakeLists.txt.
+    .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.5.0")),
+  ] : [
+    .package(path: "../swift-syntax"),
+    .package(path: "../swift-argument-parser"),
   ],
 
   targets: [
@@ -289,6 +299,18 @@ let package = Package(
       swiftSettings: .packageSettings() + .enableLibraryEvolution() + .moduleABIName("_Testing_WinSDK")
     ),
 
+    // Testing harness: a process that runs in between a host like SwiftPM and
+    // the actual test process(es) and which manages interactions between them.
+    .executableTarget(
+      name: "swift-testing-harness",
+      dependencies: [
+        "Testing",
+        .product(name: "ArgumentParser", package: "swift-argument-parser"),
+      ],
+      path: "Sources/Harness",
+      swiftSettings: .packageSettings()
+    ),
+
     // Utility targets: These are utilities intended for use when developing
     // this package, not for distribution.
     .executableTarget(
@@ -405,6 +427,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("AvailabilityMacro=_typedThrowsAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
       .enableExperimentalFeature("AvailabilityMacro=_transferableAPI:macOS 15.2, iOS 18.2, watchOS 11.2, tvOS 18.2, visionOS 2.2"),
       .enableExperimentalFeature("AvailabilityMacro=_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_objcCopyImageHeadersAPI:macOS 27.0, iOS 27.0, watchOS 27.0, tvOS 27.0, visionOS 27.0"),
 
       .enableExperimentalFeature("AvailabilityMacro=_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0"),
     ]
@@ -509,11 +532,11 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_ABI_JSON_SCHEMA": (platforms: .none, embedded: true),
       "SWT_NO_CODABLE": (platforms: .none, embedded: true),
       "SWT_NO_INTEROP": (platforms: .none, embedded: true),
+      "SWT_NO_HARNESS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
       "SWT_NO_UNSTRUCTURED_TASKS": (platforms: .none, embedded: true),
       "SWT_NO_GLOBAL_ACTORS": (platforms: .none, embedded: true),
       "SWT_NO_SUSPENDING_CLOCK": (platforms: .none, embedded: true),
 
-      "SWT_NO_LEGACY_TEST_DISCOVERY": (platforms: .none, embedded: true),
       "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),
     ]
 

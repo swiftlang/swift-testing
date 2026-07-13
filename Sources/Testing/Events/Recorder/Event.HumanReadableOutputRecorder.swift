@@ -53,9 +53,6 @@ extension Event {
       /// The instant at which the run started.
       var runStartInstant: Test.Clock.Instant?
 
-      /// The instant at which the current iteration started.
-      var iterationStartInstant: Test.Clock.Instant?
-
       /// The number of tests started or skipped during the run.
       ///
       /// This value does not include test suites.
@@ -265,33 +262,31 @@ extension Event.HumanReadableOutputRecorder {
   /// - Parameters:
   ///   - event: The event to record.
   ///   - eventContext: The context associated with the event.
-  ///   - verbosity: How verbose output should be. When the value of this
-  ///     argument is greater than `0`, additional output is provided. When the
-  ///     value of this argument is less than `0`, some output is suppressed.
-  ///     If the value of this argument is `nil`, the value set for the current
-  ///     configuration is used instead. The exact effects of this argument are
-  ///     implementation-defined and subject to change.
+  ///   - configuration: The configuration to use. Various properties of this
+  ///     configuration (in particular its `verbosity` property) are consulted
+  ///     when generating the resulting messages. If `nil`,
+  ///     `eventContext.configuration` is used instead. The exact effects of
+  ///     this argument are implementation-defined and subject to change.
   ///
   /// - Returns: An array of zero or more messages that can be displayed to the
   ///   user.
   @discardableResult public func record(
     _ event: borrowing Event,
     in eventContext: borrowing Event.Context,
-    verbosity: Int? = nil
+    configuration: Configuration? = nil
   ) -> [Message] {
-    let verbosity: Int = if let verbosity {
-      verbosity
-    } else if let verbosity = eventContext.configuration?.verbosity {
-      verbosity
+    let configuration: Configuration? = if let configuration {
+      configuration
     } else {
-      0
+      eventContext.configuration
     }
+    let verbosity = configuration?.verbosity ?? 0
+
     let test = eventContext.test
     let testCase = eventContext.testCase
     let keyPath = eventContext.keyPath
     let testName = test?.humanReadableName(withVerbosity: verbosity) ?? "«unknown»"
     let instant = event.instant
-    let iterationCount = eventContext.configuration?.repetitionPolicy.maximumIterationCount
 
     // First, make any updates to the context/state associated with this
     // recorder.
@@ -299,11 +294,6 @@ extension Event.HumanReadableOutputRecorder {
       switch event.kind {
       case .runStarted:
         context.runStartInstant = instant
-
-      case .iterationStarted:
-        if let iterationCount, iterationCount > 1 {
-          context.iterationStartInstant = instant
-        }
 
       case .testStarted:
         let test = test!
@@ -408,16 +398,6 @@ extension Event.HumanReadableOutputRecorder {
           stringValue: "Test run started."
         )
       ) + _formattedComments(comments)
-
-    case let .iterationStarted(index):
-      if let iterationCount, iterationCount > 1 {
-        return [
-          Message(
-            symbol: .default,
-            stringValue: "Iteration \(index + 1) started."
-          )
-        ]
-      }
 
     case .planStepStarted, .planStepEnded:
       // Suppress events of these kinds from output as they are not generally
@@ -624,18 +604,9 @@ extension Event.HumanReadableOutputRecorder {
       // Handled in .testEnded and .testCaseEnded
       break
 
-    case let .iterationEnded(index):
-      guard let iterationStartInstant = context.iterationStartInstant else {
-        break
-      }
-      let duration = descriptionOfDuration(from: iterationStartInstant, to: instant)
-
-      return [
-        Message(
-          symbol: .default,
-          stringValue: "Iteration \(index + 1) ended after \(duration)."
-        )
-      ]
+    case .iterationStarted, .iterationEnded:
+      // Iteration events are not emitted.
+      break
 
     case .runEnded:
       let testCount = context.testCount
@@ -663,6 +634,60 @@ extension Event.HumanReadableOutputRecorder {
 
     return []
   }
+
+  @available(*, deprecated, message: "Use 'record(_:in:configuration:)' instead.")
+  @discardableResult public func record(
+    _ event: borrowing Event,
+    in eventContext: borrowing Event.Context,
+    verbosity: Int?
+  ) -> [Message] {
+    let eventContext = copy eventContext
+    let configuration = verbosity.flatMap { verbosity in
+      var configuration = eventContext.configuration
+      configuration?.verbosity = verbosity
+      return configuration
+    }
+    return record(event, in: eventContext, configuration: configuration)
+  }
+
+#if !SWT_NO_ABI_JSON_SCHEMA
+  /// Record the specified event by generating zero or more messages that
+  /// describe it.
+  ///
+  /// - Parameters:
+  ///   - encodedEvent: The previously-encoded event to record.
+  ///   - context: A context value that tracks decoded tests and events.
+  ///   - configuration: The configuration to use. Various properties of this
+  ///     configuration (in particular its `verbosity` property) are consulted
+  ///     when generating the resulting messages. The exact effects of this
+  ///     argument are implementation-defined and subject to change.
+  ///
+  /// - Returns: An array of zero or more messages that can be displayed to the
+  ///   user.
+  @discardableResult public func record<V>(
+    _ encodedEvent: borrowing ABI.EncodedEvent<V>,
+    in context: inout ABI.Context,
+    configuration: Configuration? = nil
+  ) -> [Message] {
+    guard let event = Event(decoding: copy encodedEvent, in: &context) else {
+      return []
+    }
+
+    switch event.kind {
+    case .testCaseStarted, .testCaseEnded, .testCaseCancelled:
+      // FIXME: handle test cases here (not supported in the JSON event stream)
+      return []
+    default:
+      let eventContext = Event.Context(
+        test: encodedEvent.testID.flatMap(context.test(identifiedBy:)),
+        testCase: nil,
+        iteration: encodedEvent._iteration,
+        configuration: nil
+      )
+      return record(event, in: eventContext, configuration: configuration)
+    }
+  }
+#endif
 }
 
 extension Test.ID {
