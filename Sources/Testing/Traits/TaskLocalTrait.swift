@@ -43,15 +43,15 @@ public struct TaskLocalTrait<Value: Sendable>: SuiteTrait, TestTrait, TestScopin
   /// This trait's value.
   fileprivate var value: @Sendable () throws -> Value
 
+  public var isRecursive: Bool { true }
+
   public func provideScope(
     for test: Test,
     testCase: Test.Case?,
     performing function: @concurrent () async throws -> Void
   ) async throws {
-    try await taskLocal.withValue(value(), operation: function)
+    try await taskLocal.withValue(value()) {
+      try await function()
+    }
   }
 }
-
-#if DEBUG
-  @TaskLocal var dummyLocal = false
-#endif

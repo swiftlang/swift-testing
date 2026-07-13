@@ -14,9 +14,28 @@
 struct TaskLocalTests {
   @Test(
     ".taskLocal trait",
-    .taskLocal($dummyLocal, true)
+    .taskLocal(local, true)
   )
   func taskLocalBinding() throws {
-    #expect(dummyLocal == true)
+    #expect(local.wrappedValue == true)
+  }
+
+  @Suite(.serialized, .taskLocal(stateLocal, State())) struct MutableLocal {
+    @Test func run1() {
+      #expect(stateLocal.wrappedValue.count == 0)
+      stateLocal.wrappedValue.count += 1
+      #expect(stateLocal.wrappedValue.count == 1)
+    }
+    @Test func run2() {
+      #expect(stateLocal.wrappedValue.count == 0)
+      stateLocal.wrappedValue.count += 1
+      #expect(stateLocal.wrappedValue.count == 1)
+    }
   }
 }
+
+private let local = TaskLocal(wrappedValue: false)
+private class State: @unchecked Sendable {
+  var count = 0
+}
+private let stateLocal = TaskLocal(wrappedValue: State())
