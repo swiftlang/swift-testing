@@ -10,6 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
+private import Foundation
 
 private func configurationForEntryPoint(withArguments args: [String]) throws -> Configuration {
   let args = try parseCommandLineArguments(from: args)
@@ -248,6 +249,78 @@ struct SwiftPMTests {
     #expect(!fileContents.isEmpty)
     #expect(fileContents.contains(UInt8(ascii: "<")))
     #expect(fileContents.contains(UInt8(ascii: ">")))
+  }
+
+  @Test(
+    "--attachments-path argument (creates missing directory)",
+    arguments: ["--attachments-path", "--experimental-attachments-path"]
+  )
+  func attachmentsPathCreatesMissingDirectory(argumentName: String) throws {
+    let tempDirPath = try temporaryDirectory()
+    let attachmentsPath = appendPathComponent("swt_attachments_\(UInt64.random(in: 0 ..< .max))", to: tempDirPath)
+    defer {
+      _ = remove(attachmentsPath)
+    }
+    #expect(!fileExists(atPath: attachmentsPath))
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", argumentName, attachmentsPath])
+    #expect(fileExists(atPath: attachmentsPath))
+    let actualPath = try #require(configuration.attachmentsPath, "Attachments path is not expected to be nil")
+    #expect(canonicalizePath(actualPath) == canonicalizePath(attachmentsPath))
+  }
+
+  @Test("--attachments-path argument (creates missing intermediate directories)")
+  func attachmentsPathCreatesMissingIntermediateDirectories() throws {
+    let tempDirPath = try temporaryDirectory()
+    let root = appendPathComponent("swt_attachments_\(UInt64.random(in: 0 ..< .max))", to: tempDirPath)
+    let intermediate = appendPathComponent("foo", to: root)
+    let attachmentsPath = appendPathComponent("bar", to: intermediate)
+    defer {
+      _ = remove(attachmentsPath)
+      _ = remove(intermediate)
+      _ = remove(root)
+    }
+    #expect(!fileExists(atPath: root))
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--attachments-path", attachmentsPath])
+    #expect(fileExists(atPath: root))
+    #expect(fileExists(atPath: intermediate))
+    #expect(fileExists(atPath: attachmentsPath))
+    let actualPath = try #require(configuration.attachmentsPath, "Attachments path is not expected to be nil")
+    #expect(canonicalizePath(actualPath) == canonicalizePath(attachmentsPath))
+  }
+
+  @Test("--attachments-path argument (bad path)")
+  func attachmentsPathWithBadPath() throws {
+    let fileManager = FileManager()
+    let attachmentPath = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let success = fileManager.createFile(atPath: attachmentPath.absoluteString, contents: nil, attributes: nil)
+    if !success {
+      try Test.cancel("Failed to create file at \(attachmentPath.absoluteString).")
+    }
+    defer {
+      print("removing \(attachmentPath.absoluteString) ...")
+      _ = remove(attachmentPath.absoluteString)
+    }
+    #expect(throws: (any Error).self, "Attachment path is: \(attachmentPath)") {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--attachments-path", attachmentPath.absoluteString])
+    }
+  }
+
+  @Test("--attachments-path argument (accepts existing directory)")
+  func attachmentsPathAcceptsExistingDirectory() throws {
+    let tempDirPath = try temporaryDirectory()
+    #expect(fileExists(atPath: tempDirPath))
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--attachments-path", tempDirPath])
+    let actualPath = try #require(configuration.attachmentsPath, "Attachments path is not expected to be nil")
+    #expect(
+      canonicalizePath(actualPath) == canonicalizePath(tempDirPath),
+      "Canonicalized actual path (\(actualPath)) is not equal to canonicalized expected path (\(tempDirPath))",
+    )
+  }
+
+  @Test("--attachments-path argument (missing path)")
+  func attachmentsPathWithMissingPath() throws {
+    let args = try parseCommandLineArguments(from: ["PATH", "--attachments-path"])
+    #expect(args.attachmentsPath == nil)
   }
 
   @Test("--configuration-path argument", arguments: [
