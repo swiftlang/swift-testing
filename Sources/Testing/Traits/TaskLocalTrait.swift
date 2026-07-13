@@ -14,14 +14,12 @@ extension Trait {
   ///
   /// - Parameters:
   ///   - taskLocal: The task local to bind the value to.
-  ///   - value: The value to set.
+  ///   - value: The value to bind to `taskLocal`.
   ///
-  /// ```swift
-  /// @Suite(.taskLocal($myValue, 42))
-  /// struct MyTests {
-  ///   // ...
-  /// }
-  /// ```
+  ///     This value will only be evaluated if the test this
+  ///     trait is applied to runs, and it will be unbound from
+  ///     the task local and released once the trait is finished
+  ///     providing scope for the test.
   ///
   /// - Note: You must define the task local outside the test target where the trait is used.
   public static func taskLocal<Value: Sendable>(
