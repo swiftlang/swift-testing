@@ -133,6 +133,13 @@
       let str = String(decoding: buf, as: UTF8.self)
       #expect(str.contains(#""iteration":2"#))
     }
+
+    let encoded6_3 = try #require(ABI.EncodedEvent<ABI.v6_3>(encoding: event, in: context, messages: []))
+    #expect(encoded6_3.iteration == nil)
+    try JSON.withEncoding(of: encoded6_3) { buf in
+      let str = String(decoding: buf, as: UTF8.self)
+      #expect(!str.contains(#"iteration"#))
+    }
   }
 
   @Test func `Decode iteration`() throws {
