@@ -66,6 +66,11 @@ extension ABI {
     /// The ID of the test associated with this event, if any.
     var testID: EncodedTest<V>.ID?
 
+    /// The iteration of the `testID` being executed.
+    ///
+    /// This value is one-indexed; the first iteration is `1`.
+    public var iteration: Int?
+
     /// The ID of the test case associated with this event, if any.
     ///
     /// - Warning: Test cases are not yet part of the JSON schema.
@@ -103,13 +108,6 @@ extension ABI {
     ///   part of said JSON schema.
     @_spi(Experimental)
     public var _sourceLocation: EncodedSourceLocation<V>?
-
-    /// The iteration of the `testID` being executed.
-    ///
-    /// This value is one-indexed; the first iteration is `1`.
-    ///
-    /// - Warning: Iteration indices are not yet part of the JSON schema.
-    var _iteration: Int?
 
     init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
       switch event.kind {
@@ -172,13 +170,13 @@ extension ABI {
         case let .valueAttached(attachment):
           _sourceLocation = EncodedSourceLocation<V>(encoding: attachment.sourceLocation)
         case .testCaseStarted, .testCaseEnded, .testStarted, .testEnded:
-          _iteration = eventContext.iteration
+          iteration = eventContext.iteration
         case let .testCaseCancelled(skipInfo),
           let .testSkipped(skipInfo),
           let .testCancelled(skipInfo):
           _comments = Array(skipInfo.comment).map(\.rawValue)
           _sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
-          _iteration = eventContext.iteration
+          iteration = eventContext.iteration
         default:
           break
         }

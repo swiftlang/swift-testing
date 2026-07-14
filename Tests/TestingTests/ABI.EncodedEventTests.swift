@@ -118,5 +118,30 @@
       return
     }
   }
+
+  @Test func `Decode iteration`() throws {
+    var event = try encodedEvent(
+      """
+      {
+        "kind": "testStarted",
+        "instant": {"absolute": 123, "since1970": 456},
+        "messages": [],
+        "testID": "SomeValidTestID/testFunc()",
+        "iteration": 2
+      }
+      """)
+    #expect(event.iteration == 2)
+
+    event = try encodedEvent(
+      """
+      {
+        "kind": "testStarted",
+        "instant": {"absolute": 123, "since1970": 456},
+        "messages": [],
+        "testID": "SomeValidTestID/testFunc()"
+      }
+      """)
+    #expect(event.iteration == nil)
+  }
 }
 #endif
