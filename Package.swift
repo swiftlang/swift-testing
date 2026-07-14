@@ -116,7 +116,7 @@ let package = Package(
     // manager to use the lexicographically highest-sorted tag with the
     // specified semantic version, meaning the most recent "prerelease" tag will
     // always be used.
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "604.0.0-latest"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "605.0.0-latest"),
 
     // Add a dependency on Swift Argument Parser. Note that the rest of the
     // toolchain (as of this writing) uses 1.5.x, so we match that; if the
