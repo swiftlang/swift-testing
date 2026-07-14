@@ -115,6 +115,7 @@ extension ABI {
         kind = .runStarted
       case .testStarted:
         kind = .testStarted
+        iteration = eventContext.iteration
       case .testCaseStarted:
         // For non-parameterized tests, we elide `testCaseStarted` calls because it would be
         // redundant. However, for multiple iterations of a test case within a non-parameterized
@@ -128,6 +129,7 @@ extension ABI {
         } else {
           kind = .testCaseStarted
         }
+        iteration = eventContext.iteration
       case let .issueRecorded(recordedIssue):
         kind = .issueRecorded
         issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
@@ -144,9 +146,11 @@ extension ABI {
         } else {
           kind = .testCaseEnded
         }
+        iteration = eventContext.iteration
       case .testCaseCancelled:
         kind = .testCaseCancelled
       case .testEnded:
+        iteration = eventContext.iteration
         kind = .testEnded
       case .testSkipped:
         kind = .testSkipped
@@ -169,14 +173,11 @@ extension ABI {
           _sourceLocation = recordedIssue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         case let .valueAttached(attachment):
           _sourceLocation = EncodedSourceLocation<V>(encoding: attachment.sourceLocation)
-        case .testCaseStarted, .testCaseEnded, .testStarted, .testEnded:
-          iteration = eventContext.iteration
         case let .testCaseCancelled(skipInfo),
           let .testSkipped(skipInfo),
           let .testCancelled(skipInfo):
           _comments = Array(skipInfo.comment).map(\.rawValue)
           _sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
-          iteration = eventContext.iteration
         default:
           break
         }
