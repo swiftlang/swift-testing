@@ -115,4 +115,94 @@ struct TestCaseIterationTests {
       }
     }
   }
+
+  // MARK: Encoded event ordering
+
+  private func assertEncodedEventKinds(
+    _ test: Test,
+    equals expected: [ABI.EncodedEvent<ABI.v6_4>.Kind],
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) async {
+    let events = Mutex<[ABI.EncodedEvent<ABI.CurrentVersion>]>([])
+    var configuration = Configuration()
+    configuration.eventHandler = { event, context in
+      guard let encoded = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: context, messages: []) else {
+        return
+      }
+      events.withLock {
+        $0.append(encoded)
+      }
+    }
+    configuration.repetitionPolicy = .repeating(maximumIterationCount: 2)
+
+    await test.run(configuration: configuration)
+    let kinds = events.rawValue.map(\.kind)
+    #expect(kinds == expected, sourceLocation: sourceLocation)
+  }
+
+  @Test
+  func `Non-parameterized test repetitions don't nest`() async throws {
+    let test = Test(name: "Test Name") {}
+    await assertEncodedEventKinds(test, equals: [
+      .runStarted,
+      .testStarted,
+      .testEnded,
+      .testStarted,
+      .testEnded,
+      .runEnded
+    ])
+  }
+
+  @Test
+  func `Parameterized test repetitions are bookended with testStarted/Ended events`() async throws {
+    let test = Test(arguments: [0], name: "Test Name") { _ in }
+    await assertEncodedEventKinds(test, equals: [
+      .runStarted,
+      .testStarted,
+      .testCaseStarted,
+      .testCaseEnded,
+      .testCaseStarted,
+      .testCaseEnded,
+      .testEnded,
+      .runEnded
+    ])
+  }
+
+  @Test
+  func `Non-parameterized test cancellation reports a testCancelled event`() async throws {
+    let test = Test(name: "Test Name") {
+      try Test.cancel()
+    }
+
+    await assertEncodedEventKinds(test, equals: [
+      .runStarted,
+      .testStarted,
+      .testCancelled,
+      .testEnded,
+      .testStarted,
+      .testCancelled,
+      .testEnded,
+      .runEnded
+    ])
+  }
+
+  @Test
+  func `Parameterized test cancellation reports a testCaseCancelled event`() async throws {
+    let test = Test(arguments: [0], name: "Test Name") { _ in
+      try Test.cancel()
+    }
+
+    await assertEncodedEventKinds(test, equals: [
+      .runStarted,
+      .testStarted,
+      .testCaseStarted,
+      .testCaseCancelled,
+      .testCaseEnded,
+      .testCaseStarted,
+      .testCaseCancelled,
+      .testCaseEnded,
+      .testEnded,
+      .runEnded
+    ])
+  }
 }

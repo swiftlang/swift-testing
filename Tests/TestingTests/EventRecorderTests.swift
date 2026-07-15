@@ -594,7 +594,9 @@ struct EventRecorderTests {
     let encodedEvents = [
       Event(.runStarted, testID: nil, testCaseID: nil),
       Event(.testStarted, testID: test.id, testCaseID: nil),
+      Event(.testCaseStarted, testID: test.id, testCaseID: nil),
       Event(.issueRecorded(.init(kind: .unconditional)), testID: test.id, testCaseID: nil),
+      Event(.testCaseEnded, testID: test.id, testCaseID: nil),
       Event(.testEnded, testID: test.id, testCaseID: nil),
       Event(.runEnded, testID: nil, testCaseID: nil),
     ].compactMap { event in
