@@ -104,7 +104,7 @@ package struct LocalProcessGrommet: Grommet {
         let eventContext = Event.Context(
           test: encodedEvent.testID.flatMap(context.test(identifiedBy:)),
           testCase: nil,
-          iteration: encodedEvent._iteration,
+          iteration: encodedEvent.iteration,
           configuration: nil
         )
         eventHandler(event, eventContext)
