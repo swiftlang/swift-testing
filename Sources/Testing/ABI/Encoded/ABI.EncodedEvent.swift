@@ -165,7 +165,10 @@ extension ABI {
 
       if V.versionNumber >= ABI.v6_4.versionNumber {
         switch event.kind {
-        case .testStarted, .testCaseStarted, .testEnded, .testCaseEnded:
+        case .testStarted, .testCaseStarted,
+            .testEnded, .testCaseEnded,
+            .testCancelled, .testCaseCancelled,
+            .testSkipped:
           iteration = eventContext.iteration
         default:
           break
