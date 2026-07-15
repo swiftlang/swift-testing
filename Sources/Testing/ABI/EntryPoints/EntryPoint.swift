@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
+internal import _TestingInternals
 
 #if canImport(Synchronization)
 private import Synchronization
@@ -312,7 +312,7 @@ public struct __CommandLineArguments_v0: Sendable {
 
 #if os(Windows)
   /// The value of the `--__harness-event-stream-handle` argument.
-  var harnessEventStreamHANDLE: HANDLE?
+  nonisolated(unsafe) var harnessEventStreamHANDLE: HANDLE?
 #else
   /// The value of the `--__harness-event-stream-file-descriptor` argument.
   var harnessEventStreamFileDescriptor: CInt?
@@ -505,12 +505,19 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // Harness event stream file descriptor (file handle on Windows)
   var hasHarnessEventStream = false
 #if os(Windows)
-  if let handle = args.argumentValue(forLabel: "--__harness-event-stream-handle").flatMap(UInt.init).flatMap(HANDLE.init(bitPattern:)) {
+  if let handleString = args.argumentValue(forLabel: "--__harness-event-stream-handle") {
+    guard let handle = UInt(handleString).flatMap(HANDLE.init(bitPattern:)),
+          handle != INVALID_HANDLE_VALUE else {
+      throw _EntryPointError.invalidArgument("--__harness-event-stream-handle", value: handleString)
+    }
     result.harnessEventStreamHANDLE = handle
     hasHarnessEventStream = true
   }
 #else
-  if let fd = args.argumentValue(forLabel: "--__harness-event-stream-file-descriptor").flatMap(CInt.init) {
+  if let fdString = args.argumentValue(forLabel: "--__harness-event-stream-file-descriptor") {
+    guard let fd = CInt(fdString) else {
+      throw _EntryPointError.invalidArgument("--__harness-event-stream-file-descriptor", value: fdString)
+    }
     result.harnessEventStreamFileDescriptor = fd
     hasHarnessEventStream = true
   }
