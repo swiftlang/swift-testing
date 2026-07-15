@@ -681,7 +681,7 @@ extension Event.HumanReadableOutputRecorder {
       let eventContext = Event.Context(
         test: encodedEvent.testID.flatMap(context.test(identifiedBy:)),
         testCase: nil,
-        iteration: encodedEvent._iteration,
+        iteration: encodedEvent.iteration,
         configuration: nil
       )
       return record(event, in: eventContext, configuration: configuration)
