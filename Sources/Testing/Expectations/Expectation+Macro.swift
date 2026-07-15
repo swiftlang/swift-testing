@@ -888,6 +888,52 @@ public macro expect(
   performing expression: @escaping @Sendable () async throws -> Void
 ) -> ExitTest.Result? = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
 
+/// Check that an expression causes the process to terminate in a given fashion.
+///
+/// - Parameters:
+///   - expectedExitCondition: The expected exit condition.
+///   - observedValues: An array of key paths representing results from within
+///     the exit test that should be observed and returned by this macro. The
+///     ``ExitTest/Result/exitStatus`` property is always returned.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which recorded expectations and
+///     issues should be attributed.
+///   - expression: The expression to be evaluated.
+///
+/// - Returns: If the exit test passes, an instance of ``ExitTest/Result``
+///   describing the state of the exit test when it exited. If the exit test
+///   fails, the result is `nil`.
+///
+/// Use this overload of `#expect()` when an expression will cause the current
+/// process to terminate and the nature of that termination will determine if
+/// the test passes or fails. For example, to test that calling `fatalError()`
+/// causes a process to terminate:
+///
+/// ```swift
+/// await #expect(processExitsWith: .failure) {
+///   fatalError()
+/// }
+/// ```
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
+@freestanding(expression)
+@_documentation(visibility: private)
+@discardableResult
+#if SWT_NO_EXIT_TESTS
+@_unavailableInEmbedded
+@available(*, unavailable, message: "Exit tests are not available on this platform.")
+#endif
+public macro expect(
+  processExitsWith expectedExitCondition: ExitTest.Condition,
+  observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
+  _ comment: @autoclosure () -> Comment? = nil,
+  sourceLocation: SourceLocation = #_sourceLocation,
+  performing expression: @escaping @Sendable () throws -> Void
+) -> ExitTest.Result? = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
+
 /// Check that an expression causes the process to terminate in a given fashion
 /// and throw an error if it did not.
 ///
@@ -934,6 +980,54 @@ public macro require(
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: @escaping @Sendable () async throws -> Void
+) -> ExitTest.Result = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
+
+/// Check that an expression causes the process to terminate in a given fashion
+/// and throw an error if it did not.
+///
+/// - Parameters:
+///   - expectedExitCondition: The expected exit condition.
+///   - observedValues: An array of key paths representing results from within
+///     the exit test that should be observed and returned by this macro. The
+///     ``ExitTest/Result/exitStatus`` property is always returned.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which recorded expectations and
+///     issues should be attributed.
+///   - expression: The expression to be evaluated.
+///
+/// - Returns: An instance of ``ExitTest/Result`` describing the state of the
+///   exit test when it exited.
+///
+/// - Throws: An instance of ``ExpectationFailedError`` if the exit condition of
+///   the child process does not equal `expectedExitCondition`.
+///
+/// Use this overload of `#require()` when an expression will cause the current
+/// process to terminate and the nature of that termination will determine if
+/// the test passes or fails. For example, to test that calling `fatalError()`
+/// causes a process to terminate:
+///
+/// ```swift
+/// try await #require(processExitsWith: .failure) {
+///   fatalError()
+/// }
+/// ```
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
+@freestanding(expression)
+@discardableResult
+#if SWT_NO_EXIT_TESTS
+@_unavailableInEmbedded
+@available(*, unavailable, message: "Exit tests are not available on this platform.")
+#endif
+public macro require(
+  processExitsWith expectedExitCondition: ExitTest.Condition,
+  observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
+  _ comment: @autoclosure () -> Comment? = nil,
+  sourceLocation: SourceLocation = #_sourceLocation,
+  performing expression: @escaping @Sendable () throws -> Void
 ) -> ExitTest.Result = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
 
 #if !SWT_NO_CODABLE

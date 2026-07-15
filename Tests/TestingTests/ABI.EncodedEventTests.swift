@@ -118,5 +118,53 @@
       return
     }
   }
+
+  // MARK: Iteration
+
+  @Test func `Encode iteration`() throws {
+    let test = Test {}
+    let event = Event(.testCaseStarted, testID: .init(["SomeValidTestID", "testFunc()"]), testCaseID: nil)
+    let context = Event.Context(test: test, testCase: nil, iteration: 2, configuration: nil)
+    let encoded = try #require(ABI.EncodedEvent<ABI.v6_4>(encoding: event, in: context, messages: []))
+
+    #expect(encoded.iteration == 2)
+
+    try JSON.withEncoding(of: encoded) { buf in
+      let str = String(decoding: buf, as: UTF8.self)
+      #expect(str.contains(#""iteration":2"#))
+    }
+
+    let encoded6_3 = try #require(ABI.EncodedEvent<ABI.v6_3>(encoding: event, in: context, messages: []))
+    #expect(encoded6_3.iteration == nil)
+    try JSON.withEncoding(of: encoded6_3) { buf in
+      let str = String(decoding: buf, as: UTF8.self)
+      #expect(!str.contains(#"iteration"#))
+    }
+  }
+
+  @Test func `Decode iteration`() throws {
+    var event = try encodedEvent(
+      """
+      {
+        "kind": "testStarted",
+        "instant": {"absolute": 123, "since1970": 456},
+        "messages": [],
+        "testID": "SomeValidTestID/testFunc()",
+        "iteration": 2
+      }
+      """)
+    #expect(event.iteration == 2)
+
+    event = try encodedEvent(
+      """
+      {
+        "kind": "testStarted",
+        "instant": {"absolute": 123, "since1970": 456},
+        "messages": [],
+        "testID": "SomeValidTestID/testFunc()"
+      }
+      """)
+    #expect(event.iteration == nil)
+  }
 }
 #endif

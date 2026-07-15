@@ -15,10 +15,10 @@ concurrency:
 jobs:
   tests:
     name: Test
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.12
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.13
     with:
       linux_swift_versions: '["nightly-6.4.x"]'
-      linux_os_versions: '["jammy"]'
+      linux_os_versions: '["jammy", "amazonlinux2023", "fedora41"]'
       linux_static_sdk_versions: '["nightly-6.4.x"]'
       windows_swift_versions: '["nightly-6.4.x"]'
       enable_macos_checks: true
