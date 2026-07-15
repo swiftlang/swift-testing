@@ -82,8 +82,10 @@ extension Attachment {
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) where AttachableValue: _AttachableImageWrapper<T> & AttachableWrapper {
+#if !SWT_NO_IMAGE_ATTACHMENTS
     let attachment = Self(image, named: preferredName, as: imageFormat, sourceLocation: sourceLocation)
     Self.record(attachment, sourceLocation: sourceLocation)
+#endif
   }
 }
 

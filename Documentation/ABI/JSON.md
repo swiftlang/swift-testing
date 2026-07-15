@@ -205,6 +205,8 @@ sufficient information to display the event in a human-readable format.
   ["attachment": <attachment>,] ; the attachment (if kind is "valueAttached")
   "messages": <array:message>,
   ["testID": <test-id>,]
+  ["iteration": <number>,] ; the iteration number (if the event is recorded
+                           ; during test execution)
 }
 
 <event-kind> ::= "runStarted" | "testStarted" | "testCaseStarted" |
@@ -249,3 +251,4 @@ sufficient information to display the event in a human-readable format.
 | [ST-0016](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0016-test-cancellation.md#integration-with-supporting-tools) | Added test cancellation. | 6.3 | `"6.3"` |
 | [ST-0019](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0019-include-tags-bugs-and-timeline-in-event-stream.md#json-schema-changes) | Added `tags`, `bugs`, and `timeLimit`. | 6.4 | `"6.4"` |
 | [ST-0020](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0020-sourcelocation-filepath.md#detailed-design) | Added `filePath`. | 6.3 | `"6.3"` |
+| [ST-0024](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0024-per-test-case-repetitions.md)| Added `iteration`. | 6.4 | `"6.4"` |
