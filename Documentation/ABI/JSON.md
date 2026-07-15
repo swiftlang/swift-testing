@@ -205,8 +205,8 @@ sufficient information to display the event in a human-readable format.
   ["attachment": <attachment>,] ; the attachment (if kind is "valueAttached")
   "messages": <array:message>,
   ["testID": <test-id>,]
-  ["iteration": <number>,] ; the iteration number (if "kind" is
-      ; "testStarted", "testCaseStarted, "testEnded", or "testCaseEnded")
+  ["iteration": <number>,] ; the iteration number (if the event is recorded
+                           ; during test execution)
 }
 
 <event-kind> ::= "runStarted" | "testStarted" | "testCaseStarted" |

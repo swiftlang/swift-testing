@@ -164,15 +164,7 @@ extension ABI {
       // Fields introduced in 6.4
 
       if V.versionNumber >= ABI.v6_4.versionNumber {
-        switch event.kind {
-        case .testStarted, .testCaseStarted,
-            .testEnded, .testCaseEnded,
-            .testCancelled, .testCaseCancelled,
-            .testSkipped:
-          iteration = eventContext.iteration
-        default:
-          break
-        }
+        iteration = eventContext.iteration
       }
 
       // Experimental fields
