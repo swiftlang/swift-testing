@@ -21,6 +21,7 @@ import Foundation
   @Option(name: "--test-product-path")
   var testProductPaths: [String] = []
 
+#if SWT_TARGET_OS_APPLE
   @Option(name: "--swiftpm-testing-helper-path")
   var _swiftPMTestingHelperPath: String?
 
@@ -40,20 +41,34 @@ import Foundation
       return swiftPMTestingHelperURL.path
     }
   }
+#endif
 
   mutating func run() async throws {
+#if SWT_TARGET_OS_APPLE
     let swiftPMTestingHelperPath = try swiftPMTestingHelperPath
-    let grommets: [any Grommet] = try testProductPaths.map { testProductPath in
+#else
+#endif
+    let grommets: [any Grommet]
+#if !SWT_NO_PROCESS_SPAWNING
+    grommets = try testProductPaths.map { testProductPath in
+#if SWT_TARGET_OS_APPLE
       let testProductBundle = Bundle(path: testProductPath)
-      guard let testProductExecutablePath = testProductBundle?.executablePath else {
+      guard let testProductBinaryPath = testProductBundle?.executablePath else {
         throw CocoaError(.fileReadNoSuchFile)
       }
 
       return LocalProcessGrommet(
-        testProductExecutablePath: testProductExecutablePath,
+        testProductBinaryPath: testProductBinaryPath,
         swiftPMTestingHelperPath: swiftPMTestingHelperPath
       )
+#else
+      return LocalProcessGrommet(testProductPath: testProductBinaryPath)
+#endif
     }
+#else
+    grommets = []
+#endif
+
     try await harnessEntryPoint(running: grommets) as Never
   }
 }
