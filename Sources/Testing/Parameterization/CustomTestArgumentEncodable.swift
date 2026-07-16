@@ -99,6 +99,25 @@ extension Test.Case.Argument.ID {
   }
 }
 
+extension Test.Case.Argument.ID {
+  /// Initialize an ID instance by combining several argument IDs into one.
+  ///
+  /// - Parameters:
+  ///   - argumentIDs: The argument IDs to combine, in order.
+  ///
+  /// The bytes of each argument ID are length-prefixed before being hashed
+  /// together, so that argument boundaries are preserved.
+  init(combining argumentIDs: some Sequence<Test.Case.Argument.ID>) {
+    var bytes = [UInt8]()
+    for argumentID in argumentIDs {
+      var count = UInt64(argumentID.bytes.count).littleEndian
+      withUnsafeBytes(of: &count) { bytes.append(contentsOf: $0) }
+      bytes.append(contentsOf: argumentID.bytes)
+    }
+    self.init(bytes: SHA256.hash(bytes))
+  }
+}
+
 #if !SWT_NO_CODABLE
 extension Test.Case.Argument.ID {
   /// Encode the specified test argument value and store its encoded
