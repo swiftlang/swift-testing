@@ -35,6 +35,76 @@ extension ABI {
       case testSkipped
       case testCancelled
       case runEnded
+
+      /// Encodes an ``Event/Kind`` into an ``EncodedEvent/Kind``.
+      ///
+      /// Not all ``Event/Kind`` values map to an encoded kind value.
+      init?(encoding kind: Event.Kind, in eventContext: borrowing Event.Context) {
+        /// For all test cases of a given test, we emit the following set of
+        /// events internally.
+        ///
+        /// ```
+        /// testStarted
+        /// testCaseStarted (for each case)
+        /// ...
+        /// testCaseEnded (for each case)
+        /// ...
+        /// testEnded
+        /// ```
+        ///
+        /// For parameterized tests, this is what clients expect; the test
+        /// itself has a distinct start/end from all the cases.
+        ///
+        /// For non-parameterized tests, however, clients don't need a redundant
+        /// `testCaseStarted`/`testCaseEnded` for a single case, so we elide it.
+        ///
+        /// However, we don't know which `iteration` we're on until we've
+        /// started running test cases, and subsequent iterations will post
+        /// additional `testCaseStarted`/`testCaseEnded` events.
+        ///
+        /// To provide a coherent façade to our clients:
+        /// - For non-parameterized tests, elide the outer
+        ///   `testStarted`/`testEnded` events, and replace `testCaseStarted`/
+        ///   `testCaseEnded` with `testStarted`/`testEnded`.
+        /// - For parameterized tests, emit all events.
+        let isNonParameterizedTest = eventContext.test?.isParameterized == false
+
+        switch kind {
+        case .runStarted:
+          self = .runStarted
+        case .testStarted:
+          if isNonParameterizedTest {
+            return nil
+          }
+          self = .testStarted
+        case .testCaseStarted:
+          self = isNonParameterizedTest ? .testStarted : .testCaseStarted
+        case .issueRecorded:
+          self = .issueRecorded
+        case .valueAttached:
+          self = .valueAttached
+        case .testCaseEnded:
+          self = isNonParameterizedTest ? .testEnded : .testCaseEnded
+        case .testCaseCancelled:
+          self = isNonParameterizedTest ? .testCancelled : .testCaseCancelled
+        case .testEnded:
+          if isNonParameterizedTest {
+            return nil
+          }
+          self = .testEnded
+        case .testSkipped:
+          self = .testSkipped
+        case .testCancelled:
+          if isNonParameterizedTest {
+            return nil
+          }
+          self = .testCancelled
+        case .runEnded:
+          self = .runEnded
+        default:
+          return nil
+        }
+      }
     }
 
     /// The kind of event.
@@ -110,52 +180,18 @@ extension ABI {
     public var _sourceLocation: EncodedSourceLocation<V>?
 
     init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
+      guard let encodedKind = Kind(encoding: event.kind, in: eventContext) else {
+        return nil
+      }
+      kind = encodedKind
+
       switch event.kind {
-      case .runStarted:
-        kind = .runStarted
-      case .testStarted:
-        kind = .testStarted
-      case .testCaseStarted:
-        // For non-parameterized tests, we elide `testCaseStarted` calls because it would be
-        // redundant. However, for multiple iterations of a test case within a non-parameterized
-        // function, we need to emit another `testStarted` event.
-        if eventContext.test?.isParameterized == false {
-          if let iteration = eventContext.iteration, iteration > 1 {
-            kind = .testStarted
-          } else {
-            return nil
-          }
-        } else {
-          kind = .testCaseStarted
-        }
       case let .issueRecorded(recordedIssue):
-        kind = .issueRecorded
         issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
       case let .valueAttached(attachment):
-        kind = .valueAttached
         self.attachment = EncodedAttachment(encoding: attachment)
-      case .testCaseEnded:
-        if eventContext.test?.isParameterized == false {
-          if let iteration = eventContext.iteration, iteration > 1 {
-            kind = .testEnded
-          } else {
-            return nil
-          }
-        } else {
-          kind = .testCaseEnded
-        }
-      case .testCaseCancelled:
-        kind = .testCaseCancelled
-      case .testEnded:
-        kind = .testEnded
-      case .testSkipped:
-        kind = .testSkipped
-      case .testCancelled:
-        kind = .testCancelled
-      case .runEnded:
-        kind = .runEnded
       default:
-        return nil
+        break
       }
       instant = EncodedInstant(encoding: event.instant)
       self.messages = messages.map(EncodedMessage.init)
