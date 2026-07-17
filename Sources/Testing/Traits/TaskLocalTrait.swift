@@ -46,7 +46,7 @@ public struct TaskLocalTrait<Value: Sendable>: SuiteTrait, TestTrait, TestScopin
   public func provideScope(
     for test: Test,
     testCase: Test.Case?,
-    performing function: @concurrent () async throws -> Void
+    performing function: @Sendable () async throws -> Void
   ) async throws {
     try await taskLocal.withValue(value()) {
       try await function()
