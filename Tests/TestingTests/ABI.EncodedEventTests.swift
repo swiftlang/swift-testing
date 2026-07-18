@@ -166,5 +166,24 @@
       """)
     #expect(event.iteration == nil)
   }
+
+  @Test func `Encoded event for non-parameterized test doesn't add testCase`() async {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, context in
+      guard let encoded = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: context, messages: []) else {
+        return
+      }
+      switch encoded.kind {
+      case .testStarted, .testEnded, .testCancelled:
+        #expect(encoded._testCase == nil)
+      case .testCaseStarted, .testCaseEnded, .testCaseCancelled:
+        Issue.record("Should not encode test case events for non-parameterized test")
+      default:
+        return
+      }
+    }
+    let test = Test() {}
+    await test.run(configuration: configuration)
+  }
 }
 #endif
