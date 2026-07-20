@@ -23,19 +23,36 @@ package func harnessEntryPoint(
 ) async throws -> CInt {
   var exitCodes = [CInt]()
 
+#if !SWT_NO_FILE_IO
+  let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
+    try? FileHandle.stderr.write(string)
+  }
+#endif
+
   let grommetCount = grommets.count
-  for grommet in grommets {
+  for (i, grommet) in grommets.enumerated() {
     let exitCode = Atomic<CInt>(EXIT_SUCCESS)
 
     func open(_ grommet: some Grommet) async throws {
-      if grommetCount > 1 {
-        try? FileHandle.stderr.write("Running '\(grommet.grommetName)'...\n")
-      }
-
       try await grommet.run { event, eventContext in
+        var recordEvent = true
+
         switch event.kind {
         case .testDiscovered:
           _ = exitCode.compareExchange(expected: EXIT_SUCCESS, desired: EXIT_NO_TESTS_FOUND, ordering: .sequentiallyConsistent)
+#if !SWT_NO_FILE_IO
+        case .runStarted:
+          if i > 0 {
+            recordEvent = false
+          }
+          if grommetCount > 1 {
+            try? FileHandle.stderr.write("Running '\(grommet.grommetName)'...\n")
+          }
+        case .runEnded:
+          if i != grommets.count - 1 {
+            recordEvent = false
+          }
+#endif
         case let .issueRecorded(issue):
           if issue.isFailure {
             exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
@@ -43,7 +60,12 @@ package func harnessEntryPoint(
         default:
           break
         }
-        print(event)
+
+#if !SWT_NO_FILE_IO
+        if recordEvent {
+          eventRecorder.record(event, in: eventContext)
+        }
+#endif
       }
     }
 

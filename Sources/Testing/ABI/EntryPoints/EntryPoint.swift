@@ -522,11 +522,6 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     hasHarnessEventStream = true
   }
 #endif
-  if hasHarnessEventStream {
-    // The presence of a harness event stream implies suppression of the normal
-    // stderr output.
-    result.verbosity = .min
-  }
 #endif
 
   // XML output
@@ -574,6 +569,13 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   if args.contains("--quiet") || args.contains("-q") {
     result.quiet = true
   }
+#if !SWT_NO_FILE_IO
+  if hasHarnessEventStream {
+    // The presence of a harness event stream implies suppression of the normal
+    // stderr output.
+    result.verbosity = .min
+  }
+#endif
 
   // Filtering
   func filterValues(forArgumentsWithLabel label: String) -> [String] {

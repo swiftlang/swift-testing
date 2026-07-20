@@ -47,7 +47,7 @@ package struct LocalProcessGrommet: Grommet {
       arguments += [
         "--testing-library", "swift-testing",
       ]
-      arguments += CommandLine.arguments
+      arguments += CommandLine.arguments.dropFirst()
 #if os(Windows)
       backChannelWriteEnd.withUnsafeWindowsHANDLE { handle in
         guard let handle else {
