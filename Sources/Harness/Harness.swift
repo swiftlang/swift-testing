@@ -18,6 +18,7 @@ import Foundation
     commandName: "swift-testing-harness"
   )
 
+#if !SWT_NO_PROCESS_SPAWNING
   @Option(name: "--test-product-path")
   var testProductPaths: [String] = []
 
@@ -42,15 +43,22 @@ import Foundation
     }
   }
 #endif
+#endif
+
+#if !SWT_NO_FILE_IO
+  @Option(name: "--event-stream-input-path")
+  var eventStreamInputPaths: [String] = []
+#endif
 
   mutating func run() async throws {
+    var grommets = [any Grommet]()
+
+#if !SWT_NO_PROCESS_SPAWNING
 #if SWT_TARGET_OS_APPLE
     let swiftPMTestingHelperPath = try swiftPMTestingHelperPath
-#else
 #endif
-    let grommets: [any Grommet]
 #if !SWT_NO_PROCESS_SPAWNING
-    grommets = try testProductPaths.map { testProductPath in
+    grommets += try testProductPaths.map { testProductPath in
 #if SWT_TARGET_OS_APPLE
       let testProductBundle = Bundle(path: testProductPath)
       guard let testProductBinaryPath = testProductBundle?.executablePath else {
@@ -65,8 +73,11 @@ import Foundation
       return LocalProcessGrommet(testProductPath: testProductPath)
 #endif
     }
-#else
-    grommets = []
+#endif
+#endif
+
+#if !SWT_NO_FILE_IO
+    grommets += try eventStreamInputPaths.map(FileGrommet.init(readingFromFileAtPath:))
 #endif
 
     try await harnessEntryPoint(running: grommets) as Never

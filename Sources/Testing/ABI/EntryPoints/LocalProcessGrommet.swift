@@ -80,55 +80,20 @@ package struct LocalProcessGrommet: Grommet {
       }
       backChannelWriteEnd.close()
 
+      // Wait for the child process to terminate.
       taskGroup.addTask {
         _ = try await wait(for: processID)
       }
-      taskGroup.addTask { [backChannelReadEnd] in
-        try await _processRecords(fromBackChannel: backChannelReadEnd!, eventHandler: eventHandler)
+
+      // Read events back out from the back channel.
+      let fileGrommet = FileGrommet(readingFrom: backChannelReadEnd!)
+      taskGroup.addTask {
+        try await fileGrommet.run(eventHandler)
       }
+
       try await taskGroup.waitForAll()
     }
 
-  }
-
-  private func _processRecords(
-    fromBackChannel backChannel: borrowing FileHandle,
-    eventHandler: @Sendable (borrowing Event, borrowing Event.Context) -> Void
-  ) async throws {
-    var context = ABI.Context()
-
-    var terminator: UInt8?
-    repeat {
-      let recordJSON: [UInt8]
-      (recordJSON, terminator) = try backChannel.read(until: \.isASCIINewline)
-
-      // Allow other tasks to run after we may have blocked for some time on
-      // I/O with the child process.
-      await Task.yield()
-
-      if recordJSON.isEmpty {
-        continue
-      }
-      let record = try recordJSON.withUnsafeBufferPointer { recordJSON in
-        try JSON.decode(ABI.Record<ABI.HarnessVersion>.self, from: .init(recordJSON))
-      }
-      switch record.kind {
-      case let .test(encodedTest):
-        _ = Test(decoding: encodedTest, in: &context)
-      case let .event(encodedEvent):
-        guard let event = Event(decoding: encodedEvent) else {
-          try? FileHandle.stderr.write("Failed to decode \(encodedEvent)")
-          return
-        }
-        let eventContext = Event.Context(
-          test: encodedEvent.testID.flatMap(context.test(identifiedBy:)),
-          testCase: nil,
-          iteration: encodedEvent.iteration,
-          configuration: nil
-        )
-        eventHandler(event, eventContext)
-      }
-    } while terminator != nil
   }
 }
 #endif

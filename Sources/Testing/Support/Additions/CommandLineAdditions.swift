@@ -26,7 +26,7 @@ enum CommandLine {
 }
 #endif
 
-#if !SWT_NO_EXIT_TESTS
+#if !SWT_NO_PROCESS_SPAWNING
 extension CommandLine {
   /// The path to the current process' executable.
   package static var executablePath: String {
