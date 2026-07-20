@@ -16,11 +16,12 @@ extension Test.Case {
   /// different ``Test`` instances.
   @_spi(ForToolsIntegrationOnly)
   public struct ID: Sendable {
-    /// The IDs of the arguments of this instance's associated ``Test/Case``, in
-    /// the order they appear in ``Test/Case/arguments``.
+    /// The IDs of the arguments of this instance's associated ``Test/Case``.
     ///
-    /// The value of this property is `nil` for the ID of the single test case
-    /// associated with a non-parameterized test function.
+    /// For a parameterized test case, this array contains a single element: an
+    /// ``Test/Case/Argument/ID-swift.struct`` that combines the IDs of every
+    /// argument. The value of this property is `nil` for the ID of the single
+    /// test case associated with a non-parameterized test function.
     public var argumentIDs: [Argument.ID]?
 
     /// A number used to distinguish this test case from others associated with
@@ -49,7 +50,8 @@ extension Test.Case {
 
   @_spi(ForToolsIntegrationOnly)
   public var id: ID {
-    ID(argumentIDs: arguments.map { $0.map(\.id) }, discriminator: discriminator, isStable: isStable)
+    let argumentIDs = arguments.map { [Argument.ID(combining: $0.map(\.id))] }
+    return ID(argumentIDs: argumentIDs, discriminator: discriminator, isStable: isStable)
   }
 }
 

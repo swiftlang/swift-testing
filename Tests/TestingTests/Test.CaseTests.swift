@@ -92,6 +92,49 @@ struct Test_CaseTests {
       #expect(testCaseID.discriminator == 0)
     }
   }
+
+  @Suite("Combined argument ID Tests")
+  struct CombinedArgumentIDTests {
+    private func makeID(_ values: [any Sendable]) -> Test.Case.ID {
+      let parameters = values.indices.map {
+        Test.Parameter(index: $0, firstName: "p\($0)", type: Int.self)
+      }
+      return Test.Case(values: values, parameters: parameters, body: {}).id
+    }
+
+    @Test("Multiple arguments are folded into a single combined ID")
+    func multipleArgumentsFoldIntoOneID() {
+      let id = makeID([1, 2, 3])
+      #expect(id.argumentIDs?.count == 1)
+    }
+
+    @Test("Equal arguments produce equal combined IDs")
+    func equalArgumentsAreDeterministic() {
+      #expect(makeID([1, 2]).argumentIDs == makeID([1, 2]).argumentIDs)
+    }
+
+    @Test("Reordered arguments produce different combined IDs")
+    func combinedIDIsOrderSensitive() {
+      #expect(makeID([1, 2]).argumentIDs != makeID([2, 1]).argumentIDs)
+    }
+
+    @Test("A single argument's ID is used directly without combining")
+    func singleArgumentIDIsUsedDirectly() throws {
+      let parameter = Test.Parameter(index: 0, firstName: "x", type: Int.self)
+      let argumentID = try #require(try Test.Case.Argument.ID(identifying: 1, parameter: parameter))
+      #expect(makeID([1]).argumentIDs == [argumentID])
+    }
+
+    @Test("Combining is stable when all arguments are stable")
+    func combinedIDIsStableForStableArguments() {
+      #expect(makeID([1, 2]).isStable)
+    }
+
+    @Test("Combining preserves the nil ID for non-parameterized cases")
+    func nonParameterizedCaseHasNilArgumentIDs() {
+      #expect(Test.Case(body: {}).id.argumentIDs == nil)
+    }
+  }
 #endif
 }
 
