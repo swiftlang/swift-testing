@@ -63,7 +63,7 @@ package final class FileGrommet: Grommet {
     case let .test(encodedTest):
       _ = Test(decoding: encodedTest, in: &context)
     case let .event(encodedEvent):
-      guard let event = Event(decoding: encodedEvent) else {
+      guard let event = Event(decoding: encodedEvent, in: &context) else {
         try? FileHandle.stderr.write("Failed to decode \(encodedEvent)")
         return
       }
