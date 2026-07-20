@@ -67,35 +67,38 @@ extension ABI {
         ///   `testStarted`/`testEnded` events, and replace `testCaseStarted`/
         ///   `testCaseEnded` with `testStarted`/`testEnded`.
         /// - For parameterized tests, emit all events.
-        let isNonParameterizedTest = eventContext.test?.isParameterized == false
+        var isNonParameterizedTestFunction = false
+        if let test = eventContext.test, !test.isSuite {
+          isNonParameterizedTestFunction = !test.isParameterized
+        }
 
         switch kind {
         case .runStarted:
           self = .runStarted
         case .testStarted:
-          if isNonParameterizedTest {
+          if isNonParameterizedTestFunction {
             return nil
           }
           self = .testStarted
         case .testCaseStarted:
-          self = isNonParameterizedTest ? .testStarted : .testCaseStarted
+          self = isNonParameterizedTestFunction ? .testStarted : .testCaseStarted
         case .issueRecorded:
           self = .issueRecorded
         case .valueAttached:
           self = .valueAttached
         case .testCaseEnded:
-          self = isNonParameterizedTest ? .testEnded : .testCaseEnded
+          self = isNonParameterizedTestFunction ? .testEnded : .testCaseEnded
         case .testCaseCancelled:
-          self = isNonParameterizedTest ? .testCancelled : .testCaseCancelled
+          self = isNonParameterizedTestFunction ? .testCancelled : .testCaseCancelled
         case .testEnded:
-          if isNonParameterizedTest {
+          if isNonParameterizedTestFunction {
             return nil
           }
           self = .testEnded
         case .testSkipped:
           self = .testSkipped
         case .testCancelled:
-          if isNonParameterizedTest {
+          if isNonParameterizedTestFunction {
             return nil
           }
           self = .testCancelled
