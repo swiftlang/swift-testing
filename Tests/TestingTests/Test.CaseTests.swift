@@ -118,9 +118,11 @@ struct Test_CaseTests {
       #expect(makeID([1, 2]).argumentIDs != makeID([2, 1]).argumentIDs)
     }
 
-    @Test("Length-prefixing prevents argument boundary collisions")
-    func combinedIDAvoidsBoundaryCollisions() {
-      #expect(makeID(["ab", "c"]).argumentIDs != makeID(["a", "bc"]).argumentIDs)
+    @Test("A single argument's ID is used directly without combining")
+    func singleArgumentIDIsUsedDirectly() throws {
+      let parameter = Test.Parameter(index: 0, firstName: "x", type: Int.self)
+      let argumentID = try #require(try Test.Case.Argument.ID(identifying: 1, parameter: parameter))
+      #expect(makeID([1]).argumentIDs == [argumentID])
     }
 
     @Test("Combining is stable when all arguments are stable")
