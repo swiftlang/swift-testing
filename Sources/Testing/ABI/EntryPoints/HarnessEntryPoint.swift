@@ -29,7 +29,7 @@ package func harnessEntryPoint(
 
     func open(_ grommet: some Grommet) async throws {
       if grommetCount > 1 {
-        try? FileHandle.stderr.write("Running '\(grommet.grommetName)'...")
+        try? FileHandle.stderr.write("Running '\(grommet.grommetName)'...\n")
       }
 
       try await grommet.run { event, eventContext in
