@@ -26,6 +26,14 @@ package struct LocalProcessGrommet: Grommet {
   }
 #endif
 
+  package var grommetName: String {
+#if SWT_TARGET_OS_APPLE
+    _testProductBinaryPath
+#else
+    _testProductPath
+#endif
+  }
+
   package func run(_ eventHandler: @escaping @Sendable (borrowing Event, borrowing Event.Context) -> Void) async throws {
     try await withThrowingTaskGroup(of: Void.self) { taskGroup in
       var backChannelReadEnd: FileHandle!

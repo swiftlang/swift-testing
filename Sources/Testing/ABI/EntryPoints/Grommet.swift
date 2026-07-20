@@ -10,10 +10,15 @@
 
 // FIXME: need an actual name for this protocol
 package protocol Grommet: Sendable {
+  var grommetName: String { get }
   func run(_ eventHandler: @escaping @Sendable (borrowing Event, borrowing Event.Context) -> Void) async throws
 }
 
 extension Runner: Grommet {
+  package var grommetName: String {
+    ""
+  }
+
   package func run(_ eventHandler: @escaping @Sendable (borrowing Event, borrowing Event.Context) -> Void) async throws {
     var selfCopy = self
     selfCopy.configuration.eventHandler = { [oldEventHandler = selfCopy.configuration.eventHandler] event, context in

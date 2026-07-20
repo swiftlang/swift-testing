@@ -11,14 +11,20 @@
 #if !SWT_NO_FILE_IO
 package final class FileGrommet: Grommet {
   private let _file: FileHandle
+  private let _filePath: String
 
-  init(readingFrom file: consuming FileHandle) {
+  init(readingFrom file: consuming FileHandle, atPath filePath: String? = nil) {
     _file = file
+    _filePath = filePath ?? ""
   }
 
   package convenience init(readingFromFileAtPath filePath: String) throws {
     let file = try FileHandle(forReadingAtPath: filePath)
-    self.init(readingFrom: file)
+    self.init(readingFrom: file, atPath: filePath)
+  }
+
+  package var grommetName: String {
+    _filePath
   }
 
   package func run(_ eventHandler: @escaping @Sendable (borrowing Event, borrowing Event.Context) -> Void) async throws {

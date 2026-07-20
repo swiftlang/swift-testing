@@ -23,10 +23,15 @@ package func harnessEntryPoint(
 ) async throws -> CInt {
   var exitCodes = [CInt]()
 
+  let grommetCount = grommets.count
   for grommet in grommets {
     let exitCode = Atomic<CInt>(EXIT_SUCCESS)
 
     func open(_ grommet: some Grommet) async throws {
+      if grommetCount > 1 {
+        try? FileHandle.stderr.write("Running '\(grommet.grommetName)'...")
+      }
+
       try await grommet.run { event, eventContext in
         switch event.kind {
         case .testDiscovered:
