@@ -65,7 +65,7 @@ package struct LocalProcessGrommet: Grommet {
 #if SWT_TARGET_OS_APPLE
       let executablePath = _swiftPMTestingHelperPath
 #else
-      let executablePath = _testProductBinaryPath
+      let executablePath = _testProductPath
 #endif
 
       let processID = try withUnsafePointer(to: backChannelWriteEnd) { backChannelWriteEnd in
