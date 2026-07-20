@@ -62,7 +62,7 @@ import Foundation
         swiftPMTestingHelperPath: swiftPMTestingHelperPath
       )
 #else
-      return LocalProcessGrommet(testProductPath: testProductBinaryPath)
+      return LocalProcessGrommet(testProductPath: testProductPath)
 #endif
     }
 #else
