@@ -9,46 +9,8 @@
 //
 
 #if canImport(Foundation) && !SWT_NO_CODABLE
-public import Testing
+@_spi(ForToolsIntegrationOnly) public import Testing
 private import Foundation
-
-/// A common implementation of ``withUnsafeBytes(for:_:)`` that is used when a
-/// type conforms to `Encodable`, whether or not it also conforms to
-/// `NSSecureCoding`.
-///
-/// - Parameters:
-///   - attachableValue: The value to encode.
-///   - attachment: The attachment that is requesting a buffer (that is, the
-///     attachment containing this instance.)
-///   - body: A function to call. A temporary buffer containing a data
-///     representation of this instance is passed to it.
-///
-/// - Returns: Whatever is returned by `body`.
-///
-/// - Throws: Whatever is thrown by `body`, or any error that prevented the
-///   creation of the buffer.
-func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment: borrowing Attachment<E>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R where E: Attachable & Encodable {
-  let format = try EncodingFormat(for: attachment)
-
-  let data: Data
-  switch format {
-  case let .propertyListFormat(propertyListFormat):
-    let plistEncoder = PropertyListEncoder()
-    plistEncoder.outputFormat = propertyListFormat
-    data = try plistEncoder.encode(attachableValue)
-  case .default:
-    // The default format is JSON.
-    fallthrough
-  case .json:
-    // We cannot use our own JSON encoding wrapper here because that would
-    // require it be exported with (at least) package visibility which would
-    // create a visible external dependency on Foundation in the main testing
-    // library target.
-    data = try JSONEncoder().encode(attachableValue)
-  }
-
-  return try data.withUnsafeBytes(body)
-}
 
 // Implement the protocol requirements generically for any encodable value by
 // encoding to JSON. This lets developers provide trivial conformance to the
@@ -96,7 +58,8 @@ extension Attachable where Self: Encodable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try _Testing_Foundation.withUnsafeBytes(encoding: self, for: attachment, body)
+    let attachment = try Attachment(encoding: attachment.attachableValue, named: attachment.preferredName, sourceLocation: attachment.sourceLocation)
+    return try attachment.withUnsafeBytes(body)
   }
 }
 #endif

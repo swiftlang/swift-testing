@@ -16,7 +16,7 @@ import _Testing_AppKit
 #endif
 #if canImport(Foundation) && canImport(_Testing_Foundation)
 import Foundation
-import _Testing_Foundation
+@_spi(Experimental) import _Testing_Foundation
 #endif
 #if canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)
 import CoreGraphics
@@ -488,6 +488,33 @@ struct AttachmentTests {
     let attachment = Attachment(attachableValue, named: "loremipsum.gif")
     #expect(throws: CocoaError.self) {
       try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
+    }
+  }
+
+  @Test("Attach Codable-conformant value using Attachment.init(encoding:as:) and .json")
+  func attachCodableWithInitEncodingAsJSON() async throws {
+    let attachableValue = MyCodableAttachable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, as: .json)
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
+    }
+  }
+
+  @Test("Attach Codable-conformant value using Attachment.init(encoding:using:) and PropertyListEncoder")
+  func attachCodableWithInitEncodingUsingPropertyListEncoder() async throws {
+    let attachableValue = MyCodableAttachable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, using: PropertyListEncoder())
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
+    }
+  }
+
+  @Test("Attach Codable-conformant value using Attachment.init(encoding:using:) and JSONEncoder")
+  func attachCodableWithInitEncodingUsingJSONEncoder() async throws {
+    let attachableValue = MyCodableAttachable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, using: JSONEncoder())
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
     }
   }
 #endif
