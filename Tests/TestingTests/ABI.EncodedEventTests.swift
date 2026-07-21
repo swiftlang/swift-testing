@@ -15,13 +15,18 @@
   /// Creates an EncodedEvent from a JSON string.
   ///
   /// - Throws: If the JSON doesn't represent a valid EncodedEvent.
-  private func encodedEvent(
-    _ json: String,
-  ) throws -> ABI.EncodedEvent<ABI.CurrentVersion> {
+  private func encodedEvent<V>(_ version: V.Type, _ json: String) throws -> ABI.EncodedEvent<V> {
     var json = json
     return try json.withUTF8 { json in
-      try JSON.decode(ABI.EncodedEvent<ABI.CurrentVersion>.self, from: UnsafeRawBufferPointer(json))
+      try JSON.decode(ABI.EncodedEvent<V>.self, from: UnsafeRawBufferPointer(json))
     }
+  }
+
+  /// Creates an EncodedEvent from a JSON string.
+  ///
+  /// - Throws: If the JSON doesn't represent a valid EncodedEvent.
+  private func encodedEvent(_ json: String) throws -> ABI.EncodedEvent<ABI.CurrentVersion> {
+    try encodedEvent(ABI.CurrentVersion.self, json)
   }
 
   @Test func `Decoded event always has nil testID and testCaseID`() throws {
@@ -184,6 +189,102 @@
     }
     let test = Test() {}
     await test.run(configuration: configuration)
+  }
+
+  @Test func `Encoded instant in event is decodable`() throws {
+    let event = try encodedEvent(
+      """
+      {
+        "kind": "testStarted",
+        "instant": {"absolute": 123, "since1970": 456},
+        "messages": [],
+        "testID": "SomeValidTestID/testFunc()"
+      }
+      """)
+    let decoded = try #require(Event(decoding: event))
+
+#if !SWT_NO_SUSPENDING_CLOCK
+    #expect(decoded.instant.suspending.rawValue == .seconds(123))
+#endif
+#if !SWT_NO_UTC_CLOCK
+    #expect(decoded.instant.wall.rawValue == .seconds(456))
+#endif
+  }
+
+  @Test func `Encoded event with suspending clock instant only is decodable`() throws {
+    let event = try encodedEvent(
+      ABI.ExperimentalVersion.self,
+      """
+      {
+        "kind": "testStarted",
+        "instant": {"absolute": 123},
+        "messages": [],
+        "testID": "SomeValidTestID/testFunc()"
+      }
+      """)
+    let decoded = try #require(Event(decoding: event))
+
+#if !SWT_NO_SUSPENDING_CLOCK
+    #expect(decoded.instant.suspending.rawValue == .seconds(123))
+#endif
+#if !SWT_NO_UTC_CLOCK
+    #expect(decoded.instant.wall.rawValue > .seconds(123))
+#endif
+  }
+
+  @Test func `Encoded event with wall clock instant only is decodable`() throws {
+    let event = try encodedEvent(
+      ABI.ExperimentalVersion.self,
+      """
+      {
+        "kind": "testStarted",
+        "instant": {"since1970": 123},
+        "messages": [],
+        "testID": "SomeValidTestID/testFunc()"
+      }
+      """)
+    let decoded = try #require(Event(decoding: event))
+
+#if !SWT_NO_SUSPENDING_CLOCK
+    // The system will have booted well after the UNIX epoch + 123s
+    #expect(decoded.instant.suspending.rawValue < .zero)
+#endif
+#if !SWT_NO_UTC_CLOCK
+    #expect(decoded.instant.wall.rawValue == .seconds(123))
+#endif
+  }
+
+  @Test func `Encoded event with empty instant is decodable`() throws {
+    let event = try encodedEvent(
+      ABI.ExperimentalVersion.self,
+      """
+      {
+        "kind": "testStarted",
+        "instant": {},
+        "messages": [],
+        "testID": "SomeValidTestID/testFunc()"
+      }
+      """)
+    let before = Test.Clock().now
+    let decoded = try #require(Event(decoding: event))
+    let after = Test.Clock().now
+
+    #expect(decoded.instant > before)
+    #expect(decoded.instant < after)
+  }
+
+  @Test func `Encoded event with wall clock instant only fails to decode for older schema version`() throws {
+    let event = try encodedEvent(
+      ABI.v6_3.self,
+      """
+      {
+        "kind": "testStarted",
+        "instant": {"since1970": 123},
+        "messages": [],
+        "testID": "SomeValidTestID/testFunc()"
+      }
+      """)
+    #expect(Event(decoding: event) == nil)
   }
 }
 #endif

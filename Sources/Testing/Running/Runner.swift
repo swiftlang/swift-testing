@@ -515,6 +515,7 @@ extension Runner {
     runner.configureAttachmentHandling()
 #endif
     _ = Event.installFallbackEventHandler()
+    Test.Clock.establishSystemEpochIfNeeded()
 
     // Context to pass into the test run. We intentionally don't pass the Runner
     // itself (implicitly as `self` nor as an argument) because we don't want to
