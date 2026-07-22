@@ -618,11 +618,10 @@ struct EventRecorderTests {
 
     // Generate the messages to compare against.
     let recorder = Event.HumanReadableOutputRecorder()
-    let messages = encodedEvents.flatMap { recorder.record($0, in: &context) }
+    let messages = encodedEvents.compactMap { recorder.record($0, in: &context).first }
 
     let expectedMessages = [
       "Test run started.",
-      "Testing Library Version:",
       #"Test "Test Name" started."#,
       "Issue recorded",
       #"Test "Test Name" failed"#,
