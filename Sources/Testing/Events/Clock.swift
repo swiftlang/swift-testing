@@ -22,12 +22,12 @@ extension Test {
     public struct Instant: Sendable {
 #if !SWT_NO_SUSPENDING_CLOCK
       /// The suspending-clock time corresponding to this instant.
-      fileprivate(set) var suspending = TimeValue(rawValue: SuspendingClock().systemEpoch.duration(to: .now))
+      var suspending = TimeValue(rawValue: SuspendingClock().systemEpoch.duration(to: .now))
 #endif
 
 #if !SWT_NO_UTC_CLOCK
       /// The wall-clock time since 1970 corresponding to this instant.
-      fileprivate(set) var wall: TimeValue = {
+      var wall: TimeValue = {
 #if !SWT_NO_TIMESPEC
         var wall = timespec()
 #if os(Android)
@@ -63,6 +63,34 @@ extension Test {
       }
     }
 
+    /// Storage for ``systemEpoch``.
+    private static let _systemEpoch = Instant.now
+
+    /// Sets the system epoch for the test clock if it hasn't already been set
+    /// in the current process.
+    ///
+    /// ``Runner/run()`` calls this function before starting tests. Reading the
+    /// value of ``systemEpoch`` will also set the system epoch if it hasn't
+    /// been set yet.
+    static func establishSystemEpochIfNeeded() {
+      _ = _systemEpoch
+    }
+
+    /// An instant of this type that can be used as an epoch.
+    ///
+    /// This instant is semantically equal to the point in time when the current
+    /// process started running tests. As such, it is an arbitrary point in time
+    /// and is not equal to "zero" on the test clock, suspending clock, or wall
+    /// clock. You can use it to compute future and past instants, with the
+    /// caveat that computed instants ignore any wall clock adjustments that may
+    /// occur.
+    ///
+    /// Where possible, prefer ``now`` to get the current instant rather than
+    /// trying to compute it using this property.
+    public var systemEpoch: Instant {
+      Self._systemEpoch
+    }
+
     public init() {}
   }
 }
@@ -79,28 +107,6 @@ extension SuspendingClock.Instant {
   ///   - testClockInstant: The equivalent instant on ``Test/Clock``.
   public init(_ testClockInstant: Test.Clock.Instant) {
     self = SuspendingClock().systemEpoch + testClockInstant.suspending.rawValue
-  }
-}
-#endif
-
-#if !SWT_NO_ABI_JSON_SCHEMA
-@_spi(ForToolsIntegrationOnly)
-extension Test.Clock.Instant {
-  /// Initialize this instant to be exactly equal to an instant from the testing
-  /// library's event stream.
-  ///
-  /// - Note: When the original instant is encoded to the event stream,
-  /// it loses some precision.
-  ///
-  /// - Parameters:
-  ///   - instant: The encoded instant to initialize this instant from.
-  public init?<V>(decoding instant: ABI.EncodedInstant<V>) {
-#if !SWT_NO_SUSPENDING_CLOCK
-    suspending = TimeValue(rawValue: .seconds(instant.absolute))
-#endif
-#if !SWT_NO_UTC_CLOCK
-    wall = TimeValue(rawValue: .seconds(instant.since1970))
-#endif
   }
 }
 #endif

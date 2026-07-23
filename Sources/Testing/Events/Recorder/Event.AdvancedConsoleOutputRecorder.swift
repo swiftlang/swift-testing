@@ -555,7 +555,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     // Calculate total run duration
     var totalDuration = ""
     if let startTime = context.runStartTime, let endTime = context.runEndTime {
-      totalDuration = _formatDuration(endTime.absolute - startTime.absolute)
+      totalDuration = _formatDuration((endTime.absolute ?? 0.0) - (startTime.absolute ?? 0.0))
     }
     
     // Format: [total] tests completed in [duration] ([pass symbol] pass: [number], [failed symbol] fail: [number], ...)
@@ -710,7 +710,7 @@ extension Event.AdvancedConsoleOutputRecorder {
       var duration = ""
       if let startTime = context.testData[node.testID]?.startTime,
          let endTime = context.testData[node.testID]?.endTime {
-        duration = _formatDuration(endTime.absolute - startTime.absolute)
+        duration = _formatDuration((endTime.absolute ?? 0.0) - (startTime.absolute ?? 0.0))
       }
       
       // Format with right-aligned duration
