@@ -96,5 +96,13 @@
 
     #expect(test.decodeIDComponents() == nil)
   }
+
+  @Test func `Can encode an event for a test suite`() {
+    let test = Test(traits: [], sourceLocation: .__here(), containingTypeInfo: TypeInfo(describing: Int.self))
+    let event = Event(.testStarted, testID: test.id, testCaseID: nil)
+    let eventContext = Event.Context(test: test, testCase: nil, iteration: 1, configuration: nil)
+    let encodedEvent = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: eventContext, messages: [])
+    #expect(encodedEvent != nil)
+  }
 }
 #endif
