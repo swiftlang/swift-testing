@@ -27,7 +27,7 @@ enum CommandLine {
 #endif
 
 extension CommandLine {
-#if compiler(>=6.5) && !hasFeature(Embedded) && !os(WASI) && !SWT_TARGET_OS_APPLE
+#if !hasFeature(Embedded) && !os(WASI) && !SWT_TARGET_OS_APPLE
 #if os(Windows)
   private typealias FPEncoding = UTF16
 #else
