@@ -86,7 +86,7 @@ extension Backtrace {
         withUnsafeTemporaryAllocation(of: SYMBOL_INFO_PACKAGEW.self, capacity: 1) { symbolInfo in
           let symbolInfo = symbolInfo.baseAddress!
           symbolInfo.pointee.si.SizeOfStruct = ULONG(MemoryLayout<SYMBOL_INFOW>.stride)
-          symbolInfo.pointee.si.MaxNameLen = ULONG(MAX_SYM_NAME)
+          symbolInfo.pointee.si.MaxNameLen = MAX_SYM_NAME
           var displacement = DWORD64(0)
           if SymFromAddrW(hProcess, DWORD64(clamping: address), &displacement, symbolInfo.pointer(to: \.si)!) {
             let symbolName = String.decodeCString(symbolInfo.pointer(to: \.si.Name)!, as: UTF16.self)?.result

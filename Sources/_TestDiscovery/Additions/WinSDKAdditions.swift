@@ -42,7 +42,7 @@ extension HMODULE {
         }
       } else {
         // Create a toolhelp snapshot that lists modules.
-        guard let snapshot = CreateToolhelp32Snapshot(DWORD(TH32CS_SNAPMODULE), 0) else {
+        guard let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, 0) else {
           return nil
         }
         state.snapshot = snapshot

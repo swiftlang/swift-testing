@@ -131,8 +131,7 @@ private let _archiverPath: String? = {
     return _archiverName.withCString(encodedAs: UTF16.self) { archiverName -> String? in
       var result: UnsafeMutablePointer<CWideChar>?
 
-      let flags = ULONG(PATHCCH_ALLOW_LONG_PATHS.rawValue)
-      guard S_OK == PathAllocCombine(buffer.baseAddress!, archiverName, flags, &result) else {
+      guard S_OK == PathAllocCombine(buffer.baseAddress!, archiverName, DWORD(PATHCCH_ALLOW_LONG_PATHS.rawValue), &result) else {
         return nil
       }
       defer {
