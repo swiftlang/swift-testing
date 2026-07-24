@@ -89,13 +89,13 @@ package struct LocalProcessGrommet: Grommet {
       backChannelWriteEnd.close()
 
       // Wait for the child process to terminate.
-      taskGroup.addTask {
+      taskGroup.addTask(name: decorateTaskName("harness", withAction: "running test process")) {
         _ = try await wait(for: processID)
       }
 
       // Read events back out from the back channel.
       let fileGrommet = FileGrommet(readingFrom: backChannelReadEnd!)
-      taskGroup.addTask {
+      taskGroup.addTask(name: decorateTaskName("harness", withAction: "reading events from test process")) {
         try await fileGrommet.run(eventHandler)
       }
 
