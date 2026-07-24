@@ -26,10 +26,10 @@ enum CommandLine {
 }
 #endif
 
-#if !SWT_NO_EXIT_TESTS
+#if !SWT_NO_PROCESS_SPAWNING
 extension CommandLine {
   /// The path to the current process' executable.
-  static var executablePath: String {
+  package static var executablePath: String {
     get throws {
 #if SWT_TARGET_OS_APPLE
       var result: String?
