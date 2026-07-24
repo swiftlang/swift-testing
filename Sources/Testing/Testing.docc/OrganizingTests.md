@@ -38,13 +38,23 @@ within the scope of the outer test suite type.
 By default, tests contained within a suite run in parallel with each other.
 For more information about test parallelization, see <doc:Parallelization>.
 
-### Customize a suite's name
+### Name a test suite
 
-To customize a test suite's name, supply a string literal as an argument to the
-`@Suite` attribute:
+The testing library uses the name of the Swift type as the test suite's name.
+Surround the type's name with backticks to use spaces and punctuation characters
+in the name:
 
 ```swift
-@Suite("Food truck tests") struct FoodTruckTests {
+struct `Food truck tests: existence` {
+  @Test func `Food truck exists`() { ... }
+}
+```
+
+Alternatively, customize a test suite's name by supplying a string literal as an
+argument to the `@Suite` attribute:
+
+```swift
+@Suite("Food truck tests: existence") struct FoodTruckTests {
   @Test func foodTruckExists() { ... }
 }
 ```
