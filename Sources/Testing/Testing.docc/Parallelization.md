@@ -58,3 +58,35 @@ parameterized tests or test suites contained in that suite are also serialized
 This trait doesn't affect the execution of a test relative to its peers or to
 unrelated tests. This trait has no effect if test parallelization is globally
 disabled (by, for example, passing `--no-parallel` to the `swift test` command.)
+
+### Serializing suites across multiple files
+
+When you have multiple test suites that share a common dependency, such as a
+database or a file system, you can use a containing suite with the
+``Trait/serialized`` trait to ensure all of its nested suites run serially,
+even when they are defined in separate files using extensions:
+
+```swift
+@Suite(.serialized) struct DatabaseTests {}
+
+extension DatabaseTests {
+  @Suite struct ReadingTests {
+    @Test func readUser() async throws {
+      // This test runs serially with respect to other tests in DatabaseTests.
+    }
+  }
+}
+
+extension DatabaseTests {
+  @Suite struct WritingTests {
+    @Test func writeUser() async throws {
+      // This test does not run while any test in ReadingTests is running.
+    }
+  }
+}
+```
+
+Because the ``Trait/serialized`` trait is recursively applied, all tests
+within ``DatabaseTests`` — including those in nested suites — run one at a
+time. This pattern is useful for integration tests that share external
+resources, where parallel execution could cause conflicts.
