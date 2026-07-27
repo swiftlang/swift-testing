@@ -114,7 +114,9 @@ extension Configuration {
 
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.configuration = configuration
-    return try await Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
+    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
+      try await body()
+    }
   }
 
   /// A type containing the mutable state tracked by ``Configuration/_all`` and,
