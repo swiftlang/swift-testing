@@ -51,6 +51,7 @@ internal import _TestingInternals
   /// - Warning: The signature of this function is subject to change as
   ///   `__CommandLineArguments_v0` is not a stable interface.
   @_spi(ForToolsIntegrationOnly)
+  @MainActor
   public func callEntryPoint(
     passing args: __CommandLineArguments_v0? = nil,
     recordHandler: (@Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void)? = nil
@@ -71,7 +72,8 @@ internal import _TestingInternals
   ///   - recordHandler: A callback to invoke once per record.
   ///
   /// - Returns: A process exit code such as `EXIT_SUCCESS`.
-	private func _callEntryPoint(
+  @MainActor
+  private func _callEntryPoint(
     passing args: __CommandLineArguments_v0?,
     recordHandler: (@Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void)?
   ) async throws -> CInt {
@@ -111,6 +113,7 @@ internal import _TestingInternals
         ) as AnyObject
       ).toOpaque()
       configurationJSON.withUnsafeBytes { configurationJSON in
+        MainActor.assertIsolated("Attempted to run the entry point function of testing library '\(displayName)' off the main actor. \(fileABugMessage)")
         rawValue.entryPoint(
           configurationJSON.baseAddress!,
           configurationJSON.count,
@@ -151,7 +154,7 @@ internal import _TestingInternals
 // MARK: - C structure
 
 extension Library {
-  @usableFromInline typealias EntryPoint = @convention(c) (
+  @usableFromInline typealias EntryPoint = @MainActor @convention(c) (
     _ configurationJSON: UnsafeRawPointer,
     _ configurationJSONByteCount: Int,
     _ reserved: UInt,
@@ -167,7 +170,7 @@ extension Library {
     _ context: UnsafeRawPointer?
   ) -> Void
 
-  @usableFromInline typealias EntryPointCompletionHandler = @convention(c) (
+  @usableFromInline typealias EntryPointCompletionHandler = @MainActor @convention(c) (
     _ resultJSON: UnsafeRawPointer,
     _ resultJSONByteCount: Int,
     _ reserved: UInt,
@@ -257,14 +260,13 @@ extension Library {
 #if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
     // Capture appropriate state from the arguments to forward into the
     // canonical entry point function.
-    let contextBitPattern = UInt(bitPattern: context)
+    nonisolated(unsafe) let context = context
     let configurationJSON = UnsafeRawBufferPointer(start: configurationJSON, count: configurationJSONByteCount)
     var args: __CommandLineArguments_v0
     let eventHandler: Event.Handler
     do {
       args = try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
       eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: false) { recordJSON in
-        let context = UnsafeRawPointer(bitPattern: contextBitPattern)!
         recordJSONHandler(recordJSON.baseAddress!, recordJSON.count, 0, context)
       }
     } catch {
@@ -281,8 +283,7 @@ extension Library {
     args.eventStreamOutputPath = nil
 
     // Create an async context and run tests within it.
-    let run = { @Sendable [args] in
-      let context = UnsafeRawPointer(bitPattern: contextBitPattern)!
+    let run = { @MainActor [args] in
       let exitCode = await Testing.entryPoint(passing: args, eventHandler: eventHandler)
       var resultJSON = "\(exitCode)"
       resultJSON.withUTF8 { resultJSON in
