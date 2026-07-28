@@ -369,4 +369,8 @@ private let _libraryRecord: __TestContentRecord = (
   context: 0,
   reserved2: 0
 )
+
+@c @usableFromInline func swift_testing_getLibraryTypeAddress() -> UnsafeRawPointer {
+  unsafeBitCast(Library.self, to: UnsafeRawPointer.self)
+}
 #endif
