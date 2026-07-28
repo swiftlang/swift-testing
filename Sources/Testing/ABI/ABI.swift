@@ -193,6 +193,7 @@ extension ABI {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.4)
+  ///   @Available(Xcode, introduced: 27.0)
   /// }
   public enum v6_4: Sendable, Version, _Version {
     public static var versionNumber: VersionNumber {

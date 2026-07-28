@@ -11,6 +11,9 @@
 private import _TestingInternals
 
 #if !SWT_NO_INTEROP
+#if SWT_NO_ABI_JSON_SCHEMA
+#error("Platform-specific misconfiguration: support for the fallback event handler (XCTest interop) requires support for the ABI JSON schema")
+#endif
 #if SWT_NO_CODABLE
 #error("Platform-specific misconfiguration: support for the fallback event handler (XCTest interop) requires support for 'Codable'")
 #endif
@@ -234,7 +237,12 @@ extension Event {
   /// handler belongs to the testing library (and so shouldn't be called by us),
   /// the value of this property is `nil`.
   private static let _postToFallbackEventHandler: Event.Handler? = {
-    guard let fallbackEventHandler = _swift_testing_getFallbackEventHandler() else {
+    // If Swift Testing API is called when mode == none, XCTest might still have
+    // installed a fallback event handler. We should refuse to send any events.
+    guard
+      Interop.Mode.current != .none,
+      let fallbackEventHandler = _swift_testing_getFallbackEventHandler()
+    else {
       return nil
     }
 

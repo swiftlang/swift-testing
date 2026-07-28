@@ -16,7 +16,7 @@ private func configurationForEntryPoint(withArguments args: [String]) throws -> 
   return try configurationForEntryPoint(from: args)
 }
 
-#if !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
 /// Reads event stream output from the provided file matching event stream
 /// version `V`.
 private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String) throws -> [ABI.Record<V>] {
@@ -162,6 +162,28 @@ struct SwiftPMTests {
     _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter"])
     _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
   }
+
+#if !SWT_NO_EXIT_TESTS
+  @Test("--filter suppresses console output when no tests found")
+  func suppressConsoleOutputWhenFilteredToNothing() async throws {
+    let result = try await #require(processExitsWith: .exitCode(EXIT_NO_TESTS_FOUND), observing: [\.standardErrorContent]) {
+      var args = __CommandLineArguments_v0()
+      args.filter = ["$^"] // match "nothing"
+      await __swiftPMEntryPoint(passing: args) as Never
+    }
+    #expect(result.standardErrorContent.isEmpty)
+  }
+
+  @Test("--skip suppresses console output when no tests found")
+  func suppressConsoleOutputWhenSkippedToNothing() async throws {
+    let result = try await #require(processExitsWith: .exitCode(EXIT_NO_TESTS_FOUND), observing: [\.standardErrorContent]) {
+      var args = __CommandLineArguments_v0()
+      args.skip = [".*"] // match "anything"
+      await __swiftPMEntryPoint(passing: args) as Never
+    }
+    #expect(result.standardErrorContent.isEmpty)
+  }
+#endif
 
   @Test(".hidden trait", .tags(.traitRelated))
   func hidden() async throws {
@@ -325,7 +347,7 @@ struct SwiftPMTests {
   }
 #endif
 
-#if !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
   @Test("Severity and isFailure fields included in version 6.3")
   func validateEventStreamContents() async throws {
     let tempDirPath = try temporaryDirectory()
@@ -511,12 +533,6 @@ struct SwiftPMTests {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repetitions", "2468", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
     #expect(configuration.repetitionPolicy.continuationCondition == .whileIssueRecorded)
-  }
-
-  @Test
-  func `Per-test-case iteration enabled by default`() throws {
-    let defaultConfig = try configurationForEntryPoint(withArguments: ["PATH"])
-    #expect(!defaultConfig.shouldUseLegacyPlanLevelRepetition)
   }
 
   @Test("list subcommand")

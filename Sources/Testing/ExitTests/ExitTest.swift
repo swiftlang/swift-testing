@@ -435,15 +435,6 @@ extension ExitTest {
       }
     }
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-    // Call the legacy lookup function that discovers tests embedded in types.
-    for record in Record.allTypeMetadataBasedTestContentRecords() {
-      if let exitTest = record.load(withHint: id)?.makeExitTest() {
-        return exitTest
-      }
-    }
-#endif
-
     return nil
   }
 }
@@ -1004,7 +995,7 @@ extension ExitTest {
         // and process it as a (minimal) event stream.
         backChannelWriteEnd.close()
         taskGroup.addTask(name: decorateTaskName("exit test", withAction: "processing events")) {
-          Self._processRecords(fromBackChannel: backChannelReadEnd)
+          await Self._processRecords(fromBackChannel: backChannelReadEnd)
           return nil
         }
 
@@ -1028,19 +1019,27 @@ extension ExitTest {
   /// - Parameters:
   ///   - backChannel: The file handle to read from. Reading continues until an
   ///     error is encountered or the end of the file is reached.
-  private static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) {
-    let bytes: [UInt8]
-    do {
-      bytes = try backChannel.readToEnd()
-    } catch {
-      // NOTE: an error caught here indicates an I/O problem.
-      // TODO: should we record these issues as systemic instead?
-      Issue(for: error).record()
-      return
-    }
-
-    for recordJSON in bytes.split(whereSeparator: \.isASCIINewline) where !recordJSON.isEmpty {
+  private static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) async {
+    var terminator: UInt8?
+    repeat {
+      let recordJSON: [UInt8]
       do {
+        (recordJSON, terminator) = try backChannel.read(until: \.isASCIINewline)
+      } catch {
+        // NOTE: an error caught here indicates an I/O problem.
+        // TODO: should we record these issues as systemic instead?
+        Issue(for: error).record()
+        return
+      }
+
+      // Allow other tasks to run after we may have blocked for some time on I/O
+      // with the child process.
+      await Task.yield()
+
+      do {
+        if recordJSON.isEmpty {
+          continue
+        }
         try recordJSON.withUnsafeBufferPointer { recordJSON in
           try Self._processRecord(.init(recordJSON), fromBackChannel: backChannel)
         }
@@ -1049,7 +1048,7 @@ extension ExitTest {
         // TODO: should we record these issues as systemic instead?
         Issue(for: error).record()
       }
-    }
+    } while terminator != nil
   }
 
   /// Decode a line of JSON read from a back channel file handle and handle it

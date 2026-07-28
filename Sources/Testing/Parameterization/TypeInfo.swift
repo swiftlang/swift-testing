@@ -137,24 +137,36 @@ public struct TypeInfo: Sendable {
 func rawIdentifierAwareSplit<S>(_ string: S, separator: Character, maxSplits: Int = .max) -> [S.SubSequence] where S: StringProtocol {
   var result = [S.SubSequence]()
 
+  // Characters with special consideration in this function.
+  let backtick: Character = "`"
+  let openAngleBracket: Character = "<"
+  let closeAngleBracket: Character = ">"
+
   var inRawIdentifier = false
+  var genericClauseDepth = 0
   var componentStartIndex = string.startIndex
   for i in string.indices {
     let c = string[i]
-    if c == "`" {
+    if c == backtick {
       // We are either entering or exiting a raw identifier. While inside a raw
       // identifier, separator characters are ignored.
       inRawIdentifier.toggle()
-    } else if c == separator && !inRawIdentifier {
-      // Add everything up to this separator as the next component, then start
-      // a new component after the separator.
-      result.append(string[componentStartIndex ..< i])
-      componentStartIndex = string.index(after: i)
+    } else if !inRawIdentifier {
+      if c == separator && genericClauseDepth == 0 {
+        // Add everything up to this separator as the next component, then start
+        // a new component after the separator.
+        result.append(string[componentStartIndex ..< i])
+        componentStartIndex = string.index(after: i)
 
-      if result.count == maxSplits {
-        // We don't need to find more separators. We'll add the remainder of the
-        // string outside the loop as the last component, then return.
-        break
+        if result.count == maxSplits {
+          // We don't need to find more separators. We'll add the remainder of
+          // the string outside the loop as the last component, then return.
+          break
+        }
+      } else if c == openAngleBracket {
+        genericClauseDepth += 1
+      } else if c == closeAngleBracket {
+        genericClauseDepth -= 1
       }
     }
   }

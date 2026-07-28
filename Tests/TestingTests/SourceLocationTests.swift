@@ -65,7 +65,7 @@ struct SourceLocationTests {
     #expect(sourceLocation.fileName == "D.swift")
   }
 
-#if !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
   @Test("SourceLocation.fileID property is synthesized if not decoded")
   func sourceLocationFileIDSynthesizedWhenNeeded() throws {
 #if os(Windows)

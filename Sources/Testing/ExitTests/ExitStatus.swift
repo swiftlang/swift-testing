@@ -167,14 +167,18 @@ extension ExitStatus: CustomStringConvertible {
   public var description: String {
     switch self {
     case let .exitCode(exitCode):
+#if !SWT_NO_PROCESS_SPAWNING
       if let name {
         return ".exitCode(\(name))"
       }
+#endif
       return ".exitCode(\(exitCode))"
     case let .signal(signal):
+#if !SWT_NO_PROCESS_SPAWNING
       if let name {
         return ".signal(\(name))"
       }
+#endif
       return ".signal(\(signal))"
     }
   }

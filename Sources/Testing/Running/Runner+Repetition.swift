@@ -17,12 +17,18 @@ extension Runner {
   /// This keeps track of tests that recorded an issue during a test repetition
   /// and is used by the repetition machinery to determine if an issue was recorded
   /// during a run.
-  final class TestIssueRecorder: Sendable {
+  ///
+  /// The generic type parameter `T` is unused. It avoids warnings when multiple
+  /// copies of the testing library are loaded into a runner process on platforms
+  /// which use the Objective-C runtime.
+  final class TestIssueRecorder<T>: Sendable {
     /// A composite identifier uniquely naming a test case within a test.
     private struct _ID: Hashable {
       var testID: Test.ID
       var testCaseID: Test.Case.ID
     }
+
+    init() where T == Void {}
 
     /// The set of recorded issue identifiers, protected by a mutex.
     private let _ids = Mutex<Set<_ID>>([])
@@ -103,7 +109,7 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - testIssueRecorder: The recorder to notify of any recorded issues.
-  mutating func configureIssueRecordingEventHandling(testIssueRecorder: TestIssueRecorder) {
+  mutating func configureIssueRecordingEventHandling(testIssueRecorder: TestIssueRecorder<Void>) {
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
       if case .issueRecorded = event.kind, let testID = event.testID, let testCaseID = event.testCaseID {
         testIssueRecorder.recordIssue(for: testID, testCase: testCaseID)

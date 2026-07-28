@@ -47,7 +47,7 @@ jobs:
       options: --device /dev/kvm
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Write cloud-init files
         run: |

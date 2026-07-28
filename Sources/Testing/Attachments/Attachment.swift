@@ -429,9 +429,9 @@ extension Attachable where Self: ~Copyable {
   ///
   /// - Throws: Any error that prevented writing this instance to `filePath`.
   ///
-  /// The testing library uses this function when saving an attachment. The
-  /// default implementation opens `filePath` for writing with exclusive access,
-  /// then passes it to `_write(toFILE:for:)`.
+  /// The testing library uses this function when saving an attachment. If there
+  /// is already a file at `filePath`, the implementation throws an instance of
+  /// ``CError`` with code `EEXIST`.
   borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
 #if !SWT_NO_FILE_CLONING
     if clone(toFileAtPath: filePath, for: attachment) {
@@ -479,6 +479,31 @@ extension Attachment where AttachableValue: ~Copyable {
       toFileInDirectoryAtPath: directoryPath,
       appending: String(UInt64.random(in: 0 ..< .max), radix: 36)
     )
+  }
+
+  /// Write the attachment's contents to a file at the specified path.
+  ///
+  /// - Parameters:
+  ///   - filePath: The path to which the attachment should be written.
+  ///
+  /// - Throws: Any error preventing writing the attachment.
+  ///
+  /// The testing library uses this function when saving an attachment. If there
+  /// is already a file at `filePath`, the implementation throws an error in the
+  /// POSIX domain with code `EEXIST`. For technical reasons, this error is not
+  /// an instance of Foundation's [`POSIXError`](https://developer.apple.com/documentation/foundation/posixerror)
+  /// type.
+  ///
+  /// This function does not get or set the value of the attachment's
+  /// ``fileSystemPath`` property. The caller is responsible for setting the
+  /// value of this property if needed.
+  ///
+  /// This function is provided as a convenience to allow tools authors to save
+  /// attachments the same way that Swift Package Manager does. You are not
+  /// required to use this function.
+  @_spi(ForToolsIntegrationOnly)
+  public borrowing func write(toFileAtPath filePath: String) throws {
+    try attachableValue.write(toFileAtPath: filePath, for: self)
   }
 
   /// Write the attachment's contents to a file in the specified directory.
@@ -536,7 +561,7 @@ extension Attachment where AttachableValue: ~Copyable {
         // Propagate any error *except* EEXIST, which would indicate that the
         // name was already in use (so we should try again with a new suffix.)
         do {
-          try attachableValue.write(toFileAtPath: preferredPath, for: self)
+          try write(toFileAtPath: preferredPath)
           result = preferredPath
           break
         } catch where isEEXIST(error) {

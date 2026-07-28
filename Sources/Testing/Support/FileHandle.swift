@@ -459,22 +459,58 @@ extension FileHandle {
       result.reserveCapacity(size)
     }
 
-    try withUnsafeCFILEHandle { file in
-      try withUnsafeTemporaryAllocation(byteCount: 1024, alignment: 1) { buffer in
-        repeat {
-          let countRead = fread(buffer.baseAddress!, 1, buffer.count, file)
-          if 0 != ferror(file) {
-            throw CError(rawValue: swt_errno())
-          }
-          if countRead > 0 {
-            let endIndex = buffer.index(buffer.startIndex, offsetBy: countRead)
-            result.append(contentsOf: buffer[..<endIndex])
-          }
-        } while 0 == feof(file)
+    try withLock {
+      try withUnsafeCFILEHandle { file in
+        try withUnsafeTemporaryAllocation(byteCount: 1024, alignment: 1) { buffer in
+          repeat {
+            let countRead = fread(buffer.baseAddress!, 1, buffer.count, file)
+            if 0 != ferror(file) {
+              throw CError(rawValue: swt_errno())
+            }
+            if countRead > 0 {
+              let endIndex = buffer.index(buffer.startIndex, offsetBy: countRead)
+              result.append(contentsOf: buffer[..<endIndex])
+            }
+          } while 0 == feof(file)
+        }
       }
     }
 
     return result
+  }
+
+  /// Read until a character that matches the given predicate.
+  ///
+  /// - Parameters:
+  ///   - isTerminator: A predicate function that is called for each byte read
+  ///     from the file stream. If it returns `true`, the read ends.
+  ///
+  /// - Returns: A tuple containing: a copy of the contents of the file handle
+  ///   starting at the current offset and ending at either the end of the file
+  ///   stream or the first byte that matches `isTerminator`; and the terminator
+  ///   byte if one was encountered.
+  ///
+  /// - Throws: Any error that occurred while reading the file.
+  func read(until isTerminator: (UInt8) throws -> Bool) throws -> (bytesRead: [UInt8], terminator: UInt8?) {
+    var bytesRead = [UInt8]()
+    var terminator: UInt8?
+
+    try withLock {
+      try withUnsafeCFILEHandle { file in
+        while terminator == nil, let byteRead = UInt8(exactly: fgetc(file)) {
+          if try isTerminator(byteRead) {
+            terminator = byteRead
+          } else {
+            bytesRead.append(byteRead)
+          }
+        }
+        if 0 != ferror(file) {
+          throw CError(rawValue: swt_errno())
+        }
+      }
+    }
+
+    return (bytesRead, terminator)
   }
 }
 
@@ -577,12 +613,16 @@ extension FileHandle {
 // MARK: - Pipes
 
 extension FileHandle {
-#if os(Linux) && !SWT_NO_DYNAMIC_LINKING
+#if (SWT_TARGET_OS_APPLE || os(Linux)) && !SWT_NO_DYNAMIC_LINKING
   /// Create a pipe with flags.
   ///
-  /// This function declaration is provided because `pipe2()` is only declared
-  /// if `_GNU_SOURCE` is set, but setting it causes build errors due to
-  /// conflicts with Swift's Glibc module.
+  /// On Apple platforms, this function declaration is provided because
+  /// `pipe2()` requires a newer SDK than is currently available in Swift's CI
+  /// systems.
+  ///
+  /// On Linux, this function declaration is provided because `pipe2()` is only
+  /// declared if `_GNU_SOURCE` is set, but setting it causes build errors due
+  /// to conflicts with Swift's Glibc module.
   private static let _pipe2 = symbol(named: "pipe2").map {
     castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<CInt>, CInt) -> CInt).self)
   }
@@ -606,8 +646,8 @@ extension FileHandle {
     return _pipe(fds, 0, _O_BINARY | _O_NOINHERIT)
 #else
     func simulatePipe2Call(_ fds: UnsafeMutablePointer<CInt>) -> CInt {
-      // pipe2() is not available. Use pipe() instead and simulate O_CLOEXEC to the
-      // best of our ability.
+      // pipe2() is not available. Use pipe() instead and simulate O_CLOEXEC to
+      // the best of our ability.
       let result = pipe(fds)
       guard result == 0 else {
         return result
@@ -616,8 +656,8 @@ extension FileHandle {
         try setFD_CLOEXEC(true, onFileDescriptor: fds[0])
         try setFD_CLOEXEC(true, onFileDescriptor: fds[1])
       } catch {
-        // Failed to set FD_CLOEXEC on either end of the pipe. This is unexpected
-        // and may in practice be unreachable.
+        // Failed to set FD_CLOEXEC on either end of the pipe. This failure is
+        // unexpected and may in practice be unreachable.
         _close(fds[0])
         fds[0] = -1
         _close(fds[1])
@@ -627,10 +667,7 @@ extension FileHandle {
       return 0
     }
 
-#if SWT_TARGET_OS_APPLE
-    // pipe2() is not implemented on Darwin. BUG: rdar://138426570
-    return simulatePipe2Call(fds)
-#elseif os(Linux)
+#if SWT_TARGET_OS_APPLE || os(Linux)
 #if !SWT_NO_DYNAMIC_LINKING
     if let _pipe2 {
       return _pipe2(fds, O_CLOEXEC)

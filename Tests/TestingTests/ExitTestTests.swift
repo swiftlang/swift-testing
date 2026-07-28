@@ -743,6 +743,17 @@ private import _TestingInternals
     await #expect(processExitsWith: .success) {}
   }
 #endif
+
+  @Test("noasync function callable from synchronous exit test body")
+  func noasyncCallable() async throws {
+    await #expect(processExitsWith: .success) {
+      some_noasync_function()
+    }
+
+    await #expect(processExitsWith: .success) { @MainActor in
+      some_noasync_function()
+    }
+  }
 }
 
 // MARK: - Fixtures
@@ -784,4 +795,7 @@ func sellIceCreamCones(count: Int) async throws {
   }
 }
 #endif
+
+@available(*, noasync)
+fileprivate func some_noasync_function() { /* ... */ }
 #endif
