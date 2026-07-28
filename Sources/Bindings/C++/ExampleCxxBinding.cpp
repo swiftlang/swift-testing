@@ -11,6 +11,6 @@
 //#include <swift/testing/language-bindings/cxx.h>
 #include "cxx.h"
 
-SWIFT_TESTING_BIND_LIBRARY("Example C++ Binding", "examplecxxbinding", [] (auto configurationJSON, auto recordJSONHandler) {
+SWIFT_TESTING_BIND_LIBRARY("Example C++ Binding", "examplecxxbinding", [] (auto configuration_json, auto record_json_handler) {
   return EXIT_SUCCESS;
 });

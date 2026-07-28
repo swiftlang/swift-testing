@@ -24,17 +24,17 @@
 namespace swift::testing {
 // MARK: - Library record
 
-struct library {
+struct library_record {
   using record_json_handler_function = void (*)(
-    const void *recordJSON,
-    size_t recordJSONByteCount,
+    const void *record_json,
+    size_t record_json_byte_count,
     uintptr_t reserved,
     const void *context
   );
 
   using completion_handler_function = void (*)(
-    const void *resultJSON,
-    size_t resultJSONByteCount,
+    const void *result_json,
+    size_t result_json_byte_count,
     uintptr_t reserved,
     const void *context
   );
@@ -58,9 +58,9 @@ struct library {
 
 struct test_content_record {
   using accessor_function = bool (*)(
-    void *outValue,
-    const void *typeAddress,
-    const void *hintAddress,
+    void *out_value,
+    const void *type_address,
+    const void *hint_address,
     uintptr_t reserved
   );
 
@@ -75,23 +75,25 @@ private:
   static const char swift_testing_library_type[] __asm__("_$s7Testing7LibraryVN");
 
 public:
-  static bool store(const char *displayName, const char *name, const library& record, void *outValue, const void *typeAddress, const void *hintAddress) {
-    const void *type = *static_cast<void *const *const>(typeAddress);
-    if (type != &swift_testing_library_type) {
-      return false;
-    }
-
-    if (hintAddress) {
-      const char *hint = *static_cast<char *const *const>(hintAddress);
-#if defined(_WIN32)
-      auto strcasecmp = &_stricmp;
-#endif
-      if (0 != strcasecmp(hint, displayName) && 0 != strcasecmp(hint, name)) {
+  static bool store(const char *display_name, const char *name, const library_record& record, void *out_value, const void *type_address, const void *hint_address) {
+    if (type_address) {
+      const void *type = *static_cast<void *const *const>(type_address);
+      if (type != &swift_testing_library_type) {
         return false;
       }
     }
 
-    ::new (static_cast<library *>(outValue)) library(record);
+    if (hint_address) {
+      const char *hint = *static_cast<char *const *const>(hint_address);
+#if defined(_WIN32)
+      auto strcasecmp = &_stricmp;
+#endif
+      if (0 != strcasecmp(hint, display_name) && 0 != strcasecmp(hint, name)) {
+        return false;
+      }
+    }
+
+    std::construct_at(static_cast<library_record *>(out_value), record);
     return true;
   }
 };
@@ -111,20 +113,20 @@ public:
 #endif
 
 #define SWIFT_TESTING_BIND_LIBRARY_ASYNC(DISPLAY_NAME, NAME, ENTRY_POINT) \
-  static constexpr swift::testing::library _swift_testing_library_record = { \
+  static constexpr swift::testing::library_record _swift_testing_library_record = { \
     (DISPLAY_NAME), \
     (NAME), \
-    [] (auto configurationJSON, auto configurationJSONByteCount, auto reserved, auto context, auto recordJSONHandler, auto completionHandler) { \
+    [] (auto configuration_json, auto configuration_json_byte_count, auto reserved, auto context, auto record_json_handler, auto completion_handler) { \
       (ENTRY_POINT)( \
-        std::span((std::byte *)(configurationJSON), configurationJSONByteCount), \
-        [recordJSONHandler, context] (std::span<std::byte> recordJSON) { \
-          recordJSONHandler(recordJSON.data(), recordJSON.size(), 0, context); \
+        std::span((std::byte *)(configuration_json), configuration_json_byte_count), \
+        [record_json_handler, context] (std::span<std::byte> record_json) { \
+record_json_handler(record_json.data(), record_json.size(), 0, context); \
         }, \
-        [completionHandler, context] (int success) { \
+        [completion_handler, context] (int success) { \
           std::ostringstream ss; \
           ss << success; \
-          auto resultJSON = ss.str(); \
-          completionHandler(resultJSON.c_str(), resultJSON.size(), 0, context); \
+          auto result_json = ss.str(); \
+          completion_handler(result_json.c_str(), result_json.size(), 0, context); \
         } \
       ); \
     }, \
@@ -133,14 +135,14 @@ public:
   _SWIFT_TESTING_SECTION_ATTR static constinit swift::testing::test_content_record _swift_testing_test_content_record = { \
     'main', \
     0, \
-    [] (auto outValue, auto typeAddress, auto hintAddress, auto reserved) -> bool { \
-      return swift::testing::test_content_record::store((DISPLAY_NAME), (NAME), _swift_testing_library_record, outValue, typeAddress, hintAddress); \
+    [] (auto out_value, auto type_address, auto hint_address, auto reserved) -> bool { \
+      return swift::testing::test_content_record::store((DISPLAY_NAME), (NAME), _swift_testing_library_record, out_value, type_address, hint_address); \
     } \
   }
 
 #define SWIFT_TESTING_BIND_LIBRARY(DISPLAY_NAME, NAME, ENTRY_POINT) \
-  SWIFT_TESTING_BIND_LIBRARY_ASYNC((DISPLAY_NAME), (NAME), [] (auto configurationJSON, auto recordJSONHandler, auto completionHandler) { \
-    completionHandler((ENTRY_POINT)(configurationJSON, recordJSONHandler)); \
+  SWIFT_TESTING_BIND_LIBRARY_ASYNC((DISPLAY_NAME), (NAME), [] (auto configuration_json, auto record_json_handler, auto completion_handler) { \
+    completion_handler((ENTRY_POINT)(configuration_json, record_json_handler)); \
   })
 
 #endif
