@@ -318,39 +318,32 @@ package.targets.append(contentsOf: [
 ])
 #endif
 
-// Add package-wide settings to all targets. Note there are a couple of special
-// cases here, but in general the logic should be kept as identical as possible
-// across all of our targets.
-//
-// IMPORTANT: Keep this assignment after all target declarations!
+// Add package-wide settings to all targets. IMPORTANT: Keep this assignment
+// after all target declarations!
 package.targets = package.targets.map { target in
-  var target = target
-  let isTestTarget = target.isTest || target.name == "MemorySafeTestingTests"
-
   var swiftSettings = target.swiftSettings ?? []
-  swiftSettings += .packageSettings(isTestTarget: isTestTarget)
-  if !isTestTarget {
-    if target.name == "_Testing_Foundation" {
-      // The Foundation module only has Library Evolution enabled on Apple
-      // platforms, and since this target's module publicly imports Foundation,
-      // it can only enable Library Evolution itself on those platforms.
-      swiftSettings += .enableLibraryEvolution(.whenApple())
-    } else {
-      swiftSettings += .enableLibraryEvolution()
-    }
-    swiftSettings += .moduleABIName(target.name)
-  }
+  swiftSettings += .packageSettings(for: target)
   target.swiftSettings = swiftSettings
 
   var cSettings = target.cSettings ?? []
-  cSettings += .packageSettings(isTestTarget: isTestTarget)
+  cSettings += .packageSettings(for: target)
   target.cSettings = cSettings
 
   var cxxSettings = target.cxxSettings ?? []
-  cxxSettings += .packageSettings(isTestTarget: isTestTarget)
+  cxxSettings += .packageSettings(for: target)
   target.cxxSettings = cxxSettings
 
   return target
+}
+
+extension PackageDescription.Target {
+  /// Whether or not this target is a test target.
+  ///
+  /// - Note: This property overrides the property of the same name declared in
+  ///   Swift Package Manager.
+  var isTest: Bool {
+    type == .test || name.hasSuffix("Tests")
+  }
 }
 
 extension BuildSettingCondition {
@@ -377,7 +370,7 @@ extension Array where Element == PackageDescription.Platform {
 extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings intended to be applied to every Swift target in this package.
   /// Analogous to project-level build settings in an Xcode project.
-  static func packageSettings(isTestTarget: Bool = false) -> Self {
+  static func packageSettings(for target: PackageDescription.Target) -> Self {
     var result = availabilityMacroSettings
 
     // treatWarning(..., as: .warning) cannot be used in packages which are
@@ -398,7 +391,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !isTestTarget {
+    if !target.isTest {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]
@@ -425,6 +418,18 @@ extension Array where Element == PackageDescription.SwiftSetting {
     ]
 
     result.appendFeatureFlags()
+
+    if !target.isTest {
+      if target.name == "_Testing_Foundation" {
+        // The Foundation module only has Library Evolution enabled on Apple
+        // platforms, and since this target's module publicly imports Foundation,
+        // it can only enable Library Evolution itself on those platforms.
+        result += enableLibraryEvolution(.whenApple())
+      } else if target.type == .regular {
+        result += enableLibraryEvolution()
+      }
+      result += moduleABIName(target.name)
+    }
 
     return result
   }
@@ -494,12 +499,12 @@ extension Array where Element == PackageDescription.SwiftSetting {
 extension Array where Element: _CLanguageBuildSetting {
   /// Settings intended to be applied to every C++ target in this package.
   /// Analogous to project-level build settings in an Xcode project.
-  static func packageSettings(isTestTarget: Bool = false) -> Self {
+  static func packageSettings(for target: PackageDescription.Target) -> Self {
     var result = Self()
 
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !isTestTarget {
+    if !target.isTest {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]
