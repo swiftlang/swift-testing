@@ -20,10 +20,10 @@ extension ABI {
     /// The number of seconds since the system-defined suspending epoch.
     ///
     /// For more information, see [`SuspendingClock`](https://developer.apple.com/documentation/swift/suspendingclock).
-    var absolute: Double
+    var absolute: Double?
 
     /// The number of seconds since the UNIX epoch (1970-01-01 00:00:00 UT).
-    package var since1970: Double
+    package var since1970: Double?
   }
 }
 
@@ -37,17 +37,72 @@ extension ABI.EncodedInstant {
   public init(encoding instant: borrowing Test.Clock.Instant) {
 #if !SWT_NO_SUSPENDING_CLOCK
     absolute = instant.suspending.rawValue / .seconds(1)
-#else
-    absolute = 0
 #endif
 #if !SWT_NO_UTC_CLOCK
     since1970 = instant.wall.rawValue / .seconds(1)
-#else
-    since1970 = 0
 #endif
   }
 }
 
+#if !SWT_NO_ABI_JSON_SCHEMA
+@_spi(ForToolsIntegrationOnly)
+extension Test.Clock.Instant {
+  /// Initialize this instant to be exactly equal to an instant from the testing
+  /// library's event stream.
+  ///
+  /// - Parameters:
+  ///   - instant: The encoded instant to initialize this instant from.
+  ///
+  /// @Comment {
+  ///   If `instant` omits either the suspending-clock value or the wall-clock
+  ///   value, that value is synthesized from the current system's clock.
+  /// }
+  ///
+  /// - Note: When the original instant is encoded to the event stream,
+  ///   it loses some precision.
+  public init?<V>(decoding instant: ABI.EncodedInstant<V>) {
+    // It's not really an experimental "field", but only synthesize absolute or
+    // since1970 if they're enabled as the current schema requires both values.
+    if !V.includesExperimentalFields, instant.absolute == nil || instant.since1970 == nil {
+      return nil
+    }
+
+    switch (instant.absolute, instant.since1970) {
+    case let (.some(absolute), .some(since1970)):
+      let suspending = TimeValue(rawValue: .seconds(absolute))
+      let wall = TimeValue(rawValue: .seconds(since1970))
+#if !SWT_NO_SUSPENDING_CLOCK && !SWT_NO_UTC_CLOCK
+      self.init(suspending: suspending, wall: wall)
+#elseif !SWT_NO_SUSPENDING_CLOCK
+      self.init(suspending: suspending)
+#elseif !SWT_NO_UTC_CLOCK
+      self.init(wall: wall)
+#else
+      self.init()
+#endif
+#if !SWT_NO_SUSPENDING_CLOCK
+    case let (.some(absolute), _):
+      let effectiveEpoch = Test.Clock().systemEpoch
+      let offset = .seconds(absolute) - effectiveEpoch.suspending.rawValue
+      self = effectiveEpoch.advanced(by: offset)
+#endif
+#if !SWT_NO_UTC_CLOCK
+    case let (_, .some(since1970)):
+      let effectiveEpoch = Test.Clock().systemEpoch
+      let offset = .seconds(since1970) - effectiveEpoch.wall.rawValue
+      self = effectiveEpoch.advanced(by: offset)
+#endif
+    default:
+      // Neither value was encoded (or the sole encoded value isn't supported on
+      // this system). Assume the timestamp is 1:1 with the current system's
+      // clock (i.e. events are delivered, encoded, and decoded with zero latency).
+      self = .now
+    }
+  }
+}
+#endif
+
+#if !SWT_NO_SUSPENDING_CLOCK
 @_spi(ForToolsIntegrationOnly)
 extension SuspendingClock.Instant {
   /// Initialize this instant to equal an instant from the testing library's
@@ -59,9 +114,13 @@ extension SuspendingClock.Instant {
   /// The resulting instance is equivalent to the suspending-clock time
   /// represented by `instant`.
   public init?<V>(decoding instant: ABI.EncodedInstant<V>) {
-    self = SuspendingClock().systemEpoch + .seconds(instant.absolute)
+    guard let instant = Test.Clock.Instant(decoding: instant) else {
+      return nil
+    }
+    self.init(instant)
   }
 }
+#endif
 
 // Date.init(decoding:) is in the Foundation overlay.
 

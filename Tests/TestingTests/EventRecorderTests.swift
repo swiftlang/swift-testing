@@ -594,7 +594,9 @@ struct EventRecorderTests {
     let encodedEvents = [
       Event(.runStarted, testID: nil, testCaseID: nil),
       Event(.testStarted, testID: test.id, testCaseID: nil),
+      Event(.testCaseStarted, testID: test.id, testCaseID: nil),
       Event(.issueRecorded(.init(kind: .unconditional)), testID: test.id, testCaseID: nil),
+      Event(.testCaseEnded, testID: test.id, testCaseID: nil),
       Event(.testEnded, testID: test.id, testCaseID: nil),
       Event(.runEnded, testID: nil, testCaseID: nil),
     ].compactMap { event in
@@ -616,11 +618,10 @@ struct EventRecorderTests {
 
     // Generate the messages to compare against.
     let recorder = Event.HumanReadableOutputRecorder()
-    let messages = encodedEvents.flatMap { recorder.record($0, in: &context) }
+    let messages = encodedEvents.compactMap { recorder.record($0, in: &context).first }
 
     let expectedMessages = [
       "Test run started.",
-      "Testing Library Version:",
       #"Test "Test Name" started."#,
       "Issue recorded",
       #"Test "Test Name" failed"#,

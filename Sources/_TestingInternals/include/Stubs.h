@@ -118,10 +118,12 @@ static const char *_Nonnull *_Nullable swt_objc_copyImageNames(unsigned int *_Nu
     return 0;
   }
 
+#if !SWT_NO_ENVIRONMENT_VARIABLES
   if (getenv("XCODE_RUNNING_FOR_PLAYGROUNDS") != 0) {
     // XOJIT appears to be enabled.
     return 0;
   }
+#endif
 
   return objc_copyImageNames(outCount);
 }
