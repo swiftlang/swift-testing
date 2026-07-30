@@ -158,7 +158,6 @@ let package = Package(
         "_Testing_UIKit",
         "_Testing_WinSDK",
         "MemorySafeTestingTests",
-        "Bindings/C++",
       ],
       swiftSettings: .packageSettings(isTestTarget: true),
       linkerSettings: [
@@ -310,15 +309,6 @@ let package = Package(
       ],
       path: "Sources/Harness",
       swiftSettings: .packageSettings()
-    ),
-
-    // Library bindings: targets that provide glue code for running tests from
-    // other testing libraries.
-    .target(
-      name: "Bindings/C++",
-      path: "Sources/Bindings/C++",
-      // exclude: ["CMakeLists.txt"],
-      cxxSettings: .packageSettings()
     ),
 
     // Utility targets: These are utilities intended for use when developing
