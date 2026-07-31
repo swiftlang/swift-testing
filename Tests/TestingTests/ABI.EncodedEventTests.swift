@@ -347,9 +347,6 @@
     }
   }
 
-  static let badJSONs: [String] = [
-
-  ]
   @Test(
     arguments: [
       """
