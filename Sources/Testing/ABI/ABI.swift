@@ -121,6 +121,7 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 // MARK: - Decoding record JSON
 
 extension ABI {
@@ -196,6 +197,7 @@ extension ABI.Version {
     return result
   }
 }
+#endif
 
 // MARK: - Experimental fields
 
