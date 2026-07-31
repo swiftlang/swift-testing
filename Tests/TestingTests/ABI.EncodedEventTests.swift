@@ -286,5 +286,93 @@
       """)
     #expect(Event(decoding: event) == nil)
   }
+
+  @Test func `ABI.decodeJSON() helper function`() throws {
+    var context = ABI.Context()
+
+    let testJSON = """
+    {
+      "version": "6.3",
+      "kind": "test",
+      "payload": {
+        "kind": "function",
+        "name": "testFunc()",
+        "sourceLocation": {
+          "filePath": "some_directory/Foo.swift",
+          "line": 123,
+          "column": 456
+        },
+        "id": "SomeValidTestID/testFunc()/Foo.swift:123:456"
+      }
+    }
+    """
+
+    do {
+      let testDiscoveredEventAndContext = try Array(testJSON.utf8).withUnsafeBytes { testJSON in
+        try #require(ABI.decodeEvent(fromRecordJSON: testJSON, in: &context))
+      }
+      let (event, eventContext) = testDiscoveredEventAndContext
+      if case .testDiscovered = event.kind {} else {
+        Issue.record("Expected .testDiscovered event, got \(event.kind) instead")
+      }
+      let test = try #require(eventContext.test)
+      #expect(test.name == "testFunc()")
+    }
+
+    let eventJSON = """
+    {
+      "version": "6.3",
+      "kind": "event",
+      "payload": {
+        "kind": "testStarted",
+        "instant": {"absolute": 123, "since1970": 456},
+        "messages": [],
+        "testID": "SomeValidTestID/testFunc()/Foo.swift:123:456"
+      }
+    }
+    """
+
+    do {
+      let testStartedEventAndContext = try Array(eventJSON.utf8).withUnsafeBytes { eventJSON in
+        try #require(ABI.decodeEvent(fromRecordJSON: eventJSON, in: &context))
+      }
+      let (event, eventContext) = testStartedEventAndContext
+      if case .testStarted = event.kind {} else {
+        Issue.record("Expected .testStarted event, got \(event.kind) instead")
+      }
+      let test = try #require(eventContext.test)
+      #expect(test.name == "testFunc()")
+    }
+  }
+
+  static let badJSONs: [String] = [
+
+  ]
+  @Test(
+    arguments: [
+      """
+      {}
+      """,
+      """
+      {
+        "version": "6.3",
+        "kind": "test",
+        "payload": {}
+      }
+      """,
+      """
+      {
+        "version": "6.3",
+        "kind": "event",
+        "payload": {}
+      }
+      """,
+    ]
+  ) func `ABI.decodeJSON() rejects bad JSON`(badRecordJSON: String) throws {
+    Array(badRecordJSON.utf8).withUnsafeBytes { badRecordJSON in
+      var context = ABI.Context()
+      #expect(ABI.decodeEvent(fromRecordJSON: badRecordJSON, in: &context) == nil)
+    }
+  }
 }
 #endif
