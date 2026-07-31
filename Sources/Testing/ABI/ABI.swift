@@ -132,9 +132,10 @@ extension ABI {
   ///   - context: A context value that tracks decoded tests and events.
   ///
   /// - Returns: A tuple containing the decoded event and an associated event
-  ///   context. The event context's ``Event/Context/test`` property is set if
-  ///   the event has a corresponding test. The caller is responsible for
-  ///   setting the context value's other properties if needed. If `recordJSON`
+  ///   context. The event context's ``Event/Context/test`` and
+  ///   ``Event/Context/iteration`` properties are set if the encoded event has
+  ///   its corresponding properties set. The caller is responsible for setting
+  ///   any other properties of the context value that it needs. If `recordJSON`
   ///   was invalid or could not be decoded, this function returns `nil`.
   ///
   /// Records of kind `"test"` are decoded as events of kind `testDiscovered`.
@@ -158,9 +159,10 @@ extension ABI.Version {
   ///   - context: A context value that tracks decoded tests and events.
   ///
   /// - Returns: A tuple containing the decoded event and an associated event
-  ///   context. The event context's ``Event/Context/test`` property is set if
-  ///   the event has a corresponding test. The caller is responsible for
-  ///   setting the context value's other properties if needed. If `recordJSON`
+  ///   context. The event context's ``Event/Context/test`` and
+  ///   ``Event/Context/iteration`` properties are set if the encoded event has
+  ///   its corresponding properties set. The caller is responsible for setting
+  ///   any other properties of the context value that it needs. If `recordJSON`
   ///   was invalid or could not be decoded, this function returns `nil`.
   ///
   /// Records of kind `"test"` are decoded as events of kind `testDiscovered`.
@@ -190,7 +192,7 @@ extension ABI.Version {
       let test = encodedEvent.testID.flatMap(context.test(identifiedBy:))
       result = (
         event,
-        Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
+        Event.Context(test: test, testCase: nil, iteration: encodedEvent.iteration, configuration: nil)
       )
     }
 

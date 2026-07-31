@@ -327,7 +327,8 @@
         "kind": "testStarted",
         "instant": {"absolute": 123, "since1970": 456},
         "messages": [],
-        "testID": "SomeValidTestID/testFunc()/Foo.swift:123:456"
+        "testID": "SomeValidTestID/testFunc()/Foo.swift:123:456",
+        "iteration": 987
       }
     }
     """
@@ -342,6 +343,7 @@
       }
       let test = try #require(eventContext.test)
       #expect(test.name == "testFunc()")
+      #expect(eventContext.iteration == 987)
     }
   }
 
