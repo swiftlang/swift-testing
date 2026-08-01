@@ -694,10 +694,13 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
     // If we didn't find any tags, the tagFilter should be .unfiltered,
     // otherwise we construct it with the provided tags
-    let tagFilter: Configuration.TestFilter = switch (membership, tagPatterns.isEmpty) {
-      case (_, true): .unfiltered
-      case (.including, false): try Configuration.TestFilter(includingTagsMatching: tagPatterns)
-      case (.excluding, false): try Configuration.TestFilter(excludingTagsMatching: tagPatterns)
+    let tagFilter: Configuration.TestFilter = if tagPatterns.isEmpty {
+      .unfiltered
+    } else {
+      switch membership {
+        case .including: try Configuration.TestFilter(includingTagsMatching: tagPatterns)
+        case .excluding: try Configuration.TestFilter(excludingTagsMatching: tagPatterns)
+      }
     }
 
     guard !idPatterns.isEmpty else {
