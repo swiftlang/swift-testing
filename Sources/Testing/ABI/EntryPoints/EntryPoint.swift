@@ -665,7 +665,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     // surmise the user intended to express a Swift raw identifier. In that
     // case, we should alert the user that it's not going to match what the
     // user expects and strip the backticks for them.
-    func stripBackticksAndAlertIfEncountered(string: inout String) {
+    func stripBackticksAndReportIfEncountered(string: inout String) {
       let backtickRegex = /^`[^`]*`$/
       if string.contains(backtickRegex) {
         let originalString = string
@@ -680,14 +680,14 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
         // We have encountered a prefix, so trim it off and add the supplied
         // argument to the appropriate filter list
         optionArg.trimPrefix(prefix.rawValue)
-        stripBackticksAndAlertIfEncountered(string: &optionArg)
+        stripBackticksAndReportIfEncountered(string: &optionArg)
         switch prefix {
           case .id: idPatterns.append(optionArg)
           case .tag: tagPatterns.append(optionArg)
         }
       } else {
         // No prefix was detected, so we treat this as a regex matching a test ID.
-        stripBackticksAndAlertIfEncountered(string: &optionArg)
+        stripBackticksAndReportIfEncountered(string: &optionArg)
         idPatterns.append(optionArg)
       }
     }
