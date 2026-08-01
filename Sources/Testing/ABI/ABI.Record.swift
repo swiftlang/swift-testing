@@ -23,6 +23,12 @@ extension ABI {
   public struct Record<V>: Sendable where V: ABI.Version {
     /// An enumeration describing the various kinds of record.
     public enum Kind: Sendable {
+      /// A testing library.
+      ///
+      /// - Warning: Testing libraries are not yet part of the JSON schema.
+      @_spi(Experimental)
+      case library(EncodedLibrary<V>)
+
       /// A test record.
       case test(EncodedTest<V>)
 
@@ -32,6 +38,10 @@ extension ABI {
 
     /// The kind of record.
     public internal(set) var kind: Kind
+
+    public init(encoding library: borrowing EncodedLibrary<V>) {
+      kind = .library(copy library)
+    }
 
     public init(encoding test: borrowing EncodedTest<V>) {
       kind = .test(copy test)
@@ -46,6 +56,15 @@ extension ABI {
 // MARK: -
 
 extension ABI.Record {
+  @_spi(Experimental)
+  init?(encoding library: borrowing Library) {
+    guard V.includesExperimentalFields else {
+      return nil
+    }
+    let library = ABI.EncodedLibrary<V>(encoding: library)
+    self.init(encoding: library)
+  }
+
   init(encoding test: borrowing Test) {
     let test = ABI.EncodedTest<V>(encoding: test)
     self.init(encoding: test)
@@ -76,6 +95,9 @@ extension ABI.Record: Codable {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(V.versionNumber, forKey: .version)
     switch kind {
+    case let .library(library):
+      try container.encode("_library", forKey: .kind)
+      try container.encode(library, forKey: .payload)
     case let .test(test):
       try container.encode("test", forKey: .kind)
       try container.encode(test, forKey: .payload)
@@ -108,6 +130,9 @@ extension ABI.Record: Codable {
     try validateVersionNumber(versionNumber)
 
     switch try container.decode(String.self, forKey: .kind) {
+    case "_library":
+      let library = try container.decode(ABI.EncodedLibrary<V>.self, forKey: .payload)
+      kind = .library(library)
     case "test":
       let test = try container.decode(ABI.EncodedTest<V>.self, forKey: .payload)
       kind = .test(test)
