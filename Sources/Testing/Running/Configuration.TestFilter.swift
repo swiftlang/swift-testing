@@ -52,19 +52,19 @@ extension Configuration {
       case tags(_ tags: Set<Tag>, anyOf: Bool, membership: Membership)
 
 #if canImport(_StringProcessing)
-      /// The test filter contains a pattern to predicate test tags against.
-      ///
-      /// - Parameters:
-      ///   - tagPatterns: The patterns to predicate test tags against
-      ///   - membership: How to interpret the result when predicating tests.
-      case tagPatterns(_ tagPatterns: [String], membership: Membership)
-
       /// The test filter contains a pattern to predicate test IDs against.
       ///
       /// - Parameters:
       ///   - patterns: The patterns to predicate test IDs against.
       ///   - membership: How to interpret the result when predicating tests.
       case patterns(_ patterns: [String], membership: Membership)
+
+      /// The test filter contains a pattern to predicate test tags against.
+      ///
+      /// - Parameters:
+      ///   - tagPatterns: The patterns to predicate test tags against
+      ///   - membership: How to interpret the result when predicating tests.
+      case tagPatterns(_ tagPatterns: [String], membership: Membership)
 #endif
 
       /// The test filter is a combination of other test filter kinds.
@@ -153,6 +153,32 @@ extension Configuration.TestFilter {
 
     self.init(_kind: .patterns(Array(patterns), membership: membership))
   }
+
+  /// Initialize this instance to include tests with tags matching a pattern.
+  ///
+  /// - Parameters:
+  ///   - tagPatterns: The patterns, expressed as a `Regex`-compatible regular
+  ///     expressions, to match test tags against.
+  public init(includingTagsMatching tagPatterns: [String]) throws {
+    // See the comment above in init(membership:matchingAnyOf:) to understand why we construct regexes here.
+    for pattern in tagPatterns {
+      _ = try Regex(pattern)
+    }
+    self.init(_kind: .tagPatterns(tagPatterns, membership: .including))
+  }
+
+  /// Initialize this instance to exclude tests with tags matching a pattern.
+  ///
+  /// - Parameters:
+  ///   - tagPatterns: The patterns, expressed as a `Regex`-compatible regular
+  ///     expressions, to match test tags against.
+  public init(excludingTagsMatching tagPatterns: [String]) throws {
+    // See the comment above in init(membership:matchingAnyOf:) to understand why we construct regexes here.
+    for pattern in tagPatterns {
+      _ = try Regex(pattern)
+    }
+    self.init(_kind: .tagPatterns(tagPatterns, membership: .excluding))
+  }
 #endif
 
   /// Initialize this instance to include tests with a given set of tags.
@@ -193,32 +219,6 @@ extension Configuration.TestFilter {
   /// Matching tests have had _all_ of the tags in `tags` added to them.
   public init(excludingAllOf tags: some Collection<Tag>) {
     self.init(_kind: .tags(Set(tags), anyOf: false, membership: .excluding))
-  }
-
-  /// Initialize this instance to include tests with tags matching a pattern.
-  ///
-  /// - Parameters:
-  ///   - tagPatterns: The patterns, expressed as a `Regex`-compatible regular
-  ///     expressions, to match test tags against.
-  public init(includingTagsMatching tagPatterns: [String]) throws {
-    // See the comment above in init(membership:matchingAnyOf:) to understand why we construct regexes here.
-    for pattern in tagPatterns {
-      _ = try Regex(pattern)
-    }
-    self.init(_kind: .tagPatterns(tagPatterns, membership: .including))
-  }
-
-  /// Initialize this instance to exclude tests with tags matching a pattern.
-  ///
-  /// - Parameters:
-  ///   - tagPatterns: The patterns, expressed as a `Regex`-compatible regular
-  ///     expressions, to match test tags against.
-  public init(excludingTagsMatching tagPatterns: [String]) throws {
-    // See the comment above in init(membership:matchingAnyOf:) to understand why we construct regexes here.
-    for pattern in tagPatterns {
-      _ = try Regex(pattern)
-    }
-    self.init(_kind: .tagPatterns(tagPatterns, membership: .excluding))
   }
 }
 
@@ -285,6 +285,12 @@ extension Configuration.TestFilter.Kind {
       }
       return .function(predicate, membership: membership)
 #if canImport(_StringProcessing)
+    case let .patterns(patterns, membership):
+      nonisolated(unsafe) let regexes = try patterns.map(Regex.init)
+      return .function({ item in
+        let id = String(describing: item.test.id)
+        return regexes.contains { id.contains($0) }
+      }, membership: membership)
     case let .tagPatterns(tagPatterns, membership):
       nonisolated(unsafe) let regexes = try tagPatterns.map(Regex.init)
       return .function({ item in
@@ -298,12 +304,6 @@ extension Configuration.TestFilter.Kind {
             tagName.contains(regex)
           })
         })
-      }, membership: membership)
-    case let .patterns(patterns, membership):
-      nonisolated(unsafe) let regexes = try patterns.map(Regex.init)
-      return .function({ item in
-        let id = String(describing: item.test.id)
-        return regexes.contains { id.contains($0) }
       }, membership: membership)
 #endif
     case let .combination(lhs, rhs, op):
