@@ -662,7 +662,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     var idPatterns = [String]()
 
     // If one of the patterns we encounter is surrounded by backticks, we can
-    // surmize the user intended to express a Swift raw identifier. In that
+    // surmise the user intended to express a Swift raw identifier. In that
     // case, we should alert the user that it's not going to match what the
     // user expects and strip the backticks for them.
     func stripBackticksAndAlertIfEncountered(string: inout String) {
