@@ -213,7 +213,7 @@ struct SwiftPMTests {
     #expect(!planTests.contains(test2))
   }
 
-  @Test("--filter combining tag: and id: patterns AND's them together")
+  @Test("--filter combining tag: and id: patterns OR's them together")
   func mixedPrefixedAndUnprefixedFilters() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:testTag", "--filter", "hello"])
     let test1 = Test(.tags(.testTag), name: "hello") {}
@@ -223,9 +223,37 @@ struct SwiftPMTests {
     let plan = await Runner.Plan(tests: [test1, test2, test3, test4], configuration: configuration)
     let planTests = plan.steps.map(\.test)
     #expect(planTests.contains(test1))
+    #expect(planTests.contains(test2))
+    #expect(planTests.contains(test3))
+    #expect(!planTests.contains(test4))
+  }
+
+  @Test("--skip combining tag: and id: patterns OR's them together")
+  func mixedPrefixedAndUnprefixedSkips() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--skip", "tag:testTag", "--skip", "hello"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(.tags(.testTag), name: "goodbye") {}
+    let test3 = Test(name: "hello") {}
+    let test4 = Test(name: "goodbye") {}
+    let plan = await Runner.Plan(tests: [test1, test2, test3, test4], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(!planTests.contains(test1))
     #expect(!planTests.contains(test2))
     #expect(!planTests.contains(test3))
-    #expect(!planTests.contains(test4))
+    #expect(planTests.contains(test4))
+  }
+
+  @Test("Multiple --skip arguments with tag: prefix")
+  func multipleSkipByTag() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--skip", "tag:testTag", "--skip", "tag:unrelatedTag"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(.tags(.unrelatedTag), name: "goodbye") {}
+    let test3 = Test(name: "untagged") {}
+    let plan = await Runner.Plan(tests: [test1, test2, test3], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(!planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+    #expect(planTests.contains(test3))
   }
 
   @Test("--filter argument with explicit id: prefix")

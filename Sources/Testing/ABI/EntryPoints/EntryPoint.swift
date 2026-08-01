@@ -657,7 +657,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     case tag = "tag:"
   }
   var filters = [Configuration.TestFilter]()
-  func testFilters(forOptionArguments optionArguments: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> [Configuration.TestFilter] {
+  func testFilter(forOptionArguments optionArguments: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
     var tagPatterns = [String]()
     var idPatterns = [String]()
 
@@ -703,18 +703,29 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       }
     }
 
-    guard !idPatterns.isEmpty else {
-      // Return early with just the tag filter, otherwise we try to match
-      // against an empty array of regular expressions which is _not_
-      // equivalent to `.unfiltered`.
-      return [tagFilter]
+    // If we didn't find any ID patterns, the idFilter should be .unfiltered
+    // (similar to above). Note that constructing it with an empty array of
+    // patterns is _not_ equivalent to `.unfiltered`.
+    let idFilter: Configuration.TestFilter = if idPatterns.isEmpty {
+      .unfiltered
+    } else {
+      try Configuration.TestFilter(membership: membership, matchingAnyOf: idPatterns)
     }
 
-    return [try Configuration.TestFilter(membership: membership, matchingAnyOf: idPatterns), tagFilter]
+    // Passing an option more than once is an "or" operation. A test is included
+    // if it matches any --filter argument, and skipped if it matches any --skip
+    // argument. For --filter, `.or` expresses that directly. For --skip, the
+    // operator we want is `.and`, because an excluding filter keeps the tests
+    // it did _not_ match: by De Morgan's law, !(A || B) is equivalent to
+    // !A && !B, so `.and` skips a test that matches either the tag or the ID.
+    return switch membership {
+      case .including: idFilter.combining(with: tagFilter, using: .or)
+      case .excluding: idFilter.combining(with: tagFilter, using: .and)
+    }
   }
 
-  filters += try testFilters(forOptionArguments: args.filter, label: "--filter", membership: .including)
-  filters += try testFilters(forOptionArguments: args.skip, label: "--skip", membership: .excluding)
+  filters.append(try testFilter(forOptionArguments: args.filter, label: "--filter", membership: .including))
+  filters.append(try testFilter(forOptionArguments: args.skip, label: "--skip", membership: .excluding))
 
   configuration.testFilter = filters.reduce(.unfiltered) { $0.combining(with: $1) }
   if args.includeHiddenTests == true {
