@@ -61,6 +61,22 @@ extension Event {
       public var useSFSymbols: Bool = false
 #endif
 
+      /// Whether or not to use [Nerd Fonts](https://www.nerdfonts.com) glyphs
+      /// in the output.
+      ///
+      /// When the value of this property is `true`, Nerd Fonts glyphs are
+      /// assumed to be present in the font used for rendering within the
+      /// Unicode Private Use Areas. When using Swift Testing from the command
+      /// line with `swift test`, set the `SWT_NERD_FONTS_ENABLED` environment
+      /// variable to enable them.
+      ///
+      /// If a Nerd Font is not used for rendering where the output is being
+      /// displayed, the effect of setting the value of this property to `true`
+      /// is unspecified. On Apple platforms, if the value of this property and
+      /// the value of ``useSFSymbols`` are both `true`, Nerd Fonts glyphs are
+      /// used.
+      public var useNerdFonts: Bool = false
+
       /// Storage for ``tagColors``.
       private var _tagColors = Tag.Color.predefined
 
@@ -137,6 +153,9 @@ extension Event.Symbol {
   /// - Returns: A string representation of "no symbol" appropriate for writing
   ///   to a stream.
   fileprivate static func placeholderStringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
+    if options.useNerdFonts {
+      return "  "
+    }
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
     if options.useSFSymbols {
       return "  "
@@ -168,6 +187,17 @@ extension Event.Symbol {
       }
     }
 #endif
+    if options.useNerdFonts {
+      // Unlike SF Symbols, Nerd Fonts glyphs are only ever explicitly enabled,
+      // so they take precedence over SF Symbols if both are enabled.
+      symbolCharacter = String(nerdFontCharacter)
+      if options.useANSIEscapeCodes {
+        // Nerd Fonts glyphs are frequently drawn edge-to-edge within their
+        // bounding boxes. As with SF Symbols above, add an extra trailing space
+        // to ensure the glyph has enough room for rendering.
+        symbolCharacter = "\(symbolCharacter) "
+      }
+    }
 
     if useColorANSIEscapeCodes {
       switch self {

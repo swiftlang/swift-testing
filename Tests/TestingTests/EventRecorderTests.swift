@@ -37,26 +37,29 @@ struct EventRecorderTests {
     }
   }
 
-  private static var optionCombinations: [(useSFSymbols: Bool, ansiColorBitDepth: Int8?)] {
-    var result: [(useSFSymbols: Bool, ansiColorBitDepth: Int8?)] = [
-      (false, nil), (false, 1), (false, 4), (false, 8), (false, 24),
+  private static var optionCombinations: [(useSFSymbols: Bool, useNerdFonts: Bool, ansiColorBitDepth: Int8?)] {
+    var result: [(useSFSymbols: Bool, useNerdFonts: Bool, ansiColorBitDepth: Int8?)] = [
+      (false, false, nil), (false, false, 1), (false, false, 4), (false, false, 8), (false, false, 24),
+      (false, true, nil), (false, true, 1), (false, true, 4), (false, true, 8), (false, true, 24),
     ]
 #if os(macOS)
     result += [
-      (true, nil), (true, 1), (true, 4), (true, 8), (true, 24),
+      (true, false, nil), (true, false, 1), (true, false, 4), (true, false, 8), (true, false, 24),
+      (true, true, nil), (true, true, 1), (true, true, 4), (true, true, 8), (true, true, 24),
     ]
 #endif
     return result
   }
 
   @Test("Writing events", arguments: optionCombinations)
-  func writingToStream(useSFSymbols: Bool, ansiColorBitDepth: Int8?) async throws {
+  func writingToStream(useSFSymbols: Bool, useNerdFonts: Bool, ansiColorBitDepth: Int8?) async throws {
     let stream = Stream()
 
     var options = Event.ConsoleOutputRecorder.Options()
 #if os(macOS)
     options.useSFSymbols = useSFSymbols
 #endif
+    options.useNerdFonts = useNerdFonts
     if let ansiColorBitDepth {
       options.useANSIEscapeCodes = true
       options.ansiColorBitDepth = ansiColorBitDepth
@@ -88,6 +91,23 @@ struct EventRecorderTests {
     } else {
       #expect(!buffer.contains("\u{001B}["))
       #expect(!buffer.contains("●"))
+    }
+
+    if useNerdFonts {
+      // The Nerd Fonts glyphs for passing and failing tests (nf-fa-check and
+      // nf-fa-times) should be used instead of the Unicode or SF Symbols
+      // characters.
+      #expect(buffer.contains("\u{F00C}"))
+      #expect(buffer.contains("\u{F00D}"))
+      #expect(!buffer.contains(Event.Symbol.pass(knownIssueCount: 0).unicodeCharacter))
+      #expect(!buffer.contains(Event.Symbol.fail.unicodeCharacter))
+#if os(macOS)
+      #expect(!buffer.contains(Event.Symbol.pass(knownIssueCount: 0).sfSymbolCharacter))
+      #expect(!buffer.contains(Event.Symbol.fail.sfSymbolCharacter))
+#endif
+    } else {
+      #expect(!buffer.contains("\u{F00C}"))
+      #expect(!buffer.contains("\u{F00D}"))
     }
 
 #if SWT_COLLECTION_DIFFING_ENABLED

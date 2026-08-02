@@ -780,6 +780,13 @@ extension Event.ConsoleOutputRecorder.Options {
     }
 #endif
 
+    // There is no standard cross-platform way to detect what font (if any) the
+    // current terminal is using, so Nerd Fonts glyphs are only used when
+    // explicitly requested with an environment variable.
+    if let environmentVariable = Environment.flag(named: "SWT_NERD_FONTS_ENABLED") {
+      result.useNerdFonts = environmentVariable
+    }
+
     // If color output is enabled, load tag colors from user/package preferences
     // on disk.
     if result.useANSIEscapeCodes && result.ansiColorBitDepth > 1 {

@@ -101,6 +101,53 @@ extension Event.Symbol {
 }
 #endif
 
+// MARK: - Nerd Fonts
+
+extension Event.Symbol {
+  /// The [Nerd Fonts](https://www.nerdfonts.com) character corresponding to
+  /// this instance.
+  ///
+  /// Each instance of this type has a corresponding Nerd Fonts glyph, encoded
+  /// in a Unicode Private Use Area, that can be used to represent it in
+  /// text-based output. The value of this property is only rendered correctly
+  /// when the font used by the terminal is a Nerd Font.
+  ///
+  /// This property is not part of the public interface of the testing library.
+  var nerdFontCharacter: Character {
+    switch self {
+    case .default:
+      // Nerd Fonts: nf-md-rhombus_outline
+      "\u{F070C}"
+    case .skip:
+      // Nerd Fonts: nf-fa-arrow_circle_right
+      "\u{F0A9}"
+    case let .pass(knownIssueCount):
+      if knownIssueCount > 0 {
+        // Nerd Fonts: nf-fa-minus
+        "\u{F068}"
+      } else {
+        // Nerd Fonts: nf-fa-check
+        "\u{F00C}"
+      }
+    case .fail:
+      // Nerd Fonts: nf-fa-times
+      "\u{F00D}"
+    case .difference:
+      // Nerd Fonts: nf-md-plus_minus
+      "\u{F0992}"
+    case .warning:
+      // Nerd Fonts: nf-fa-exclamation_triangle
+      "\u{F071}"
+    case .details:
+      // Nerd Fonts: nf-md-subdirectory_arrow_right
+      "\u{F060D}"
+    case .attachment:
+      // Nerd Fonts: nf-fa-paperclip
+      "\u{F0C6}"
+    }
+  }
+}
+
 // MARK: - Unicode
 
 extension Event.Symbol {
