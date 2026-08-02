@@ -266,7 +266,10 @@ extension FileHandle {
 }
 #endif
 
-func withTemporaryPath<R>(_ body: (_ path: String) throws -> R) throws -> R {
+func withTemporaryPath<R>(
+  removeOnDeinit: Bool = true,
+  _ body: (_ path: String) throws -> R,
+) throws -> R {
   // NOTE: we are not trying to test mkstemp() here. We are trying to test the
   // capacity of FileHandle to open a file for reading or writing and we need a
   // temporary file to write to.
@@ -279,7 +282,9 @@ func withTemporaryPath<R>(_ body: (_ path: String) throws -> R) throws -> R {
   let path = appendPathComponent("file_named_\(UInt64.random(in: 0 ..< .max))", to: try temporaryDirectory())
 #endif
   defer {
-    _ = remove(path)
+    if removeOnDeinit {
+      _ = remove(path)
+    }
   }
   return try body(path)
 }
