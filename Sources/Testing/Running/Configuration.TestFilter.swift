@@ -283,18 +283,18 @@ extension Configuration.TestFilter.Operation {
     case let .precomputed(selection, membership):
       switch membership {
       case .including:
-        return testGraph.mapValues { _, item in
+        return testGraph.mapValues { keyPath, item in
           guard let item else {
             return nil
           }
-          return selection.contains(item.test) ? item : nil
+          return selection.contains(keyPath) ? item : nil
         }
       case .excluding:
-        return testGraph.mapValues { _, item in
+        return testGraph.mapValues { keyPath, item in
           guard let item else {
             return nil
           }
-          return !selection.contains(item.test, inferAncestors: false) ? item : nil
+          return !selection.contains(keyPath, inferAncestors: false) ? item : nil
         }
       }
     case let .function(function, membership):
