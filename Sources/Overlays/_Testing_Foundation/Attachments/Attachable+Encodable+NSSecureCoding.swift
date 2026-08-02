@@ -9,7 +9,7 @@
 //
 
 #if canImport(Foundation) && !SWT_NO_CODABLE
-public import Testing
+@_spi(ForToolsIntegrationOnly) public import Testing
 public import Foundation
 
 // This implementation is necessary to let the compiler disambiguate when a type
@@ -25,7 +25,8 @@ public import Foundation
 extension Attachable where Self: Encodable & NSSecureCoding {
   @_documentation(visibility: private)
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try _Testing_Foundation.withUnsafeBytes(encoding: self, for: attachment, body)
+    let attachment = try Attachment(encoding: attachment.attachableValue, as: nil as AttachableEncodingFormat?, named: attachment.preferredName, sourceLocation: attachment.sourceLocation)
+    return try attachment.withUnsafeBytes(body)
   }
 }
 #endif
