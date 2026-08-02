@@ -62,10 +62,10 @@ struct FileHandleTests {
           CreateFileW(
             path,
             GENERIC_READ,
-            DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE),
+            FILE_SHARE_READ | FILE_SHARE_WRITE,
             nil,
-            DWORD(OPEN_ALWAYS),
-            DWORD(FILE_ATTRIBUTE_NORMAL),
+            OPEN_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL,
             nil
           )
         )

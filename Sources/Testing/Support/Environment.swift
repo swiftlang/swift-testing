@@ -199,14 +199,14 @@ package enum Environment {
     name.withCString(encodedAs: UTF16.self) { name in
       func getVariable(maxCount: Int) -> String? {
         withUnsafeTemporaryAllocation(of: CWideChar.self, capacity: maxCount) { buffer in
-          SetLastError(DWORD(ERROR_SUCCESS))
+          SetLastError(ERROR_SUCCESS)
           let count = GetEnvironmentVariableW(name, buffer.baseAddress!, DWORD(buffer.count))
           if count == 0 {
             switch GetLastError() {
-            case DWORD(ERROR_SUCCESS):
+            case ERROR_SUCCESS:
               // Empty String
               return ""
-            case DWORD(ERROR_ENVVAR_NOT_FOUND):
+            case ERROR_ENVVAR_NOT_FOUND:
               // The environment variable wasn't set.
               return nil
             case let errorCode:

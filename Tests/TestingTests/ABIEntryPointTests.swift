@@ -262,7 +262,7 @@ private func withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws ->
   // We can't dynamically look up a function linked into the test executable on
   // ELF-based platforms.
 #elseif os(Windows)
-  let flags = DWORD(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS)
+  let flags = GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
   try addressInTestingLibrary.withMemoryRebound(to: CWideChar.self, capacity: MemoryLayout<UnsafeRawPointer>.stride / MemoryLayout<CWideChar>.stride) { addressInTestingLibrary in
     try #require(GetModuleHandleExW(flags, addressInTestingLibrary, &testingLibraryAddress))
   }
