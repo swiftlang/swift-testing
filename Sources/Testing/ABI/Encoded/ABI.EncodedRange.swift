@@ -58,7 +58,18 @@ extension ABI {
 
 // MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.EncodedRange: Codable {}
+#endif
+
+extension ABI.EncodedRange: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+    result["min"] = min?.jsonValue(in: context)
+    result["max"] = max?.jsonValue(in: context)
+    return .object(result)
+  }
+}
 
 // MARK: - Conversion to/from library types
 

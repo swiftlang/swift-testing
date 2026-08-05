@@ -68,8 +68,9 @@ extension ABI.EncodedConfirmationMiscount {
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.EncodedConfirmationMiscount: Codable {
   private enum _CodingKeys: String, CodingKey {
     case actual
@@ -77,14 +78,7 @@ extension ABI.EncodedConfirmationMiscount: Codable {
   }
 
   func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: _CodingKeys.self)
-    try container.encode(actual, forKey: .actual)
-    switch expected {
-    case .single(let count):
-      try container.encode(count, forKey: .expected)
-    case .range(let range):
-      try container.encode(range, forKey: .expected)
-    }
+    try encoder.encodeJSONEncodableValue(self)
   }
 
   init(from decoder: any Decoder) throws {
@@ -95,6 +89,21 @@ extension ABI.EncodedConfirmationMiscount: Codable {
     } else {
       expected = .range(try container.decode(ABI.EncodedRange<V>.self, forKey: .expected))
     }
+  }
+}
+#endif
+
+extension ABI.EncodedConfirmationMiscount: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+    result["actual"] = actual.jsonValue(in: context)
+    switch expected {
+    case .single(let count):
+      result["expected"] = count.jsonValue(in: context)
+    case .range(let range):
+      result["expected"] = range.jsonValue(in: context)
+    }
+    return .object(result)
   }
 }
 #endif

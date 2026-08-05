@@ -82,8 +82,8 @@
           "severity":"error",
           "sourceLocation":{
             "column":1,
-            "fileID":"SomeTests\/SomeTests.swift",
-            "filePath":"\/path\/to\/SomeTests.swift",
+            "fileID":"SomeTests/SomeTests.swift",
+            "filePath":"/path/to/SomeTests.swift",
             "line":1
           }
         }
@@ -112,7 +112,7 @@
             "domain":"TestingTests.`ABI.EncodedIssue Tests`.FakeError",
             "type":{
               "fullyQualifiedName":"TestingTests.`ABI.EncodedIssue Tests`.FakeError",
-              "mangledName":"s12TestingTests0035ABIEncodedIssueTests_wtaFABFCjAGawaV9FakeErrorV",
+              "mangledName":"$s12TestingTests0035ABIEncodedIssueTests_wtaFABFCjAGawaV9FakeErrorV",
               "unqualifiedName":"FakeError"
             }
           },
@@ -145,7 +145,7 @@
     let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: issue, in: Self.sampleEventContext)
     try JSON.withEncoding(of: encoded) { json in
       let jsonString = String(decoding: json, as: UTF8.self)
-      #expect(jsonString == #"{"exceededTimeLimit":60,"isFailure":true,"severity":"error"}"#)
+      #expect(jsonString == #"{"exceededTimeLimit":60.0,"isFailure":true,"severity":"error"}"#)
     }
 
     let decodedIssue = try #require(Issue(decoding: encoded))
@@ -275,8 +275,8 @@
           "severity":"error",
           "sourceLocation":{
             "column":1,
-            "fileID":"SomeTests\/SomeTests.swift",
-            "filePath":"\/path\/to\/SomeTests.swift",
+            "fileID":"SomeTests/SomeTests.swift",
+            "filePath":"/path/to/SomeTests.swift",
             "line":1
           }
         }
