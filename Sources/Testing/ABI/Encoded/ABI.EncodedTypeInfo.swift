@@ -38,9 +38,27 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
-extension ABI.EncodedTypeInfo: Codable {}
+#if !SWT_NO_CODABLE
+extension ABI.EncodedTypeInfo: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
+#endif
+
+extension ABI.EncodedTypeInfo: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["fullyQualifiedName"] = fullyQualifiedName?.jsonValue(in: context)
+    result["unqualifiedName"] = unqualifiedName?.jsonValue(in: context)
+    result["mangledName"] = mangledName?.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
 
 // MARK: - Conversion to/from library types
 
