@@ -43,7 +43,7 @@ struct SkipInfoTests {
         "kind": "\#(kind)",
         "instant": { "since1970": 0, "absolute": 0 },
         "messages": [],
-        "_comments": ["Skipped Test"],
+        "comments": ["Skipped Test"],
         "_sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
       }
       """#
@@ -64,7 +64,7 @@ struct SkipInfoTests {
         "kind": "testStarted",
         "instant": { "since1970": 0, "absolute": 0 },
         "messages": [],
-        "_comments": ["Skipped Test"],
+        "comments": ["Skipped Test"],
         "_sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
       }
       """#

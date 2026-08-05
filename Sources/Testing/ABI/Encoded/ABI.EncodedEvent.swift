@@ -160,9 +160,7 @@ extension ABI {
     /// issue matcher, and either can be `nil`. In such cases, the secondary
     /// comment(s) are represented via a distinct property depending on the kind
     /// of that event.
-    ///
-    /// - Warning: Comments at this level are not yet part of the JSON schema.
-    var _comments: [String]?
+    var comments: [String]?
 
     /// A source location associated with this event, if any.
     ///
@@ -206,18 +204,30 @@ extension ABI {
         iteration = eventContext.iteration
       }
 
+      // Fields introduced in 6.5
+      if V.versionNumber >= ABI.v6_5.versionNumber {
+        switch event.kind {
+        case let .issueRecorded(recordedIssue):
+          comments = recordedIssue.comments.map(\.rawValue)
+        case let .testCaseCancelled(skipInfo),
+          let .testSkipped(skipInfo),
+          let .testCancelled(skipInfo):
+          comments = Array(skipInfo.comment).map(\.rawValue)
+        default:
+          break
+        }
+      }
+
       // Experimental fields
       if V.includesExperimentalFields {
         switch event.kind {
         case let .issueRecorded(recordedIssue):
-          _comments = recordedIssue.comments.map { $0.rawValue }
           _sourceLocation = recordedIssue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         case let .valueAttached(attachment):
           _sourceLocation = EncodedSourceLocation<V>(encoding: attachment.sourceLocation)
         case let .testCaseCancelled(skipInfo),
           let .testSkipped(skipInfo),
           let .testCancelled(skipInfo):
-          _comments = Array(skipInfo.comment).map { $0.rawValue }
           _sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         default:
           break
@@ -245,7 +255,7 @@ extension ABI.EncodedEvent: Codable {
     case testID
     case iteration
     case testCase = "_testCase"
-    case comments = "_comments"
+    case comments
     case sourceLocation = "_sourceLocation"
   }
 
@@ -267,7 +277,7 @@ extension ABI.EncodedEvent: Codable {
     testID = try container.decodeIfPresent(ABI.EncodedTest<V>.ID.self, forKey: .testID)
     iteration = try container.decodeIfPresent(Int.self, forKey: .iteration)
     _testCase = try container.decodeIfPresent(ABI.EncodedTestCase<V>.self, forKey: .testCase)
-    _comments = try container.decodeIfPresent([String].self, forKey: .comments)
+    comments = try container.decodeIfPresent([String].self, forKey: .comments)
     _sourceLocation = try container.decodeIfPresent(ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
   }
 }
@@ -293,7 +303,7 @@ extension ABI.EncodedEvent: JSON.Encodable {
     result["testID"] = testID?.stringValue.jsonValue(in: context)
     result["iteration"] = iteration?.jsonValue(in: context)
     result["_testCase"] = _testCase?.jsonValue(in: context)
-    result["_comments"] = _comments?.jsonValue(in: context)
+    result["comments"] = comments?.jsonValue(in: context)
     result["_sourceLocation"] = _sourceLocation?.jsonValue(in: context)
 
     return .object(result)
@@ -405,8 +415,7 @@ extension ABI.Version {
     // If the environment variable above is set to `true`, then even newer
     // schema versions should encode the "messages" field.
 
-    // TODO: fix speculative version number check
-    _alwaysIncludeMessagesField == true || versionNumber < ABI.ExperimentalVersion.versionNumber
+    _alwaysIncludeMessagesField == true || versionNumber < ABI.v6_5.versionNumber
   }
 
   /// Whether or not to require the presence of the `"messages"` field in
@@ -415,8 +424,7 @@ extension ABI.Version {
     // Whether or not the field is required during decoding is solely dependent
     // on the schema version, not on the environment variable.
 
-    // TODO: fix speculative version number check
-    versionNumber < ABI.ExperimentalVersion.versionNumber
+    versionNumber < ABI.v6_5.versionNumber
   }
 }
 #endif
