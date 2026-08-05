@@ -44,7 +44,7 @@ let package = Package(
   name: "swift-testing",
 
   platforms: !buildingForEmbedded ? [
-    .macOS(.v14),
+    .macOS(.v26),
     .iOS(.v17),
     .watchOS(.v10),
     .tvOS(.v17),
@@ -134,6 +134,8 @@ let package = Package(
       dependencies: [
         "_TestDiscovery",
         "_TestingInternals",
+        .product(name: "SwiftParser", package: "swift-syntax"),
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
       ] + {
         // TODO: get macro target building for host when the target is embedded
         buildingForEmbedded ? [] : ["TestingMacros"]

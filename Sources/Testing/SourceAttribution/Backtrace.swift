@@ -14,23 +14,111 @@ private import _TestingInternals
 private import Synchronization
 #endif
 
+#if canImport(Runtime)
+public import Runtime
+#endif
+
 /// A type representing a backtrace or stack trace.
 @_spi(ForToolsIntegrationOnly)
 public struct Backtrace: Sendable {
+  private enum _Kind: Sendable {
+    case addressesOnly([Address])
+#if canImport(Runtime)
+    case runtimeBacktrace(Runtime.Backtrace)
+#endif
+  }
+
+  private var _kind: _Kind
+
   /// A type describing an address in a backtrace.
   ///
   /// If a `nil` address is present in a backtrace, it is represented as `0`.
+#if canImport(Runtime)
+  public typealias Address = Runtime.Backtrace.Address.IntegerLiteralType
+#else
   public typealias Address = UInt64
+#endif
 
   /// The addresses in this backtrace.
-  public var addresses: [Address]
+  public var addresses: [Address] {
+    get {
+      switch _kind {
+      case let .addressesOnly(addresses):
+        return addresses
+      case let .runtimeBacktrace(backtrace):
+        return backtrace.frames.lazy
+          .map(\.adjustedProgramCounter)
+          .compactMap(Address.init)
+      }
+    }
+    set {
+      _kind = .addressesOnly(newValue)
+    }
+  }
+
+  /// Storage for ``sourceLocations``.
+  private var _sourceLocations = Allocated(Mutex<[SourceLocation?]?>())
+
+  /// The source locations of the frames in this backtrace.
+  ///
+  /// If a frame's source location cannot be determined at runtime, it is
+  /// represented as `nil` in this property's value.
+  public var sourceLocations: [SourceLocation?] {
+    if let cachedValue = _sourceLocations.value.rawValue {
+      return cachedValue
+    }
+
+    guard case let .runtimeBacktrace(backtrace) = _kind,
+          let symbolicated = backtrace.symbolicated(options: [.showInlineFrames, .showSourceLocations, .useSymbolCache]) else {
+      return addresses.map { _ in nil }
+    }
+
+    var result: [SourceLocation?] = symbolicated.frames.lazy
+      .filter { !$0.isSystem && !$0.isSwiftThunk }
+      .map { frame in
+        guard let sourceLocation = frame.symbol?.sourceLocation else {
+          return nil
+        }
+        return SourceLocation(
+          fileIDSynthesizingIfNeeded: nil,
+          filePath: sourceLocation.path,
+          line: max(1, sourceLocation.line),
+          column: max(1, sourceLocation.column)
+        )
+      }
+
+#if SWIFT_PACKAGE
+    // When building as a package, source locations for our own stack frames are
+    // available. This check for a partial file path is naïve but should catch
+    // the majority of interesting cases while not affecting most external tests
+    // (unless their directory structure matches ours, anyway).
+    result = result.map { sourceLocation in
+      guard let sourceLocation else {
+        return nil
+      }
+
+      // FIXME: Windows?
+      if sourceLocation.filePath.contains("Sources/Testing/") {
+        return nil
+      }
+
+      return sourceLocation
+    }
+#endif
+
+    _sourceLocations.value.withLock { sourceLocations in
+      sourceLocations = result
+    }
+
+    return result
+  }
 
   /// Initialize an instance of this type with the specified addresses.
   ///
   /// - Parameters:
   ///   - addresses: The addresses in the backtrace.
   public init(addresses: some Sequence<Address>) {
-    self.addresses = Array(addresses)
+    _kind = .addressesOnly(Array(addresses))
   }
 
   /// Initialize an instance of this type with the specified addresses.
@@ -41,7 +129,12 @@ public struct Backtrace: Sendable {
   /// The pointers in `addresses` are converted to instances of ``Address``. Any
   /// `nil` addresses are represented as `0`.
   public init(addresses: some Sequence<UnsafeRawPointer?>) {
-    self.addresses = addresses.map { Address(UInt(bitPattern: $0)) }
+    let addresses: some Sequence<Address> = addresses.lazy.map { Address(UInt(bitPattern: $0)) }
+    self.init(addresses: addresses)
+  }
+
+  public init(_ runtimeBacktrace: Runtime.Backtrace) {
+    _kind = .runtimeBacktrace(runtimeBacktrace)
   }
 
   /// Get the current backtrace.
@@ -59,48 +152,24 @@ public struct Backtrace: Sendable {
   /// The number of symbols captured in this backtrace is an implementation
   /// detail.
   public static func current(maximumAddressCount addressCount: Int = 128) -> Self {
-    // NOTE: the exact argument/return types for backtrace() vary across
-    // platforms, hence the use of .init() when calling it below.
-    withUnsafeTemporaryAllocation(of: UnsafeMutableRawPointer?.self, capacity: addressCount) { addresses in
-      var initializedCount = 0
-#if SWT_TARGET_OS_APPLE
-      initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
-#elseif os(Android)
-      if #available(Android 33, *) {
-        initializedCount = addresses.withMemoryRebound(to: UnsafeMutableRawPointer.self) { addresses in
-          .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
-        }
-      }
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD)
-      initializedCount = .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
-#elseif os(Windows)
-      initializedCount = Int(clamping: RtlCaptureStackBackTrace(0, ULONG(clamping: addresses.count), addresses.baseAddress!, nil))
-#elseif os(WASI)
-      // SEE: https://github.com/WebAssembly/WASI/issues/159
-      // SEE: https://github.com/swiftlang/swift/pull/31693
-#else
-#warning("Platform-specific implementation missing: backtraces unavailable")
-#endif
-
-      let endIndex = addresses.index(addresses.startIndex, offsetBy: initializedCount)
-#if _pointerBitWidth(_64)
-      // The width of a pointer equals the width of an `Address`, so we can just
-      // bitcast the memory rather than mapping through UInt first.
-      return addresses[..<endIndex].withMemoryRebound(to: Address.self) { addresses in
-        Self(addresses: addresses)
-      }
-#else
-      return addresses[..<endIndex].withMemoryRebound(to: UnsafeRawPointer?.self) { addresses in
-        Self(addresses: addresses)
-      }
-#endif
+    guard let runtimeBacktrace = try? Runtime.Backtrace.capture(limit: addressCount) else {
+      return Self(addresses: [] as [Address])
     }
+    return Self(runtimeBacktrace)
   }
 }
 
 // MARK: - Equatable, Hashable
 
-extension Backtrace: Equatable, Hashable {}
+extension Backtrace: Equatable, Hashable {
+  public static func ==(lhs: Self, rhs: Self) -> Bool {
+    lhs.addresses == rhs.addresses
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(addresses)
+  }
+}
 
 #if !SWT_NO_CODABLE
 // MARK: - Codable

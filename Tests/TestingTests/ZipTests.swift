@@ -26,3 +26,14 @@ struct ZipTests {
     #expect(i == j)
   }
 }
+
+@Test func `always fails`() throws {
+  try compare(123, "456")
+}
+
+func compare(_ i: Int, _ s: String) throws {
+  if (i > 100 || s != "abc") {
+    throw MyError() // oh no, the input didn't match what we expected!
+  }
+  // ...
+}

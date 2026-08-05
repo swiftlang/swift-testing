@@ -12,6 +12,8 @@
 private import Synchronization
 #endif
 
+private import Foundation
+
 extension Event {
   /// A type which handles ``Event`` instances and outputs representations of
   /// them as human-readable messages.
@@ -90,6 +92,9 @@ extension Event {
 
       /// Data tracked on a per-test basis.
       var testData = Graph<TestDataKey, TestData?>()
+
+      /// Source files we've read at runtime.
+      var sourceFileContent = [String: String?]()
     }
 
     /// This event recorder's mutable context about events it has received,
@@ -116,8 +121,8 @@ extension Event.HumanReadableOutputRecorder {
   ///
   /// - Returns: An array of formatted messages representing `comments`, or an
   ///   empty array if there are none.
-  private func _formattedComments(_ comments: [Comment]) -> [Message] {
-    comments.map(_formattedComment)
+  private func _formattedComments(_ comments: [Comment], symbol: Event.Symbol = .details) -> [Message] {
+    comments.map { _formattedComment($0, symbol: symbol) }
   }
 
   /// Get a string representing a single comment, formatted for output.
@@ -126,8 +131,8 @@ extension Event.HumanReadableOutputRecorder {
   ///   - comment: The comment that should be formatted.
   ///
   /// - Returns: A formatted message representing `comment`.
-  private func _formattedComment(_ comment: Comment) -> Message {
-    Message(symbol: .details, stringValue: comment.rawValue)
+  private func _formattedComment(_ comment: Comment, symbol: Event.Symbol = .details) -> Message {
+    Message(symbol: symbol, stringValue: comment.rawValue)
   }
 
   /// Get a string representing the comments attached to a test, formatted for
@@ -287,6 +292,7 @@ extension Event.HumanReadableOutputRecorder {
     let keyPath = eventContext.keyPath
     let testName = test?.humanReadableName(withVerbosity: verbosity) ?? "«unknown»"
     let instant = event.instant
+    var sourceFileContent: String?? = .none
 
     // First, make any updates to the context/state associated with this
     // recorder.
@@ -321,7 +327,14 @@ extension Event.HumanReadableOutputRecorder {
           testData.issueCount[issue.severity] = issueCount + 1
         }
         context.testData[keyPath] = testData
-      
+        if let sourceLocation = issue.sourceLocation {
+          sourceFileContent = context.sourceFileContent[sourceLocation.filePath]
+          if case .none = sourceFileContent {
+            sourceFileContent = try? String(contentsOfFile: sourceLocation.filePath, encoding: .utf8)
+            context.sourceFileContent[sourceLocation.filePath] = sourceFileContent
+          }
+        }
+
       case .testCaseStarted:
         context.testData[keyPath] = .init(startInstant: instant)
 
@@ -499,6 +512,28 @@ extension Event.HumanReadableOutputRecorder {
       additionalMessages += _formattedComments(issue.comments)
       if let knownIssueComment = issue.knownIssueContext?.comment {
         additionalMessages.append(_formattedComment(knownIssueComment))
+      }
+
+      if issue.error != nil,
+         let sourceLocation = issue.sourceLocation,
+         case .some(.some(let sourceFileContent)) = sourceFileContent {
+        let lineNumber = sourceLocation.line - 1
+        let lines = sourceFileContent.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+        if lineNumber < lines.count {
+          let displayedLineNumbers = max(0, lineNumber - 2) ..< min(lines.count, lineNumber + 3)
+          for displayedLineNumber in displayedLineNumbers {
+            // FIXME: trim common leading whitespace?
+            let line = lines[displayedLineNumber]
+            let comment = Comment(rawValue: String(line))
+            additionalMessages.append(_formattedComment(comment, symbol: .sourceCode(language: "Swift")))
+            if displayedLineNumber == lineNumber {
+              // Also show an arrow underneath at the column of the issue.
+              let columnNumber = sourceLocation.column
+              let comment = Comment(rawValue: String(repeating: " ", count: columnNumber - 1) + "^^^")
+              additionalMessages.append(_formattedComment(comment, symbol: .none))
+            }
+          }
+        }
       }
 
       if verbosity >= 0, case let .expectationFailed(expectation) = issue.kind {

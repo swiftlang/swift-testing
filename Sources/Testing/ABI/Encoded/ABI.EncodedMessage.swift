@@ -35,7 +35,7 @@ extension ABI {
 
       init(encoding symbol: Event.Symbol) {
         self = switch symbol {
-        case .default:
+        case .none, .default:
           .default
         case .skip:
           .skip
@@ -51,7 +51,7 @@ extension ABI {
           .difference
         case .warning:
           .warning
-        case .details:
+        case .details, .sourceCode:
           .details
         case .attachment:
           .attachment

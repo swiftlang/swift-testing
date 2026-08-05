@@ -13,6 +13,9 @@ extension Event {
   /// event.
   @_spi(ForToolsIntegrationOnly)
   public enum Symbol: Sendable {
+    /// No symbol.
+    case none
+
     /// The default symbol to use.
     case `default`
 
@@ -46,6 +49,12 @@ extension Event {
 
     /// The symbol to use when describing an instance of ``Attachment``.
     case attachment
+
+    /// The symbol to use when displaying a line of source code.
+    ///
+    /// - Parameters;
+    ///   - language: The language in which the source code was written.
+    case sourceCode(language: String = "Swift")
   }
 }
 
@@ -56,6 +65,8 @@ extension Event.Symbol {
   /// The SF&nbsp;Symbols character and name corresponding to this instance.
   private var _sfSymbolInfo: (privateUseAreaCharacter: Character, name: String) {
     switch self {
+    case .none:
+      ("\u{101293}", "square.dotted")
     case .default:
       ("\u{1007C8}", "diamond")
     case .skip:
@@ -76,6 +87,10 @@ extension Event.Symbol {
       ("\u{100135}", "arrow.turn.down.right")
     case .attachment:
       ("\u{100237}", "doc")
+    case .sourceCode("Swift"):
+      ("\u{100ACA}", "swift")
+    case .sourceCode:
+      ("\u{1011F5}", "ellipsis.curlybraces")
     }
   }
 
@@ -112,6 +127,9 @@ extension Event.Symbol {
   public var unicodeCharacter: Character {
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
     switch self {
+    case .none:
+      // Unicode: EMPTY SET
+      return "\u{2205}"
     case .default:
       // Unicode: WHITE DIAMOND
       return "\u{25C7}"
@@ -142,11 +160,17 @@ extension Event.Symbol {
       // TODO: decide on symbol
       // Unicode: PRINT SCREEN SYMBOL
       return "\u{2399}"
+    case .sourceCode:
+      // Unicode: LEFT CURLY BRACKET
+      return "\u{007B}"
     }
 #elseif os(Windows)
     // The default Windows console font (Consolas) has limited Unicode support,
     // so substitute some other characters that it does have.
     switch self {
+    case .none:
+      // Unicode: LATIN CAPITAL LETTER O WITH STROKE
+      return "\u{00D8}"
     case .default:
       // Unicode: LOZENGE
       return "\u{25CA}"
@@ -177,6 +201,9 @@ extension Event.Symbol {
       // TODO: decide on symbol
       // Unicode: PRINT SCREEN SYMBOL
       return "\u{2399}"
+    case .sourceCode:
+      // Unicode: LEFT CURLY BRACKET
+      return "\u{007B}"
     }
 #else
 #warning("Platform-specific implementation missing: Unicode characters unavailable")

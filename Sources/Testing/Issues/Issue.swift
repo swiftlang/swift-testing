@@ -145,6 +145,10 @@ public struct Issue: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public var sourceContext: SourceContext
 
+  /// Whether or not some caller has explicitly called the setter for
+  /// ``sourceContext``.
+  private var _sourceContextHasBeenSetByCaller = false
+
   /// A type representing a
   /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)`` call
   /// that matched an issue.
@@ -226,9 +230,19 @@ public struct Issue: Sendable {
   /// The location in source where this issue occurred, if available.
   public var sourceLocation: SourceLocation? {
     get {
-      sourceContext.sourceLocation
+      if !_sourceContextHasBeenSetByCaller,
+         let error, let backtrace = Backtrace(forFirstThrowOf: error) {
+        let firstAvailable = backtrace.sourceLocations.lazy
+          .compactMap(\.self)
+          .first
+        if let firstAvailable {
+          return firstAvailable
+        }
+      }
+      return sourceContext.sourceLocation
     }
     set {
+      _sourceContextHasBeenSetByCaller = true
       sourceContext.sourceLocation = newValue
     }
   }

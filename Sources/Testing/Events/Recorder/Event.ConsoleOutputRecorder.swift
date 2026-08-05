@@ -8,6 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import SwiftParser
+private import SwiftSyntax
+
 extension Event {
   /// A type which handles ``Event`` instances and outputs representations of
   /// them as human-readable strings.
@@ -155,10 +158,17 @@ extension Event.Symbol {
   package func stringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
     let useColorANSIEscapeCodes = options.useANSIEscapeCodes && options.ansiColorBitDepth >= 4
 
-    var symbolCharacter = String(unicodeCharacter)
+    let hasSymbolCharacter = switch self {
+    case .none, .sourceCode:
+      false
+    default:
+      true
+    }
+
+    var symbolCharacter = hasSymbolCharacter ? String(unicodeCharacter) : " "
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
     if options.useSFSymbols {
-      symbolCharacter = String(sfSymbolCharacter)
+      symbolCharacter = hasSymbolCharacter ? String(sfSymbolCharacter) : " "
       if options.useANSIEscapeCodes {
         // When using ANSI escape codes, assume we are interfaced with the macOS
         // Terminal application which assumes a fixed-width font. Add an extra
@@ -184,7 +194,7 @@ extension Event.Symbol {
         return "\(_ansiEscapeCodePrefix)91m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .attachment:
         return "\(_ansiEscapeCodePrefix)94m\(symbolCharacter)\(_resetANSIEscapeCode)"
-      case .details:
+      case .none, .details, .sourceCode:
         return symbolCharacter
       }
     }
@@ -326,12 +336,55 @@ extension Event.ConsoleOutputRecorder {
       let symbol = message.symbol?.stringValue(options: options) ?? symbolPlaceholder
       let indentation = String(repeating: "  ", count: message.indentation)
 
-      if case .details = message.symbol {
+      var stringValue = message.stringValue
+      if case .sourceCode("Swift") = message.symbol {
+        if options.useANSIEscapeCodes, options.ansiColorBitDepth > 1 {
+          let syntax = Parser.parse(source: stringValue)
+
+          stringValue = "\(_resetANSIEscapeCode)"
+          lazy var keywordANSIEscapeCode = Tag.Color(redComponent: 196, greenComponent: 36, blueComponent: 110).ansiEscapeCode(options: options) ?? ""
+          lazy var stringANSIEscapeCode = Tag.Color(redComponent: 202, greenComponent: 44, blueComponent: 29).ansiEscapeCode(options: options) ?? ""
+          lazy var numberANSIEscapeCode = Tag.Color(redComponent: 0, greenComponent: 120, blueComponent: 184).ansiEscapeCode(options: options) ?? ""
+          lazy var poundANSIEscapeCode = Tag.Color(redComponent: 144, greenComponent: 105, blueComponent: 24).ansiEscapeCode(options: options) ?? ""
+          lazy var typeANSIEscapeCode = Tag.Color(redComponent: 0, greenComponent: 133, blueComponent: 111).ansiEscapeCode(options: options) ?? ""
+          func isInTypeSyntax(_ node: Syntax) -> Bool {
+            if node.is(TypeSyntax.self) {
+              return true
+            } else if let parent = node.parent, isInTypeSyntax(parent) {
+              return true
+            }
+            return false
+          }
+          for token in syntax.tokens(viewMode: .sourceAccurate) {
+            if case let leading = token.leadingTrivia, !leading.isEmpty {
+              stringValue += "\(_ansiEscapeCodePrefix)90m\(leading)\(_resetANSIEscapeCode)"
+            }
+            switch token.tokenKind {
+            case .keyword:
+              stringValue += "\(_ansiEscapeCodePrefix)1m\(keywordANSIEscapeCode)\(token.text)\(_resetANSIEscapeCode)"
+            case .stringQuote, .stringSegment, .multilineStringQuote:
+              stringValue += "\(_ansiEscapeCodePrefix)1m\(stringANSIEscapeCode)\(token.text)\(_resetANSIEscapeCode)"
+            case .integerLiteral, .floatLiteral:
+              stringValue += "\(_ansiEscapeCodePrefix)1m\(numberANSIEscapeCode)\(token.text)\(_resetANSIEscapeCode)"
+            case .poundIf, .poundElse, .poundEndif, .poundElseif, .poundAvailable, .poundUnavailable, .poundSourceLocation:
+              stringValue += "\(_ansiEscapeCodePrefix)1m\(poundANSIEscapeCode)\(token.text)\(_resetANSIEscapeCode)"
+            case .identifier where isInTypeSyntax(Syntax(token)):
+              stringValue += "\(_ansiEscapeCodePrefix)1m\(typeANSIEscapeCode)\(token.text)\(_resetANSIEscapeCode)"
+            default:
+              stringValue += "\(token.text)"
+            }
+            if case let trailing = token.trailingTrivia, !trailing.isEmpty {
+              stringValue += "\(_ansiEscapeCodePrefix)90m\(trailing)\(_resetANSIEscapeCode)"
+            }
+          }
+        }
+        return "\(symbol) \(indentation)\(stringValue)\n"
+      } else if case .details = message.symbol {
         // Special-case the detail symbol to apply grey to the entire line of
         // text instead of just the symbol. Details may be multi-line messages,
         // so split the message on newlines and indent all lines to align them
         // to the indentation provided by the symbol.
-        var lines = message.stringValue.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+        var lines = stringValue.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
         lines = CollectionOfOne(lines[0]) + lines.dropFirst().map { line in
           "\(indentation)\(symbolPlaceholder) \(line)"
         }
@@ -343,7 +396,7 @@ extension Event.ConsoleOutputRecorder {
         }
       } else {
         let colorDots = tags.map { self.colorDots(for: $0) } ?? ""
-        return "\(symbol) \(indentation)\(colorDots)\(message.stringValue)\n"
+        return "\(symbol) \(indentation)\(colorDots)\(stringValue)\n"
       }
     }
 
