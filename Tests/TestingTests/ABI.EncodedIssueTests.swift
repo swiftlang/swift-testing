@@ -112,7 +112,7 @@
             "domain":"TestingTests.`ABI.EncodedIssue Tests`.FakeError",
             "type":{
               "fullyQualifiedName":"TestingTests.`ABI.EncodedIssue Tests`.FakeError",
-              "mangledName":"s12TestingTests0035ABIEncodedIssueTests_wtaFABFCjAGawaV9FakeErrorV",
+              "mangledName":"$s12TestingTests0035ABIEncodedIssueTests_wtaFABFCjAGawaV9FakeErrorV",
               "unqualifiedName":"FakeError"
             }
           },
