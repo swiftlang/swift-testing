@@ -133,7 +133,7 @@ extension Issue {
       return nil
     }
     self.init(decoding: issue)
-    if let comments = event._comments {
+    if let comments = event.comments {
       self.comments += comments.map(Comment.init(rawValue:))
     }
   }
