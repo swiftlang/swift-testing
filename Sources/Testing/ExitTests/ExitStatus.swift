@@ -141,7 +141,9 @@ extension ExitStatus: CustomStringConvertible {
         .flatMap(String.init(validatingCString:))
         .map { "SIG\($0)" }
 #endif
-#elseif os(Windows) || os(WASI)
+#elseif os(Windows)
+      result = windowsSignals[signal]
+#elseif os(WASI)
       // These platforms do not have API to get the programmatic name of a
       // signal constant.
 #else
@@ -165,14 +167,18 @@ extension ExitStatus: CustomStringConvertible {
   public var description: String {
     switch self {
     case let .exitCode(exitCode):
+#if !SWT_NO_PROCESS_SPAWNING
       if let name {
         return ".exitCode(\(name))"
       }
+#endif
       return ".exitCode(\(exitCode))"
     case let .signal(signal):
+#if !SWT_NO_PROCESS_SPAWNING
       if let name {
         return ".signal(\(name))"
       }
+#endif
       return ".signal(\(signal))"
     }
   }

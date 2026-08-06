@@ -79,7 +79,9 @@ because it has several downsides:
 The primary reason Swift Testing is available to be used as a Swift package is
 to support its own development. The core contributors regularly develop Swift
 Testing by building it locally as a package, following workflows described in
-[Contributing][], and its CI builds that way as well.
+[Contributing][], and its CI builds that way as well. Additionally, when proposals
+for Swift Testing features or APIs undergo Swift evolution review, the "Trying it
+out" instructions typically recommend using the package for convenience.
 
 It's also sometimes helpful to use Swift Testing as a package in order to
 validate how changes made to the testing library will impact supporting tools,

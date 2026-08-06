@@ -39,7 +39,7 @@ struct CommentTests {
 
     let example3 = try #require(plan.steps.map(\.test).first { $0.name == "example3()" })
     #expect(example3.comments == ["H", "I"])
-    #expect(example3.comments(from: Comment.self) == ["H"])
+    #expect(example3.traits.compactMap { $0.__as(Comment.self) } == ["H"])
 
     let innerType = try #require(plan.steps.map(\.test).first { $0.name == "Inner" })
     #expect(innerType.comments == ["// J"])

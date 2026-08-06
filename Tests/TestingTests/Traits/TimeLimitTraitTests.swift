@@ -10,9 +10,6 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if canImport(Foundation)
-private import Foundation
-#endif
 #if canImport(Synchronization)
 private import Synchronization
 #endif
@@ -230,7 +227,7 @@ struct TimeLimitTraitTests {
     ]
   )
   func timeLimitExceededDescription(seconds: Int64, attoseconds: Int64, description: String) async throws {
-    let issueKind = Issue.Kind.timeLimitExceeded(timeLimit: Duration(secondsComponent: seconds, attosecondsComponent: attoseconds))
+    let issueKind = Issue.Kind.timeLimitExceeded(timeLimitComponents: (seconds, attoseconds))
     #expect(String(describing: issueKind) == "Time limit was exceeded: \(description) seconds")
   }
 }

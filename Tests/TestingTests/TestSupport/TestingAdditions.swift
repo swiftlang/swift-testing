@@ -14,8 +14,8 @@
 import XCTest
 #endif
 
-#if canImport(Foundation)
-import Foundation
+#if canImport(Synchronization)
+private import Synchronization
 #endif
 
 /// The ABI name of the testing library's main module.
@@ -305,6 +305,24 @@ extension Test {
     let runner = await Runner(testing: [self], configuration: configuration)
     await runner.run()
   }
+
+  /// Run a single test, returning all `.issueRecorded` event types that it
+  /// encountered while running.
+  func runCapturingIssues() async -> [Issue] {
+    let issues = Mutex<[Issue]>()
+
+    var issueCapturingConfig = Configuration()
+    issueCapturingConfig.eventHandler = { event, _ in
+      if case .issueRecorded(let issue) = event.kind {
+        issues.withLock { $0.append(issue) }
+      }
+    }
+
+    let runner = await Runner(testing: [self], configuration: issueCapturingConfig)
+    await runner.run()
+
+    return issues.rawValue
+  }
 }
 
 extension Test.ID {
@@ -398,6 +416,12 @@ extension Configuration {
 /// library.
 let testsWithSignificantIOAreEnabled = Environment.flag(named: "SWT_ENABLE_TESTS_WITH_SIGNIFICANT_IO") == true
 
+/// Whether or not to enable performance tests. These tests may be subject to scheduling differences,
+/// so they are not enabled in CI. When doing any sort of performance work on Swift Testing, you
+/// should enable these tests.
+let performanceTestsEnabled = Environment.flag(named: "SWT_ENABLE_PERFORMANCE_TESTS") == true
+
+#if !SWT_NO_CODABLE
 extension JSON {
   /// Round-trip a value through JSON encoding/decoding.
   ///
@@ -412,25 +436,8 @@ extension JSON {
       try JSON.decode(T.self, from: data)
     }
   }
-
-#if canImport(Foundation)
-  /// Decode a value from JSON data.
-  ///
-  /// - Parameters:
-  ///   - type: The type of value to decode.
-  ///   - jsonRepresentation: Data of the JSON encoding of the value to decode.
-  ///
-  /// - Returns: An instance of `T` decoded from `jsonRepresentation`.
-  ///
-  /// - Throws: Whatever is thrown by the decoding process.
-  @_disfavoredOverload
-  static func decode<T>(_ type: T.Type, from jsonRepresentation: Data) throws -> T where T: Decodable {
-    try jsonRepresentation.withUnsafeBytes { bytes in
-      try JSON.decode(type, from: bytes)
-    }
-  }
-#endif
 }
+#endif
 
 extension Trait where Self == TimeLimitTrait {
   /// Construct a time limit trait that causes a test to time out if it runs for
@@ -465,5 +472,15 @@ extension SourceContext {
 
   init(sourceLocation: SourceLocation?) {
     self.init(backtrace: .current(), sourceLocation: sourceLocation)
+  }
+}
+
+@Suite struct TestingAdditionsTests {
+  @Test func `Demonstrate runCapturingIssues usage`() async {
+    let issues = await Test {
+      #expect(Bool(false))
+    }.runCapturingIssues()
+
+    #expect(issues.count == 1)
   }
 }

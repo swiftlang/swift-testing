@@ -54,6 +54,32 @@ struct FileHandleTests {
 #endif
 
 #if os(Windows)
+  @Test("Can init from Windows file HANDLE")
+  func initFromFileHANDLE() throws {
+    try withTemporaryPath { path in
+      try path.withCString(encodedAs: UTF16.self) { path in
+        let windowsHANDLE = try #require(
+          CreateFileW(
+            path,
+            GENERIC_READ,
+            DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE),
+            nil,
+            DWORD(OPEN_ALWAYS),
+            DWORD(FILE_ATTRIBUTE_NORMAL),
+            nil
+          )
+        )
+        if windowsHANDLE == INVALID_HANDLE_VALUE {
+          throw Win32Error(rawValue: GetLastError())
+        }
+        let fileHandle = try FileHandle(unsafeWindowsHANDLE: windowsHANDLE, options: [.readAccess])
+        fileHandle.withUnsafeWindowsHANDLE { ownedHANDLE in
+          #expect(windowsHANDLE == ownedHANDLE)
+        }
+      }
+    }
+  }
+
   @Test("Can get Windows file HANDLE")
   func fileHANDLE() throws {
     let fileHandle = try FileHandle.temporary()
@@ -63,7 +89,7 @@ struct FileHandleTests {
   }
 #endif
 
-#if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
   @Test("close() function")
   func closeFunction() async throws {
     try await confirmation("File handle closed") { closed in
@@ -158,9 +184,8 @@ struct FileHandleTests {
     #expect(readEnd.isPipe as Bool)
     #expect(writeEnd.isPipe as Bool)
   }
-#endif
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_PIPES
+#if SWT_TARGET_OS_APPLE || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
   @Test("Can close ends of a pipe")
   func closeEndsOfPipe() async throws {
     try await confirmation("File handle closed", expectedCount: 2) { closed in
@@ -177,6 +202,7 @@ struct FileHandleTests {
       pipe2WriteEnd.close()
     }
   }
+#endif
 #endif
 
   @Test("/dev/null is not a TTY or pipe")
@@ -281,7 +307,7 @@ func temporaryDirectory() throws -> String {
 #endif
 }
 
-#if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
 func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> FileHandle {
   let context = Unmanaged.passRetained(confirmation as AnyObject).toOpaque()
   let file = try #require(
@@ -297,6 +323,25 @@ func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> Fil
       }
     ) as SWT_FILEHandle?
   )
+  return FileHandle(unsafeCFILEHandle: file, closeWhenDone: false)
+}
+#elseif os(Linux) && !SWT_NO_DYNAMIC_LINKING
+func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> FileHandle {
+  let fopencookie = symbol(named: "fopencookie").map {
+    castCFunction(at: $0, to: (@convention(c) (UnsafeMutableRawPointer?, UnsafePointer<CChar>, SWT_cookie_io_functions_t) -> SWT_FILEHandle?).self)
+  }
+  guard let fopencookie else {
+    try Test.cancel("fopencookie() not available")
+  }
+  let context = Unmanaged.passRetained(confirmation as AnyObject).toOpaque()
+  var functions = SWT_cookie_io_functions_t()
+  functions.read = { _, _, _ in 0 }
+  functions.close = { context in
+    let confirmation = Unmanaged<AnyObject>.fromOpaque(context!).takeRetainedValue() as! Confirmation
+    confirmation()
+    return 0
+  }
+  let file = try #require(fopencookie(context, "rb", functions))
   return FileHandle(unsafeCFILEHandle: file, closeWhenDone: false)
 }
 #endif

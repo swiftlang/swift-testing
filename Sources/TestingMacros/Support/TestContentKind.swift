@@ -1,0 +1,1 @@
+../../_TestDiscovery/TestContentKind.swift

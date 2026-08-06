@@ -309,20 +309,20 @@ extension Event.ConsoleOutputRecorder {
 // MARK: -
 
 extension Event.ConsoleOutputRecorder {
-  /// Record the specified event by generating a representation of it in this
-  /// instance's output format and writing it to this instance's destination.
+  /// Record the specified messages by generating representations of them in
+  /// this instance's output format and writing them to this instance's
+  /// destination.
   ///
   /// - Parameters:
-  ///   - event: The event to record.
-  ///   - context: The context associated with the event.
+  ///   - messages: The messages to record.
+  ///   - tags: Tags that may be colorized and which should be applied to
+  ///     `messages`.
   ///
   /// - Returns: Whether any output was produced and written to this instance's
   ///   destination.
-  @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
+  private func _record(_ messages: [Event.HumanReadableOutputRecorder.Message], tags: Set<Tag>?) -> Bool {
     let symbolPlaceholder = Event.Symbol.placeholderStringValue(options: options)
-
-    let messages = _humanReadableOutputRecorder.record(event, in: context)
-    let lines = messages.lazy.map { [test = context.test] message in
+    let lines = messages.lazy.map { message in
       let symbol = message.symbol?.stringValue(options: options) ?? symbolPlaceholder
       let indentation = String(repeating: "  ", count: message.indentation)
 
@@ -342,7 +342,7 @@ extension Event.ConsoleOutputRecorder {
           return "\(symbol) \(indentation)\(stringValue)\n"
         }
       } else {
-        let colorDots = test.map { self.colorDots(for: $0.tags) } ?? ""
+        let colorDots = tags.map { self.colorDots(for: $0) } ?? ""
         return "\(symbol) \(indentation)\(colorDots)\(message.stringValue)\n"
       }
     }
@@ -351,6 +351,52 @@ extension Event.ConsoleOutputRecorder {
     return !messages.isEmpty
   }
 
+  /// Record the specified event by generating a representation of it in this
+  /// instance's output format and writing it to this instance's destination.
+  ///
+  /// - Parameters:
+  ///   - event: The event to record.
+  ///   - context: The context associated with the event.
+  ///   - configuration: The configuration to use. Various properties of this
+  ///     configuration (in particular its `verbosity` property) are consulted
+  ///     when generating the resulting messages. If `nil`,
+  ///     `eventContext.configuration` is used instead. The exact effects of
+  ///     this argument are implementation-defined and subject to change.
+  ///
+  /// - Returns: Whether any output was produced and written to this instance's
+  ///   destination.
+  @discardableResult public func record(
+    _ event: borrowing Event,
+    in context: borrowing Event.Context,
+    configuration: Configuration? = nil
+  ) -> Bool {
+    let messages = _humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
+    return _record(messages, tags: context.test?.tags)
+  }
+
+#if !SWT_NO_ABI_JSON_SCHEMA
+  /// Record the specified event by generating a representation of it in this
+  /// instance's output format and writing it to this instance's destination.
+  ///
+  /// - Parameters:
+  ///   - event: The event to record.
+  ///   - context: A context value that tracks decoded tests and events.
+  ///   - configuration: The configuration to use. Various properties of this
+  ///     configuration (in particular its `verbosity` property) are consulted
+  ///     when generating the resulting messages. The exact effects of this
+  ///     argument are implementation-defined and subject to change.
+  ///
+  /// - Returns: Whether any output was produced and written to this instance's
+  ///   destination.
+  @discardableResult public func record<V>(
+    _ event: borrowing ABI.EncodedEvent<V>,
+    in context: inout ABI.Context,
+    configuration: Configuration? = nil
+  ) -> Bool {
+    let messages = _humanReadableOutputRecorder.record(event, in: &context, configuration: configuration)
+    return _record(messages, tags: nil)
+  }
+#endif
 
   /// Get a message warning the user of some condition in the library that may
   /// affect test results.

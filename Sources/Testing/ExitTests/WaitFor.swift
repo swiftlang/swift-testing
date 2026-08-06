@@ -33,7 +33,7 @@ private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
       case .init(CLD_KILLED), .init(CLD_DUMPED):
         return .signal(siginfo.si_status)
       default:
-        throw SystemError(description: "Unexpected siginfo_t value. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new and include this information: \(String(reflecting: siginfo))")
+        throw SystemError(description: "Unexpected siginfo_t value. \(fileABugMessage(context: String(reflecting: siginfo)))")
       }
     } else if case let errorCode = swt_errno(), errorCode != EINTR {
       throw CError(rawValue: errorCode)
@@ -192,15 +192,15 @@ private let _createWaitThread: Void = {
       // on Darwin, TASK_COMM_LEN on Linux, MAXCOMLEN on FreeBSD, and _MAXCOMLEN
       // on OpenBSD. We try to maximize legibility in the available space.
 #if SWT_TARGET_OS_APPLE
-      _ = pthread_setname_np("Swift Testing exit test monitor")
+      _ = pthread_setname_np("Swift Testing subprocess monitor")
 #elseif os(Linux)
 #if !SWT_NO_DYNAMIC_LINKING
-      _ = _pthread_setname_np?(pthread_self(), "SWT ExT monitor")
+      _ = _pthread_setname_np?(pthread_self(), "SWT prc monitor")
 #endif
 #elseif os(FreeBSD)
-      pthread_set_name_np(pthread_self(), "SWT ex test monitor")
+      pthread_set_name_np(pthread_self(), "SWT subproc monitor")
 #elseif os(OpenBSD)
-      pthread_set_name_np(pthread_self(), "SWT exit test monitor")
+      pthread_set_name_np(pthread_self(), "SWT subprocess monitor")
 #else
 #warning("Platform-specific implementation missing: thread naming unavailable")
 #endif
@@ -247,7 +247,7 @@ func wait(for pid: consuming pid_t) async throws -> ExitStatus {
       // we add this continuation to the dictionary, then it will simply loop
       // and report the status again.
       let oldContinuation = childProcessContinuations.updateValue(continuation, forKey: pid)
-      assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). \(fileABugMessage)")
 
       // Wake up the waiter thread if it is waiting for more child processes.
       _ = pthread_cond_signal(_waitThreadNoChildrenCondition)

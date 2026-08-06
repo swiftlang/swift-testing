@@ -1,0 +1,208 @@
+//
+// This source file is part of the Swift.org open source project
+//
+// Copyright (c) 2026 Apple Inc. and the Swift project authors
+// Licensed under Apache License v2.0 with Runtime Library Exception
+//
+// See https://swift.org/LICENSE.txt for license information
+// See https://swift.org/CONTRIBUTORS.txt for Swift project authors
+//
+
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+
+#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+import Synchronization
+#endif
+
+@Suite
+struct TestCaseIterationTests {
+  @Test("One iteration (default behavior)")
+  func oneIteration() async {
+    await confirmation("N iterations started") { started in
+      await confirmation("N iterations ended") { ended in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          if case .testCaseStarted = event.kind {
+            started()
+          } else if case .testCaseEnded = event.kind {
+            ended()
+          }
+        }
+        configuration.repetitionPolicy = .once
+
+        await Test {
+        }.run(configuration: configuration)
+      }
+    }
+  }
+
+  @Test("Unconditional iteration")
+  func unconditionalIteration() async {
+    let iterationCount = 10
+    await confirmation("N iterations started", expectedCount: iterationCount) { started in
+      await confirmation("N iterations ended", expectedCount: iterationCount) { ended in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          if case .testCaseStarted = event.kind {
+            started()
+          } else if case .testCaseEnded = event.kind {
+            ended()
+          }
+        }
+        configuration.repetitionPolicy = .repeating(maximumIterationCount: iterationCount)
+
+        await Test {
+          if Bool.random() {
+            #expect(Bool(false))
+          }
+        }.run(configuration: configuration)
+      }
+    }
+  }
+
+  @Test("Iteration until issue recorded")
+  func iterationUntilIssueRecorded() async {
+    let iterations = Atomic(0)
+    let iterationCount = 10
+    let iterationWithIssue = 5
+    await confirmation("N iterations started", expectedCount: iterationWithIssue) { started in
+      await confirmation("N iterations ended", expectedCount: iterationWithIssue) { ended in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, context in
+          guard let iteration = context.iteration else { return }
+          if case .testCaseStarted = event.kind {
+            iterations.store(iteration, ordering: .sequentiallyConsistent)
+            started()
+          } else if case .testCaseEnded = event.kind {
+            ended()
+          }
+        }
+        configuration.repetitionPolicy = .repeating(.untilIssueRecorded, maximumIterationCount: iterationCount)
+
+        await Test {
+          let iterations = iterations.load(ordering: .sequentiallyConsistent)
+          #expect(iterations < iterationWithIssue)
+        }.run(configuration: configuration)
+      }
+    }
+  }
+
+  @Test
+  func `Iteration while issue recorded`() async {
+    let iterations = Atomic(0)
+    let iterationCount = 10
+    let iterationWithoutIssue = 5
+    await confirmation("N iterations started", expectedCount: iterationWithoutIssue) { started in
+      await confirmation("N iterations ended", expectedCount: iterationWithoutIssue) { ended in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, context in
+          guard let iteration = context.iteration else { return }
+          if case .testCaseStarted = event.kind {
+            iterations.store(iteration, ordering: .sequentiallyConsistent)
+            started()
+          } else if case .testCaseEnded = event.kind {
+            ended()
+          }
+        }
+        configuration.repetitionPolicy = .repeating(.whileIssueRecorded, maximumIterationCount: iterationCount)
+
+        await Test {
+          let iterations = iterations.load(ordering: .sequentiallyConsistent)
+          if iterations < iterationWithoutIssue {
+            #expect(Bool(false))
+          }
+        }.run(configuration: configuration)
+      }
+    }
+  }
+
+  // MARK: Encoded event ordering
+
+  private func assertEncodedEventKinds(
+    _ test: Test,
+    equals expected: [ABI.EncodedEvent<ABI.v6_4>.Kind],
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) async {
+    let events = Mutex<[ABI.EncodedEvent<ABI.CurrentVersion>]>([])
+    var configuration = Configuration()
+    configuration.eventHandler = { event, context in
+      guard let encoded = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: context, messages: []) else {
+        return
+      }
+      events.withLock {
+        $0.append(encoded)
+      }
+    }
+    configuration.repetitionPolicy = .repeating(maximumIterationCount: 2)
+
+    await test.run(configuration: configuration)
+    let kinds = events.rawValue.map(\.kind)
+    #expect(kinds == expected, sourceLocation: sourceLocation)
+  }
+
+  @Test
+  func `Non-parameterized test repetitions don't nest`() async throws {
+    let test = Test(name: "Test Name") {}
+    await assertEncodedEventKinds(test, equals: [
+      .runStarted,
+      .testStarted,
+      .testEnded,
+      .testStarted,
+      .testEnded,
+      .runEnded
+    ])
+  }
+
+  @Test
+  func `Parameterized test repetitions are bookended with testStarted/Ended events`() async throws {
+    let test = Test(arguments: [0], name: "Test Name") { _ in }
+    await assertEncodedEventKinds(test, equals: [
+      .runStarted,
+      .testStarted,
+      .testCaseStarted,
+      .testCaseEnded,
+      .testCaseStarted,
+      .testCaseEnded,
+      .testEnded,
+      .runEnded
+    ])
+  }
+
+  @Test
+  func `Non-parameterized test cancellation reports a testCancelled event`() async throws {
+    let test = Test(name: "Test Name") {
+      try Test.cancel()
+    }
+
+    await assertEncodedEventKinds(test, equals: [
+      .runStarted,
+      .testStarted,
+      .testCancelled,
+      .testEnded,
+      .testStarted,
+      .testCancelled,
+      .testEnded,
+      .runEnded
+    ])
+  }
+
+  @Test
+  func `Parameterized test cancellation reports a testCaseCancelled event`() async throws {
+    let test = Test(arguments: [0], name: "Test Name") { _ in
+      try Test.cancel()
+    }
+
+    await assertEncodedEventKinds(test, equals: [
+      .runStarted,
+      .testStarted,
+      .testCaseStarted,
+      .testCaseCancelled,
+      .testCaseEnded,
+      .testCaseStarted,
+      .testCaseCancelled,
+      .testCaseEnded,
+      .testEnded,
+      .runEnded
+    ])
+  }
+}

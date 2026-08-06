@@ -17,6 +17,40 @@ private let _knownGenericTypeKinds: [SyntaxKind] = [
 ]
 
 extension TypeSyntaxProtocol {
+  /// This type's module selector, if any.
+  var moduleSelector: ModuleSelectorSyntax? {
+    if let type = self.as(IdentifierTypeSyntax.self) {
+      return type.moduleSelector
+    } else if let type = self.as(MemberTypeSyntax.self) {
+      return type.moduleSelector ?? type.baseType.moduleSelector
+    }
+    return nil
+  }
+
+  /// Copy this instance and remove its module selector if present.
+  ///
+  /// - Returns: A copy of this instance with a `nil` module selector. If this
+  ///   instance does not specify a module selector, returns `self` verbatim.
+  func removingModuleSelector() -> some TypeSyntaxProtocol {
+    var result = TypeSyntax(self)
+
+    if var type = self.as(IdentifierTypeSyntax.self) {
+      if type.moduleSelector != nil {
+        type.moduleSelector = nil
+        result = TypeSyntax(type)
+      }
+    } else if var type = self.as(MemberTypeSyntax.self) {
+      if type.moduleSelector != nil {
+        type.moduleSelector = nil
+      } else if type.baseType.moduleSelector != nil {
+        type.baseType = TypeSyntax(type.baseType.removingModuleSelector())
+      }
+      result = TypeSyntax(type)
+    }
+
+    return result
+  }
+
   /// Whether or not this type is an optional type (`T?`, `Optional<T>`, etc.)
   var isOptional: Bool {
     if `is`(OptionalTypeSyntax.self) {
@@ -91,6 +125,19 @@ extension TypeSyntaxProtocol {
   ///
   /// - Returns: Whether or not this type has the given name.
   func isNamed(_ name: String, inModuleNamed moduleName: String) -> Bool {
+    // NOTE: the syntax M::M.T is ambiguous without type checking. We don't know
+    // from syntax alone if the second M is the module name (repeated) or if it
+    // is a type in module M with the same name. For example, XCTest::XCTest.T.
+    // Because it's ambiguous, we don't clear the moduleName argument after we
+    // strip the module selector and before we recursively call isNamed().
+    if let moduleSelector {
+      guard moduleName == moduleSelector.moduleName.textWithoutBackticks else {
+        return false
+      }
+      let selfCopy = self.removingModuleSelector()
+      return selfCopy.isNamed(name, inModuleNamed: moduleName)
+    }
+
     // Form a string of the fixed-up tokens representing the type name,
     // omitting any generic type parameters.
     let nameWithoutGenericParameters = tokens(viewMode: .fixedUp)

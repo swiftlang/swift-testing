@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 #if canImport(Synchronization)
 private import Synchronization
 #endif
@@ -554,7 +555,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     // Calculate total run duration
     var totalDuration = ""
     if let startTime = context.runStartTime, let endTime = context.runEndTime {
-      totalDuration = _formatDuration(endTime.absolute - startTime.absolute)
+      totalDuration = _formatDuration((endTime.absolute ?? 0.0) - (startTime.absolute ?? 0.0))
     }
     
     // Format: [total] tests completed in [duration] ([pass symbol] pass: [number], [failed symbol] fail: [number], ...)
@@ -709,7 +710,7 @@ extension Event.AdvancedConsoleOutputRecorder {
       var duration = ""
       if let startTime = context.testData[node.testID]?.startTime,
          let endTime = context.testData[node.testID]?.endTime {
-        duration = _formatDuration(endTime.absolute - startTime.absolute)
+        duration = _formatDuration((endTime.absolute ?? 0.0) - (startTime.absolute ?? 0.0))
       }
       
       // Format with right-aligned duration
@@ -753,8 +754,8 @@ extension Event.AdvancedConsoleOutputRecorder {
     // Get the corresponding messages for this issue
     guard issueIndex < testData.issueMessages.count else {
       // Fallback to error description if available
-      if let error = issue._error {
-        return error.description
+      if let errorDesc = issue._error?.description {
+        return errorDesc
       }
       return "Issue recorded"
     }
@@ -790,8 +791,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     }
     
     // Final fallback
-    if let error = issue._error {
-      let errorDesc = error.description
+    if let errorDesc = issue._error?.description {
       // Truncate very long error descriptions
       if errorDesc.count > 200 {
         return String(errorDesc.prefix(200)) + "..."
@@ -982,3 +982,4 @@ extension Event.AdvancedConsoleOutputRecorder {
     return nameParts.joined(separator: "/")
   }
 }
+#endif

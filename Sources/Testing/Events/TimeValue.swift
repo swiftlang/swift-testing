@@ -39,13 +39,15 @@ struct TimeValue: Sendable, RawRepresentable {
   init(rawValue: Duration) {
     (seconds, attoseconds) = rawValue.components
   }
-
-  init(_ components: (seconds: Int64, attoseconds: Int64)) {
-    (seconds, attoseconds) = components
-  }
 #else
   var rawValue: Duration
 #endif
+}
+
+extension TimeValue {
+  init(_ components: (seconds: Int64, attoseconds: Int64)) {
+    self.init(rawValue: Duration(secondsComponent: components.seconds, attosecondsComponent: components.attoseconds))
+  }
 }
 
 #if !SWT_NO_SNAPSHOT_TYPES
@@ -64,11 +66,11 @@ extension TimeValue: CustomStringConvertible {
       milliseconds = 1
     }
 
-    return withUnsafeTemporaryAllocation(of: CChar.self, capacity: 512) { buffer in
-      withVaList([seconds, milliseconds]) { args in
-        _ = vsnprintf(buffer.baseAddress!, buffer.count, "%lld.%03d seconds", args)
-      }
-      return String(cString: buffer.baseAddress!)
+    let strSeconds = String(describing: seconds)
+    var strMilliseconds = String(describing: milliseconds)
+    if strMilliseconds.count < 3 {
+      strMilliseconds = String(repeating: "0", count: 3 - strMilliseconds.count) + strMilliseconds
     }
+    return "\(strSeconds).\(strMilliseconds) seconds"
   }
 }

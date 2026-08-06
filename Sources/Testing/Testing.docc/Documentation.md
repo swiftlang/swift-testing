@@ -68,6 +68,12 @@ their problems.
 
 - <doc:Traits>
 
+### Value description and reflection
+
+- <doc:describing-values>
+- ``CustomTestReflectable``
+- ``CustomTestStringConvertible``
+
 ### Data collection
 
 - <doc:Attachments>

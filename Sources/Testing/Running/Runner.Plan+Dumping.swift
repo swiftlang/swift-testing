@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !hasFeature(Embedded)
 extension Runner.Plan {
   /// Write a dump of the specified step graph to a stream.
   ///
@@ -111,3 +112,4 @@ extension Runner.Plan {
     }
   }
 }
+#endif

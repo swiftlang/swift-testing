@@ -24,10 +24,17 @@ struct TagMacroTests {
       ("extension Tag { @Tag static var x: Tag }", "Tag"),
       ("extension Tag { @Tag static var x: Self }", "Tag"),
       ("extension Testing.Tag { @Tag static var x: Testing.Tag }", "Testing.Tag"),
+      ("extension Testing::Tag { @Tag static var x: Testing::Tag }", "Testing::Tag"),
+      ("extension Testing::Testing.Tag { @Tag static var x: Testing::Testing.Tag }", "Testing::Testing.Tag"),
+      ("extension Testing::Testing.Tag { @Tag static var x: Testing.Tag }", "Testing::Testing.Tag"),
+      ("extension Testing.Tag { @Tag static var x: Testing::Testing.Tag }", "Testing.Tag"),
+
       ("extension Tag.A.B { @Tag static var x: Tag }", "Tag.A.B"),
       ("extension Testing.Tag.A.B { @Tag static var x: Tag }", "Testing.Tag.A.B"),
       ("extension Tag { struct S { @Tag static var x: Tag } }", "Tag.S"),
       ("extension Testing.Tag { enum E { @Tag static var x: Tag } }", "Testing.Tag.E"),
+      ("extension Testing::Tag { enum E { @Tag static var x: Tag } }", "Testing::Tag.E"),
+      ("extension Testing::Testing.Tag { enum E { @Tag static var x: Tag } }", "Testing::Testing.Tag.E"),
     ]
   )
   func tagMacro(input: String, typeName: String) throws {

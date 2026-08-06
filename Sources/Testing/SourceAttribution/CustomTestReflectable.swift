@@ -13,17 +13,34 @@
 ///
 /// ## See Also
 ///
-/// - ``Swift/Mirror/init(reflectingForTest:)``
-@_spi(Experimental)
+/// - ``Swift/Mirror/init(reflectingForTest:)-(Any)``
+/// - ``Swift/Mirror/init(reflectingForTest:)-(CustomTestReflectable)``
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.4)
+///   @Available(Xcode, introduced: 27.0)
+/// }
+@_unavailableInEmbedded
 public protocol CustomTestReflectable {
+#if !hasFeature(Embedded)
   /// The custom mirror for this instance.
   ///
   /// Do not use this property directly. To get the test reflection of a value,
-  /// use ``Swift/Mirror/init(reflectingForTest:)``.
+  /// use ``Swift/Mirror/init(reflectingForTest:)-(CustomTestReflectable)``.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.4)
+  ///   @Available(Xcode, introduced: 27.0)
+  /// }
   var customTestMirror: Mirror { get }
+#endif
 }
 
-@_spi(Experimental)
+#if !hasFeature(Embedded)
+/// @Metadata {
+///   @Available(Swift, introduced: 6.4)
+///   @Available(Xcode, introduced: 27.0)
+/// }
 extension Mirror {
   /// Initialize this instance so that it can be presented in a test's output.
   ///
@@ -33,6 +50,11 @@ extension Mirror {
   /// ## See Also
   ///
   /// - ``CustomTestReflectable``
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.4)
+  ///   @Available(Xcode, introduced: 27.0)
+  /// }
   public init(reflectingForTest subject: some CustomTestReflectable) {
     self = subject.customTestMirror
   }
@@ -45,6 +67,11 @@ extension Mirror {
   /// ## See Also
   ///
   /// - ``CustomTestReflectable``
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.4)
+  ///   @Available(Xcode, introduced: 27.0)
+  /// }
   public init(reflectingForTest subject: some Any) {
     if let subject = subject as? any CustomTestReflectable {
       self.init(reflectingForTest: subject)
@@ -53,3 +80,4 @@ extension Mirror {
     }
   }
 }
+#endif

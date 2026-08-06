@@ -126,7 +126,8 @@ extension Tag.Color: Comparable {
   }
 }
 
-// MARK: - Comparable
+#if !SWT_NO_CODABLE
+// MARK: - Codable
 
 extension Tag.Color: Decodable {
   public init(from decoder: any Decoder) throws {
@@ -163,3 +164,4 @@ extension Tag.Color: Decodable {
     }
   }
 }
+#endif

@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_CODABLE
 /// A protocol for customizing how arguments passed to parameterized tests are
 /// encoded, which is used to match against when running specific arguments.
 ///
@@ -42,6 +43,7 @@ public protocol CustomTestArgumentEncodable: Sendable {
   /// documentation for [`Encodable`](https://developer.apple.com/documentation/swift/encodable).
   func encodeTestArgument(to encoder: some Encoder) throws
 }
+#endif
 
 extension Test.Case.Argument.ID {
   /// Initialize an ID instance with the specified test argument value.
@@ -69,9 +71,9 @@ extension Test.Case.Argument.ID {
   ///
   /// - ``CustomTestArgumentEncodable``
   init?(identifying value: some Sendable, parameter: Test.Parameter) throws {
-#if canImport(Foundation)
+#if !SWT_NO_CODABLE
     func customArgumentWrapper(for value: some CustomTestArgumentEncodable) -> some Encodable {
-      _CustomArgumentWrapper(rawValue: value)
+      CustomArgumentWrapper(rawValue: value)
     }
 
     let encodableValue: (any Encodable)? = if let customEncodable = value as? any CustomTestArgumentEncodable {
@@ -95,8 +97,29 @@ extension Test.Case.Argument.ID {
     nil
 #endif
   }
+}
 
-#if canImport(Foundation)
+extension Test.Case.Argument.ID {
+  /// Initialize an ID from the IDs of a test case's arguments.
+  ///
+  /// - Parameters:
+  ///   - argumentIDs: The argument IDs to combine, in order.
+  ///
+  /// The argument IDs are concatenated and hashed to form a single ID. A stable
+  /// argument's ID is itself a fixed-size hash, so the concatenation is
+  /// unambiguous. A single argument's ID already identifies the case, so it is
+  /// used directly rather than combined.
+  init(combining argumentIDs: some Collection<Test.Case.Argument.ID>) {
+    if let argumentID = argumentIDs.first, argumentIDs.count == 1 {
+      self = argumentID
+    } else {
+      self.init(bytes: SHA256.hash(argumentIDs.flatMap(\.bytes)))
+    }
+  }
+}
+
+#if !SWT_NO_CODABLE
+extension Test.Case.Argument.ID {
   /// Encode the specified test argument value and store its encoded
   /// representation as an array of bytes suitable for storing in an instance of
   /// ``Test/Case/Argument/ID-swift.struct``.
@@ -110,13 +133,15 @@ extension Test.Case.Argument.ID {
   ///
   /// - Throws: Any error encountered during encoding.
   private static func _encode(_ value: some Encodable, parameter: Test.Parameter) throws -> [UInt8] {
-    try JSON.withEncoding(of: value, userInfo: [._testParameterUserInfoKey: parameter], Array.init)
+    /// The encoded representation of an argument is the SHA256 hash of its Codable JSON representation.
+    try JSON.withEncoding(of: value, userInfo: [._testParameterUserInfoKey: parameter]) { buffer in
+      SHA256.hash(buffer)
+    }
   }
-#endif
 }
 
 /// A encodable type which wraps a ``CustomTestArgumentEncodable`` value.
-private struct _CustomArgumentWrapper<T>: RawRepresentable, Encodable where T: CustomTestArgumentEncodable {
+struct CustomArgumentWrapper<T>: RawRepresentable, Encodable where T: CustomTestArgumentEncodable {
   /// The value this instance wraps, which implements custom test argument
   /// encoding logic.
   var rawValue: T
@@ -150,3 +175,4 @@ extension Encoder {
     userInfo[._testParameterUserInfoKey] as? Test.Parameter
   }
 }
+#endif

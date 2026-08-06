@@ -52,11 +52,13 @@ public struct TypeInfo: Sendable {
   /// Initialize an instance of this type with the specified names.
   ///
   /// - Parameters:
-  ///   - fullyQualifiedComponents: The fully-qualified name components of the
-  ///     type.
-  ///   - unqualified: The unqualified name of the type.
+  ///   - fullyQualifiedNameComponents: The fully-qualified name components of
+  ///   	the type.
+  ///   - unqualifiedName: The unqualified name of the type. If `nil`, the last
+  ///   	string in `fullyQualifiedNameComponents` is used instead.
   ///   - mangled: The mangled name of the type, if available.
-  init(fullyQualifiedNameComponents: [String], unqualifiedName: String, mangledName: String? = nil) {
+  init(fullyQualifiedNameComponents: [String], unqualifiedName: String? = nil, mangledName: String? = nil) {
+    let unqualifiedName = unqualifiedName ?? fullyQualifiedNameComponents.last ?? fullyQualifiedNameComponents.joined(separator: ".")
     _kind = .nameOnly(
       fullyQualifiedComponents: fullyQualifiedNameComponents,
       unqualified: unqualifiedName,
@@ -135,24 +137,36 @@ public struct TypeInfo: Sendable {
 func rawIdentifierAwareSplit<S>(_ string: S, separator: Character, maxSplits: Int = .max) -> [S.SubSequence] where S: StringProtocol {
   var result = [S.SubSequence]()
 
+  // Characters with special consideration in this function.
+  let backtick: Character = "`"
+  let openAngleBracket: Character = "<"
+  let closeAngleBracket: Character = ">"
+
   var inRawIdentifier = false
+  var genericClauseDepth = 0
   var componentStartIndex = string.startIndex
   for i in string.indices {
     let c = string[i]
-    if c == "`" {
+    if c == backtick {
       // We are either entering or exiting a raw identifier. While inside a raw
       // identifier, separator characters are ignored.
       inRawIdentifier.toggle()
-    } else if c == separator && !inRawIdentifier {
-      // Add everything up to this separator as the next component, then start
-      // a new component after the separator.
-      result.append(string[componentStartIndex ..< i])
-      componentStartIndex = string.index(after: i)
+    } else if !inRawIdentifier {
+      if c == separator && genericClauseDepth == 0 {
+        // Add everything up to this separator as the next component, then start
+        // a new component after the separator.
+        result.append(string[componentStartIndex ..< i])
+        componentStartIndex = string.index(after: i)
 
-      if result.count == maxSplits {
-        // We don't need to find more separators. We'll add the remainder of the
-        // string outside the loop as the last component, then return.
-        break
+        if result.count == maxSplits {
+          // We don't need to find more separators. We'll add the remainder of
+          // the string outside the loop as the last component, then return.
+          break
+        }
+      } else if c == openAngleBracket {
+        genericClauseDepth += 1
+      } else if c == closeAngleBracket {
+        genericClauseDepth -= 1
       }
     }
   }
@@ -191,8 +205,17 @@ extension TypeInfo {
     return String(String.UnicodeScalarView(result))
   }
 
+  /// Keys into the fully-qualified name cache.
+  private enum _CacheKey: Sendable, Equatable, Hashable {
+    /// The key is a type (cast to `ObjectIdentifier`).
+    case type(ObjectIdentifier)
+
+    /// The key is an unsplit fully-qualified name string.
+    case string(String)
+  }
+
   /// An in-memory cache of fully-qualified type name components.
-  private static let _fullyQualifiedNameComponentsCache = Mutex<[ObjectIdentifier: [String]]>()
+  private static let _fullyQualifiedNameComponentsCache = Mutex<[_CacheKey: [String]]>()
 
   /// Split the given fully-qualified type name into its components.
   ///
@@ -201,6 +224,13 @@ extension TypeInfo {
   ///
   /// - Returns: The components of `fullyQualifiedName` as substrings thereof.
   static func fullyQualifiedNameComponents(ofTypeWithName fullyQualifiedName: String) -> [String] {
+    let cachedResult = _fullyQualifiedNameComponentsCache.withLock { cache in
+      return cache[.string(fullyQualifiedName)]
+    }
+    if let cachedResult {
+      return cachedResult
+    }
+
     var components = rawIdentifierAwareSplit(fullyQualifiedName, separator: ".")
 
     // If a type is extended in another module and then referenced by name,
@@ -215,7 +245,7 @@ extension TypeInfo {
       components[0] = moduleName
     }
 
-    return components.lazy
+    let result: [String] = components.lazy
       .filter { component in
         // If a type is private or embedded in a function, its fully qualified
         // name may include "(unknown context at $xxxxxxxx)" as a component.
@@ -230,6 +260,12 @@ extension TypeInfo {
           component
         }
       }.map(String.init)
+
+    _fullyQualifiedNameComponentsCache.withLock { cache in
+      cache[.string(fullyQualifiedName)] = result
+    }
+
+    return result
   }
 
   /// The complete name of this type, with the names of all referenced types
@@ -250,14 +286,17 @@ extension TypeInfo {
   public var fullyQualifiedNameComponents: [String] {
     switch _kind {
     case let .type(type):
-      if let cachedResult = Self._fullyQualifiedNameComponentsCache.rawValue[ObjectIdentifier(type)] {
+      let cachedResult = Self._fullyQualifiedNameComponentsCache.withLock { cache in
+        return cache[.type(ObjectIdentifier(type))]
+      }
+      if let cachedResult {
         return cachedResult
       }
 
       let result = Self.fullyQualifiedNameComponents(ofTypeWithName: String(reflecting: type))
 
-      Self._fullyQualifiedNameComponentsCache.withLock { fullyQualifiedNameComponentsCache in
-        fullyQualifiedNameComponentsCache[ObjectIdentifier(type)] = result
+      Self._fullyQualifiedNameComponentsCache.withLock { cache in
+        cache[.type(ObjectIdentifier(type))] = result
       }
 
       return result
@@ -422,6 +461,7 @@ extension TypeInfo: Hashable {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension TypeInfo: Codable {
@@ -452,6 +492,7 @@ extension TypeInfo: Codable {
 }
 
 extension TypeInfo.EncodedForm: Codable {}
+#endif
 
 // MARK: - Custom casts
 

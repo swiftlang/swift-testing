@@ -59,7 +59,7 @@ public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) 
   }
 #endif
 
-  return await entryPoint(passing: args, eventHandler: nil)
+  return await entryPoint(passing: args, forSwiftPackageManager: true, eventHandler: nil)
 }
 
 /// The entry point to the testing library used by Swift Package Manager.

@@ -181,13 +181,26 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
 #endif
 }
 
+extension Attachment<AnyAttachable> {
+  init(_ attachment: Attachment<some Attachable & Sendable & ~Copyable>) {
+    self.init(
+      AnyAttachable(copy attachment),
+      named: attachment._preferredName,
+      sourceLocation: attachment.sourceLocation
+    )
+    fileSystemPath = attachment.fileSystemPath
+  }
+}
+
 #if !SWT_NO_FILE_CLONING
 extension AnyAttachable: FileClonable {}
 #endif
 
 // MARK: - Describing an attachment
 
+#if SWT_TARGET_OS_APPLE
 @_preInverseGenerics
+#endif
 extension Attachment: CustomStringConvertible where AttachableValue: ~Copyable {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
@@ -264,12 +277,7 @@ extension Attachment where AttachableValue: Sendable & ~Copyable {
   /// }
   @_documentation(visibility: private)
   public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
-    var attachmentCopy = Attachment<AnyAttachable>(
-      AnyAttachable(copy attachment),
-      named: attachment._preferredName,
-      sourceLocation: sourceLocation
-    )
-    attachmentCopy.fileSystemPath = attachment.fileSystemPath
+    let attachmentCopy = Attachment<AnyAttachable>(attachment)
     Event.post(.valueAttached(attachmentCopy))
   }
 
@@ -421,9 +429,9 @@ extension Attachable where Self: ~Copyable {
   ///
   /// - Throws: Any error that prevented writing this instance to `filePath`.
   ///
-  /// The testing library uses this function when saving an attachment. The
-  /// default implementation opens `filePath` for writing with exclusive access,
-  /// then passes it to `_write(toFILE:for:)`.
+  /// The testing library uses this function when saving an attachment. If there
+  /// is already a file at `filePath`, the implementation throws an instance of
+  /// ``CError`` with code `EEXIST`.
   borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
 #if !SWT_NO_FILE_CLONING
     if clone(toFileAtPath: filePath, for: attachment) {
@@ -473,6 +481,31 @@ extension Attachment where AttachableValue: ~Copyable {
     )
   }
 
+  /// Write the attachment's contents to a file at the specified path.
+  ///
+  /// - Parameters:
+  ///   - filePath: The path to which the attachment should be written.
+  ///
+  /// - Throws: Any error preventing writing the attachment.
+  ///
+  /// The testing library uses this function when saving an attachment. If there
+  /// is already a file at `filePath`, the implementation throws an error in the
+  /// POSIX domain with code `EEXIST`. For technical reasons, this error is not
+  /// an instance of Foundation's [`POSIXError`](https://developer.apple.com/documentation/foundation/posixerror)
+  /// type.
+  ///
+  /// This function does not get or set the value of the attachment's
+  /// ``fileSystemPath`` property. The caller is responsible for setting the
+  /// value of this property if needed.
+  ///
+  /// This function is provided as a convenience to allow tools authors to save
+  /// attachments the same way that Swift Package Manager does. You are not
+  /// required to use this function.
+  @_spi(ForToolsIntegrationOnly)
+  public borrowing func write(toFileAtPath filePath: String) throws {
+    try attachableValue.write(toFileAtPath: filePath, for: self)
+  }
+
   /// Write the attachment's contents to a file in the specified directory.
   ///
   /// - Parameters:
@@ -516,13 +549,22 @@ extension Attachment where AttachableValue: ~Copyable {
         let preferredName = preferredNameComponents.joined(separator: ".")
         let preferredPath = appendPathComponent(preferredName, to: directoryPath)
 
+        func isEEXIST(_ error: any Error) -> Bool {
+#if !hasFeature(Embedded)
+          error._code == swt_EEXIST() && error._domain == "NSPOSIXErrorDomain"
+#else
+          // TODO: detect EEXIST without using _code/_domain?
+          false
+#endif
+        }
+
         // Propagate any error *except* EEXIST, which would indicate that the
         // name was already in use (so we should try again with a new suffix.)
         do {
-          try attachableValue.write(toFileAtPath: preferredPath, for: self)
+          try write(toFileAtPath: preferredPath)
           result = preferredPath
           break
-        } catch where error._code == swt_EEXIST() && error._domain == "NSPOSIXErrorDomain" {
+        } catch where isEEXIST(error) {
           // Try again with a new suffix.
           continue
         } catch where usingPreferredName {
@@ -578,7 +620,7 @@ extension Configuration {
     }
 
     guard case let .valueAttached(attachment) = event.kind else {
-      preconditionFailure("Passed the wrong kind of event to \(#function) (expected valueAttached, got \(event.kind)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      preconditionFailure("Passed the wrong kind of event to \(#function) (expected valueAttached, got \(event.kind)). \(fileABugMessage)")
     }
     if attachment.fileSystemPath != nil {
       // Somebody already saved this attachment. This isn't necessarily a logic

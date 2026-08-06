@@ -137,12 +137,14 @@ extension WithAttributesSyntax {
 }
 
 extension AttributeSyntax {
-  /// The text of this attribute's name.
-  var attributeNameText: String {
-    attributeName
-      .tokens(viewMode: .fixedUp)
-      .map(\.textWithoutBackticks)
-      .joined()
+  /// The generic argument clause of this attribute's name, if any.
+  var genericArgumentClause: GenericArgumentClauseSyntax? {
+    if let type = attributeName.as(IdentifierTypeSyntax.self) {
+      return type.genericArgumentClause
+    } else if let type = attributeName.as(MemberTypeSyntax.self) {
+      return type.genericArgumentClause
+    }
+    return nil
   }
 }
 

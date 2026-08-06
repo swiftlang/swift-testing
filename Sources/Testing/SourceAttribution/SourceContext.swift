@@ -37,9 +37,11 @@ public struct SourceContext: Sendable {
 
 extension SourceContext: Equatable, Hashable {}
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension SourceContext: Codable {}
+#endif
 
 // MARK: - Deprecated
 

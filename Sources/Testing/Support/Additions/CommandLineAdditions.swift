@@ -10,6 +10,23 @@
 
 private import _TestingInternals
 
+#if hasFeature(Embedded)
+/// A minimal interface-compatible implementation of the `CommandLine` type from
+/// the Swift standard library.
+///
+/// This type is declared for Embedded Swift targets to simplify calling code.
+enum CommandLine {
+  /// An array that provides access to this program's command line arguments.
+  ///
+  /// In Embedded Swift, this array contains one string standing in for the name
+  /// of the current program (as required by the C language standard).
+  static var arguments: [String] {
+    ["swift-test"]
+  }
+}
+#endif
+
+#if !SWT_NO_EXIT_TESTS
 extension CommandLine {
   /// The path to the current process' executable.
   static var executablePath: String {
@@ -119,3 +136,4 @@ extension CommandLine {
     }
   }
 }
+#endif

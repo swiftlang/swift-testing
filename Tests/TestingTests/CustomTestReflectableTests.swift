@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(Experimental) import Testing
+@testable import Testing
 
 struct `CustomTestReflectable Tests` {
   @Test func `Can get a custom mirror from a value`() throws {

@@ -11,9 +11,6 @@
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
-#if canImport(Foundation)
-import Foundation
-#endif
 #if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
 import Synchronization
 #endif
@@ -25,7 +22,7 @@ let interopHandlerMayBeInstalled = Environment.variable(named: "XCTestSessionIde
 let interopHandlerMayBeInstalled = false
 #endif
 
-#if !SWT_NO_EXIT_TESTS && !SWT_NO_INTEROP && canImport(Foundation)
+#if !SWT_NO_EXIT_TESTS && !SWT_NO_INTEROP
 @Suite(.disabled(if: interopHandlerMayBeInstalled))
 struct EventHandlingInteropTests {
   static let handlerContents = Mutex<(version: String, record: String?)?>()
@@ -33,19 +30,18 @@ struct EventHandlingInteropTests {
   private static let capturingHandler: SWTFallbackEventHandler = {
     schemaVersion, recordJSONBaseAddress, recordJSONByteCount, _ in
     let version = String(cString: schemaVersion)
-    let record = String(
-      data: Data(bytes: recordJSONBaseAddress, count: recordJSONByteCount),
-      encoding: .utf8)
+    let recordJSON = UnsafeRawBufferPointer(start: recordJSONBaseAddress, count: recordJSONByteCount)
+    let record = String(decoding: recordJSON, as: UTF8.self)
     Self.handlerContents.withLock {
       $0 = (version: version, record: record)
     }
   }
 
-  /// Sets the env var that enables the experimental interop feature. Must be
-  /// set before we call `Event.installFallbackEventHandler()` which will cache
-  /// the install outcome.
-  static func enableExperimentalInterop() {
-    Environment.setVariable("1", named: "SWT_EXPERIMENTAL_INTEROP_ENABLED")
+  /// Sets the env var that determines the interop mode.
+  /// Must be set before we call `Event.installFallbackEventHandler()` which
+  /// will cache the install outcome.
+  static func setInteropMode(_ mode: Interop.Mode) {
+    Environment.setVariable(mode.rawValue, named: Interop.Mode.interopModeEnvKey)
   }
 
   /// This uses an exit test to run in a clean process, ensuring that the
@@ -70,31 +66,24 @@ struct EventHandlingInteropTests {
       try Self.handlerContents.withLock {
         let contents = try #require(
           $0, "Fallback should have been called with non nil contents")
-        #expect(contents.version == "\(ABI.CurrentVersion.versionNumber)")
-        #expect(contents.record?.contains("A system failure occurred") ?? false)
+        let versionNumberString = "\(ABI.v6_3.versionNumber)"
+        #expect(contents.version == versionNumberString)
+        #expect(contents.record?.contains(versionNumberString) == true)
+        #expect(contents.record?.contains("A system failure occurred") == true)
       }
     }
   }
 
-  @Test func `Enabling experimental interop lets you install the handler`() async {
+  @Test func `Interop handler installed by default`() async {
     await #expect(processExitsWith: .success) {
-      // Experimental interop not set
       let ok = Event.installFallbackEventHandler()
 
-      #expect(!ok, "Should fail because experimental interop not enabled")
-    }
-
-    await #expect(processExitsWith: .success) {
-      Self.enableExperimentalInterop()
-      let ok = Event.installFallbackEventHandler()
-
-      #expect(ok, "Should succeed because experimental interop is enabled")
+      #expect(ok, "Should succeed because interop is enabled by default")
     }
   }
 
   @Test func `Running tests installs the fallback handler`() async {
     await #expect(processExitsWith: .success) {
-      Self.enableExperimentalInterop()
       let handlerBefore = _swift_testing_getFallbackEventHandler()
 
       await Test {}.run()
@@ -132,7 +121,6 @@ struct EventHandlingInteropTests {
 
   @Test func `Sending fallback event to ourselves doesn't cause infinite loop`() async {
     await #expect(processExitsWith: .success) {
-      Self.enableExperimentalInterop()
       try #require(Event.installFallbackEventHandler(), "Should successfully install a handler")
 
       // Force the event to be handled by the fallback event handler
@@ -148,36 +136,20 @@ struct EventHandlingInteropTests {
     }
   }
 
+  // MARK: - End to end handling of an issue with interop
+
   @Test func `Fallback handler records an issue if invalid event provided`() async throws {
     await #expect(processExitsWith: .success) {
-      // Install and retrieve the fallback event handler.
-      // Capture all observed issues when running tests.
-      Self.enableExperimentalInterop()
-      try #require(Event.installFallbackEventHandler(), "Should successfully install a new handler")
-      let currentHandler = try #require(
-        _swift_testing_getFallbackEventHandler(), "Should successfully retrieve installed handler")
-
-      let issues = Mutex<[Issue]>()
-      var configuration = Configuration()
-      configuration.eventHandler = { event, _ in
-        if case .issueRecorded(let issue) = event.kind {
-          issues.withLock { $0.append(issue) }
-        }
-      }
-
       // Pass an invalid record JSON to the event handler
-      struct Empty: Encodable {}
-      await Test {
-        try JSONEncoder().encode(Empty()).withUnsafeBytes { ptr in
-          let vers = String(describing: ABI.CurrentVersion.versionNumber)
-          currentHandler(vers, ptr.baseAddress!, ptr.count, nil)
-        }
-      }.run(configuration: configuration)
+      let issues = await Test {
+        let emptyJSON = Array("{}".utf8)
+        try _FakeXCTFail(payload: emptyJSON)
+      }.runCapturingIssues()
 
       // Assert that we record an issue with a helpful debug message
       let expectedPrefix =
         "A system failure occurred (error): Another test library reported a test event that Swift Testing could not decode. Inspect the payload to determine if this was a test assertion failure."
-      let actualMessages = issues.rawValue.map { $0.description }
+      let actualMessages = issues.map { $0.description }
       #expect(actualMessages.count == 1)
       #expect(
         actualMessages.first?.hasPrefix(expectedPrefix) == true,
@@ -185,49 +157,188 @@ struct EventHandlingInteropTests {
     }
   }
 
-  @Test func `Handle fallback event warns issue about XCTest API usage`() async throws {
+  @Test func `Fallback handler not installed if interop mode set to none`() async {
     await #expect(processExitsWith: .success) {
-      // Install and retrieve the fallback event handler.
-      // Prepare a test issue to inject into that handler to simulate receiving an interop issue.
-      let eventJSON = try {
-        let issue = Issue(kind: .unconditional)
-        let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil, instant: .now)
-        let encodedEvent = ABI.Record<ABI.CurrentVersion>(
-          encoding: event, in: .init(test: nil, testCase: nil, iteration: nil, configuration: nil),
-          messages: [])
-        return try JSONEncoder().encode(encodedEvent)
-      }()
+      // Explicitly turn off the interop mode
+      Self.setInteropMode(.none)
 
-      Self.enableExperimentalInterop()
-      try #require(Event.installFallbackEventHandler(), "Should successfully install a new handler")
-      let currentHandler = try #require(
-        _swift_testing_getFallbackEventHandler(), "Should successfully retrieved installed handler")
+      // Running the test would normally lead to the handler being installed
+      await Test {}.run()
 
-      // Test configuration records all issues actually reported by Testing as a
-      // result of the interop issue.
-      let issues = Mutex<[Issue]>()
-      var configuration = Configuration()
-      configuration.eventHandler = { event, _ in
-        if case .issueRecorded(let issue) = event.kind {
-          issues.withLock { $0.append(issue) }
-        }
-      }
+      let currentHandler = _swift_testing_getFallbackEventHandler()
+      #expect(
+        currentHandler == nil,
+        "Fallback event handler should not be installed if interop mode is none"
+      )
+    }
+  }
+
+  @Test func `Don't post to fallback handler if interop mode set to none`() async {
+    await #expect(processExitsWith: .success) {
+      Self.setInteropMode(.none)
+
+      try #require(_swift_testing_installFallbackEventHandler(Self.unusableHandler))
+
+      // Force the event to be handled by the fallback event handler
+      Configuration.removeAll()
+      await Task.detached {
+        Event.post(.issueRecorded(Issue(kind: .system)), configuration: nil)
+      }.value
+
+      // unusableHandler fatalErrors if called, so success means no event was posted
+    }
+  }
+
+  @Test func `Limited interop mode uses warning severity`() async throws {
+    await #expect(processExitsWith: .success) {
+      Self.setInteropMode(.limited)
+      try #require(Event.installFallbackEventHandler())
 
       // Run the test, which should record two issues in response to the interop one
+      let issues = await Test {
+        try _FakeXCTFail()
+      }.runCapturingIssues()
+
+      // Generate the interop test failure (as a warning) and warning about XCTest API usage
+      #expect(
+        issues.map { $0.severity } == [.warning, .warning]
+      )
+    }
+  }
+
+  @Test func `Complete interop mode uses error severity`() async throws {
+    await #expect(processExitsWith: .success) {
+      Self.setInteropMode(.complete)
+      try #require(Event.installFallbackEventHandler())
+
+      // Run the test, which should record two issues in response to the interop one
+      let issues = await Test {
+        try _FakeXCTFail()
+      }.runCapturingIssues()
+
+      // Generate the interop test failure and warning about XCTest API usage
+      #expect(
+        issues.map { $0.severity }.sorted() == [.warning, .error]
+      )
+    }
+  }
+
+  @available(macOS 15.0, *)  // String(validating:as:) is unavailable on older macOS
+  @Test func `Strict interop mode causes a process exit`() async throws {
+    let result = await #expect(processExitsWith: .failure, observing: [\.standardErrorContent]) {
+      Self.setInteropMode(.strict)
+      try #require(Event.installFallbackEventHandler())
+
+      // Run the test, which should cause a process exit due to strict mode
       await Test {
-        eventJSON.withUnsafeBytes { ptr in
-          let vers = String(describing: ABI.CurrentVersion.versionNumber)
-          currentHandler(vers, ptr.baseAddress!, ptr.count, nil)
-        }
-      }.run(configuration: configuration)
+        try _FakeXCTFail()
+      }.run()
+    }
+
+    let stderr = try #require(
+      String(validating: result?.standardErrorContent ?? [UInt8](), as: UTF8.self))
+    #expect(
+      stderr.contains(
+        "Fatal error: Replace XCTest API such as 'XCTAssert' with a Swift Testing equivalent such as '#expect'."
+      ))
+  }
+
+  @Test func `Handle fallback event warns issue about XCTest API usage`() async throws {
+    await #expect(processExitsWith: .success) {
+      try #require(Event.installFallbackEventHandler())
+
+      // Run the test, which should record two issues in response to the interop one
+      // Prepare a test issue to inject into that handler to simulate receiving an interop issue.
+      let issues = await Test {
+        try _FakeXCTFail()
+      }.runCapturingIssues()
 
       #expect(
-        issues.rawValue.map { $0.description }.sorted() == [
-          "An API was misused (warning): XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead.",
-          "Issue recorded (error)",
+        issues.map { $0.description }.sorted() == [
+          "An API was misused (warning): Replace XCTest API such as 'XCTAssert' with a Swift Testing equivalent such as '#expect'.",
+          "Issue recorded (warning)",
         ]
       )
     }
+  }
+
+  // MARK: - Preserve issue severity = warning across interop boundary
+
+  /// Interop mode normally turns test issues into errors.
+  /// However, we don't want to clobber anything naturally reported as a warning.
+  @Test func `Interop send: warning issue stays as warning`() async throws {
+    await #expect(processExitsWith: .success) {
+      Configuration.removeAll()
+      Self.setInteropMode(.complete)
+      try #require(
+        _swift_testing_installFallbackEventHandler(Self.capturingHandler),
+        "Installation of fallback handler should succeed")
+
+      await Task.detached {
+        Event.post(.issueRecorded(Issue(kind: .system, severity: .warning)), configuration: nil)
+      }.value
+
+      // Assert that the issue stays as a warning
+      try Self.handlerContents.withLock {
+        let contents = try #require(
+          $0, "Fallback should have been called with non nil contents")
+        let recordData = try #require(contents.record.map(\.utf8).map(Array.init))
+        let record = try recordData.withUnsafeBytes { recordData in
+          try JSON.decode(ABI.Record<ABI.v6_3>.self, from: recordData)
+        }
+        guard case .event(let event) = record.kind else {
+          Issue.record("Wrong type of record: \(record)")
+          return
+        }
+
+        #expect(event.issue?.severity == .warning)
+      }
+    }
+  }
+
+  /// Interop mode normally turns test issues into errors.
+  /// However, we don't want to clobber anything naturally reported as a warning.
+  @Test func `Interop receive: warning issue stays as warning`() async throws {
+    await #expect(processExitsWith: .success) {
+      Self.setInteropMode(.complete)
+      try #require(Event.installFallbackEventHandler())
+
+      // Run the test, which should record two issues in response to the interop one
+      let issues = await Test {
+        try _FakeXCTFail(severity: .warning)
+      }.runCapturingIssues()
+
+      #expect(issues.map(\.severity) == [.warning, .warning])
+      #expect(issues.map(\.description).sorted() == [
+          "An API was misused (warning): Replace XCTest API such as 'XCTAssert' with a Swift Testing equivalent such as '#expect'.",
+          "Issue recorded (warning)"
+        ]
+      )
+    }
+  }
+}
+
+/// Simulates the behaviour of XCTFail when called in a Swift Testing test.
+/// This always forwards a test failure through the fallback event handler if it can find one.
+/// It is an error to call this when a handler hasn't been installed yet.
+/// - Parameter payload: Optional payload to use instead of generating a standard one.
+private func _FakeXCTFail(payload: [UInt8]? = nil, severity: Issue.Severity = .error) throws {
+  // A fallback event handler must be installed ahead of time
+  let currentHandler = try #require(_swift_testing_getFallbackEventHandler())
+
+  func wrapInEncodedEvent(issue: Issue) throws -> [UInt8] {
+    let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil, instant: .now)
+    let encodedEvent = ABI.Record<ABI.CurrentVersion>(
+      encoding: event, in: .init(test: nil, testCase: nil, iteration: nil, configuration: nil),
+      messages: [])
+    return try JSON.withEncoding(of: encodedEvent) { Array($0) }
+  }
+
+  let encodedIssue = try payload ?? wrapInEncodedEvent(issue: .init(kind: .unconditional, severity: severity))
+
+  encodedIssue.withUnsafeBytes { ptr in
+    let vers = String(describing: ABI.CurrentVersion.versionNumber)
+    currentHandler(vers, ptr.baseAddress!, ptr.count, nil)
   }
 }
 #endif

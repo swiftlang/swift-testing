@@ -9,6 +9,7 @@
 //
 
 import SwiftDiagnostics
+import SwiftIfConfig
 public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
@@ -81,6 +82,11 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
       if suiteAttributes.count > 1 {
         diagnostics.append(.multipleAttributesNotSupported(suiteAttributes, on: declaration))
       }
+    }
+
+    // @Suite should not use a generic argument clause.
+    if let genericArgumentClause = suiteAttribute.genericArgumentClause {
+      diagnostics.append(.genericAttributeNotSupported(suiteAttribute, on: declaration, becauseOf: genericArgumentClause, languageMode: context.buildConfiguration?.languageVersion))
     }
 
     return !diagnostics.lazy.map(\.severity).contains(.error)

@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI {
   /// A type implementing the JSON encoding of ``Issue`` for the ABI entry point
   /// and event stream output.
@@ -47,6 +48,11 @@ extension ABI {
     /// Whether or not this issue is known to occur.
     var isKnown: Bool
 
+    /// A comment associated with the known issue, if any.
+    ///
+    /// - Warning: This property is not yet part of the JSON schema.
+    var _knownIssueComment: String?
+
     /// The location in source where this issue occurred, if available.
     public var sourceLocation: EncodedSourceLocation<V>?
 
@@ -60,10 +66,10 @@ extension ABI {
     /// - Warning: Errors are not yet part of the JSON schema.
     var _error: EncodedError<V>?
 
-    /// The expectation associated with this issue, if applicable.
+    /// The expression associated with this issue, if applicable.
     ///
-    /// - Warning: Expectations are not yet part of the JSON schema.
-    var _expectation: EncodedExpectation<V>?
+    /// - Warning: Expressions are not yet part of the JSON schema.
+    var _expression: EncodedExpression<V>?
 
     init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
       // >= v0
@@ -81,14 +87,26 @@ extension ABI {
 
       // Experimental fields
       if V.includesExperimentalFields {
+        if let knownIssueContext = issue.knownIssueContext {
+          _knownIssueComment = knownIssueContext.comment?.rawValue
+        }
         if let backtrace = issue.sourceContext.backtrace {
           _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
         }
-        if let error = issue.error {
-          _error = EncodedError(encoding: error, in: eventContext)
+        _error = if let error = issue.error {
+          EncodedError(encoding: error)
+        } else {
+          switch issue.kind {
+          case .apiMisused:
+            EncodedError(encoding: APIMisuseError(description: ""))
+          case .system:
+            EncodedError(encoding: SystemError(description: ""))
+          default:
+            nil
+          }
         }
         if case let .expectationFailed(expectation) = issue.kind {
-          _expectation = EncodedExpectation(encoding: expectation, in: eventContext)
+          _expression = EncodedExpression(encoding: expectation.evaluatedExpression)
         }
       }
     }
@@ -130,9 +148,15 @@ extension Issue {
   init?<V>(decoding issue: ABI.EncodedIssue<V>) {
     let issueKind: Issue.Kind
     if let error = issue._error {
-      issueKind = .errorCaught(error)
-    } else if let expectation = issue._expectation,
-              let expression = __Expression(decoding: expectation._expression),
+      switch error.domain {
+      case APIMisuseError.domain:
+        issueKind = .apiMisused
+      case SystemError.domain:
+        issueKind = .system
+      default:
+        issueKind = .errorCaught(error)
+      }
+    } else if let expression = issue._expression.flatMap(__Expression.init(decoding:)),
               let sourceLocation = issue.sourceLocation.flatMap(SourceLocation.init) {
       let expectation = Expectation(
         evaluatedExpression: expression,
@@ -163,8 +187,9 @@ extension Issue {
       sourceContext: sourceContext
     )
     if issue.isKnown {
-      // FIXME: The known issue comment is not currently encoded.
-      self.knownIssueContext = Issue.KnownIssueContext()
+      let knownIssueComment = issue._knownIssueComment.map(Comment.init(rawValue:))
+      self.knownIssueContext = Issue.KnownIssueContext(comment: knownIssueComment)
     }
   }
 }
+#endif

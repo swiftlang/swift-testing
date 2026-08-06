@@ -8,6 +8,8 @@
 ## See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 ##
 
+set(SwiftTesting_BUILD_DIR "@SwiftTesting_BUILD_DIR@")
+
 if(NOT TARGET _TestingInterop)
   include(@SwiftTesting_EXPORTS_FILE@)
 endif()

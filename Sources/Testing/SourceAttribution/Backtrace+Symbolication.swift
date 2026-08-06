@@ -114,9 +114,11 @@ extension Backtrace {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension Backtrace.SymbolicatedAddress: Codable {}
+#endif
 
 // MARK: - Swift runtime wrappers
 

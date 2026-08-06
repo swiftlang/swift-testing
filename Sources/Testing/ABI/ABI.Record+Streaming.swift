@@ -8,9 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
-private import Foundation
-
+#if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI.Version {
   /// Create an event handler that encodes instances of ``Event`` as instances
   /// of ``ABI/Record`` and forwards them to a handler function.
@@ -35,7 +33,9 @@ extension ABI.Version {
         let testRecord = ABI.Record<Self>(encoding: test)
         recordHandler(testRecord)
       } else {
-        let messages = humanReadableOutputRecorder.record(event, in: context, verbosity: 0)
+        var configuration = Configuration()
+        configuration.verbosity = 0
+        let messages = humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
         if let eventRecord = ABI.Record<Self>(encoding: event, in: context, messages: messages) {
           recordHandler(eventRecord)
         }
@@ -86,9 +86,7 @@ extension ABI.Xcode16 {
         eventContext: Event.Context.Snapshot(snapshotting: context)
       )
       try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
-        eventAndContextJSON.withUnsafeBytes { eventAndContextJSON in
-          recordHandler(eventAndContextJSON)
-        }
+        recordHandler(eventAndContextJSON)
       }
     }
   }

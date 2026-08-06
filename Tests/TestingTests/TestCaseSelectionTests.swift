@@ -113,6 +113,7 @@ struct TestCaseSelectionTests {
     }
   }
 
+#if !SWT_NO_CODABLE
   @Test("Multiple arguments conforming to CustomTestArgumentEncodable, passed to one parameter, selecting one case")
   func oneParameterAcceptingCustomTestArgumentSelectingOneCase() async throws {
     let fixtureTest = Test(arguments: [
@@ -142,6 +143,7 @@ struct TestCaseSelectionTests {
       await fixtureTest.run(configuration: configuration)
     }
   }
+#endif
 
   @Test("Multiple arguments conforming to Identifiable, passed to one parameter, selecting one case")
   func oneParameterAcceptingIdentifiableArgumentSelectingOneCase() async throws {
@@ -204,6 +206,7 @@ struct TestCaseSelectionTests {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Fixture parameter types
 
 private struct MyCustomTestArgument: CustomTestArgumentEncodable, Equatable {
@@ -220,6 +223,7 @@ private struct MyCustomTestArgument: CustomTestArgumentEncodable, Equatable {
     try container.encode(y, forKey: .y)
   }
 }
+#endif
 
 private struct MyCustomIdentifiableArgument: Identifiable, CustomStringConvertible {
   var id: String

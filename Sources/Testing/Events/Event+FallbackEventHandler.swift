@@ -10,6 +10,66 @@
 
 private import _TestingInternals
 
+#if !SWT_NO_INTEROP
+#if SWT_NO_ABI_JSON_SCHEMA
+#error("Platform-specific misconfiguration: support for the fallback event handler (XCTest interop) requires support for the ABI JSON schema")
+#endif
+#if SWT_NO_CODABLE
+#error("Platform-specific misconfiguration: support for the fallback event handler (XCTest interop) requires support for 'Codable'")
+#endif
+#endif
+
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+public enum Interop: Sendable {}
+
+extension Interop {
+  public enum Mode: String, Sendable, CaseIterable {
+    /// The interop feature is not active.
+    case none
+
+    /// Show runtime warnings for assertion failures caused by primitives
+    /// from other test libraries. The overall test case success/failure is
+    /// therefore not affected.
+    ///
+    /// Show runtime warning issues for XCTest API usage when running a
+    /// Swift Testing test.
+    case limited
+
+    /// Show assertion failures caused by primitives from other test
+    /// libraries.
+    ///
+    /// Show runtime warning issues for XCTest API usage when running a
+    /// Swift Testing test.
+    case complete
+
+    /// Show assertion failures caused by primitives from other test
+    /// libraries.
+    ///
+    /// `fatalError` upon any XCTest assertion failures when running a
+    /// Swift Testing test.
+    case strict
+  }
+}
+
+extension Interop.Mode {
+  /// The name for the environment variable which if set, overrides the default
+  /// interop mode.
+  static let interopModeEnvKey = "SWIFT_TESTING_XCTEST_INTEROP_MODE"
+
+  /// Whether this interop mode causes Swift Testing to install a fallback event
+  /// handler ahead of running tests.
+  var requiresInstallation: Bool {
+    self != .none
+  }
+
+  /// Current interop mode, which should not be changed after tests start
+  /// running.
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+  public static let current: Self = {
+    Environment.variable(named: interopModeEnvKey).flatMap(Interop.Mode.init) ?? .limited
+  }()
+}
+
 extension Event {
   /// Attempt to handle an event encoded as JSON as if it had been generated in
   /// the current testing context.
@@ -24,26 +84,44 @@ extension Event {
   /// - Throws: Any error that prevented handling the encoded record.
   ///
   /// - Important: This function only handles a subset of event kinds.
-  static func handle<V>(_ recordJSON: UnsafeRawBufferPointer, encodedWith version: V.Type) throws
-  where V: ABI.Version {
+  static func handle<V>(_ recordJSON: UnsafeRawBufferPointer, encodedWith version: V.Type) throws where V: ABI.Version {
+#if !SWT_NO_INTEROP
     let record = try JSON.decode(ABI.Record<V>.self, from: recordJSON)
     guard case .event(let event) = record.kind,
-          let issue = Issue(decoding: event) else {
+      var issue = Issue(decoding: event)
+    else {
       return
     }
 
-    // For the time being, assume that foreign test events originate from XCTest
-    let warnForXCTestUsageIssue = {
-      return Issue(
+    let xctestWarningMessage =
+      "Replace XCTest API such as 'XCTAssert' with a Swift Testing equivalent such as '#expect'."
+
+    // For the time being, assume that cross-library issues originate from XCTest
+    lazy var warnForXCTestUsageIssue =
+      Issue(
         kind: .apiMisused, severity: .warning,
         comments: [
-          "XCTest API was used in a Swift Testing test. Adopt Swift Testing primitives, such as #expect, instead."
-        ], sourceContext: issue.sourceContext
-      )
-    }()
+          .init(rawValue: xctestWarningMessage)
+        ], sourceContext: issue.sourceContext)
 
-    issue.record()
-    warnForXCTestUsageIssue.record()
+    // Unconditionally downgrade interop issues to warning for limited interop mode.
+    // Otherwise, preserve the issue severity.
+    switch Interop.Mode.current {
+    case .none: return  // In practice, this branch should be unreachable since we don't install our handler for mode == .none
+    case .limited:
+      issue.severity = .warning
+      issue.record()
+      warnForXCTestUsageIssue.record()
+    case .complete:
+      issue.record()
+      warnForXCTestUsageIssue.record()
+    case .strict:
+      issue.record()
+      fatalError(
+        "\(xctestWarningMessage) This is a fatal error because strict interop mode is active (\(Interop.Mode.interopModeEnvKey)=strict)",
+      )
+    }
+#endif
   }
 
   /// Get the best available source location to use when diagnosing an issue
@@ -54,7 +132,9 @@ extension Event {
   ///
   /// - Returns: A source location to use when reporting an issue about
   ///   `recordJSON`.
-  private static func _bestAvailableSourceLocation(forInvalidRecordJSON recordJSON: UnsafeRawBufferPointer) -> SourceLocation {
+  private static func _bestAvailableSourceLocation(
+    forInvalidRecordJSON recordJSON: UnsafeRawBufferPointer
+  ) -> SourceLocation {
     // TODO: try to actually extract a source location from arbitrary JSON?
 
     // If there's a test associated with the current task, it should have a
@@ -63,7 +143,7 @@ extension Event {
       return test.sourceLocation
     }
 
-    return SourceLocation(fileID: "<unknown>/<unknown>", filePath: "<unknown>", line: 1, column: 1)
+    return .unknown
   }
 
 #if !SWT_NO_INTEROP
@@ -71,7 +151,8 @@ extension Event {
   /// testing library.
   private static let _ourFallbackEventHandler: SWTFallbackEventHandler = {
     recordJSONSchemaVersionNumber, recordJSONBaseAddress, recordJSONByteCount, _ in
-    let version = String(validatingCString: recordJSONSchemaVersionNumber)
+    let version =
+      String(validatingCString: recordJSONSchemaVersionNumber)
       .flatMap(VersionNumber.init)
       .flatMap { ABI.version(forVersionNumber: $0) } ?? ABI.v0.self
     let recordJSON = UnsafeRawBufferPointer(
@@ -108,11 +189,11 @@ extension Event {
 
   /// The implementation of ``installFallbackEventHandler()``.
   private static let _installFallbackEventHandler: Bool = {
-#if !SWT_NO_INTEROP
-    if Environment.flag(named: "SWT_EXPERIMENTAL_INTEROP_ENABLED") == true {
+    #if !SWT_NO_INTEROP
+    if Interop.Mode.current.requiresInstallation {
       return _swift_testing_installFallbackEventHandler(Self._ourFallbackEventHandler)
     }
-#endif
+    #endif
     return false
   }()
 
@@ -156,12 +237,18 @@ extension Event {
   /// handler belongs to the testing library (and so shouldn't be called by us),
   /// the value of this property is `nil`.
   private static let _postToFallbackEventHandler: Event.Handler? = {
-    guard let fallbackEventHandler = _swift_testing_getFallbackEventHandler() else {
+    // If Swift Testing API is called when mode == none, XCTest might still have
+    // installed a fallback event handler. We should refuse to send any events.
+    guard
+      Interop.Mode.current != .none,
+      let fallbackEventHandler = _swift_testing_getFallbackEventHandler()
+    else {
       return nil
     }
 
     let fallbackEventHandlerAddress = castCFunction(fallbackEventHandler, to: UnsafeRawPointer.self)
-    let ourFallbackEventHandlerAddress = castCFunction(Self._ourFallbackEventHandler, to: UnsafeRawPointer.self)
+    let ourFallbackEventHandlerAddress = castCFunction(
+      Self._ourFallbackEventHandler, to: UnsafeRawPointer.self)
     if fallbackEventHandlerAddress == ourFallbackEventHandlerAddress {
       // The fallback event handler belongs to Swift Testing, so we don't want
       // to call it on our own behalf.
@@ -169,9 +256,10 @@ extension Event {
     }
 
     // Encode the event as JSON and pass it to the handler.
-    return ABI.CurrentVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
+    let abiVersion = ABI.v6_3.self
+    return abiVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
       fallbackEventHandler(
-        String(describing: ABI.CurrentVersion.versionNumber),
+        String(describing: abiVersion.versionNumber),
         recordJSON.baseAddress!,
         recordJSON.count,
         nil
@@ -180,3 +268,9 @@ extension Event {
   }()
 #endif
 }
+
+#if !SWT_NO_CODABLE
+// MARK: - Codable
+
+extension Interop.Mode: Codable {}
+#endif

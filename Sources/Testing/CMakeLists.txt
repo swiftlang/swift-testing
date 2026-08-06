@@ -11,6 +11,7 @@ add_library(Testing
   ABI/EntryPoints/ABIEntryPoint.swift
   ABI/EntryPoints/EntryPoint.swift
   ABI/EntryPoints/SwiftPMEntryPoint.swift
+  ABI/ABI.Context.swift
   ABI/ABI.Record.swift
   ABI/ABI.Record+Streaming.swift
   ABI/ABI.VersionNumber.swift
@@ -19,7 +20,6 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedBacktrace.swift
   ABI/Encoded/ABI.EncodedError.swift
   ABI/Encoded/ABI.EncodedEvent.swift
-  ABI/Encoded/ABI.EncodedExpectation.swift
   ABI/Encoded/ABI.EncodedExpression.swift
   ABI/Encoded/ABI.EncodedInstant.swift
   ABI/Encoded/ABI.EncodedIssue.swift
@@ -71,6 +71,7 @@ add_library(Testing
   Running/Runner.Plan+Dumping.swift
   Running/Runner.RuntimeState.swift
   Running/Runner.swift
+  Running/Runner+Repetition.swift
   Running/SkipInfo.swift
   SourceAttribution/Backtrace.swift
   SourceAttribution/Backtrace+Symbolication.swift
@@ -93,6 +94,7 @@ add_library(Testing
   Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
   Support/Allocated.swift
+  Support/BugReporting.swift
   Support/CartesianProduct.swift
   Support/CError.swift
   Support/CustomIssueRepresentable.swift
@@ -102,6 +104,7 @@ add_library(Testing
   Support/Graph.swift
   Support/JSON.swift
   Support/Serializer.swift
+  Support/SHA256.swift
   Support/VersionNumber.swift
   Support/Versions.swift
   Discovery+Macro.swift
@@ -110,7 +113,6 @@ add_library(Testing
   Test.swift
   Test+Cancellation.swift
   Test+Discovery.swift
-  Test+Discovery+Legacy.swift
   Test+Macro.swift
   Traits/AttachmentSavingTrait.swift
   Traits/Bug.swift
@@ -121,6 +123,7 @@ add_library(Testing
   Traits/HiddenTrait.swift
   Traits/IssueHandlingTrait.swift
   Traits/ParallelizationTrait.swift
+  Traits/ReducibleTrait.swift
   Traits/Tags/Tag.Color.swift
   Traits/Tags/Tag.Color+Loading.swift
   Traits/Tags/Tag.List.swift
@@ -134,7 +137,7 @@ target_link_libraries(Testing PRIVATE
   _TestingInternals
   _TestingInterop)
 if(NOT APPLE)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
     target_link_libraries(Testing PUBLIC
       dispatch)
   endif()
@@ -164,3 +167,8 @@ _swift_testing_install_target(Testing)
 # Install the Swift cross-import overlay directory.
 _swift_testing_install_swiftcrossimport(Testing
   Testing.swiftcrossimport)
+
+# Make @_spi visible to other projects building against Testing in the toolchain (e.g. swift-corelibs-xctest)
+set_target_properties(Testing PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_Swift_MODULE_DIRECTORY})
+set_property(GLOBAL APPEND PROPERTY SwiftTesting_EXPORTS Testing)
