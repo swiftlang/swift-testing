@@ -389,6 +389,7 @@ struct SwiftPMTests {
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_3.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_4.versionNumber),
           ("--event-stream-output-path", "--event-stream-version", ABI.v6_4.versionNumber),
+          ("--event-stream-output-path", "--event-stream-version", ABI.v6_5.versionNumber),
         ])
   func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: VersionNumber) async throws {
     let version = try #require(ABI.version(forVersionNumber: version))
