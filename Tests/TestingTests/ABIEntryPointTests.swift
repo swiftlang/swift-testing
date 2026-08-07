@@ -190,6 +190,12 @@ struct ABIEntryPointTests {
   ]) func abiVersionStringConversion(version: VersionNumber?, expectedString: String) throws {
     let version = try #require(version)
     #expect(String(describing: version) == expectedString)
+
+    let abi = ABI.v6_5.addingExperimentalFields()
+    func open<V: ABI.Version>(_: V.Type) {
+      #expect(V.includesExperimentalFields)
+    }
+    open(abi)
   }
 
   @Test func badABIVersionString() {

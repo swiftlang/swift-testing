@@ -95,7 +95,7 @@ extension ABI.VersionNumber: CustomStringConvertible {
 
 // MARK: - Equatable, Comparable
 
-extension ABI.VersionNumber: Equatable, Comparable {
+extension ABI.VersionNumber: Equatable, Comparable, Hashable {
   public static func <(lhs: Self, rhs: Self) -> Bool {
     if lhs.majorComponent != rhs.majorComponent {
       return lhs.majorComponent < rhs.majorComponent

@@ -21,6 +21,24 @@ extension ABI {
   public protocol Version: Sendable {
     /// The numeric representation of this ABI version.
     static var versionNumber: VersionNumber { get }
+
+    /// Whether or not experimental fields should be included when using this
+    /// ABI version.
+    ///
+    /// By default, the value of this property is `true` if any of the following
+    /// conditions are satisfied:
+    ///
+    /// - The version number is less than 6.3. This is to preserve compatibility
+    ///   with existing clients before the inclusion of experimental fields
+    ///   became opt-in starting in 6.3.
+    /// - The version number is greater than or equal to 6.3 and the environment
+    ///   variable flag `SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED` is set to
+    ///   a true value.
+    /// - The version number is greater than or equal to that of
+    ///   ``ABI/ExperimentalVersion``.
+    ///
+    /// Otherwise, the value of this property is `false` by default.
+    static var includesExperimentalFields: Bool { get }
   }
 
   /// A protocol that extends the public ``ABI/Version`` protocol with
@@ -210,22 +228,7 @@ extension ABI.Version {
 private let _shouldIncludeExperimentalFlags = Environment.flag(named: "SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED")
 
 extension ABI.Version {
-  /// Whether or not experimental fields should be included when using this
-  /// ABI version.
-  ///
-  /// The value of this property is `true` if any of the following conditions
-  /// are satisfied:
-  ///
-  /// - The version number is less than 6.3. This is to preserve compatibility
-  ///   with existing clients before the inclusion of experimental fields became
-  ///   opt-in starting in 6.3.
-  /// - The version number is greater than or equal to 6.3 and the environment
-  ///   variable flag `SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED` is set to a
-  ///   true value.
-  /// - The version number is greater than or equal to that of ``ABI/ExperimentalVersion``.
-  ///
-  /// Otherwise, the value of this property is `false`.
-  static var includesExperimentalFields: Bool {
+  public static var includesExperimentalFields: Bool {
     switch versionNumber {
     case ABI.ExperimentalVersion.versionNumber...:
       true
@@ -234,6 +237,50 @@ extension ABI.Version {
     default:
       // Maintain behavior for pre-6.3 versions.
       true
+    }
+  }
+
+  static func addingExperimentalFields() -> any ABI.Version.Type {
+    if includesExperimentalFields {
+      return self
+    }
+
+    return ABI._bespokeVersions.withLock { bespokeVersions in
+      if let result = bespokeVersions[versionNumber] {
+        return result
+      }
+      let name = "\(ABI.self).v\(versionNumber.majorComponent)_\(versionNumber.minorComponent)_\(versionNumber.patchComponent)_Experimental"
+
+      var storage = ABI._DynamicVersion.Storage(
+        versionNumber: versionNumber,
+        includesExperimentalFields: true
+      )
+      let newClass = objc_allocateClassPair(ABI._DynamicVersion.self, name, MemoryLayout.size(ofValue: storage)) as! ABI._DynamicVersion.Type
+      let storageAddress = object_getIndexedIvars(newClass)!
+      storageAddress.copyMemory(from: &storage, byteCount: MemoryLayout.size(ofValue: storage))
+      objc_registerClassPair(newClass)
+
+      bespokeVersions[versionNumber] = newClass
+      return newClass
+    }
+  }
+}
+
+extension ABI {
+  private class _DynamicVersion: @unchecked Sendable, ABI.Version, ABI._Version {
+    struct Storage: Sendable {
+      var versionNumber: VersionNumber
+      var includesExperimentalFields: Bool
+    }
+
+    static var versionNumber: ABI.VersionNumber {
+      let storage = object_getIndexedIvars(self)!.loadUnaligned(as: Storage.self)
+      return storage.versionNumber
+    }
+
+    static var includesExperimentalFields: Bool {
+      let storage = object_getIndexedIvars(self)!.loadUnaligned(as: Storage.self)
+      return storage.includesExperimentalFields
     }
   }
 }
@@ -302,6 +349,8 @@ extension ABI {
       VersionNumber(99, 0)
     }
   }
+
+  private static let _bespokeVersions = Mutex<[VersionNumber: (any Version.Type)]>()
 }
 
 #if !SWT_NO_CODABLE
