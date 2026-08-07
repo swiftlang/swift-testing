@@ -14,6 +14,10 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 Create and run tests for your Swift packages and Xcode projects.
 
+@Metadata {
+    @TitleHeading("Libraries")
+}
+
 ## Overview
 
 With Swift Testing you leverage powerful and expressive capabilities of
