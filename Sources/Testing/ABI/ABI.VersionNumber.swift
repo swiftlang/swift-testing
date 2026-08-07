@@ -38,12 +38,42 @@ extension ABI {
 
     /// The patch, revision, or bug fix version.
     var patchComponent: Component = 0
+
+    /// The suffix used to indicate a version number is experimental, not
+    /// including the leading hyphen character.
+    static let _experimentalSuffix = "experimental"
+
+    /// Various flags that can be applied to a version number.
+    struct Flags: OptionSet {
+      var rawValue: UInt8
+
+      /// The version number is experimental.
+      static var isExperimental: Self { .init(rawValue: 1 << 0) }
+    }
+
+    /// Storage for ``flags``.
+    private var _flags: Flags = []
+
+    /// Various flags that have been applied to this instance.
+    var flags: Flags {
+      get {
+        var result = _flags
+        if self >= ABI.ExperimentalVersion.versionNumber {
+          // This flag is inherently always set for ABI.ExperimentalVersion.
+          result.insert(.isExperimental)
+        }
+        return result
+      }
+      set {
+        _flags = newValue
+      }
+    }
   }
 }
 
 extension ABI.VersionNumber {
-  init(_ majorComponent: _const Component, _ minorComponent: _const Component, _ patchComponent: _const Component = 0) {
-    self.init(majorComponent: majorComponent, minorComponent: minorComponent, patchComponent: patchComponent)
+  init(_ majorComponent: _const Component, _ minorComponent: _const Component, _ patchComponent: _const Component = 0, flags: Flags = []) {
+    self.init(majorComponent: majorComponent, minorComponent: minorComponent, patchComponent: patchComponent, _flags: flags)
   }
 }
 
@@ -66,9 +96,18 @@ extension ABI.VersionNumber: CustomStringConvertible {
   /// `"1.2.0"`.) If `string` contains more than 3 numeric components, the
   /// additional components are ignored.
   public init?(_ string: String) {
+    // Splits the string on "-" so as to extract a suffix (if present). Don't
+    // bother if the first character is "-" as that indicates a negative number
+    // (i.e. "-1", likely ABI.Xcode16.versionNumber).
+    let outerComponents = if string.first == "-" {
+      [string[...]]
+    } else {
+      string.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
+    }
+
     // Split the string on "." (assuming it is of the form "1", "1.2", or
     // "1.2.3") and parse the individual components as integers.
-    let components = string.split(separator: ".", omittingEmptySubsequences: false)
+    let components = outerComponents[0].split(separator: ".", omittingEmptySubsequences: false)
     func componentValue(_ index: Int) -> Component? {
       components.count > index ? Component(components[index]) : 0
     }
@@ -79,17 +118,50 @@ extension ABI.VersionNumber: CustomStringConvertible {
       return nil
     }
     self.init(majorComponent: majorComponent, minorComponent: minorComponent, patchComponent: patchComponent)
+
+    if outerComponents.count > 1 {
+      let suffix = outerComponents[1]
+      switch suffix.lowercased() {
+      case Self._experimentalSuffix:
+        flags.insert(.isExperimental)
+      default:
+        // We ignore all other suffixes for now.
+        break
+      }
+    }
+  }
+
+  /// Get a description of this instance suitable for either ``Encodable`` or
+  /// ``CustomStringConvertible`` conformance.
+  ///
+  /// - Parameters:
+  ///   - forEncodable: Whether or not the string should be used to satisfy the
+  ///     type's conformance to ``Encodable``.
+  ///
+  /// - Returns: A description of `self`.
+  private func _description(forEncodable: Bool) -> String {
+    // If the version is experimental, include all three components and the
+    // experimental suffix. We don't do this for ABI.ExperimentalVersion because
+    // it would be redundant.
+    if flags.contains(.isExperimental), self < ABI.ExperimentalVersion.versionNumber {
+      return "\(majorComponent).\(minorComponent).\(patchComponent)-\(Self._experimentalSuffix)"
+    }
+
+    if !forEncodable {
+      if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
+        // Version 0 and earlier are described as integers for compatibility with
+        // Swift 6.2 and earlier.
+        return String(describing: majorComponent)
+      } else if patchComponent == 0 {
+        return "\(majorComponent).\(minorComponent)"
+      }
+    }
+
+    return "\(majorComponent).\(minorComponent).\(patchComponent)"
   }
 
   public var description: String {
-    if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
-      // Version 0 and earlier are described as integers for compatibility with
-      // Swift 6.2 and earlier.
-      return String(describing: majorComponent)
-    } else if patchComponent == 0 {
-      return "\(majorComponent).\(minorComponent)"
-    }
-    return "\(majorComponent).\(minorComponent).\(patchComponent)"
+    _description(forEncodable: false)
   }
 }
 
@@ -139,7 +211,7 @@ extension ABI.VersionNumber: Codable {
       // Swift 6.2 and earlier.
       try container.encode(majorComponent)
     } else {
-      try container.encode("\(majorComponent).\(minorComponent).\(patchComponent)")
+      try container.encode(_description(forEncodable: true))
     }
   }
 

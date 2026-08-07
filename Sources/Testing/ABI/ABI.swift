@@ -21,6 +21,23 @@ extension ABI {
   public protocol Version: Sendable {
     /// The numeric representation of this ABI version.
     static var versionNumber: VersionNumber { get }
+
+    /// Whether or not experimental fields should be included when using this
+    /// ABI version.
+    ///
+    /// The value of this property is `true` if any of the following conditions
+    /// are satisfied:
+    ///
+    /// - The version number is less than 6.3. This is to preserve compatibility
+    ///   with existing clients before the inclusion of experimental fields became
+    ///   opt-in starting in 6.3.
+    /// - The version number is greater than or equal to 6.3 and the environment
+    ///   variable flag `SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED` is set to a
+    ///   true value.
+    /// - The version number is greater than or equal to that of ``ABI/ExperimentalVersion``.
+    ///
+    /// Otherwise, the value of this property is `false`.
+    static var includesExperimentalFields: Bool { get }
   }
 
   /// A protocol that extends the public ``ABI/Version`` protocol with
@@ -102,7 +119,7 @@ extension ABI {
       }
     }
 
-    return switch versionNumber {
+    var result: (any ABI._Version.Type)? = switch versionNumber {
     case ABI.v6_5.versionNumber...:
       ABI.v6_5.self
     case ABI.v6_4.versionNumber...:
@@ -120,6 +137,12 @@ extension ABI {
     default:
       nil
     }
+
+    if versionNumber.flags.contains(.isExperimental) {
+      result = result?.includingExperimentalFields()
+    }
+
+    return result
   }
 }
 
@@ -225,7 +248,7 @@ extension ABI.Version {
   /// - The version number is greater than or equal to that of ``ABI/ExperimentalVersion``.
   ///
   /// Otherwise, the value of this property is `false`.
-  static var includesExperimentalFields: Bool {
+  public static var includesExperimentalFields: Bool {
     switch versionNumber {
     case ABI.ExperimentalVersion.versionNumber...:
       true
@@ -235,6 +258,34 @@ extension ABI.Version {
       // Maintain behavior for pre-6.3 versions.
       true
     }
+  }
+}
+
+fileprivate enum VersionWithExperimentalFeaturesEnabled<Base>: ABI.Version, ABI._Version where Base: ABI.Version & ABI._Version {
+  static var versionNumber: VersionNumber {
+    var result = Base.versionNumber
+    result.flags.insert(.isExperimental)
+    return result
+  }
+
+  static var includesExperimentalFields: Bool {
+    true
+  }
+}
+
+extension VersionWithExperimentalFeaturesEnabled: Sendable where Base: Sendable {}
+
+extension ABI._Version {
+  /// Return an ABI version type equivalent to this one, but with experimental
+  /// fields enabled.
+  ///
+  /// - Returns: A type equivalent to this one, but always including
+  ///   experimental fields.
+  fileprivate static func includingExperimentalFields() -> any ABI._Version.Type {
+    if versionNumber.flags.contains(.isExperimental) {
+      return self
+    }
+    return VersionWithExperimentalFeaturesEnabled<Self>.self
   }
 }
 

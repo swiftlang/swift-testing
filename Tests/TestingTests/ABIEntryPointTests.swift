@@ -187,8 +187,17 @@ struct ABIEntryPointTests {
     (VersionNumber(2, 0), "2.0"),
     (VersionNumber("0.0.1"), "0.0.1"),
     (VersionNumber("0.1.0"), "0.1"),
+    (VersionNumber("1-experimental"), "1.0.0-experimental"),
+    (VersionNumber("1-EXPERIMENTAL"), "1.0.0-experimental"),
+    (VersionNumber("1.2-experimental"), "1.2.0-experimental"),
+    (VersionNumber("1.2.3-experimental"), "1.2.3-experimental"),
+    (VersionNumber("1.2.3-ExPeRiMeNtAl"), "1.2.3-experimental"),
+    (VersionNumber("99-experimental"), "99.0"),
+    (VersionNumber("99.0-experimental"), "99.0"),
+    (VersionNumber("99.0.1-experimental"), "99.0.1"),
   ]) func abiVersionStringConversion(version: VersionNumber?, expectedString: String) throws {
     let version = try #require(version)
+    print(version)
     #expect(String(describing: version) == expectedString)
   }
 
