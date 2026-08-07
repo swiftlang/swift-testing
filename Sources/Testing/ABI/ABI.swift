@@ -283,7 +283,7 @@ extension ABI {
     }
   }
 
-  /// A namespace and type for ABI version 6.4 symbols.
+  /// A namespace and type for ABI version 6.5 symbols.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.5)
