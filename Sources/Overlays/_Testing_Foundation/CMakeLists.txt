@@ -33,6 +33,10 @@ if(NOT APPLE)
   target_link_libraries(_Testing_Foundation PUBLIC
     Foundation)
 endif()
+if(NOT BUILD_SHARED_LIBS)
+  target_compile_options(_Testing_Foundation PRIVATE
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals")
+endif()
 
 # Note: This does not enable Library Evolution, despite emitting a module
 # interface, because Foundation does not have Library Evolution enabled for all
