@@ -60,6 +60,14 @@ static int swt_errno(void) {
   return errno;
 }
 
+/// Set the current C error.
+///
+/// This function is provided because `errno` is a complex macro on some
+/// platforms and cannot be imported directly into Swift.
+static void swt_set_errno(int errorCode) {
+  errno = errorCode;
+}
+
 #if !SWT_NO_FILE_IO
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)
