@@ -38,14 +38,14 @@ To declare a test function, write a Swift function declaration that doesn't
 take any arguments, then prefix its name with the `@Test` attribute:
 
 ```swift
-@Test func foodTruckExists() {
+@Test func `Food truck exists`() {
   // Test logic goes here.
 }
 ```
 
 This test function can be present at file scope or within a type. A type
-containing test functions is automatically a _test suite_ and can be optionally
-annotated with the `@Suite` attribute. For more information about suites, see
+containing test functions is automatically a _test suite_ and you can optionally
+annotate it with the `@Suite` attribute. For more information about suites, see
 <doc:OrganizingTests>.
 
 Note that, while this function is a valid test function, it doesn't actually
@@ -72,7 +72,7 @@ to run in the main actor's execution context (that is, from the main thread of
 the process), it can be annotated `@MainActor`:
 
 ```swift
-@Test @MainActor func foodTruckExists() async throws { ... }
+@Test @MainActor func `Food truck exists`() async throws { ... }
 ```
 
 ### Limit the availability of a test
