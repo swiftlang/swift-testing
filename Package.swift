@@ -178,6 +178,13 @@ let package = Package(
       path: "Tests/_MemorySafeTestingTests",
       swiftSettings: .packageSettings(isTestTarget: true) + [.strictMemorySafety()]
     ),
+    .testTarget(
+      name: "SubexpressionShowcase",
+      dependencies: [
+        "Testing",
+      ],
+      swiftSettings: .packageSettings(isTestTarget: true)
+    ),
 
     .macro(
       name: "TestingMacros",
