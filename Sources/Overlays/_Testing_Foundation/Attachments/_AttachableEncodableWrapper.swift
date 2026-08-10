@@ -87,7 +87,7 @@ public struct _AttachableEncodableWrapper<T, E> {
     }
   }
 #else
-  init(encoding encodableValue: T, using encoder: E) where T: Encodable, E: PropertyListEncoder {
+  init(encoding encodableValue: T, using encoder: E) where T: Encodable, E: PropertyListEncoder & Sendable {
     _encodableValue = encodableValue
     _encodingFormat = .propertyListFormat(encoder.outputFormat)
     _encode = { encodableValue, body in
@@ -97,7 +97,7 @@ public struct _AttachableEncodableWrapper<T, E> {
     }
   }
 
-  init(encoding encodableValue: T, using encoder: E) where T: Encodable, E: JSONEncoder {
+  init(encoding encodableValue: T, using encoder: E) where T: Encodable, E: JSONEncoder & Sendable {
     _encodableValue = encodableValue
     _encodingFormat = .json
     _encode = { encodableValue, body in
