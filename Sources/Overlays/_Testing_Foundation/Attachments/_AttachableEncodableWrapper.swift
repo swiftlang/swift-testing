@@ -47,7 +47,9 @@ public struct _AttachableEncodableWrapper<T, E> {
     _encodableValue = encodableValue
     _encodingFormat = encodingFormat
     _encode = { encodableValue, body in
-      let encodableValue = encodableValue as! any Encodable
+      guard let encodableValue = encodableValue as? any Encodable else {
+        throw SystemError(description: "Could not convert value '\(String(describingForTest: encodableValue))' of type '\(type(of: encodableValue))' to 'any Encodable'.")
+      }
       let data: Data
       switch encodingFormat.kind {
       case let .propertyListFormat(propertyListFormat):
@@ -81,7 +83,9 @@ public struct _AttachableEncodableWrapper<T, E> {
       _encodingFormat = .json
     }
     _encode = { encodableValue, body in
-      let encodableValue = encodableValue as! any Encodable
+      guard let encodableValue = encodableValue as? any Encodable else {
+        throw SystemError(description: "Could not convert value '\(String(describingForTest: encodableValue))' of type '\(type(of: encodableValue))' to 'any Encodable'.")
+      }
       let buffer = try encoder.encode(encodableValue)
       try buffer.withUnsafeBytes(body)
     }
@@ -91,7 +95,9 @@ public struct _AttachableEncodableWrapper<T, E> {
     _encodableValue = encodableValue
     _encodingFormat = .propertyListFormat(encoder.outputFormat)
     _encode = { encodableValue, body in
-      let encodableValue = encodableValue as! any Encodable
+      guard let encodableValue = encodableValue as? any Encodable else {
+        throw SystemError(description: "Could not convert value '\(String(describingForTest: encodableValue))' of type '\(type(of: encodableValue))' to 'any Encodable'.")
+      }
       let buffer = try encoder.encode(encodableValue)
       try buffer.withUnsafeBytes(body)
     }
@@ -101,7 +107,9 @@ public struct _AttachableEncodableWrapper<T, E> {
     _encodableValue = encodableValue
     _encodingFormat = .json
     _encode = { encodableValue, body in
-      let encodableValue = encodableValue as! any Encodable
+      guard let encodableValue = encodableValue as? any Encodable else {
+        throw SystemError(description: "Could not convert value '\(String(describingForTest: encodableValue))' of type '\(type(of: encodableValue))' to 'any Encodable'.")
+      }
       let buffer = try encoder.encode(encodableValue)
       try buffer.withUnsafeBytes(body)
     }
@@ -118,7 +126,9 @@ public struct _AttachableEncodableWrapper<T, E> {
     _encodableValue = encodableValue
     _encodingFormat = .propertyListFormat(propertyListFormat)
     _encode = { encodableValue, body in
-      let encodableValue = encodableValue as! any NSSecureCoding
+      guard let encodableValue = encodableValue as? any NSSecureCoding else {
+        throw SystemError(description: "Could not convert value '\(String(describingForTest: encodableValue))' of type '\(type(of: encodableValue))' to 'any NSSecureCoding'.")
+      }
       var data = try E.archivedData(withRootObject: encodableValue, requiringSecureCoding: true)
 
       // BUG: Foundation does not offer a variant of

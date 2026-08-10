@@ -44,14 +44,18 @@ protocol CustomIssueRepresentable: Error {
 /// This type is not part of the public interface of the testing library.
 /// External callers should generally record issues by throwing their own errors
 /// or by calling ``Issue/record(_:severity:sourceLocation:)``.
-struct SystemError: Error, CustomStringConvertible, CustomIssueRepresentable {
-  var description: String
+package struct SystemError: Error, CustomStringConvertible, CustomIssueRepresentable {
+  package var description: String
 
-  static var domain: String {
+  package init(description: String) {
+    self.description = description
+  }
+
+  package static var domain: String {
     "org.swift.testing.SystemError"
   }
 
-  var _domain: String {
+  package var _domain: String {
     Self.domain
   }
 

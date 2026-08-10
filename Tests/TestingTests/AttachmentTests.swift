@@ -517,6 +517,19 @@ struct AttachmentTests {
       #expect(!bytes.isEmpty)
     }
   }
+
+#if !SWT_NO_GLOBAL_ACTORS
+  @Test("Attach value with isolated Codable conformance")
+  func attachValueWithIsolatedCodableConformance() async throws {
+    let attachment = try await MainActor.run {
+      let attachableValue = MyIsolatedCodable(string: "stringly speaking")
+      return try Attachment(encoding: attachableValue, using: JSONEncoder())
+    }
+    #expect(throws: SystemError.self) {
+      _ = try attachment.withUnsafeBytes { _ in }
+    }
+  }
+#endif
 #endif
 #endif
 
@@ -1179,6 +1192,12 @@ struct MyBadTransferable: Transferable, Equatable {
 struct MyCodableAttachable: Codable, Attachable, Sendable {
   var string: String
 }
+
+#if !SWT_NO_GLOBAL_ACTORS
+struct MyIsolatedCodable: @MainActor Codable {
+  var string: String
+}
+#endif
 #endif
 
 final class MySecureCodingAttachable: NSObject, NSSecureCoding, Attachable, Sendable {
