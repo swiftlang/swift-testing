@@ -130,7 +130,7 @@
     let test = Test {}
     let event = Event(.testCaseStarted, testID: .init(["SomeValidTestID", "testFunc()"]), testCaseID: nil)
     let context = Event.Context(test: test, testCase: nil, iteration: 2, configuration: nil)
-    let encoded = try #require(ABI.EncodedEvent<ABI.v6_4>(encoding: event, in: context, messages: []))
+    let encoded = try #require(ABI.EncodedEvent<ABI.v6_4>(encoding: event, in: context))
 
     #expect(encoded.iteration == 2)
 
@@ -139,7 +139,7 @@
       #expect(str.contains(#""iteration":2"#))
     }
 
-    let encoded6_3 = try #require(ABI.EncodedEvent<ABI.v6_3>(encoding: event, in: context, messages: []))
+    let encoded6_3 = try #require(ABI.EncodedEvent<ABI.v6_3>(encoding: event, in: context))
     #expect(encoded6_3.iteration == nil)
     try JSON.withEncoding(of: encoded6_3) { buf in
       let str = String(decoding: buf, as: UTF8.self)
@@ -175,7 +175,7 @@
   @Test func `Encoded event for non-parameterized test doesn't add testCase`() async {
     var configuration = Configuration()
     configuration.eventHandler = { event, context in
-      guard let encoded = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: context, messages: []) else {
+      guard let encoded = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: context) else {
         return
       }
       switch encoded.kind {
@@ -218,7 +218,6 @@
       {
         "kind": "testStarted",
         "instant": {"absolute": 123},
-        "messages": [],
         "testID": "SomeValidTestID/testFunc()"
       }
       """)
@@ -239,7 +238,6 @@
       {
         "kind": "testStarted",
         "instant": {"since1970": 123},
-        "messages": [],
         "testID": "SomeValidTestID/testFunc()"
       }
       """)
@@ -261,7 +259,6 @@
       {
         "kind": "testStarted",
         "instant": {},
-        "messages": [],
         "testID": "SomeValidTestID/testFunc()"
       }
       """)
@@ -372,6 +369,68 @@
       var context = ABI.Context()
       #expect(ABI.decodeEvent(fromRecordJSON: badRecordJSON, in: &context) == nil)
     }
+  }
+
+  @Test func `Fails to decode v6.3 record with missing 'messages' field`() throws {
+    #expect(throws: DecodingError.self) {
+      _ = try encodedEvent(
+        ABI.v6_3.self,
+        """
+        {
+          "kind": "testStarted",
+          "instant": {"absolute": 123, "since1970": 456},
+          "testID": "SomeValidTestID/testFunc()"
+        }
+        """
+      )
+    }
+
+    #expect(throws: Never.self) {
+      _ = try encodedEvent(
+        ABI.ExperimentalVersion.self,
+        """
+        {
+          "kind": "testStarted",
+          "instant": {"absolute": 123, "since1970": 456},
+          "testID": "SomeValidTestID/testFunc()"
+        }
+        """
+      )
+    }
+  }
+
+  @Test(.serialized(for: \Environment.self))
+  func `Includes messages when SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED is set`() throws {
+    let oldEnvvar = Environment.variable(named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+    Environment.setVariable(nil, named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+    defer {
+      Environment.setVariable(oldEnvvar, named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+    }
+
+    #expect(ABI.v6_3.alwaysEncodeMessagesField)
+    #expect(ABI.v6_3.alwaysDecodeMessagesField)
+
+    #expect(!ABI.ExperimentalVersion.alwaysEncodeMessagesField)
+    #expect(!ABI.ExperimentalVersion.alwaysDecodeMessagesField)
+
+    Environment.setVariable("true", named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+
+    #expect(ABI.ExperimentalVersion.alwaysEncodeMessagesField)
+    #expect(!ABI.ExperimentalVersion.alwaysDecodeMessagesField)
+
+    let eventHandler = ABI.ExperimentalVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
+      #expect(throws: Never.self) {
+        let decodedRecord = try JSON.decode(ABI.Record<ABI.ExperimentalVersion>.self, from: recordJSON)
+        guard case let .event(decodedEvent) = decodedRecord.kind else {
+          Issue.record("Got the wrong kind '\(decodedRecord.kind)' of record back when encoding an event.")
+          return
+        }
+        #expect(!decodedEvent.messages.isEmpty)
+      }
+    }
+    let event = Event(.runStarted, testID: nil, testCaseID: nil)
+    let eventContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
+    eventHandler(event, eventContext)
   }
 }
 #endif

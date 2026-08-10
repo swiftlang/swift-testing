@@ -51,7 +51,7 @@ extension ABI.Record {
     self.init(encoding: test)
   }
 
-  init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
+  init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message] = []) {
     guard let event = ABI.EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) else {
       return nil
     }
