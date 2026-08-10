@@ -49,7 +49,7 @@ extension ABI {
   }
 
   /// The current supported ABI version (ignoring any experimental versions.)
-  public typealias CurrentVersion = v6_4
+  public typealias CurrentVersion = v6_5
 
   /// Get the type representing a given ABI version.
   ///
@@ -103,6 +103,8 @@ extension ABI {
     }
 
     return switch versionNumber {
+    case ABI.v6_5.versionNumber...:
+      ABI.v6_5.self
     case ABI.v6_4.versionNumber...:
       ABI.v6_4.self
     case ABI.v6_3.versionNumber...:
@@ -120,6 +122,86 @@ extension ABI {
     }
   }
 }
+
+#if !SWT_NO_ABI_JSON_SCHEMA
+// MARK: - Decoding record JSON
+
+extension ABI {
+  /// Decode an event from the given record JSON.
+  ///
+  /// - Parameters:
+  ///   - recordJSON: The record JSON to decode.
+  ///   - context: A context value that tracks decoded tests and events.
+  ///
+  /// - Returns: A tuple containing the decoded event and an associated event
+  ///   context. The event context's ``Event/Context/test`` and
+  ///   ``Event/Context/iteration`` properties are set if the encoded event has
+  ///   its corresponding properties set. The caller is responsible for setting
+  ///   any other properties of the context value that it needs. If `recordJSON`
+  ///   was invalid or could not be decoded, this function returns `nil`.
+  ///
+  /// Records of kind `"test"` are decoded as events of kind `testDiscovered`.
+  ///
+  /// This function infers the ABI version to use from the contents of
+  /// `recordJSON`.
+  public static func decodeEvent(fromRecordJSON recordJSON: UnsafeRawBufferPointer, in context: inout ABI.Context) -> (event: Event, context: Event.Context)? {
+    guard let versionNumber = try? VersionNumber(fromRecordJSON: recordJSON),
+          let abi = _version(forVersionNumber: versionNumber) else {
+      return nil
+    }
+    return abi.decodeEvent(fromRecordJSON: recordJSON, in: &context)
+  }
+}
+
+extension ABI.Version {
+  /// Decode an event from the given record JSON.
+  ///
+  /// - Parameters:
+  ///   - recordJSON: The record JSON to decode.
+  ///   - context: A context value that tracks decoded tests and events.
+  ///
+  /// - Returns: A tuple containing the decoded event and an associated event
+  ///   context. The event context's ``Event/Context/test`` and
+  ///   ``Event/Context/iteration`` properties are set if the encoded event has
+  ///   its corresponding properties set. The caller is responsible for setting
+  ///   any other properties of the context value that it needs. If `recordJSON`
+  ///   was invalid or could not be decoded, this function returns `nil`.
+  ///
+  /// Records of kind `"test"` are decoded as events of kind `testDiscovered`.
+  ///
+  /// If `recordJSON` was encoded with an incompatible ABI version, this
+  /// function returns `nil`.
+  public static func decodeEvent(fromRecordJSON recordJSON: UnsafeRawBufferPointer, in context: inout ABI.Context) -> (event: Event, context: Event.Context)? {
+    var result: (event: Event, context: Event.Context)?
+
+    guard let record = try? JSON.decode(ABI.Record<Self>.self, from: recordJSON) else {
+      return nil
+    }
+
+    switch record.kind {
+    case let .test(encodedTest):
+      guard let test = Test(decoding: encodedTest, in: &context) else {
+        return nil
+      }
+      result = (
+        Event(.testDiscovered, testID: test.id, testCaseID: nil),
+        Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
+      )
+    case let .event(encodedEvent):
+      guard let event = Event(decoding: encodedEvent, in: &context) else {
+        return nil
+      }
+      let test = encodedEvent.testID.flatMap(context.test(identifiedBy:))
+      result = (
+        event,
+        Event.Context(test: test, testCase: nil, iteration: encodedEvent.iteration, configuration: nil)
+      )
+    }
+
+    return result
+  }
+}
+#endif
 
 // MARK: - Experimental fields
 
@@ -198,6 +280,17 @@ extension ABI {
   public enum v6_4: Sendable, Version, _Version {
     public static var versionNumber: VersionNumber {
       VersionNumber(6, 4)
+    }
+  }
+
+  /// A namespace and type for ABI version 6.5 symbols.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.5)
+  /// }
+  public enum v6_5: Sendable, Version, _Version {
+    public static var versionNumber: VersionNumber {
+      VersionNumber(6, 5)
     }
   }
 

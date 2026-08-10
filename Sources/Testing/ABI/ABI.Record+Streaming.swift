@@ -27,15 +27,21 @@ extension ABI.Version {
     precondition(self != ABI.Xcode16.self, "Attempted to create an ABI.Record-generating event handler for the Xcode 16 compatibility path.")
 #endif
 
-    let humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
-    return { event, context in
+    var humanReadableOutputRecorder: Event.HumanReadableOutputRecorder?
+    if alwaysEncodeMessagesField {
+      humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
+    }
+    return { [humanReadableOutputRecorder] event, context in
       if case .testDiscovered = event.kind, let test = context.test {
         let testRecord = ABI.Record<Self>(encoding: test)
         recordHandler(testRecord)
       } else {
-        var configuration = Configuration()
-        configuration.verbosity = 0
-        let messages = humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
+        var messages: [Event.HumanReadableOutputRecorder.Message] = []
+        if let humanReadableOutputRecorder {
+          var configuration = Configuration()
+          configuration.verbosity = 0
+          messages = humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
+        }
         if let eventRecord = ABI.Record<Self>(encoding: event, in: context, messages: messages) {
           recordHandler(eventRecord)
         }

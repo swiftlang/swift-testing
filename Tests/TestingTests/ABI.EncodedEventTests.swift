@@ -15,13 +15,18 @@
   /// Creates an EncodedEvent from a JSON string.
   ///
   /// - Throws: If the JSON doesn't represent a valid EncodedEvent.
-  private func encodedEvent(
-    _ json: String,
-  ) throws -> ABI.EncodedEvent<ABI.CurrentVersion> {
+  private func encodedEvent<V>(_ version: V.Type, _ json: String) throws -> ABI.EncodedEvent<V> {
     var json = json
     return try json.withUTF8 { json in
-      try JSON.decode(ABI.EncodedEvent<ABI.CurrentVersion>.self, from: UnsafeRawBufferPointer(json))
+      try JSON.decode(ABI.EncodedEvent<V>.self, from: UnsafeRawBufferPointer(json))
     }
+  }
+
+  /// Creates an EncodedEvent from a JSON string.
+  ///
+  /// - Throws: If the JSON doesn't represent a valid EncodedEvent.
+  private func encodedEvent(_ json: String) throws -> ABI.EncodedEvent<ABI.CurrentVersion> {
+    try encodedEvent(ABI.CurrentVersion.self, json)
   }
 
   @Test func `Decoded event always has nil testID and testCaseID`() throws {
@@ -125,7 +130,7 @@
     let test = Test {}
     let event = Event(.testCaseStarted, testID: .init(["SomeValidTestID", "testFunc()"]), testCaseID: nil)
     let context = Event.Context(test: test, testCase: nil, iteration: 2, configuration: nil)
-    let encoded = try #require(ABI.EncodedEvent<ABI.v6_4>(encoding: event, in: context, messages: []))
+    let encoded = try #require(ABI.EncodedEvent<ABI.v6_4>(encoding: event, in: context))
 
     #expect(encoded.iteration == 2)
 
@@ -134,7 +139,7 @@
       #expect(str.contains(#""iteration":2"#))
     }
 
-    let encoded6_3 = try #require(ABI.EncodedEvent<ABI.v6_3>(encoding: event, in: context, messages: []))
+    let encoded6_3 = try #require(ABI.EncodedEvent<ABI.v6_3>(encoding: event, in: context))
     #expect(encoded6_3.iteration == nil)
     try JSON.withEncoding(of: encoded6_3) { buf in
       let str = String(decoding: buf, as: UTF8.self)
@@ -165,6 +170,267 @@
       }
       """)
     #expect(event.iteration == nil)
+  }
+
+  @Test func `Encoded event for non-parameterized test doesn't add testCase`() async {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, context in
+      guard let encoded = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: context) else {
+        return
+      }
+      switch encoded.kind {
+      case .testStarted, .testEnded, .testCancelled:
+        #expect(encoded._testCase == nil)
+      case .testCaseStarted, .testCaseEnded, .testCaseCancelled:
+        Issue.record("Should not encode test case events for non-parameterized test")
+      default:
+        return
+      }
+    }
+    let test = Test() {}
+    await test.run(configuration: configuration)
+  }
+
+  @Test func `Encoded instant in event is decodable`() throws {
+    let event = try encodedEvent(
+      """
+      {
+        "kind": "testStarted",
+        "instant": {"absolute": 123, "since1970": 456},
+        "messages": [],
+        "testID": "SomeValidTestID/testFunc()"
+      }
+      """)
+    let decoded = try #require(Event(decoding: event))
+
+#if !SWT_NO_SUSPENDING_CLOCK
+    #expect(decoded.instant.suspending.rawValue == .seconds(123))
+#endif
+#if !SWT_NO_UTC_CLOCK
+    #expect(decoded.instant.wall.rawValue == .seconds(456))
+#endif
+  }
+
+  @Test func `Encoded event with suspending clock instant only is decodable`() throws {
+    let event = try encodedEvent(
+      ABI.ExperimentalVersion.self,
+      """
+      {
+        "kind": "testStarted",
+        "instant": {"absolute": 123},
+        "testID": "SomeValidTestID/testFunc()"
+      }
+      """)
+    let decoded = try #require(Event(decoding: event))
+
+#if !SWT_NO_SUSPENDING_CLOCK
+    #expect(decoded.instant.suspending.rawValue == .seconds(123))
+#endif
+#if !SWT_NO_UTC_CLOCK
+    #expect(decoded.instant.wall.rawValue > .seconds(123))
+#endif
+  }
+
+  @Test func `Encoded event with wall clock instant only is decodable`() throws {
+    let event = try encodedEvent(
+      ABI.ExperimentalVersion.self,
+      """
+      {
+        "kind": "testStarted",
+        "instant": {"since1970": 123},
+        "testID": "SomeValidTestID/testFunc()"
+      }
+      """)
+    let decoded = try #require(Event(decoding: event))
+
+#if !SWT_NO_SUSPENDING_CLOCK
+    // The system will have booted well after the UNIX epoch + 123s
+    #expect(decoded.instant.suspending.rawValue < .zero)
+#endif
+#if !SWT_NO_UTC_CLOCK
+    #expect(decoded.instant.wall.rawValue == .seconds(123))
+#endif
+  }
+
+  @Test func `Encoded event with empty instant is decodable`() throws {
+    let event = try encodedEvent(
+      ABI.ExperimentalVersion.self,
+      """
+      {
+        "kind": "testStarted",
+        "instant": {},
+        "testID": "SomeValidTestID/testFunc()"
+      }
+      """)
+    let before = Test.Clock().now
+    let decoded = try #require(Event(decoding: event))
+    let after = Test.Clock().now
+
+    #expect(decoded.instant > before)
+    #expect(decoded.instant < after)
+  }
+
+  @Test func `Encoded event with wall clock instant only fails to decode for older schema version`() throws {
+    let event = try encodedEvent(
+      ABI.v6_3.self,
+      """
+      {
+        "kind": "testStarted",
+        "instant": {"since1970": 123},
+        "messages": [],
+        "testID": "SomeValidTestID/testFunc()"
+      }
+      """)
+    #expect(Event(decoding: event) == nil)
+  }
+
+  @Test func `ABI.decodeJSON() helper function`() throws {
+    var context = ABI.Context()
+
+    let testJSON = """
+    {
+      "version": "6.3",
+      "kind": "test",
+      "payload": {
+        "kind": "function",
+        "name": "testFunc()",
+        "sourceLocation": {
+          "filePath": "some_directory/Foo.swift",
+          "line": 123,
+          "column": 456
+        },
+        "id": "SomeValidTestID/testFunc()/Foo.swift:123:456"
+      }
+    }
+    """
+
+    do {
+      let testDiscoveredEventAndContext = try Array(testJSON.utf8).withUnsafeBytes { testJSON in
+        try #require(ABI.decodeEvent(fromRecordJSON: testJSON, in: &context))
+      }
+      let (event, eventContext) = testDiscoveredEventAndContext
+      if case .testDiscovered = event.kind {} else {
+        Issue.record("Expected .testDiscovered event, got \(event.kind) instead")
+      }
+      let test = try #require(eventContext.test)
+      #expect(test.name == "testFunc()")
+    }
+
+    let eventJSON = """
+    {
+      "version": "6.3",
+      "kind": "event",
+      "payload": {
+        "kind": "testStarted",
+        "instant": {"absolute": 123, "since1970": 456},
+        "messages": [],
+        "testID": "SomeValidTestID/testFunc()/Foo.swift:123:456",
+        "iteration": 987
+      }
+    }
+    """
+
+    do {
+      let testStartedEventAndContext = try Array(eventJSON.utf8).withUnsafeBytes { eventJSON in
+        try #require(ABI.decodeEvent(fromRecordJSON: eventJSON, in: &context))
+      }
+      let (event, eventContext) = testStartedEventAndContext
+      if case .testStarted = event.kind {} else {
+        Issue.record("Expected .testStarted event, got \(event.kind) instead")
+      }
+      let test = try #require(eventContext.test)
+      #expect(test.name == "testFunc()")
+      #expect(eventContext.iteration == 987)
+    }
+  }
+
+  @Test(
+    arguments: [
+      """
+      {}
+      """,
+      """
+      {
+        "version": "6.3",
+        "kind": "test",
+        "payload": {}
+      }
+      """,
+      """
+      {
+        "version": "6.3",
+        "kind": "event",
+        "payload": {}
+      }
+      """,
+    ]
+  ) func `ABI.decodeJSON() rejects bad JSON`(badRecordJSON: String) throws {
+    Array(badRecordJSON.utf8).withUnsafeBytes { badRecordJSON in
+      var context = ABI.Context()
+      #expect(ABI.decodeEvent(fromRecordJSON: badRecordJSON, in: &context) == nil)
+    }
+  }
+
+  @Test func `Fails to decode v6.3 record with missing 'messages' field`() throws {
+    #expect(throws: DecodingError.self) {
+      _ = try encodedEvent(
+        ABI.v6_3.self,
+        """
+        {
+          "kind": "testStarted",
+          "instant": {"absolute": 123, "since1970": 456},
+          "testID": "SomeValidTestID/testFunc()"
+        }
+        """
+      )
+    }
+
+    #expect(throws: Never.self) {
+      _ = try encodedEvent(
+        ABI.ExperimentalVersion.self,
+        """
+        {
+          "kind": "testStarted",
+          "instant": {"absolute": 123, "since1970": 456},
+          "testID": "SomeValidTestID/testFunc()"
+        }
+        """
+      )
+    }
+  }
+
+  @Test(.serialized(for: \Environment.self))
+  func `Includes messages when SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED is set`() throws {
+    let oldEnvvar = Environment.variable(named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+    Environment.setVariable(nil, named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+    defer {
+      Environment.setVariable(oldEnvvar, named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+    }
+
+    #expect(ABI.v6_3.alwaysEncodeMessagesField)
+    #expect(ABI.v6_3.alwaysDecodeMessagesField)
+
+    #expect(!ABI.ExperimentalVersion.alwaysEncodeMessagesField)
+    #expect(!ABI.ExperimentalVersion.alwaysDecodeMessagesField)
+
+    Environment.setVariable("true", named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+
+    #expect(ABI.ExperimentalVersion.alwaysEncodeMessagesField)
+    #expect(!ABI.ExperimentalVersion.alwaysDecodeMessagesField)
+
+    let eventHandler = ABI.ExperimentalVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
+      #expect(throws: Never.self) {
+        let decodedRecord = try JSON.decode(ABI.Record<ABI.ExperimentalVersion>.self, from: recordJSON)
+        guard case let .event(decodedEvent) = decodedRecord.kind else {
+          Issue.record("Got the wrong kind '\(decodedRecord.kind)' of record back when encoding an event.")
+          return
+        }
+        #expect(!decodedEvent.messages.isEmpty)
+      }
+    }
+    let event = Event(.runStarted, testID: nil, testCaseID: nil)
+    let eventContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
+    eventHandler(event, eventContext)
   }
 }
 #endif

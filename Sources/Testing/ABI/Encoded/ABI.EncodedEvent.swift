@@ -35,6 +35,79 @@ extension ABI {
       case testSkipped
       case testCancelled
       case runEnded
+
+      /// Encodes an ``Event/Kind`` into an ``EncodedEvent/Kind``.
+      ///
+      /// Not all ``Event/Kind`` values map to an encoded kind value.
+      init?(encoding kind: Event.Kind, in eventContext: borrowing Event.Context) {
+        /// For all test cases of a given test, we emit the following set of
+        /// events internally.
+        ///
+        /// ```
+        /// testStarted
+        /// testCaseStarted (for each case)
+        /// ...
+        /// testCaseEnded (for each case)
+        /// ...
+        /// testEnded
+        /// ```
+        ///
+        /// For parameterized tests, this is what clients expect; the test
+        /// itself has a distinct start/end from all the cases.
+        ///
+        /// For non-parameterized tests, however, clients don't need a redundant
+        /// `testCaseStarted`/`testCaseEnded` for a single case, so we elide it.
+        ///
+        /// However, we don't know which `iteration` we're on until we've
+        /// started running test cases, and subsequent iterations will post
+        /// additional `testCaseStarted`/`testCaseEnded` events.
+        ///
+        /// To provide a coherent façade to our clients:
+        /// - For non-parameterized tests, elide the outer
+        ///   `testStarted`/`testEnded` events, and replace `testCaseStarted`/
+        ///   `testCaseEnded` with `testStarted`/`testEnded`.
+        /// - For parameterized tests, emit all events.
+        var isNonParameterizedTestFunction = false
+        if let test = eventContext.test, !test.isSuite {
+          isNonParameterizedTestFunction = !test.isParameterized
+        }
+
+        switch kind {
+        case .runStarted:
+          self = .runStarted
+        case .testStarted:
+          if isNonParameterizedTestFunction {
+            return nil
+          }
+          self = .testStarted
+        case .testCaseStarted:
+          self = isNonParameterizedTestFunction ? .testStarted : .testCaseStarted
+        case .issueRecorded:
+          self = .issueRecorded
+        case .valueAttached:
+          self = .valueAttached
+        case .testCaseEnded:
+          self = isNonParameterizedTestFunction ? .testEnded : .testCaseEnded
+        case .testCaseCancelled:
+          self = isNonParameterizedTestFunction ? .testCancelled : .testCaseCancelled
+        case .testEnded:
+          if isNonParameterizedTestFunction {
+            return nil
+          }
+          self = .testEnded
+        case .testSkipped:
+          self = .testSkipped
+        case .testCancelled:
+          if isNonParameterizedTestFunction {
+            return nil
+          }
+          self = .testCancelled
+        case .runEnded:
+          self = .runEnded
+        default:
+          return nil
+        }
+      }
     }
 
     /// The kind of event.
@@ -109,53 +182,19 @@ extension ABI {
     @_spi(Experimental)
     public var _sourceLocation: EncodedSourceLocation<V>?
 
-    init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
+    init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message] = []) {
+      guard let encodedKind = Kind(encoding: event.kind, in: eventContext) else {
+        return nil
+      }
+      kind = encodedKind
+
       switch event.kind {
-      case .runStarted:
-        kind = .runStarted
-      case .testStarted:
-        kind = .testStarted
-      case .testCaseStarted:
-        // For non-parameterized tests, we elide `testCaseStarted` calls because it would be
-        // redundant. However, for multiple iterations of a test case within a non-parameterized
-        // function, we need to emit another `testStarted` event.
-        if eventContext.test?.isParameterized == false {
-          if let iteration = eventContext.iteration, iteration > 1 {
-            kind = .testStarted
-          } else {
-            return nil
-          }
-        } else {
-          kind = .testCaseStarted
-        }
       case let .issueRecorded(recordedIssue):
-        kind = .issueRecorded
         issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
       case let .valueAttached(attachment):
-        kind = .valueAttached
         self.attachment = EncodedAttachment(encoding: attachment)
-      case .testCaseEnded:
-        if eventContext.test?.isParameterized == false {
-          if let iteration = eventContext.iteration, iteration > 1 {
-            kind = .testEnded
-          } else {
-            return nil
-          }
-        } else {
-          kind = .testCaseEnded
-        }
-      case .testCaseCancelled:
-        kind = .testCaseCancelled
-      case .testEnded:
-        kind = .testEnded
-      case .testSkipped:
-        kind = .testSkipped
-      case .testCancelled:
-        kind = .testCancelled
-      case .runEnded:
-        kind = .runEnded
       default:
-        return nil
+        break
       }
       instant = EncodedInstant(encoding: event.instant)
       self.messages = messages.map(EncodedMessage.init)
@@ -194,7 +233,55 @@ extension ABI {
 
 // MARK: - Codable
 
-extension ABI.EncodedEvent: Codable {}
+extension ABI.EncodedEvent: Codable {
+  /// The keys used to encode ``ABI/EncodedEvent``.
+  private enum _CodingKeys: String, CodingKey {
+    case kind
+    case instant
+    case issue
+    case attachment
+    case messages
+    case testID
+    case iteration
+    case testCase = "_testCase"
+    case comments = "_comments"
+    case sourceLocation = "_sourceLocation"
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: _CodingKeys.self)
+    try container.encode(kind, forKey: .kind)
+    try container.encode(instant, forKey: .instant)
+    try container.encodeIfPresent(issue, forKey: .issue)
+    try container.encodeIfPresent(attachment, forKey: .attachment)
+    if V.alwaysEncodeMessagesField || !messages.isEmpty {
+      try container.encode(messages, forKey: .messages)
+    }
+    try container.encodeIfPresent(testID, forKey: .testID)
+    try container.encodeIfPresent(iteration, forKey: .iteration)
+    try container.encodeIfPresent(_testCase, forKey: .testCase)
+    try container.encodeIfPresent(_comments, forKey: .comments)
+    try container.encodeIfPresent(_sourceLocation, forKey: .sourceLocation)
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: _CodingKeys.self)
+    kind = try container.decode(Kind.self, forKey: .kind)
+    instant = try container.decode(ABI.EncodedInstant<V>.self, forKey: .instant)
+    issue = try container.decodeIfPresent(ABI.EncodedIssue<V>.self, forKey: .issue)
+    attachment = try container.decodeIfPresent(ABI.EncodedAttachment<V>.self, forKey: .attachment)
+    if V.alwaysDecodeMessagesField {
+      messages = try container.decode([ABI.EncodedMessage<V>].self, forKey: .messages)
+    } else {
+      messages = try container.decodeIfPresent([ABI.EncodedMessage<V>].self, forKey: .messages) ?? []
+    }
+    testID = try container.decodeIfPresent(ABI.EncodedTest<V>.ID.self, forKey: .testID)
+    iteration = try container.decodeIfPresent(Int.self, forKey: .iteration)
+    _testCase = try container.decodeIfPresent(ABI.EncodedTestCase<V>.self, forKey: .testCase)
+    _comments = try container.decodeIfPresent([String].self, forKey: .comments)
+    _sourceLocation = try container.decodeIfPresent(ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
+  }
+}
 extension ABI.EncodedEvent.Kind: Codable {}
 
 // MARK: - Conversion to/from library types
@@ -278,6 +365,40 @@ extension Event {
       }
       self.testID = testID
     }
+  }
+}
+
+// MARK: - Automatic inclusion of messages
+
+/// Whether or not to always include the `"messages"` field in encoded events
+/// even when it is an empty array.
+#if DEBUG
+private var _alwaysIncludeMessagesField: Bool? {
+  Environment.flag(named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+}
+#else
+private let _alwaysIncludeMessagesField = Environment.flag(named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+#endif
+
+extension ABI.Version {
+  /// Whether or not to always include the `"messages"` field when encoding
+  /// events even when it is an empty array.
+  static var alwaysEncodeMessagesField: Bool {
+    // If the environment variable above is set to `true`, then even newer
+    // schema versions should encode the "messages" field.
+
+    // TODO: fix speculative version number check
+    _alwaysIncludeMessagesField == true || versionNumber < ABI.ExperimentalVersion.versionNumber
+  }
+
+  /// Whether or not to require the presence of the `"messages"` field in
+  /// _decoded_ events.
+  static var alwaysDecodeMessagesField: Bool {
+    // Whether or not the field is required during decoding is solely dependent
+    // on the schema version, not on the environment variable.
+
+    // TODO: fix speculative version number check
+    versionNumber < ABI.ExperimentalVersion.versionNumber
   }
 }
 #endif

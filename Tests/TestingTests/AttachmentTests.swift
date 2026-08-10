@@ -1097,7 +1097,6 @@ extension AttachmentTests {
       {
         "kind": "valueAttached",
         "instant": { "since1970": 0, "absolute": 0 },
-        "messages": [],
         "_sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
         "attachment": { "_bytes": "YWJjMTIz" }
       }

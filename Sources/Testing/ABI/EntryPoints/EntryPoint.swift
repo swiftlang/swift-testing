@@ -648,18 +648,84 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
 #if canImport(_StringProcessing)
   // Filtering
+
+  // Filters currently come in two flavors: those with a prefix and those
+  // without. Those without a prefix are treated the same as those with an
+  // "id:" prefix.
+  enum FilterPrefix: String, CaseIterable {
+    case id = "id:"
+    case tag = "tag:"
+  }
   var filters = [Configuration.TestFilter]()
-  func testFilter(forRegularExpressions regexes: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
-    guard let regexes, !regexes.isEmpty else {
-      // Return early if empty, even though the `reduce` logic below can handle
-      // this case, in order to avoid the `#available` guard.
-      return .unfiltered
+  func testFilter(forOptionArguments optionArguments: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
+    var tagPatterns = [String]()
+    var idPatterns = [String]()
+
+    // If one of the patterns we encounter is surrounded by backticks, we can
+    // surmise the user intended to express a Swift raw identifier. In that
+    // case, we should alert the user that it's not going to match what the
+    // user expects and strip the backticks for them.
+    func stripBackticksAndReportIfEncountered(string: inout String) {
+      let backtickRegex = /^`[^`]*`$/
+      if string.contains(backtickRegex) {
+        let originalString = string
+        string = String(string.dropFirst().dropLast())
+        try? FileHandle.stderr.write("Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.\n")
+      }
     }
 
-    return try Configuration.TestFilter(membership: membership, matchingAnyOf: regexes)
+    // Loop through all the option arguments, separating tags from regex filters
+    for var optionArg in optionArguments ?? [] {
+      if let prefix = FilterPrefix.allCases.first(where: { optionArg.hasPrefix($0.rawValue) }) {
+        // We have encountered a prefix, so trim it off and add the supplied
+        // argument to the appropriate filter list
+        optionArg.trimPrefix(prefix.rawValue)
+        stripBackticksAndReportIfEncountered(string: &optionArg)
+        switch prefix {
+          case .id: idPatterns.append(optionArg)
+          case .tag: tagPatterns.append(optionArg)
+        }
+      } else {
+        // No prefix was detected, so we treat this as a regex matching a test ID.
+        stripBackticksAndReportIfEncountered(string: &optionArg)
+        idPatterns.append(optionArg)
+      }
+    }
+
+    // If we didn't find any tags, the tagFilter should be .unfiltered,
+    // otherwise we construct it with the provided tags
+    let tagFilter: Configuration.TestFilter = if tagPatterns.isEmpty {
+      .unfiltered
+    } else {
+      switch membership {
+        case .including: try Configuration.TestFilter(includingTagsMatching: tagPatterns)
+        case .excluding: try Configuration.TestFilter(excludingTagsMatching: tagPatterns)
+      }
+    }
+
+    // If we didn't find any ID patterns, the idFilter should be .unfiltered
+    // (similar to above). Note that constructing it with an empty array of
+    // patterns is _not_ equivalent to `.unfiltered`.
+    let idFilter: Configuration.TestFilter = if idPatterns.isEmpty {
+      .unfiltered
+    } else {
+      try Configuration.TestFilter(membership: membership, matchingAnyOf: idPatterns)
+    }
+
+    // Passing an option more than once is an "or" operation. A test is included
+    // if it matches any --filter argument, and skipped if it matches any --skip
+    // argument. For --filter, `.or` expresses that directly. For --skip, the
+    // operator we want is `.and`, because an excluding filter keeps the tests
+    // it did _not_ match: by De Morgan's law, !(A || B) is equivalent to
+    // !A && !B, so `.and` skips a test that matches either the tag or the ID.
+    return switch membership {
+      case .including: idFilter.combining(with: tagFilter, using: .or)
+      case .excluding: idFilter.combining(with: tagFilter, using: .and)
+    }
   }
-  filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))
-  filters.append(try testFilter(forRegularExpressions: args.skip, label: "--skip", membership: .excluding))
+
+  filters.append(try testFilter(forOptionArguments: args.filter, label: "--filter", membership: .including))
+  filters.append(try testFilter(forOptionArguments: args.skip, label: "--skip", membership: .excluding))
 
   configuration.testFilter = filters.reduce(.unfiltered) { $0.combining(with: $1) }
   if args.includeHiddenTests == true {

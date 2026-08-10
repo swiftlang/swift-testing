@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 extension ABI {
   /// A type describing an ABI version number.
   ///
@@ -50,10 +54,71 @@ extension ABI.VersionNumber {
 // MARK: - CustomStringConvertible
 
 extension ABI.VersionNumber: CustomStringConvertible {
+  /// A cache of previously-parsed version numbers.
+  private static let _versionNumberCache = Mutex<[String: Self?]>()
+
+  /// Parse an instance of this type from the given string.
+  ///
+  /// - Parameters:
+  ///   - string: The string to parse, such as `"0"` or `"6.3.0"`.
+  ///
+  /// - Returns: An instance of this type, or `nil` if one could not be parsed
+  ///   from `string`.
+  ///
+  /// - Bug: We are not able to reuse the logic from swift-syntax's
+  ///   `VersionTupleSyntax` type here because we cannot link to swift-syntax
+  ///   in this target.
+  private static func _parse(_ string: String) -> Self? {
+    // Check if we've previously encountered this version number.
+    let cachedValue = Self._versionNumberCache.withLock { versionNumberCache in
+      versionNumberCache[string]
+    }
+    if case let .some(cachedValue) = cachedValue {
+      return cachedValue
+    }
+
+    var result: Self?
+    do {
+      // Split the string on "." (assuming it is of the form "1", "1.2", or
+      // "1.2.3") and parse the individual components as integers.
+      let components = string.split(separator: ".", omittingEmptySubsequences: false)
+      func componentValue(_ index: Int) -> Component? {
+        components.count > index ? Component(components[index]) : 0
+      }
+      if let majorComponent = componentValue(0),
+         let minorComponent = componentValue(1),
+         let patchComponent = componentValue(2) {
+        result = Self(majorComponent: majorComponent, minorComponent: minorComponent, patchComponent: patchComponent)
+      }
+    }
+
+    Self._versionNumberCache.withLock { versionNumberCache in
+      versionNumberCache[string] = result
+    }
+
+    return result
+  }
+
   /// Initialize an instance of this type by parsing the given string.
   ///
   /// - Parameters:
   ///   - string: The string to parse, such as `"0"` or `"6.3.0"`.
+  ///
+  /// If `string` contains fewer than 3 numeric components, the missing
+  /// components are inferred to be `0` (for example, `"1.2"` is equivalent to
+  /// `"1.2.0"`.) If `string` contains more than 3 numeric components, the
+  /// additional components are ignored.
+  public init?(_ string: String) {
+    guard let result = Self._parse(string) else {
+      return nil
+    }
+    self = result
+  }
+
+  /// Initialize an instance of this type by parsing the given string.
+  ///
+  /// - Parameters:
+  ///   - string: The C string to parse, such as `"0"` or `"6.3.0"`.
   ///
   /// @Comment {
   ///   - Bug: We are not able to reuse the logic from swift-syntax's
@@ -65,20 +130,11 @@ extension ABI.VersionNumber: CustomStringConvertible {
   /// components are inferred to be `0` (for example, `"1.2"` is equivalent to
   /// `"1.2.0"`.) If `string` contains more than 3 numeric components, the
   /// additional components are ignored.
-  public init?(_ string: String) {
-    // Split the string on "." (assuming it is of the form "1", "1.2", or
-    // "1.2.3") and parse the individual components as integers.
-    let components = string.split(separator: ".", omittingEmptySubsequences: false)
-    func componentValue(_ index: Int) -> Component? {
-      components.count > index ? Component(components[index]) : 0
-    }
-
-    guard let majorComponent = componentValue(0),
-          let minorComponent = componentValue(1),
-          let patchComponent = componentValue(2) else {
+  public init?(validatingCString string: UnsafePointer<CChar>) {
+    guard let result = String(validatingCString: string).flatMap(Self._parse) else {
       return nil
     }
-    self.init(majorComponent: majorComponent, minorComponent: minorComponent, patchComponent: patchComponent)
+    self = result
   }
 
   public var description: String {
