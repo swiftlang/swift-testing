@@ -429,9 +429,7 @@ extension TypeInfo {
       return false
     }
 
-    let prefix = Self.__CModuleMangledNamePrefix
-    let prefixEndIndex = mangledName.index(mangledName.startIndex, offsetBy: prefix.count)
-    return mangledName[..<prefixEndIndex].elementsEqual(prefix)
+    return mangledName.starts(with: Self.__CModuleMangledNamePrefix)
   }
 }
 
