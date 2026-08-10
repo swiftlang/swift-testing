@@ -167,7 +167,7 @@ extension Attachment {
     using encoder: E,
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) throws where AttachableValue == _AttachableEncodableWrapper<T, E>, T: Encodable, E: TopLevelEncoder, E.Output: ContiguousBytes {
+  ) throws where AttachableValue == _AttachableEncodableWrapper<T, E>, T: Encodable, E: TopLevelEncoder & Sendable, E.Output: ContiguousBytes {
     let wrapper = _AttachableEncodableWrapper(encoding: encodableValue, using: encoder)
     self.init(wrapper, named: preferredName, sourceLocation: sourceLocation)
   }

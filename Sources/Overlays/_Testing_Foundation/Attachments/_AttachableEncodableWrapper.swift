@@ -31,11 +31,11 @@ public struct _AttachableEncodableWrapper<T, E> {
   /// A function that encodes `_encodableValue` and passes its encoded form to
   /// another function, `body`.
   ///
-  /// This function provides the implementation of ``withBytes(for:_:)``. It
-  /// must be annotated `nonisolated(unsafe)` instead of `@Sendable` because it
-  /// captures a reference to the generic type `T` which is not guaranteed to
-  /// conform to `SendableMetatype`.
-  private nonisolated(unsafe) var _encode: (_ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void
+  /// This function provides the implementation of ``withBytes(for:_:)``. We
+  /// must pass `encodableValue` as an existential box instead of an instance of
+  /// `T` because otherwise `_encode` captures a reference to the generic type
+  /// `T` which is not guaranteed to conform to `SendableMetatype`.
+  private var _encode: @Sendable (_ encodableValue: Any, _ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void
 
   /// Initialize an instance of this type representing a given encodable value
   /// and encoding it using the given encoding format.
@@ -46,7 +46,8 @@ public struct _AttachableEncodableWrapper<T, E> {
   init(encoding encodableValue: T, as encodingFormat: AttachableEncodingFormat) where T: Encodable, E == Void {
     _encodableValue = encodableValue
     _encodingFormat = encodingFormat
-    _encode = { body in
+    _encode = { encodableValue, body in
+      let encodableValue = encodableValue as! any Encodable
       let data: Data
       switch encodingFormat.kind {
       case let .propertyListFormat(propertyListFormat):
@@ -72,14 +73,15 @@ public struct _AttachableEncodableWrapper<T, E> {
   /// - Parameters:
   ///   - encodableValue: The value to encode and attach.
   ///   - encoder: The encoder to use.
-  init(encoding encodableValue: T, using encoder: E) where T: Encodable, E: TopLevelEncoder, E.Output: ContiguousBytes {
+  init(encoding encodableValue: T, using encoder: E) where T: Encodable, E: TopLevelEncoder & Sendable, E.Output: ContiguousBytes {
     _encodableValue = encodableValue
     if let plistEncoder = encoder as? PropertyListEncoder {
       _encodingFormat = .propertyListFormat(plistEncoder.outputFormat)
     } else if encoder is JSONEncoder {
       _encodingFormat = .json
     }
-    _encode = { body in
+    _encode = { encodableValue, body in
+      let encodableValue = encodableValue as! any Encodable
       let buffer = try encoder.encode(encodableValue)
       try buffer.withUnsafeBytes(body)
     }
@@ -88,7 +90,8 @@ public struct _AttachableEncodableWrapper<T, E> {
   init(encoding encodableValue: T, using encoder: E) where T: Encodable, E: PropertyListEncoder {
     _encodableValue = encodableValue
     _encodingFormat = .propertyListFormat(encoder.outputFormat)
-    _encode = { body in
+    _encode = { encodableValue, body in
+      let encodableValue = encodableValue as! any Encodable
       let buffer = try encoder.encode(encodableValue)
       try buffer.withUnsafeBytes(body)
     }
@@ -97,7 +100,8 @@ public struct _AttachableEncodableWrapper<T, E> {
   init(encoding encodableValue: T, using encoder: E) where T: Encodable, E: JSONEncoder {
     _encodableValue = encodableValue
     _encodingFormat = .json
-    _encode = { body in
+    _encode = { encodableValue, body in
+      let encodableValue = encodableValue as! any Encodable
       let buffer = try encoder.encode(encodableValue)
       try buffer.withUnsafeBytes(body)
     }
@@ -113,7 +117,8 @@ public struct _AttachableEncodableWrapper<T, E> {
   init(encoding encodableValue: T, as propertyListFormat: PropertyListSerialization.PropertyListFormat) where T: NSSecureCoding, E: NSKeyedArchiver {
     _encodableValue = encodableValue
     _encodingFormat = .propertyListFormat(propertyListFormat)
-    _encode = { body in
+    _encode = { encodableValue, body in
+      let encodableValue = encodableValue as! any NSSecureCoding
       var data = try E.archivedData(withRootObject: encodableValue, requiringSecureCoding: true)
 
       // BUG: Foundation does not offer a variant of
@@ -142,7 +147,7 @@ extension _AttachableEncodableWrapper: AttachableWrapper {
 
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableEncodableWrapper>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var result: R!
-    try _encode { buffer in
+    try _encode(_encodableValue) { buffer in
       result = try body(buffer)
     }
     return result
