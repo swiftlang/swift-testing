@@ -126,7 +126,7 @@ struct TestCaseIterationTests {
     let events = Mutex<[ABI.EncodedEvent<ABI.CurrentVersion>]>([])
     var configuration = Configuration()
     configuration.eventHandler = { event, context in
-      guard let encoded = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: context, messages: []) else {
+      guard let encoded = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: context) else {
         return
       }
       events.withLock {
