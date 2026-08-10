@@ -390,7 +390,7 @@ extension TypeInfo {
   }
 
   /// The UTF-8 prefix applied to mangled type names in the `__C` module.
-  private static let _swiftEnumerationMangledNameSuffix = "O".utf8
+  private static let _swiftEnumerationMangledNameSuffix = Array("O".utf8)
 
   /// Whether or not the described type is a Swift `enum` type.
   ///
