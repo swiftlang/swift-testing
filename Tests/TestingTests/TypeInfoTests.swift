@@ -104,10 +104,16 @@ struct TypeInfoTests {
     #expect(typeInfo.fullyQualifiedNameComponents == expectedComponents)
   }
 
-  @Test func mangledTypeName() {
-    #expect(_mangledTypeName(String.self) == TypeInfo(describing: String.self).mangledName)
-    #expect(_mangledTypeName(String.NestedType.self) == TypeInfo(describing: String.NestedType.self).mangledName)
-    #expect(_mangledTypeName(SomeEnum.self) == TypeInfo(describing: SomeEnum.self).mangledName)
+  @Test(
+    arguments: [
+      String.self,
+      String.NestedType.self,
+      SomeEnum.self,
+    ]
+  ) func mangledTypeName(type: Any.Type) throws {
+    let mangledNameFromRuntime = try #require(_mangledTypeName(type))
+    let mangledNameFromRuntimeWithPrefix = "$s\(mangledNameFromRuntime)"
+    #expect(mangledNameFromRuntimeWithPrefix == TypeInfo(describing: type).mangledName)
   }
 
   @Test func isImportedFromC() {

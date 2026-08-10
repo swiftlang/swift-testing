@@ -364,7 +364,7 @@ extension TypeInfo {
   var mangledName: String? {
     switch _kind {
     case let .type(type):
-      return _mangledTypeName(type)
+      return _mangledTypeName(type).map { "$s\($0)" }
     case let .nameOnly(_, _, mangledName):
       return mangledName
     }
@@ -374,6 +374,24 @@ extension TypeInfo {
 // MARK: - Properties
 
 extension TypeInfo {
+  /// The UTF-8 prefix applied to mangled type names in the `__C` module.
+  private static let _swiftMangledNamePrefix = Array("$s".utf8)
+
+  /// Check whether or not the given mangled type name looks like a Swift type
+  /// (including types in the `__C` module) as opposed to, say, a C++ type.
+  ///
+  /// - Parameters:
+  ///   - mangledName: The mangled name to check.
+  ///
+  /// - Returns: Whether or not `mangledName` appears to follow Swift's mangling
+  ///   rules.
+  private static func _looksLikeSwiftMangledName(_ mangledName: some BidirectionalCollection<UTF8.CodeUnit>) -> Bool {
+    mangledName.count > _swiftMangledNamePrefix.count && mangledName.starts(with: _swiftMangledNamePrefix)
+  }
+
+  /// The UTF-8 prefix applied to mangled type names in the `__C` module.
+  private static let _swiftEnumerationMangledNameSuffix = "O".utf8
+
   /// Whether or not the described type is a Swift `enum` type.
   ///
   /// Per the [Swift mangling ABI](https://github.com/swiftlang/swift/blob/main/docs/ABI/Mangling.rst),
@@ -383,8 +401,17 @@ extension TypeInfo {
   ///   `_mangledTypeName()` to derive this information. We should use supported
   ///   API instead. ([swift-#69147](https://github.com/swiftlang/swift/issues/69147))
   var isSwiftEnumeration: Bool {
-    mangledName?.last == "O"
+    guard let mangledName = mangledName?.utf8, Self._looksLikeSwiftMangledName(mangledName) else {
+      return false
+    }
+
+    let suffix = Self._swiftEnumerationMangledNameSuffix
+    let suffixStartIndex = mangledName.index(mangledName.endIndex, offsetBy: -suffix.count)
+    return mangledName[suffixStartIndex...].elementsEqual(suffix)
   }
+
+  /// The UTF-8 prefix applied to mangled type names in the `__C` module.
+  private static let __CModuleMangledNamePrefix = _swiftMangledNamePrefix + Array("So".utf8)
 
   /// Whether or not the described type is imported from C, C++, or Objective-C.
   ///
@@ -398,12 +425,13 @@ extension TypeInfo {
   ///   `_mangledTypeName()` to derive this information. We should use supported
   ///   API instead. ([swift-#69146](https://github.com/swiftlang/swift/issues/69146))
   var isImportedFromC: Bool {
-    guard let mangledName, mangledName.count > 2 else {
+    guard let mangledName = mangledName?.utf8, Self._looksLikeSwiftMangledName(mangledName) else {
       return false
     }
 
-    let prefixEndIndex = mangledName.index(mangledName.startIndex, offsetBy: 2)
-    return mangledName[..<prefixEndIndex] == "So"
+    let prefix = Self.__CModuleMangledNamePrefix
+    let prefixEndIndex = mangledName.index(mangledName.startIndex, offsetBy: prefix.count)
+    return mangledName[..<prefixEndIndex].elementsEqual(prefix)
   }
 }
 
