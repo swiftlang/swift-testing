@@ -120,13 +120,13 @@ struct TestCaseIterationTests {
 
   private func assertEncodedEventKinds(
     _ test: Test,
-    equals expected: [ABI.EncodedEvent<ABI.v6_4>.Kind],
+    equals expected: [ABI.EncodedEvent<ABI.CurrentVersion>.Kind],
     sourceLocation: SourceLocation = #_sourceLocation
   ) async {
     let events = Mutex<[ABI.EncodedEvent<ABI.CurrentVersion>]>([])
     var configuration = Configuration()
     configuration.eventHandler = { event, context in
-      guard let encoded = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: context, messages: []) else {
+      guard let encoded = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: context) else {
         return
       }
       events.withLock {
