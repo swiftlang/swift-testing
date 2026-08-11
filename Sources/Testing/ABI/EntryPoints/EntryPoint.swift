@@ -670,7 +670,9 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       if string.contains(backtickRegex) {
         let originalString = string
         string = String(string.dropFirst().dropLast())
+#if !SWT_NO_FILE_IO
         try? FileHandle.stderr.write("Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.\n")
+#endif
       }
     }
 
