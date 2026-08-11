@@ -109,7 +109,7 @@ struct TypeInfoTests {
       String.self,
       String.NestedType.self,
       SomeEnum.self,
-    ]
+    ] as [Any.Type]
   ) func mangledTypeName(type: Any.Type) throws {
     let mangledNameFromRuntime = try #require(_mangledTypeName(type))
     let mangledNameFromRuntimeWithPrefix = "$s\(mangledNameFromRuntime)"
