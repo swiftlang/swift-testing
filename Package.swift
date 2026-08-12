@@ -44,7 +44,7 @@ let package = Package(
   name: "swift-testing",
 
   platforms: !buildingForEmbedded ? [
-    .macOS(.v14),
+    .macOS("27.0"),
     .iOS(.v17),
     .watchOS(.v10),
     .tvOS(.v17),

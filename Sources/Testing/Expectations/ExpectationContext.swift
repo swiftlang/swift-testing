@@ -211,9 +211,9 @@ extension __ExpectationContext where Output: ~Copyable {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_lifetime(borrow value)
-  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T where T: ~Escapable {
+  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> Ref<T> where T: ~Copyable {
     captureValue(value, identifiedBy: id)
-    return copy value
+    return Ref(value)
   }
 
   /// Capture information about a value passed `inout` to a function call after

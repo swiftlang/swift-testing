@@ -195,6 +195,15 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
       }
     )
 
+    if functionName == nil {
+      result = ExprSyntax(
+        MemberAccessExprSyntax(
+          base: result,
+          declName: DeclReferenceExprSyntax(baseName: .identifier("value"))
+        )
+      )
+    }
+
     // If the resulting expression has an optional type due to containing an
     // optional chaining expression (e.g. `foo?`) *and* its immediate parent
     // node passes through the syntactical effects of optional chaining, return
