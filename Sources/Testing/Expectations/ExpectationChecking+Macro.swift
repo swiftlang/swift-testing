@@ -91,18 +91,22 @@ public func __checkValue(
   // Post an event for the expectation regardless of whether or not it passed.
   // If the current event handler is not configured to handle events of this
   // kind, this event is discarded.
-  lazy var expectation = Expectation(evaluatedExpression: expression, isPassing: condition, isRequired: isRequired, sourceLocation: sourceLocation)
-  if Configuration.deliverExpectationCheckedEvents {
+  func makeExpectation() -> Expectation {
+    Expectation(evaluatedExpression: expression, isPassing: condition, isRequired: isRequired, sourceLocation: sourceLocation)
+  }
+  if _slowPath(Configuration.deliverExpectationCheckedEvents) {
+    let expectation = makeExpectation()
     Event.post(.expectationChecked(expectation))
   }
 
   // Early exit if the expectation passed.
-  if condition {
+  if _fastPath(condition) {
     return .success(())
   }
 
   // Since this expectation failed, populate its optional fields which are
   // only evaluated and included lazily upon failure.
+  var expectation = makeExpectation()
   expectation.mismatchedErrorDescription = mismatchedErrorDescription()
   expectation.differenceDescription = difference()
   expectation.mismatchedExitConditionDescription = mismatchedExitConditionDescription()
