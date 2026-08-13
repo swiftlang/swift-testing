@@ -805,7 +805,7 @@ func eventHandlerForStreamingEvents(
   forwardingTo targetEventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
 ) throws -> Event.Handler {
   let versionNumber = versionNumber ?? ABI.CurrentVersion.versionNumber
-  guard let abi = ABI._version(forVersionNumber: versionNumber) else {
+  guard let abi = ABI.version(forVersionNumber: versionNumber) else {
     throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(versionNumber)")
   }
   return abi.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: targetEventHandler)
