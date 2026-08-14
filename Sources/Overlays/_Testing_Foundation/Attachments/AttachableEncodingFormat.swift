@@ -95,10 +95,17 @@ public struct AttachableEncodingFormat: Sendable {
   /// - Returns: The preferred name for an attachment. The result may or may not
   ///   equal `suggestedName`.
   func preferredName(basedOn suggestedName: String) -> String {
+    lazy var pathExtension = (suggestedName as NSString).pathExtension
+
+    // Leave ".xml" as the path extension when explicitly specified.
+    if kind == .propertyListFormat(.xml),
+       pathExtension.caseInsensitiveCompare("xml") == .orderedSame {
+      return suggestedName
+    }
+
 #if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
     return (suggestedName as NSString).appendingPathExtension(for: contentType)
 #else
-    let pathExtension = (suggestedName as NSString).pathExtension
     guard pathExtension.isEmpty else {
       // The developer specified a path extension. This path extension may
       // reflect some file format that uses Encodable for serialization, so use

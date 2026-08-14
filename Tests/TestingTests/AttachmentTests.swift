@@ -460,6 +460,11 @@ struct AttachmentTests {
         let decodedStringValue = try args.decode(Data(bytes))
         #expect(decodedStringValue == "stringly speaking")
       }
+
+      if let ext = args.pathExtension {
+        let preferredExt = (attachment.preferredName as NSString).pathExtension
+        #expect(preferredExt.caseInsensitiveCompare(ext) == .orderedSame)
+      }
     }
 
     if args.forSecureCoding {
@@ -497,7 +502,33 @@ struct AttachmentTests {
     let attachment = try Attachment(encoding: attachableValue, as: .json)
     try attachment.withUnsafeBytes { bytes in
       #expect(!bytes.isEmpty)
+      #expect(bytes[0] == UInt8(ascii: "{"))
     }
+  }
+
+  @Test("Attach Codable-conformant value using Attachment.init(encoding:as:) and .propertyListFormat(.xml)")
+  func attachCodableWithInitEncodingAsXMLByFormat() async throws {
+    let attachableValue = MyCodableAttachable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, as: .propertyListFormat(.xml))
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
+      #expect(bytes[0] == UInt8(ascii: "<"))
+    }
+    let ext = (attachment.preferredName as NSString).pathExtension
+    #expect(ext.caseInsensitiveCompare("plist") == .orderedSame)
+  }
+
+  @Test("Attach Codable-conformant value using Attachment.init(encoding:as:) and '.xml' path extension")
+  func attachCodableWithInitEncodingAsXMLByPathExtension() async throws {
+    let attachableValue = MyCodableAttachable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, named: "example.xml")
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
+      #expect(bytes[0] == UInt8(ascii: "<"))
+    }
+    let ext = (attachment.preferredName as NSString).pathExtension
+    print(attachment.preferredName)
+    #expect(ext.caseInsensitiveCompare("xml") == .orderedSame)
   }
 
   @Test("Attach Codable-conformant value using Attachment.init(encoding:using:) and PropertyListEncoder")
@@ -506,6 +537,7 @@ struct AttachmentTests {
     let attachment = try Attachment(encoding: attachableValue, using: PropertyListEncoder())
     try attachment.withUnsafeBytes { bytes in
       #expect(!bytes.isEmpty)
+      #expect(bytes[0] == UInt8(ascii: "b"))
     }
   }
 
@@ -515,6 +547,7 @@ struct AttachmentTests {
     let attachment = try Attachment(encoding: attachableValue, using: JSONEncoder())
     try attachment.withUnsafeBytes { bytes in
       #expect(!bytes.isEmpty)
+      #expect(bytes[0] == UInt8(ascii: "{"))
     }
   }
 
