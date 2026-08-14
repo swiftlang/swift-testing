@@ -28,6 +28,7 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedRange.swift
   ABI/Encoded/ABI.EncodedSourceLocation.swift
   ABI/Encoded/ABI.EncodedTest.swift
+  ABI/Encoded/ABI.EncodedTypeInfo.swift
   Attachments/Images/AttachableAsImage.swift
   Attachments/Images/_AttachableImageWrapper.swift
   Attachments/Images/AttachableImageFormat.swift
