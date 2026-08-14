@@ -14,7 +14,7 @@ internal import _TestingInternals
 internal import Synchronization
 #endif
 
-#if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
 /// A type that replicates the interface of ``Synchronization/Mutex``.
 ///
 /// This type is used on Apple platforms because our deployment target there is
@@ -28,11 +28,7 @@ internal import Synchronization
 /// - ``Atomic``
 struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
   /// The underlying lock type.
-#if !SWT_NO_OS_UNFAIR_LOCK
   private typealias _Lock = os_unfair_lock_s
-#else
-  private typealias _Lock = pthread_mutex_t
-#endif
 
   /// Storage for both the lock and value.
   private nonisolated(unsafe) let _baseAddress: UnsafeMutableRawPointer
@@ -60,21 +56,13 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
       alignment: max(MemoryLayout<Value>.alignment, MemoryLayout<_Lock>.alignment)
     )
 
-#if !SWT_NO_OS_UNFAIR_LOCK
     _lockAddress.initialize(to: .init())
-#else
-    _ = pthread_mutex_init(_lockAddress, nil)
-#endif
     _valueAddress.initialize(to: initialValue)
   }
 
   deinit {
     _valueAddress.deinitialize(count: 1)
-#if !SWT_NO_OS_UNFAIR_LOCK
     _lockAddress.deinitialize(count: 1)
-#else
-    _ = pthread_mutex_destroy(_lockAddress)
-#endif
     _baseAddress.deallocate()
   }
 
@@ -83,17 +71,10 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
   /// See ``Synchronization/Mutex/withLock(_:)`` for more details.
   borrowing func withLock<R, E>(_ body: (inout sending Value) throws(E) -> sending R) throws(E) -> sending R where R: ~Copyable {
     let lock = _lockAddress
-#if !SWT_NO_OS_UNFAIR_LOCK
     os_unfair_lock_lock(lock)
     defer {
       os_unfair_lock_unlock(lock)
     }
-#else
-    _ = pthread_mutex_lock(lock)
-    defer {
-      _ = pthread_mutex_unlock(lock)
-    }
-#endif
     return try body(&_valueAddress.pointee)
   }
 
@@ -102,21 +83,12 @@ struct Mutex<Value>: Sendable, ~Copyable where Value: ~Copyable {
   /// See ``Synchronization/Mutex/withLockIfAvailable(_:)`` for more details.
   borrowing func withLockIfAvailable<R, E>(_ body: (inout sending Value) throws(E) -> sending R) throws(E) -> sending R? where R: ~Copyable {
     let lock = _lockAddress
-#if !SWT_NO_OS_UNFAIR_LOCK
     guard os_unfair_lock_trylock(lock) else {
       return nil
     }
     defer {
       os_unfair_lock_unlock(lock)
     }
-#else
-    guard 0 == pthread_mutex_trylock(lock) else {
-      return nil
-    }
-    defer {
-      _ = pthread_mutex_unlock(lock)
-    }
-#endif
     return try body(&_valueAddress.pointee)
   }
 }

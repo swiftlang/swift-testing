@@ -11,7 +11,7 @@
 private import _TestingInternals
 
 #if canImport(Synchronization)
-private import Synchronization
+internal import Synchronization
 #endif
 
 /// A type describing the environment of the current process.

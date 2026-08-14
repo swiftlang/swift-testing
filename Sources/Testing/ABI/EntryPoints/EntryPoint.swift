@@ -670,7 +670,9 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       if string.contains(backtickRegex) {
         let originalString = string
         string = String(string.dropFirst().dropLast())
+#if !SWT_NO_FILE_IO
         try? FileHandle.stderr.write("Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.\n")
+#endif
       }
     }
 
@@ -803,7 +805,7 @@ func eventHandlerForStreamingEvents(
   forwardingTo targetEventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
 ) throws -> Event.Handler {
   let versionNumber = versionNumber ?? ABI.CurrentVersion.versionNumber
-  guard let abi = ABI._version(forVersionNumber: versionNumber) else {
+  guard let abi = ABI.version(forVersionNumber: versionNumber) else {
     throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(versionNumber)")
   }
   return abi.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: targetEventHandler)

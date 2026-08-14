@@ -101,7 +101,7 @@
     let test = Test(traits: [], sourceLocation: .__here(), containingTypeInfo: TypeInfo(describing: Int.self))
     let event = Event(.testStarted, testID: test.id, testCaseID: nil)
     let eventContext = Event.Context(test: test, testCase: nil, iteration: 1, configuration: nil)
-    let encodedEvent = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: eventContext, messages: [])
+    let encodedEvent = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: eventContext)
     #expect(encodedEvent != nil)
   }
 }
