@@ -94,7 +94,7 @@ extension Event {
       var testData = Graph<TestDataKey, TestData?>()
 
       /// Source files we've read at runtime.
-      var sourceFileContent = [String: String?]()
+      var sourceFileContent = [String: [Substring]?]()
     }
 
     /// This event recorder's mutable context about events it has received,
@@ -292,7 +292,7 @@ extension Event.HumanReadableOutputRecorder {
     let keyPath = eventContext.keyPath
     let testName = test?.humanReadableName(withVerbosity: verbosity) ?? "«unknown»"
     let instant = event.instant
-    var sourceFileContent: String?? = .none
+    var sourceFileContent: [Substring]?? = .none
 
     // First, make any updates to the context/state associated with this
     // recorder.
@@ -331,6 +331,7 @@ extension Event.HumanReadableOutputRecorder {
           sourceFileContent = context.sourceFileContent[sourceLocation.filePath]
           if case .none = sourceFileContent {
             sourceFileContent = try? String(contentsOfFile: sourceLocation.filePath, encoding: .utf8)
+              .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
             context.sourceFileContent[sourceLocation.filePath] = sourceFileContent
           }
         }
@@ -516,9 +517,8 @@ extension Event.HumanReadableOutputRecorder {
 
       if issue.error != nil,
          let sourceLocation = issue.sourceLocation,
-         case .some(.some(let sourceFileContent)) = sourceFileContent {
+         case let .some(.some(lines)) = sourceFileContent {
         let lineNumber = sourceLocation.line - 1
-        let lines = sourceFileContent.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
         if lineNumber < lines.count {
           let displayedLineNumbers = max(0, lineNumber - 2) ..< min(lines.count, lineNumber + 3)
           for displayedLineNumber in displayedLineNumbers {
