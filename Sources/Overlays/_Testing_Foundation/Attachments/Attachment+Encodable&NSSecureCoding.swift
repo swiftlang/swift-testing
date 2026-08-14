@@ -41,7 +41,7 @@ extension Attachment {
   private static func _encodingFormat(
     _ encodingFormat: AttachableEncodingFormat?,
     forPreferredName preferredName: String?,
-    `default`: @autoclosure() -> AttachableEncodingFormat
+    `default`: AttachableEncodingFormat
   ) throws -> AttachableEncodingFormat {
     if let encodingFormat {
       // The caller explicitly supplied an encoding format.
@@ -82,7 +82,7 @@ extension Attachment {
       throw CocoaError(.propertyListWriteInvalid, userInfo: [NSLocalizedDescriptionKey: "The path extension '.\(ext)' cannot be used to attach an instance of \(type(of: self)) to a test."])
     }
 
-    return `default`()
+    return `default`
   }
 
   /// Initialize an instance of this type representing a value that conforms to
