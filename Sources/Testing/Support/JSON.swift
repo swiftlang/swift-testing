@@ -24,18 +24,38 @@ enum JSON {
   /// testing library to improve the readability of JSON output.
   private static let _prettyPrintingEnabled = Environment.flag(named: "SWT_PRETTY_PRINT_JSON") == true
 
+  /// String representations of non-finite floating-point values.
+  private static let _positiveInfinityString = "INF"
+  private static let _negativeInfinityString = "-INF"
+  private static let _nanString = "NaN"
+
   /// Encode a value as JSON.
   ///
   /// - Parameters:
   ///   - value: The value to encode.
   ///   - userInfo: Any user info to pass into the encoder during encoding.
+  ///   - allowNonFiniteFloatingPointValues: Whether or not non-finite
+  ///     floating-point values can be encoded.
   ///   - body: A function to call.
   ///
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body` or by the encoding process.
-  static func withEncoding<R>(of value: some Encodable, userInfo: [CodingUserInfoKey: any Sendable] = [:], _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  static func withEncoding<R>(
+    of value: some Encodable,
+    userInfo: [CodingUserInfoKey: any Sendable] = [:],
+    allowNonFiniteFloatingPointValues: Bool = false,
+    _ body: (UnsafeRawBufferPointer) throws -> R
+  ) throws -> R {
     let encoder = JSONEncoder()
+
+    if allowNonFiniteFloatingPointValues {
+      encoder.nonConformingFloatEncodingStrategy = .convertToString(
+        positiveInfinity: _positiveInfinityString,
+        negativeInfinity: _negativeInfinityString,
+        nan: _nanString
+      )
+    }
 
     // Keys must be sorted to ensure deterministic matching of encoded data.
     encoder.outputFormatting.insert(.sortedKeys)
@@ -82,11 +102,17 @@ enum JSON {
   /// - Parameters:
   ///   - type: The type of value to decode.
   ///   - jsonRepresentation: The JSON encoding of the value to decode.
+  ///   - allowNonFiniteFloatingPointValues: Whether or not non-finite
+  ///     floating-point values can be decoded.
   ///
   /// - Returns: An instance of `T` decoded from `jsonRepresentation`.
   ///
   /// - Throws: Whatever is thrown by the decoding process.
-  static func decode<T>(_ type: T.Type, from jsonRepresentation: UnsafeRawBufferPointer) throws -> T where T: Decodable {
+  static func decode<T>(
+    _ type: T.Type,
+    from jsonRepresentation: UnsafeRawBufferPointer,
+    allowNonFiniteFloatingPointValues: Bool = false
+  ) throws -> T where T: Decodable {
     try withExtendedLifetime(jsonRepresentation) {
       let byteCount = jsonRepresentation.count
       let data = if byteCount > 0 {
@@ -98,7 +124,15 @@ enum JSON {
       } else {
         Data()
       }
-      return try JSONDecoder().decode(type, from: data)
+      let decoder = JSONDecoder()
+      if allowNonFiniteFloatingPointValues {
+        decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+          positiveInfinity: _positiveInfinityString,
+          negativeInfinity: _negativeInfinityString,
+          nan: _nanString
+        )
+      }
+      return try decoder.decode(type, from: data)
     }
   }
 #endif

@@ -569,6 +569,20 @@ private import _TestingInternals
     }
   }
 
+  @Test("Capture list (non-finite floating-point values)")
+  func captureListWithNonFiniteFloatingPointValues() async {
+    await #expect(processExitsWith: .success) {
+      [
+        positiveInfinity = Double.infinity as Double,
+        negativeInfinity = -Double.infinity as Double,
+        nan = Double.nan as Double,
+      ] in
+      #expect(positiveInfinity == Double.infinity)
+      #expect(negativeInfinity == -Double.infinity)
+      #expect(nan.isNaN)
+    }
+  }
+
   @Test("Capture list (very long encoded form)")
   func longCaptureList() async {
     let count = 1 * 1024 * 1024
