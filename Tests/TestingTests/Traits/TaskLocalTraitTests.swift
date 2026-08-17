@@ -14,13 +14,13 @@
 struct TaskLocalTests {
   @Test(
     ".taskLocal trait",
-    .taskLocal(local, true)
+    .taskLocal(local, withValue: true)
   )
   func taskLocalBinding() throws {
     #expect(local.wrappedValue == true)
   }
 
-  @Suite(.serialized, .taskLocal(stateLocal, State())) struct MutableLocal {
+  @Suite(.serialized, .taskLocal(stateLocal, withValue: State())) struct MutableLocal {
     @Test func run1() {
       #expect(stateLocal.wrappedValue.count == 0)
       stateLocal.wrappedValue.count += 1

@@ -24,7 +24,7 @@ extension Trait {
   /// - Note: You must define the task local outside the test target where the trait is used.
   public static func taskLocal<Value: Sendable>(
     _ taskLocal: TaskLocal<Value>,
-    _ value: @autoclosure @escaping @Sendable () throws -> Value
+    withValue value: @autoclosure @escaping @Sendable () throws -> Value
   ) -> Self
   where Self == TaskLocalTrait<Value> {
     TaskLocalTrait(taskLocal: taskLocal, value: value)
