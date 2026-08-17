@@ -12,6 +12,9 @@
 
 import PackageDescription
 import CompilerPluginSupport
+#if canImport(Foundation)
+import Foundation
+#endif
 
 /// Information about the current state of the package's git repository.
 let git = Context.gitInformation
@@ -559,8 +562,26 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),
     ]
 
+    // Let the environment block override our settings above.
+    let environmentVariables = Context.environment
+      .filter { $0.key.starts(with: "SWT_NO_") }
+      .compactMapValues { value in
+#if canImport(Foundation)
+        (value as NSString).boolValue
+#else
+        Bool(value) ?? UInt64(value).map { $0 != 0 }
+#endif
+      }
+
     for (name, details) in defines {
-      if !buildingForEmbedded {
+      if let environmentVariable = environmentVariables[name] {
+        // The environment variable is set. If the value is `true`, that means
+        // the "NO" flag should be set unconditionally. If the value is `false`,
+        // that means the flag should _not_ be set.
+        if environmentVariable {
+          append(.define(name, nil))
+        }
+      } else if !buildingForEmbedded {
         if let platforms = details.platforms {
           append(.define(name, .when(platforms: platforms)))
         } else {
