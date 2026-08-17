@@ -1017,6 +1017,7 @@ public macro require(
 ///   @Available(Xcode, introduced: 26.0)
 /// }
 @freestanding(expression)
+@_documentation(visibility: private)
 @discardableResult
 #if SWT_NO_EXIT_TESTS
 @_unavailableInEmbedded
