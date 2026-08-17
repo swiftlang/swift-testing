@@ -90,10 +90,6 @@ struct EventRecorderTests {
       #expect(!buffer.contains("●"))
     }
 
-#if SWT_COLLECTION_DIFFING_ENABLED
-    #expect(buffer.contains("inserted ["))
-#endif
-
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")
     }
@@ -695,12 +691,6 @@ struct EventRecorderTests {
   func commented() {
     Issue.record()
   }
-
-#if SWT_COLLECTION_DIFFING_ENABLED
-  @Test(.hidden) func diffyDuck() {
-    #expect([1, 2, 3] as Array == [1, 2] as Array)
-  }
-#endif
 
   @Test(.hidden) func woefulWombat() {
     #expect(throws: MyError.self) {
