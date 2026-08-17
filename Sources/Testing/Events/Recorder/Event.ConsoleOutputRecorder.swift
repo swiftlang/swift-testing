@@ -185,7 +185,7 @@ extension Event.Symbol {
       case .attachment:
         return "\(_ansiEscapeCodePrefix)94m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .details:
-        return symbolCharacter
+        return "\(symbolCharacter)"
       }
     }
     return symbolCharacter
