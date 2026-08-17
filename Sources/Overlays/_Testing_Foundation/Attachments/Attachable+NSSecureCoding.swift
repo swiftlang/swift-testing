@@ -20,6 +20,7 @@ public import Foundation
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
 /// }
+@available(swift, deprecated: 100000.0, message: "Use 'Attachment.init(encoding:as:named:sourceLocation:)' instead.")
 extension Attachable where Self: NSSecureCoding {
   /// Encode this object using [`NSKeyedArchiver`](https://developer.apple.com/documentation/foundation/nskeyedarchiver)
   /// into a buffer, then call a function and pass that buffer to it.

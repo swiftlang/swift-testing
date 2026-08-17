@@ -52,29 +52,55 @@ and attach the resulting data instead of the original string.
 If you have a value you want to save as an attachment that conforms to either
 [`Encodable`](https://developer.apple.com/documentation/swift/encodable) or
 [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
-you can extend it to add conformance to ``Attachable``. When you import the
-[Foundation](https://developer.apple.com/documentation/foundation) module, the
-testing library automatically provides a default implementation of
-``Attachable`` to types that also conform to [`Encodable`](https://developer.apple.com/documentation/swift/encodable)
-or [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding).
+you can create an instance of ``Attachment`` from it when you import the
+[Foundation](https://developer.apple.com/documentation/foundation) module.
 
 ```swift
 import Testing
 import Foundation
 
-struct SalesReport { ... }
-extension SalesReport: Encodable, Attachable {}
+struct SalesReport: Encodable { ... }
 
 @Test func `sales report adds up`() async throws {
   let salesReport = await generateSalesReport()
   try salesReport.validate()
-  Attachment.record(salesReport, named: "sales report.json")
+  let attachment = try Attachment(encoding: salesReport)
+  Attachment.record(attachment)
 }
 ```
 
-- Important: The testing library provides these default implementations only if
-  your test target imports the [Foundation](https://developer.apple.com/documentation/foundation)
-  module.
+By default, the testing library encodes values as JSON if they conform to [`Encodable`](https://developer.apple.com/documentation/swift/encodable)
+or as binary property lists if they conform to [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding).
+You can customize the resulting encoded data further by passing an encoding
+format or a top-level encoder.
+
+| Type Conforms To | Customize With |
+|-|-|
+| [`Encodable`](https://developer.apple.com/documentation/swift/encodable) | ``AttachableEncodingFormat``, [`JSONEncoder`](https://developer.apple.com/documentation/foundation/jsonencoder), [`PropertyListEncoder`](https://developer.apple.com/documentation/foundation/propertylistencoder), or [`TopLevelEncoder`](https://developer.apple.com/documentation/combine/toplevelencoder) |
+| [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding) | [`PropertyListSerialization.PropertyListFormat`](https://developer.apple.com/documentation/foundation/propertylistserialization/propertylistformat) | 
+
+For example, to attach a value to your test as an XML property list:
+
+```swift
+import Testing
+import Foundation
+
+struct SalesReport: Encodable { ... }
+
+@Test func `sales report adds up`() async throws {
+  let salesReport = await generateSalesReport()
+  try salesReport.validate()
+  let attachment = try Attachment(
+    encoding: salesReport,
+    as: .propertyListFormat(.xml)
+  )
+  Attachment.record(attachment)
+}
+```
+
+- Important: The testing library provides these ``Attachment`` initializers only
+if your test target imports the [Foundation](https://developer.apple.com/documentation/foundation)
+module.
 
 ### Attach transferable values
 
@@ -88,8 +114,7 @@ module.
 import Testing
 import CoreTransferable
 
-struct SalesReport { ... }
-extension SalesReport: Encodable, Attachable {}
+struct SalesReport: Transferable { ... }
 
 @Test func `sales report adds up`() async throws {
   let salesReport = await generateSalesReport()

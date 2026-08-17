@@ -26,7 +26,10 @@ import UniformTypeIdentifiers
 /// If you want to attach a value that conforms to [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
 /// use [`PropertyListFormat`](https://developer.apple.com/documentation/foundation/propertylistserialization/propertylistformat)
 /// instead.
-@_spi(Experimental)
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.5)
+/// }
 public struct AttachableEncodingFormat: Sendable {
   /// An enumeration describing the various kinds of encoding format the testing
   /// library supports.
@@ -50,11 +53,19 @@ public struct AttachableEncodingFormat: Sendable {
   ///   - format: The corresponding property list format.
   ///
   /// - Returns: An instance of this type representing `format`.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.5)
+  /// }
   public static func propertyListFormat(_ format: PropertyListSerialization.PropertyListFormat) -> Self {
     .init(kind: .propertyListFormat(format))
   }
 
   /// An instance of this type representing the JSON format.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.5)
+  /// }
   public static var json: Self {
     .init(kind: .json)
   }
@@ -117,6 +128,13 @@ public struct AttachableEncodingFormat: Sendable {
   }
 }
 
+/// @Metadata {
+///   @Available(Swift, introduced: 6.5)
+/// }
 extension AttachableEncodingFormat: Equatable {}
+
+/// @Metadata {
+///   @Available(Swift, introduced: 6.5)
+/// }
 extension AttachableEncodingFormat.Kind: Equatable {}
 #endif

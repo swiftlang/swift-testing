@@ -19,7 +19,9 @@ public import Combine
 import UniformTypeIdentifiers
 #endif
 
-@_spi(Experimental)
+/// @Metadata {
+///   @Available(Swift, introduced: 6.5)
+/// }
 extension Attachment {
 #if !SWT_NO_CODABLE
   /// Derive an instance of `AttachableEncodingFormat` from the arguments to one
@@ -125,6 +127,10 @@ extension Attachment {
   ///
   /// If the values of both the `encodingFormat` and `preferredName` arguments
   /// are `nil`, the testing library encodes `encodableValue` as JSON.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.5)
+  /// }
   public init<T>(
     encoding encodableValue: T,
     as encodingFormat: AttachableEncodingFormat? = nil,
@@ -162,6 +168,10 @@ extension Attachment {
   /// let attachment = try Attachment(encoding: menu, using: encoder)
   /// Attachment.record(attachment)
   /// ```
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.5)
+  /// }
   public init<T, E>(
     encoding encodableValue: T,
     using encoder: E,
@@ -236,6 +246,10 @@ extension Attachment {
   /// If the values of both the `propertyListFormat` and `preferredName`
   /// arguments are `nil`, the testing library encodes `encodableValue` as a
   /// binary property list.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.5)
+  /// }
   public init<T>(
     encoding encodableValue: T,
     as propertyListFormat: PropertyListSerialization.PropertyListFormat? = nil,

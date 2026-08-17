@@ -20,6 +20,7 @@ private import Foundation
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
 /// }
+@available(swift, deprecated: 100000.0, message: "Use 'Attachment.init(encoding:as:named:sourceLocation:)' instead.")
 extension Attachable where Self: Encodable {
   /// Encode this value into a buffer using either [`PropertyListEncoder`](https://developer.apple.com/documentation/foundation/propertylistencoder)
   /// or [`JSONEncoder`](https://developer.apple.com/documentation/foundation/jsonencoder),

@@ -20,7 +20,6 @@ import Combine
 ///
 /// You do not need to use this type directly. Instead, initialize an instance
 /// of ``Attachment`` using the encodable value.
-@_spi(Experimental)
 public struct _AttachableEncodableWrapper<T, E> {
   /// The underlying encodable value.
   private var _encodableValue: T

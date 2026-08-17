@@ -22,6 +22,7 @@ public import Foundation
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
 /// }
+@available(swift, deprecated: 100000.0, message: "Use 'Attachment.init(encoding:as:named:sourceLocation:)' instead.")
 extension Attachable where Self: Encodable & NSSecureCoding {
   @_documentation(visibility: private)
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
