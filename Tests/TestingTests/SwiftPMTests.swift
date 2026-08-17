@@ -452,7 +452,7 @@ struct SwiftPMTests {
     let currentVersionNumber = ABI.CurrentVersion.versionNumber
     var newerVersionNumber = currentVersionNumber
     newerVersionNumber.patchComponent += 1
-    let version = try #require(ABI._version(forVersionNumber: newerVersionNumber, givenSwiftCompilerVersion: newerVersionNumber))
+    let version = try #require(ABI.version(forVersionNumber: newerVersionNumber, givenSwiftCompilerVersion: newerVersionNumber))
     #expect(version.versionNumber == currentVersionNumber)
   }
 

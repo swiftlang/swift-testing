@@ -10,23 +10,9 @@
 
 #if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI.Version {
-  /// Create an event handler that encodes instances of ``Event`` as instances
-  /// of ``ABI/Record`` and forwards them to a handler function.
-  ///
-  /// - Parameters:
-  ///   - recordHandler: The record handler to forward events to.
-  ///
-  /// - Returns: An event handler.
-  ///
-  /// You can use this event handler with ``Configuration/eventHandler`` to
-  /// automatically transform instances of ``Event`` to ``ABI/Record``.
   public static func eventHandler(
     forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
   ) -> Event.Handler {
-#if !SWT_NO_SNAPSHOT_TYPES && DEBUG
-    precondition(self != ABI.Xcode16.self, "Attempted to create an ABI.Record-generating event handler for the Xcode 16 compatibility path.")
-#endif
-
     var humanReadableOutputRecorder: Event.HumanReadableOutputRecorder?
     if alwaysEncodeMessagesField {
       humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
@@ -49,7 +35,7 @@ extension ABI.Version {
     }
   }
 
-  static func eventHandler(
+  public static func eventHandler(
     encodeAsJSONLines: Bool,
     forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
@@ -71,6 +57,12 @@ extension ABI.Version {
 // MARK: - Xcode 16 compatibility
 
 extension ABI.Xcode16 {
+  static func eventHandler(
+    forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
+  ) -> Event.Handler {
+    preconditionFailure("Attempted to create an ABI.Record-generating event handler for the Xcode 16 compatibility path.")
+  }
+
   static func eventHandler(
     encodeAsJSONLines: Bool,
     forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
