@@ -197,6 +197,16 @@ struct ABIEntryPointTests {
     #expect(version == nil)
   }
 
+  @Test func overflowingABIVersionString() {
+    let version = VersionNumber("\(CUnsignedLongLong.max).\(CUnsignedLongLong.max)")
+    #expect(version == nil)
+  }
+
+  @Test func abiVersionStringWithInvalidCharacters() {
+    let version = VersionNumber("123qqq.0")
+    #expect(version == nil)
+  }
+
   @Test func abiVersionComparisons() throws {
     var versions = [VersionNumber]()
     for major in 0 ..< 10 {
