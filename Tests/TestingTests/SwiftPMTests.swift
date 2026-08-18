@@ -10,6 +10,9 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
+#if canImport(Foundation)
+private import Foundation
+#endif
 
 private func configurationForEntryPoint(withArguments args: [String]) throws -> Configuration {
   let args = try parseCommandLineArguments(from: args)
@@ -383,6 +386,57 @@ struct SwiftPMTests {
     #expect(!fileContents.isEmpty)
     #expect(fileContents.contains(UInt8(ascii: "<")))
     #expect(fileContents.contains(UInt8(ascii: ">")))
+  }
+
+  #if canImport(Foundation)
+  @Test(
+    "--attachments-path argument (creates missing directory)",
+    arguments: ["--attachments-path", "--experimental-attachments-path"]
+  )
+  func attachmentsPathCreatesMissingDirectory(argumentName: String) throws {
+      let tempDirPath = try temporaryDirectory()
+      let attachmentsPath = appendPathComponent("swt_attachments_\(UInt64.random(in: 0 ..< .max))", to: tempDirPath)
+      defer {
+        _ = remove(attachmentsPath)
+      }
+      #expect(!fileExists(atPath: attachmentsPath))
+      let configuration = try configurationForEntryPoint(withArguments: ["PATH", argumentName, attachmentsPath])
+      #expect(fileExists(atPath: attachmentsPath))
+      let actualPath = try #require(configuration.attachmentsPath, "Attachments path is not expected to be nil")
+      #expect(canonicalizePath(actualPath) == canonicalizePath(attachmentsPath))
+  }
+  #endif
+
+  #if canImport(Foundation)
+  @Test("--attachments-path argument (bad path)")
+  func attachmentsPathWithBadPath() throws {
+      let tempDirPath = try temporaryDirectory()
+      let attachmentPath = appendPathComponent(UUID().uuidString, to: tempDirPath)
+      let fileManager = FileManager()
+      let success = fileManager.createFile(atPath: attachmentPath, contents: nil, )
+      if !success {
+        Issue.record("Test setup failure.  Could not create file at \(attachmentPath).")
+      }
+      defer {
+        print("removing \(attachmentPath) ...")
+        _ = remove(attachmentPath)
+      }
+      #expect(throws: (any Error).self, "Attachment path is: \(attachmentPath)") {
+        _ = try configurationForEntryPoint(withArguments: ["PATH", "--attachments-path", attachmentPath])
+      }
+  }
+  #endif
+
+  @Test("--attachments-path argument (accepts existing directory)")
+  func attachmentsPathAcceptsExistingDirectory() throws {
+    let tempDirPath = try temporaryDirectory()
+    #expect(fileExists(atPath: tempDirPath))
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--attachments-path", tempDirPath])
+    let actualPath = try #require(configuration.attachmentsPath, "Attachments path is not expected to be nil")
+    #expect(
+      canonicalizePath(actualPath) == canonicalizePath(tempDirPath),
+      "Canonicalized actual path (\(actualPath)) is not equal to canonicalized expected path (\(tempDirPath))",
+    )
   }
 
   @Test("--configuration-path argument", arguments: [
