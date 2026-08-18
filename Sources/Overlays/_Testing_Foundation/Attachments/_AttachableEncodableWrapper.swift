@@ -20,7 +20,7 @@ import Combine
 ///
 /// You do not need to use this type directly. Instead, initialize an instance
 /// of ``Attachment`` using the encodable value.
-public struct _AttachableEncodableWrapper<T, E> {
+public struct _AttachableEncodableWrapper<T> where T: Encodable {
   /// The underlying encodable value.
   private var _encodableValue: T
 
@@ -34,36 +34,7 @@ public struct _AttachableEncodableWrapper<T, E> {
   /// must pass `encodableValue` as an existential box instead of an instance of
   /// `T` because otherwise `_encode` captures a reference to the generic type
   /// `T` which is not guaranteed to conform to `SendableMetatype`.
-  private var _encode: @Sendable (_ encodableValue: Any, _ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void
-
-  /// Initialize an instance of this type representing a given encodable value
-  /// and encoding it using the given encoding format.
-  ///
-  /// - Parameters:
-  ///   - encodableValue: The value to encode and attach.
-  ///   - encodingFormat: The encoding format to use.
-  init(encoding encodableValue: T, as encodingFormat: AttachableEncodingFormat) where T: Encodable, E == Void {
-    _encodableValue = encodableValue
-    _encodingFormat = encodingFormat
-    _encode = { encodableValue, body in
-      let encodableValue = try _tryCast(encodableValue, to: (any Encodable).self)
-      let data: Data
-      switch encodingFormat.kind {
-      case let .propertyListFormat(propertyListFormat):
-        let plistEncoder = PropertyListEncoder()
-        plistEncoder.outputFormat = propertyListFormat
-        data = try plistEncoder.encode(encodableValue)
-      case .json:
-        // We cannot use our own JSON encoding wrapper here because that would
-        // require it be exported with (at least) package visibility which would
-        // create a visible external dependency on Foundation in the main
-        // testing library target.
-        data = try JSONEncoder().encode(encodableValue)
-      }
-
-      return try data.withUnsafeBytes(body)
-    }
-  }
+  private var _encode: @Sendable (_ encodableValue: any Encodable, _ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void
 
 #if canImport(Combine)
   /// Initialize an instance of this type representing a given encodable value
@@ -72,7 +43,7 @@ public struct _AttachableEncodableWrapper<T, E> {
   /// - Parameters:
   ///   - encodableValue: The value to encode and attach.
   ///   - encoder: The encoder to use.
-  init(encoding encodableValue: T, using encoder: E) where T: Encodable, E: TopLevelEncoder & Sendable, E.Output: ContiguousBytes {
+  init<E>(encoding encodableValue: T, using encoder: E) where E: TopLevelEncoder & Sendable, E.Output: ContiguousBytes {
     _encodableValue = encodableValue
     if let plistEncoder = encoder as? PropertyListEncoder {
       _encodingFormat = .propertyListFormat(plistEncoder.outputFormat)
@@ -80,62 +51,32 @@ public struct _AttachableEncodableWrapper<T, E> {
       _encodingFormat = .json
     }
     _encode = { encodableValue, body in
-      let encodableValue = try _tryCast(encodableValue, to: (any Encodable).self)
       let buffer = try encoder.encode(encodableValue)
       try buffer.withUnsafeBytes(body)
     }
   }
 #else
-  init(encoding encodableValue: T, using encoder: E) where T: Encodable, E: PropertyListEncoder & Sendable {
+  init<E>(encoding encodableValue: T, using encoder: E) where E: PropertyListEncoder & Sendable {
     _encodableValue = encodableValue
     _encodingFormat = .propertyListFormat(encoder.outputFormat)
     _encode = { encodableValue, body in
-      let encodableValue = try _tryCast(encodableValue, to: (any Encodable).self)
       let buffer = try encoder.encode(encodableValue)
       try buffer.withUnsafeBytes(body)
     }
   }
 
-  init(encoding encodableValue: T, using encoder: E) where T: Encodable, E: JSONEncoder & Sendable {
+  init<E>(encoding encodableValue: T, using encoder: E) where E: JSONEncoder & Sendable {
     _encodableValue = encodableValue
     _encodingFormat = .json
     _encode = { encodableValue, body in
-      let encodableValue = try _tryCast(encodableValue, to: (any Encodable).self)
       let buffer = try encoder.encode(encodableValue)
       try buffer.withUnsafeBytes(body)
     }
   }
 #endif
-
-  /// Initialize an instance of this type representing a given encodable value
-  /// and encoding it using the given encoding format.
-  ///
-  /// - Parameters:
-  ///   - encodableValue: The value to encode and attach.
-  ///   - propertyListFormat: The property list format to use.
-  init(encoding encodableValue: T, as propertyListFormat: PropertyListSerialization.PropertyListFormat) where T: NSSecureCoding, E: NSKeyedArchiver {
-    _encodableValue = encodableValue
-    _encodingFormat = .propertyListFormat(propertyListFormat)
-    _encode = { encodableValue, body in
-      let encodableValue = try _tryCast(encodableValue, to: (any NSSecureCoding).self)
-      var data = try E.archivedData(withRootObject: encodableValue, requiringSecureCoding: true)
-
-      // BUG: Foundation does not offer a variant of
-      // NSKeyedArchiver.archivedData(withRootObject:requiringSecureCoding:)
-      // that is Swift-safe (throws errors instead of exceptions) and lets the
-      // caller specify the output format. Work around this issue by decoding
-      // the archive re-encoding it manually.
-      if propertyListFormat != .binary {
-        let plist = try PropertyListSerialization.propertyList(from: data, format: nil)
-        data = try PropertyListSerialization.data(fromPropertyList: plist, format: propertyListFormat, options: 0)
-      }
-
-      return try data.withUnsafeBytes(body)
-    }
-  }
 }
 
-extension _AttachableEncodableWrapper: Sendable where T: Sendable, E: Sendable {}
+extension _AttachableEncodableWrapper: Sendable where T: Sendable {}
 
 // MARK: -
 
@@ -158,24 +99,5 @@ extension _AttachableEncodableWrapper: AttachableWrapper {
     }
     return encodingFormat.preferredName(basedOn: suggestedName)
   }
-}
-
-// MARK: -
-
-/// Cast the given value to the given type and throw an error if the cast
-/// failed.
-///
-/// - Parameters:
-///   - value: The value to cast.
-///   - type: The type to cast `value` to.
-///
-/// - Returns: `value` cast to `type`.
-///
-/// - Throws: An error indicating that the cast failed.
-private func _tryCast<P>(_ value: Any, to type: P.Type) throws -> P {
-  guard let result = value as? P else {
-    throw SystemError(description: "Could not convert value '\(String(describingForTest: value))' of type '\(Swift.type(of: value))' to 'any \(type)'.")
-  }
-  return result
 }
 #endif

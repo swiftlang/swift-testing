@@ -553,13 +553,13 @@ struct AttachmentTests {
 
 #if !SWT_NO_GLOBAL_ACTORS
   @Test("Attach value with isolated Codable conformance")
-  func attachValueWithIsolatedCodableConformance() async throws {
-    let attachment = try await MainActor.run {
-      let attachableValue = MyIsolatedCodable(string: "stringly speaking")
-      return try Attachment(encoding: attachableValue, using: JSONEncoder())
-    }
-    #expect(throws: SystemError.self) {
-      _ = try attachment.withUnsafeBytes { _ in }
+  @MainActor
+  func attachValueWithIsolatedCodableConformance() throws {
+    let attachableValue = MyIsolatedCodable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, using: JSONEncoder())
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
+      #expect(bytes[0] == UInt8(ascii: "{"))
     }
   }
 #endif
