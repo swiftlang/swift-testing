@@ -41,9 +41,8 @@ these types automatically conform to ``Attachable``.
 
 You can also attach an instance of [`String`](https://developer.apple.com/documentation/swift/string)
 or [`Substring`](https://developer.apple.com/documentation/swift/substring). The
-testing library treats attached strings as UTF-8 text
-files. If you want to save a string as an attachment using a different encoding,
-convert it to [`Data`](https://developer.apple.com/documentation/foundation/data)
+testing library treats attached strings as UTF-8 text files. If you want to save
+a string as an attachment using a different encoding, convert it to [`Data`](https://developer.apple.com/documentation/foundation/data)
 using [`data(using:allowLossyConversion:)`](https://developer.apple.com/documentation/swift/stringprotocol/data(using:allowlossyconversion:))
 and attach the resulting data instead of the original string.
 
@@ -206,7 +205,7 @@ extension SalesReport: Attachable {
     _ body: (UnsafeRawBufferPointer) throws -> R
   ) throws -> R {
     let bytes = try salesReport.convertToCSV() // might fail to convert to CSV
-    try bytes.withUnsafeBytes { buffer in // rethrows any error from `body`
+    return try bytes.withUnsafeBytes { buffer in // rethrows errors from `body`
       try body(buffer)
     }
   }
