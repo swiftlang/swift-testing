@@ -1118,7 +1118,7 @@ extension ExitTest {
           try JSON.decode(
             type,
             from: capturedValueJSON,
-            userInfo: [._allowNonFiniteFloatingPointValuesUserInfoKey: true]
+            userInfo: [.allowNonFiniteFloatingPointValuesUserInfoKey: true]
           )
         }
       }
@@ -1147,7 +1147,7 @@ extension ExitTest {
     for capturedValue in capturedValues {
       try JSON.withEncoding(
         of: capturedValue.wrappedValue!,
-        userInfo: [._allowNonFiniteFloatingPointValuesUserInfoKey: true]
+        userInfo: [.allowNonFiniteFloatingPointValuesUserInfoKey: true]
       ) { capturedValueJSON in
         try JSON.asJSONLine(capturedValueJSON, body)
       }

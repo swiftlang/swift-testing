@@ -49,7 +49,7 @@ enum JSON {
     // Set user info keys that clients want to use during encoding.
     encoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
 
-    if encoder.userInfo[._allowNonFiniteFloatingPointValuesUserInfoKey] as? Bool == true {
+    if encoder.userInfo[.allowNonFiniteFloatingPointValuesUserInfoKey] as? Bool == true {
       encoder.nonConformingFloatEncodingStrategy = .convertToString(
         positiveInfinity: _positiveInfinityString,
         negativeInfinity: _negativeInfinityString,
@@ -125,7 +125,7 @@ enum JSON {
       // Set user info keys that clients want to use during decoding.
       decoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
 
-      if decoder.userInfo[._allowNonFiniteFloatingPointValuesUserInfoKey] as? Bool == true {
+      if decoder.userInfo[.allowNonFiniteFloatingPointValuesUserInfoKey] as? Bool == true {
         decoder.nonConformingFloatDecodingStrategy = .convertFromString(
           positiveInfinity: _positiveInfinityString,
           negativeInfinity: _negativeInfinityString,
@@ -142,7 +142,7 @@ enum JSON {
 extension CodingUserInfoKey {
   /// A coding user info key whose value is a `Bool` indicating whether or not
   /// non-finite floating-point values are allowed.
-  static var _allowNonFiniteFloatingPointValuesUserInfoKey: Self {
+  static var allowNonFiniteFloatingPointValuesUserInfoKey: Self {
     Self(rawValue: "org.swift.testing.coding-user-info-key.allow-non-finite-floating-point-values")!
   }
 }
