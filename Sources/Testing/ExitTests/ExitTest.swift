@@ -1116,7 +1116,11 @@ extension ExitTest {
 
       func open<T>(_ type: T.Type) throws -> T where T: Codable & Sendable {
         return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
-          try JSON.decode(type, from: capturedValueJSON)
+          try JSON.decode(
+            type,
+            from: capturedValueJSON,
+            userInfo: [.allowNonFiniteFloatingPointValuesUserInfoKey: true]
+          )
         }
       }
       capturedValue.wrappedValue = try open(capturedValue.typeOfWrappedValue)
@@ -1142,7 +1146,10 @@ extension ExitTest {
   /// configurations is undefined.
   private borrowing func _withEncodedCapturedValuesForEntryPoint(_ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void {
     for capturedValue in capturedValues {
-      try JSON.withEncoding(of: capturedValue.wrappedValue!) { capturedValueJSON in
+      try JSON.withEncoding(
+        of: capturedValue.wrappedValue!,
+        userInfo: [.allowNonFiniteFloatingPointValuesUserInfoKey: true]
+      ) { capturedValueJSON in
         try JSON.asJSONLine(capturedValueJSON, body)
       }
     }
