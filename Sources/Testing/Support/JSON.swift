@@ -24,6 +24,11 @@ enum JSON {
   /// testing library to improve the readability of JSON output.
   private static let _prettyPrintingEnabled = Environment.flag(named: "SWT_PRETTY_PRINT_JSON") == true
 
+  /// String representations of non-finite floating-point values.
+  private static let _positiveInfinityString = "Infinity"
+  private static let _negativeInfinityString = "-Infinity"
+  private static let _nanString = "NaN"
+
   /// Encode a value as JSON.
   ///
   /// - Parameters:
@@ -34,8 +39,23 @@ enum JSON {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body` or by the encoding process.
-  static func withEncoding<R>(of value: some Encodable, userInfo: [CodingUserInfoKey: any Sendable] = [:], _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  static func withEncoding<R>(
+    of value: some Encodable,
+    userInfo: [CodingUserInfoKey: any Sendable] = [:],
+    _ body: (UnsafeRawBufferPointer) throws -> R
+  ) throws -> R {
     let encoder = JSONEncoder()
+
+    // Set user info keys that clients want to use during encoding.
+    encoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
+
+    if encoder.userInfo[.allowNonFiniteFloatingPointValuesUserInfoKey] as? Bool == true {
+      encoder.nonConformingFloatEncodingStrategy = .convertToString(
+        positiveInfinity: _positiveInfinityString,
+        negativeInfinity: _negativeInfinityString,
+        nan: _nanString
+      )
+    }
 
     // Keys must be sorted to ensure deterministic matching of encoded data.
     encoder.outputFormatting.insert(.sortedKeys)
@@ -43,9 +63,6 @@ enum JSON {
       encoder.outputFormatting.insert(.prettyPrinted)
       encoder.outputFormatting.insert(.withoutEscapingSlashes)
     }
-
-    // Set user info keys that clients want to use during encoding.
-    encoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs})
 
     let data = try encoder.encode(value)
     return try data.withUnsafeBytes(body)
@@ -82,11 +99,16 @@ enum JSON {
   /// - Parameters:
   ///   - type: The type of value to decode.
   ///   - jsonRepresentation: The JSON encoding of the value to decode.
+  ///   - userInfo: Any user info to pass into the decoder during decoding.
   ///
   /// - Returns: An instance of `T` decoded from `jsonRepresentation`.
   ///
   /// - Throws: Whatever is thrown by the decoding process.
-  static func decode<T>(_ type: T.Type, from jsonRepresentation: UnsafeRawBufferPointer) throws -> T where T: Decodable {
+  static func decode<T>(
+    _ type: T.Type,
+    from jsonRepresentation: UnsafeRawBufferPointer,
+    userInfo: [CodingUserInfoKey: any Sendable] = [:]
+  ) throws -> T where T: Decodable {
     try withExtendedLifetime(jsonRepresentation) {
       let byteCount = jsonRepresentation.count
       let data = if byteCount > 0 {
@@ -98,8 +120,30 @@ enum JSON {
       } else {
         Data()
       }
-      return try JSONDecoder().decode(type, from: data)
+      let decoder = JSONDecoder()
+
+      // Set user info keys that clients want to use during decoding.
+      decoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
+
+      if decoder.userInfo[.allowNonFiniteFloatingPointValuesUserInfoKey] as? Bool == true {
+        decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+          positiveInfinity: _positiveInfinityString,
+          negativeInfinity: _negativeInfinityString,
+          nan: _nanString
+        )
+      }
+      return try decoder.decode(type, from: data)
     }
   }
 #endif
 }
+
+#if !SWT_NO_CODABLE
+extension CodingUserInfoKey {
+  /// A coding user info key whose value is a `Bool` indicating whether or not
+  /// non-finite floating-point values are allowed.
+  static var allowNonFiniteFloatingPointValuesUserInfoKey: Self {
+    Self(rawValue: "org.swift.testing.coding-user-info-key.allow-non-finite-floating-point-values")!
+  }
+}
+#endif

@@ -232,7 +232,7 @@ extension ExitTest {
     // a pipe instead of a regular file; that gets us our performance back.
     // SEE: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/coredump.c#n610
     var rl = rlimit(rlim_cur: 1, rlim_max: 1)
-    _ = setrlimit(CInt(RLIMIT_CORE.rawValue), &rl)
+    _ = setrlimit(.init(RLIMIT_CORE.rawValue), &rl)
 #elseif os(FreeBSD) || os(OpenBSD)
     // As with Linux, disable the generation core files. The BSDs do not, as far
     // as I can tell, special-case RLIMIT_CORE=1.
@@ -1115,7 +1115,11 @@ extension ExitTest {
 
       func open<T>(_ type: T.Type) throws -> T where T: Codable & Sendable {
         return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
-          try JSON.decode(type, from: capturedValueJSON)
+          try JSON.decode(
+            type,
+            from: capturedValueJSON,
+            userInfo: [.allowNonFiniteFloatingPointValuesUserInfoKey: true]
+          )
         }
       }
       capturedValue.wrappedValue = try open(capturedValue.typeOfWrappedValue)
@@ -1141,7 +1145,10 @@ extension ExitTest {
   /// configurations is undefined.
   private borrowing func _withEncodedCapturedValuesForEntryPoint(_ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void {
     for capturedValue in capturedValues {
-      try JSON.withEncoding(of: capturedValue.wrappedValue!) { capturedValueJSON in
+      try JSON.withEncoding(
+        of: capturedValue.wrappedValue!,
+        userInfo: [.allowNonFiniteFloatingPointValuesUserInfoKey: true]
+      ) { capturedValueJSON in
         try JSON.asJSONLine(capturedValueJSON, body)
       }
     }

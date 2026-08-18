@@ -8,6 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Foundation)
+private import Foundation
+#endif
 private import _TestingInternals
 
 #if canImport(Synchronization)
@@ -622,9 +625,14 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
   // Attachment output.
   if let attachmentsPath = args.attachmentsPath {
-    guard fileExists(atPath: attachmentsPath) else {
-      throw _EntryPointError.invalidArgument("---attachments-path", value: attachmentsPath)
-    }
+
+    #if canImport(Foundation)
+      try FileManager().createDirectory(atPath: attachmentsPath, withIntermediateDirectories: true)
+    #else
+      guard fileExists(atPath: attachmentsPath) else {
+        throw _EntryPointError.invalidArgument("---attachments-path", value: attachmentsPath)
+      }
+    #endif
     configuration.attachmentsPath = attachmentsPath
   }
 
