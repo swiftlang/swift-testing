@@ -10,13 +10,23 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
+#if canImport(Foundation)
+private import Foundation
+#endif
 
 private func configurationForEntryPoint(withArguments args: [String]) throws -> Configuration {
   let args = try parseCommandLineArguments(from: args)
   return try configurationForEntryPoint(from: args)
 }
 
-#if !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
+
+private extension Tag {
+  @Tag static var testTag: Self
+  @Tag static var testTagOther: Self
+  @Tag static var unrelatedTag: Self
+}
+
 /// Reads event stream output from the provided file matching event stream
 /// version `V`.
 private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String) throws -> [ABI.Record<V>] {
@@ -114,6 +124,18 @@ struct SwiftPMTests {
     #expect(!planTests.contains(test2))
   }
 
+
+  @Test("--filter argument with tag: prefix")
+  func filterByTag() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:testTag"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(name: "goodbye") {}
+    let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+  }
+
   @Test("Multiple --filter arguments")
   func multipleFilter() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello", "--filter", "sorry"])
@@ -157,11 +179,149 @@ struct SwiftPMTests {
     #expect(planTests.contains(test2))
   }
 
+  @Test("--skip argument with tag: prefix")
+  func skipByTag() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--skip", "tag:testTag"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(name: "goodbye") {}
+    let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(!planTests.contains(test1))
+    #expect(planTests.contains(test2))
+  }
+
+  @Test("--filter argument with tag: prefix supports regex patterns")
+  func filterByTagRegex() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:testTag.*"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(.tags(.testTagOther), name: "hi") {}
+    let test3 = Test(.tags(.unrelatedTag), name: "goodbye") {}
+    let test4 = Test(name: "untagged") {}
+    let plan = await Runner.Plan(tests: [test1, test2, test3, test4], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(planTests.contains(test2))
+    #expect(!planTests.contains(test3))
+    #expect(!planTests.contains(test4))
+  }
+
+  @Test("--filter tag: argument strips backticks around tag names")
+  func filterByTagStripsBackticks() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:`testTag`"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(name: "goodbye") {}
+    let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+  }
+
+  @Test("--filter combining tag: and id: patterns OR's them together")
+  func mixedPrefixedAndUnprefixedFilters() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:testTag", "--filter", "hello"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(.tags(.testTag), name: "goodbye") {}
+    let test3 = Test(name: "hello") {}
+    let test4 = Test(name: "goodbye") {}
+    let plan = await Runner.Plan(tests: [test1, test2, test3, test4], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(planTests.contains(test2))
+    #expect(planTests.contains(test3))
+    #expect(!planTests.contains(test4))
+  }
+
+  @Test("--skip combining tag: and id: patterns OR's them together")
+  func mixedPrefixedAndUnprefixedSkips() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--skip", "tag:testTag", "--skip", "hello"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(.tags(.testTag), name: "goodbye") {}
+    let test3 = Test(name: "hello") {}
+    let test4 = Test(name: "goodbye") {}
+    let plan = await Runner.Plan(tests: [test1, test2, test3, test4], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(!planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+    #expect(!planTests.contains(test3))
+    #expect(planTests.contains(test4))
+  }
+
+  @Test("Multiple --skip arguments with tag: prefix")
+  func multipleSkipByTag() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--skip", "tag:testTag", "--skip", "tag:unrelatedTag"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(.tags(.unrelatedTag), name: "goodbye") {}
+    let test3 = Test(name: "untagged") {}
+    let plan = await Runner.Plan(tests: [test1, test2, test3], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(!planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+    #expect(planTests.contains(test3))
+  }
+
+  @Test("--filter argument with explicit id: prefix")
+  func filterByExplicitIdPrefix() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "id:hello"])
+    let test1 = Test(name: "hello") {}
+    let test2 = Test(name: "goodbye") {}
+    let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+  }
+
+  @Test("--filter tag: combined with --skip id: in the same execution")
+  func filterByTagAndSkipById() async throws {
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:testTag", "--skip", "id:goodbye"])
+    let test1 = Test(.tags(.testTag), name: "hello") {}
+    let test2 = Test(.tags(.testTag), name: "goodbye") {}
+    let test3 = Test(.tags(.unrelatedTag), name: "hello") {}
+    let test4 = Test(name: "untagged") {}
+    let plan = await Runner.Plan(tests: [test1, test2, test3, test4], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+    #expect(!planTests.contains(test3))
+    #expect(!planTests.contains(test4))
+  }
+
+  @Test("--filter or --skip tag: argument with bad regex")
+  func filterByTagWithBadRegex() throws {
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:("])
+    }
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip", "tag:)"])
+    }
+  }
+
   @Test("--filter or --skip argument as last argument")
   func filterOrSkipAsLast() async throws {
     _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter"])
     _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
   }
+
+#if !SWT_NO_EXIT_TESTS
+  @Test("--filter suppresses console output when no tests found")
+  func suppressConsoleOutputWhenFilteredToNothing() async throws {
+    let result = try await #require(processExitsWith: .exitCode(EXIT_NO_TESTS_FOUND), observing: [\.standardErrorContent]) {
+      var args = __CommandLineArguments_v0()
+      args.filter = ["$^"] // match "nothing"
+      await __swiftPMEntryPoint(passing: args) as Never
+    }
+    #expect(result.standardErrorContent.isEmpty)
+  }
+
+  @Test("--skip suppresses console output when no tests found")
+  func suppressConsoleOutputWhenSkippedToNothing() async throws {
+    let result = try await #require(processExitsWith: .exitCode(EXIT_NO_TESTS_FOUND), observing: [\.standardErrorContent]) {
+      var args = __CommandLineArguments_v0()
+      args.skip = [".*"] // match "anything"
+      await __swiftPMEntryPoint(passing: args) as Never
+    }
+    #expect(result.standardErrorContent.isEmpty)
+  }
+#endif
 
   @Test(".hidden trait", .tags(.traitRelated))
   func hidden() async throws {
@@ -226,6 +386,57 @@ struct SwiftPMTests {
     #expect(!fileContents.isEmpty)
     #expect(fileContents.contains(UInt8(ascii: "<")))
     #expect(fileContents.contains(UInt8(ascii: ">")))
+  }
+
+  #if canImport(Foundation)
+  @Test(
+    "--attachments-path argument (creates missing directory)",
+    arguments: ["--attachments-path", "--experimental-attachments-path"]
+  )
+  func attachmentsPathCreatesMissingDirectory(argumentName: String) throws {
+      let tempDirPath = try temporaryDirectory()
+      let attachmentsPath = appendPathComponent("swt_attachments_\(UInt64.random(in: 0 ..< .max))", to: tempDirPath)
+      defer {
+        _ = remove(attachmentsPath)
+      }
+      #expect(!fileExists(atPath: attachmentsPath))
+      let configuration = try configurationForEntryPoint(withArguments: ["PATH", argumentName, attachmentsPath])
+      #expect(fileExists(atPath: attachmentsPath))
+      let actualPath = try #require(configuration.attachmentsPath, "Attachments path is not expected to be nil")
+      #expect(canonicalizePath(actualPath) == canonicalizePath(attachmentsPath))
+  }
+  #endif
+
+  #if canImport(Foundation)
+  @Test("--attachments-path argument (bad path)")
+  func attachmentsPathWithBadPath() throws {
+      let tempDirPath = try temporaryDirectory()
+      let attachmentPath = appendPathComponent(UUID().uuidString, to: tempDirPath)
+      let fileManager = FileManager()
+      let success = fileManager.createFile(atPath: attachmentPath, contents: nil, )
+      if !success {
+        Issue.record("Test setup failure.  Could not create file at \(attachmentPath).")
+      }
+      defer {
+        print("removing \(attachmentPath) ...")
+        _ = remove(attachmentPath)
+      }
+      #expect(throws: (any Error).self, "Attachment path is: \(attachmentPath)") {
+        _ = try configurationForEntryPoint(withArguments: ["PATH", "--attachments-path", attachmentPath])
+      }
+  }
+  #endif
+
+  @Test("--attachments-path argument (accepts existing directory)")
+  func attachmentsPathAcceptsExistingDirectory() throws {
+    let tempDirPath = try temporaryDirectory()
+    #expect(fileExists(atPath: tempDirPath))
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--attachments-path", tempDirPath])
+    let actualPath = try #require(configuration.attachmentsPath, "Attachments path is not expected to be nil")
+    #expect(
+      canonicalizePath(actualPath) == canonicalizePath(tempDirPath),
+      "Canonicalized actual path (\(actualPath)) is not equal to canonicalized expected path (\(tempDirPath))",
+    )
   }
 
   @Test("--configuration-path argument", arguments: [
@@ -295,7 +506,7 @@ struct SwiftPMTests {
     let currentVersionNumber = ABI.CurrentVersion.versionNumber
     var newerVersionNumber = currentVersionNumber
     newerVersionNumber.patchComponent += 1
-    let version = try #require(ABI._version(forVersionNumber: newerVersionNumber, givenSwiftCompilerVersion: newerVersionNumber))
+    let version = try #require(ABI.version(forVersionNumber: newerVersionNumber, givenSwiftCompilerVersion: newerVersionNumber))
     #expect(version.versionNumber == currentVersionNumber)
   }
 
@@ -325,7 +536,7 @@ struct SwiftPMTests {
   }
 #endif
 
-#if !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
   @Test("Severity and isFailure fields included in version 6.3")
   func validateEventStreamContents() async throws {
     let tempDirPath = try temporaryDirectory()
@@ -367,6 +578,7 @@ struct SwiftPMTests {
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_3.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_4.versionNumber),
           ("--event-stream-output-path", "--event-stream-version", ABI.v6_4.versionNumber),
+          ("--event-stream-output-path", "--event-stream-version", ABI.v6_5.versionNumber),
         ])
   func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: VersionNumber) async throws {
     let version = try #require(ABI.version(forVersionNumber: version))
@@ -507,12 +719,6 @@ struct SwiftPMTests {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repetitions", "2468", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
     #expect(configuration.repetitionPolicy.continuationCondition == .whileIssueRecorded)
-  }
-
-  @Test
-  func `Per-test-case iteration enabled by default`() throws {
-    let defaultConfig = try configurationForEntryPoint(withArguments: ["PATH"])
-    #expect(!defaultConfig.shouldUseLegacyPlanLevelRepetition)
   }
 
   @Test("list subcommand")

@@ -151,6 +151,9 @@ extension ConditionMacro {
         }
 
         expandedFunctionName = conditionArgument.expandedFunctionName
+        if conditionArgument.negationCount > 0 {
+          checkArguments.append(Argument(label: "negationCount", expression: IntegerLiteralExprSyntax(conditionArgument.negationCount)))
+        }
       }
 
       // Capture any comments as well -- either in source, preceding the

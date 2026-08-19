@@ -232,7 +232,7 @@ extension ExitTest {
     // a pipe instead of a regular file; that gets us our performance back.
     // SEE: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/coredump.c#n610
     var rl = rlimit(rlim_cur: 1, rlim_max: 1)
-    _ = setrlimit(CInt(RLIMIT_CORE.rawValue), &rl)
+    _ = setrlimit(.init(RLIMIT_CORE.rawValue), &rl)
 #elseif os(FreeBSD) || os(OpenBSD)
     // As with Linux, disable the generation core files. The BSDs do not, as far
     // as I can tell, special-case RLIMIT_CORE=1.
@@ -435,15 +435,6 @@ extension ExitTest {
       }
     }
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-    // Call the legacy lookup function that discovers tests embedded in types.
-    for record in Record.allTypeMetadataBasedTestContentRecords() {
-      if let exitTest = record.load(withHint: id)?.makeExitTest() {
-        return exitTest
-      }
-    }
-#endif
-
     return nil
   }
 }
@@ -478,7 +469,7 @@ func callExitTest(
   encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
-  expression: __Expression,
+  expression: @autoclosure () -> __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
@@ -537,7 +528,7 @@ func callExitTest(
 
   // Plumb the exit test's result through the general expectation machinery.
   func expressionWithCapturedRuntimeValues() -> __Expression {
-    var expression = expression.capturingRuntimeValues(result.exitStatus)
+    var expression = expression().capturingRuntimeValues(result.exitStatus)
 
     expression.subexpressions = [expectedExitCondition.exitStatus, result.exitStatus]
       .compactMap { exitStatus in
@@ -554,7 +545,7 @@ func callExitTest(
   }
   return __checkValue(
     expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
-    expression: expression,
+    expression: expression(),
     expressionWithCapturedRuntimeValues: expressionWithCapturedRuntimeValues(),
     mismatchedExitConditionDescription: #"expected exit status "\#(expectedExitCondition)", but "\#(result.exitStatus)" was reported instead"#,
     comments: comments(),
@@ -691,32 +682,18 @@ extension ExitTest {
     // Erase the environment variable so that it cannot accidentally be opened
     // twice (nor, in theory, affect the code of the exit test.)
     Environment.setVariable(nil, named: name)
-    var fd: CInt?
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
-    fd = CInt(environmentVariable)
-#elseif os(Windows)
-    if let handle = UInt(environmentVariable).flatMap(HANDLE.init(bitPattern:)) {
-      var flags: CInt = switch (options.contains(.readAccess), options.contains(.writeAccess)) {
-      case (true, true):
-        _O_RDWR
-      case (true, false):
-        _O_RDONLY
-      case (false, true):
-        _O_WRONLY
-      case (false, false):
-        0
-      }
-      flags |= _O_BINARY | _O_NOINHERIT
-      fd = _open_osfhandle(Int(bitPattern: handle), flags)
+    guard let fd = CInt(environmentVariable), fd >= 0 else {
+      return nil
     }
+    return try? FileHandle(unsafePOSIXFileDescriptor: fd, options: options)
+#elseif os(Windows)
+    return UInt(environmentVariable)
+      .flatMap(HANDLE.init(bitPattern:))
+      .flatMap { try? FileHandle(unsafeWindowsHANDLE: $0, options: options) }
 #else
 #warning("Platform-specific implementation missing: additional file descriptors unavailable")
 #endif
-    guard let fd, fd >= 0 else {
-      return nil
-    }
-
-    return try? FileHandle(unsafePOSIXFileDescriptor: fd, options: options)
   }
 
   /// Make a string suitable for use as the value of an environment variable
@@ -1018,7 +995,7 @@ extension ExitTest {
         // and process it as a (minimal) event stream.
         backChannelWriteEnd.close()
         taskGroup.addTask(name: decorateTaskName("exit test", withAction: "processing events")) {
-          Self._processRecords(fromBackChannel: backChannelReadEnd)
+          await Self._processRecords(fromBackChannel: backChannelReadEnd)
           return nil
         }
 
@@ -1042,19 +1019,27 @@ extension ExitTest {
   /// - Parameters:
   ///   - backChannel: The file handle to read from. Reading continues until an
   ///     error is encountered or the end of the file is reached.
-  private static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) {
-    let bytes: [UInt8]
-    do {
-      bytes = try backChannel.readToEnd()
-    } catch {
-      // NOTE: an error caught here indicates an I/O problem.
-      // TODO: should we record these issues as systemic instead?
-      Issue(for: error).record()
-      return
-    }
-
-    for recordJSON in bytes.split(whereSeparator: \.isASCIINewline) where !recordJSON.isEmpty {
+  private static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) async {
+    var terminator: UInt8?
+    repeat {
+      let recordJSON: [UInt8]
       do {
+        (recordJSON, terminator) = try backChannel.read(until: \.isASCIINewline)
+      } catch {
+        // NOTE: an error caught here indicates an I/O problem.
+        // TODO: should we record these issues as systemic instead?
+        Issue(for: error).record()
+        return
+      }
+
+      // Allow other tasks to run after we may have blocked for some time on I/O
+      // with the child process.
+      await Task.yield()
+
+      do {
+        if recordJSON.isEmpty {
+          continue
+        }
         try recordJSON.withUnsafeBufferPointer { recordJSON in
           try Self._processRecord(.init(recordJSON), fromBackChannel: backChannel)
         }
@@ -1063,7 +1048,7 @@ extension ExitTest {
         // TODO: should we record these issues as systemic instead?
         Issue(for: error).record()
       }
-    }
+    } while terminator != nil
   }
 
   /// Decode a line of JSON read from a back channel file handle and handle it
@@ -1130,7 +1115,11 @@ extension ExitTest {
 
       func open<T>(_ type: T.Type) throws -> T where T: Codable & Sendable {
         return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
-          try JSON.decode(type, from: capturedValueJSON)
+          try JSON.decode(
+            type,
+            from: capturedValueJSON,
+            userInfo: [.allowNonFiniteFloatingPointValuesUserInfoKey: true]
+          )
         }
       }
       capturedValue.wrappedValue = try open(capturedValue.typeOfWrappedValue)
@@ -1156,7 +1145,10 @@ extension ExitTest {
   /// configurations is undefined.
   private borrowing func _withEncodedCapturedValuesForEntryPoint(_ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void {
     for capturedValue in capturedValues {
-      try JSON.withEncoding(of: capturedValue.wrappedValue!) { capturedValueJSON in
+      try JSON.withEncoding(
+        of: capturedValue.wrappedValue!,
+        userInfo: [.allowNonFiniteFloatingPointValuesUserInfoKey: true]
+      ) { capturedValueJSON in
         try JSON.asJSONLine(capturedValueJSON, body)
       }
     }

@@ -569,6 +569,27 @@ private import _TestingInternals
     }
   }
 
+  @Test(
+    "Capture list (non-finite floating-point values)",
+    arguments: [Double.infinity, -Double.infinity, Double.nan]
+  )
+  func captureListWithNonFiniteFloatingPointValues(_ value: Double) async {
+    let expectedIsNaN = value.isNaN
+    let expectedIsNegative = value.sign == .minus
+    await #expect(processExitsWith: .success) {
+      [
+        value,
+        expectedIsNaN = expectedIsNaN as Bool,
+        expectedIsNegative = expectedIsNegative as Bool,
+      ] in
+      #expect(value.isNaN == expectedIsNaN)
+      if !expectedIsNaN {
+        #expect(value.isInfinite)
+        #expect((value.sign == .minus) == expectedIsNegative)
+      }
+    }
+  }
+
   @Test("Capture list (very long encoded form)")
   func longCaptureList() async {
     let count = 1 * 1024 * 1024
@@ -743,6 +764,17 @@ private import _TestingInternals
     await #expect(processExitsWith: .success) {}
   }
 #endif
+
+  @Test("noasync function callable from synchronous exit test body")
+  func noasyncCallable() async throws {
+    await #expect(processExitsWith: .success) {
+      some_noasync_function()
+    }
+
+    await #expect(processExitsWith: .success) { @MainActor in
+      some_noasync_function()
+    }
+  }
 }
 
 // MARK: - Fixtures
@@ -784,4 +816,7 @@ func sellIceCreamCones(count: Int) async throws {
   }
 }
 #endif
+
+@available(*, noasync)
+fileprivate func some_noasync_function() { /* ... */ }
 #endif

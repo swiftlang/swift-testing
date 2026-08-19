@@ -113,6 +113,7 @@ struct ClockTests {
   }
 #endif
 
+#if !SWT_NO_ABI_JSON_SCHEMA
   @Test("Round trip Test.Clock.Instant <-> ABI.EncodedInstant")
   func roundTrip() async throws {
     let now = Test.Clock.Instant()
@@ -125,4 +126,5 @@ struct ClockTests {
     #expect(abs((now.durationSince1970 - decoded.durationSince1970) / .seconds(1)) < 0.001)
 #endif
   }
+#endif
 }

@@ -27,6 +27,7 @@ extension Date {
     self.init(timeIntervalSince1970: instant.durationSince1970 / .seconds(1))
   }
 
+#if !SWT_NO_ABI_JSON_SCHEMA
   /// Initialize this date to equal an instant from the testing library's event
   /// stream.
   ///
@@ -37,7 +38,11 @@ extension Date {
   /// `instant`. For precise date/time calculations, convert instances of
   /// ``ABI/EncodedInstant`` to `SuspendingClock.Instant` instead of `Date`.
   public init?<V>(decoding instant: ABI.EncodedInstant<V>) {
-    self.init(timeIntervalSince1970: instant.since1970)
+    guard let instant = Test.Clock.Instant(decoding: instant) else {
+      return nil
+    }
+    self.init(instant)
   }
+#endif
 }
 #endif

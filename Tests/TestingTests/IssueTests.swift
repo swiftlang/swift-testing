@@ -1019,12 +1019,14 @@ final class IssueTests: XCTestCase {
     let _: Any = try #require(throws: Never.self) {}
 
     // Casting to any Error throws an API misuse error because Never cannot be
-    // instantiated. NOTE: inner function needed for lexical context.
-    @__testing(semantics: "nomacrowarnings")
-    func castToAnyError() throws {
-      let _: any Error = try #require(throws: Never.self) {}
+    // instantiated. NOTE: inner function needed to avoid real compiler warning
+    // about the unreachable result.
+    func castToAnyError<E>(_: E.Type) throws where E: Error {
+      let _: any Error = try #require(throws: E.self) {}
     }
-    #expect(throws: APIMisuseError.self, performing: castToAnyError)
+    #expect(throws: APIMisuseError.self) {
+      try castToAnyError(Never.self)
+    }
   }
 
   func testFail() async throws {
@@ -1711,6 +1713,52 @@ final class IssueTests: XCTestCase {
     let error = ErrorWithTestDescription()
     let issue = Issue(kind: .errorCaught(error), severity: .error, comments: [], sourceContext: .init())
     #expect(String(describing: issue).contains("RIGHT"))
+  }
+
+  func testExplicitSourceContextWithoutLocation() async {
+    // This just ensures that `Issue.record` with an explicit sourceContext
+    // doesn't infer the location via #_sourceLocation.
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      XCTAssertNil(issue.sourceLocation)
+      guard case .unconditional = issue.kind else {
+        XCTFail("Expected .unconditional issue kind")
+        return
+      }
+    }
+
+    await Test {
+      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: nil)
+      Issue.record(comments: [], severity: .warning, sourceContext: sourceContext)
+    }.run(configuration: configuration)
+  }
+
+  func testExplicitIssueRecordingKind() async {
+    enum TestError: Error, Equatable {
+      case abc
+    }
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case .errorCaught(let error) = issue.kind,
+            let testError = error as? TestError
+      else {
+        XCTFail("Expected .errorCaught(TestError.abc) issue kind")
+        return
+      }
+      XCTAssertEqual(testError, TestError.abc)
+    }
+
+    await Test {
+      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: nil)
+      Issue.record(comments: [], error: TestError.abc, severity: .warning, sourceContext: sourceContext)
+    }.run(configuration: configuration)
   }
 }
 #endif

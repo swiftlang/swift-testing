@@ -43,6 +43,7 @@ names prefixed with `SWT_`.
 | Variable Name | Value Type | Notes |
 |-|:-:|-|
 | `SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED` | `Bool` | Used to explicitly enable or disable experimental fields in the JSON event stream. |
+| `SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED` | `Bool` | Used to explicitly enable or disable including the `"messages"` field in the JSON event stream. |
 | `SWT_PRETTY_PRINT_JSON` | `Bool` | Used to enable pretty-printed JSON output to the event stream (for debugging purposes). |
 
 ## Exit tests
@@ -67,6 +68,5 @@ names prefixed with `SWT_`.
 | `SWIFT_TESTING_XCTEST_INTEROP_MODE` | `String` | Overrides the behavior for handling XCTest assertion failures recorded during a Swift Testing test. One of `none`, `limited`, `complete`, or `strict`. Explanation of modes can be found in [ST-0021][interop-modes]. | <!--prefer to link to MigratingFromXCTest.md once it is updated with interop-->
 | `SWT_EXPERIMENTAL_SERIALIZED_TRAIT_APPLIES_GLOBALLY` | `Bool` | Whether or not `.serialized` applies globally or just to its branch of the test graph. |
 | `SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH` | `Int` | The default parallelization width when parallelized testing is enabled. |
-| `SWT_USE_LEGACY_TEST_DISCOVERY` | `Bool` | Used to explicitly enable or disable legacy test discovery. |
 
 [interop-modes]: https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0021-targeted-interoperability-swift-testing-and-xctest.md#interoperability-modes

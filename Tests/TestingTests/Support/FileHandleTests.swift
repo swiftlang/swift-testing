@@ -54,6 +54,32 @@ struct FileHandleTests {
 #endif
 
 #if os(Windows)
+  @Test("Can init from Windows file HANDLE")
+  func initFromFileHANDLE() throws {
+    try withTemporaryPath { path in
+      try path.withCString(encodedAs: UTF16.self) { path in
+        let windowsHANDLE = try #require(
+          CreateFileW(
+            path,
+            GENERIC_READ,
+            DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE),
+            nil,
+            DWORD(OPEN_ALWAYS),
+            DWORD(FILE_ATTRIBUTE_NORMAL),
+            nil
+          )
+        )
+        if windowsHANDLE == INVALID_HANDLE_VALUE {
+          throw Win32Error(rawValue: GetLastError())
+        }
+        let fileHandle = try FileHandle(unsafeWindowsHANDLE: windowsHANDLE, options: [.readAccess])
+        fileHandle.withUnsafeWindowsHANDLE { ownedHANDLE in
+          #expect(windowsHANDLE == ownedHANDLE)
+        }
+      }
+    }
+  }
+
   @Test("Can get Windows file HANDLE")
   func fileHANDLE() throws {
     let fileHandle = try FileHandle.temporary()

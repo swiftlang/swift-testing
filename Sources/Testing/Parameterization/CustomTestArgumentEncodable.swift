@@ -99,6 +99,25 @@ extension Test.Case.Argument.ID {
   }
 }
 
+extension Test.Case.Argument.ID {
+  /// Initialize an ID from the IDs of a test case's arguments.
+  ///
+  /// - Parameters:
+  ///   - argumentIDs: The argument IDs to combine, in order.
+  ///
+  /// The argument IDs are concatenated and hashed to form a single ID. A stable
+  /// argument's ID is itself a fixed-size hash, so the concatenation is
+  /// unambiguous. A single argument's ID already identifies the case, so it is
+  /// used directly rather than combined.
+  init(combining argumentIDs: some Collection<Test.Case.Argument.ID>) {
+    if let argumentID = argumentIDs.first, argumentIDs.count == 1 {
+      self = argumentID
+    } else {
+      self.init(bytes: SHA256.hash(argumentIDs.flatMap(\.bytes)))
+    }
+  }
+}
+
 #if !SWT_NO_CODABLE
 extension Test.Case.Argument.ID {
   /// Encode the specified test argument value and store its encoded

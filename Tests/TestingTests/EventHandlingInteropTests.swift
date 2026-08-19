@@ -173,6 +173,22 @@ struct EventHandlingInteropTests {
     }
   }
 
+  @Test func `Don't post to fallback handler if interop mode set to none`() async {
+    await #expect(processExitsWith: .success) {
+      Self.setInteropMode(.none)
+
+      try #require(_swift_testing_installFallbackEventHandler(Self.unusableHandler))
+
+      // Force the event to be handled by the fallback event handler
+      Configuration.removeAll()
+      await Task.detached {
+        Event.post(.issueRecorded(Issue(kind: .system)), configuration: nil)
+      }.value
+
+      // unusableHandler fatalErrors if called, so success means no event was posted
+    }
+  }
+
   @Test func `Limited interop mode uses warning severity`() async throws {
     await #expect(processExitsWith: .success) {
       Self.setInteropMode(.limited)

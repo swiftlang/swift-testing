@@ -8,6 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Foundation)
+private import Foundation
+#endif
 private import _TestingInternals
 
 #if canImport(Synchronization)
@@ -20,6 +23,8 @@ private import Synchronization
 ///   - args: A previously-parsed command-line arguments structure to interpret.
 ///     If `nil`, a new instance is created from the command-line arguments to
 ///     the current process.
+///   - forSwiftPackageManager: Whether or not this function is being called on
+///     behalf of Swift Package Manager (via `__swiftPMEntryPoint()`).
 ///   - eventHandler: An optional event handler. The testing library always
 ///     writes events to the standard error stream in addition to passing them
 ///     to this function.
@@ -29,7 +34,7 @@ private import Synchronization
 /// External callers cannot call this function directly. The can use
 /// ``ABI/v0/entryPoint-swift.type.property`` to get a reference to an
 /// ABI-stable version of this function.
-func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
+func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager: Bool = false, eventHandler: Event.Handler?) async -> CInt {
   let exitCode = Atomic(EXIT_SUCCESS)
 
   do {
@@ -55,6 +60,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
 #if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
+    let consoleOutputEnabled = Atomic(true)
     if configuration.verbosity > .min {
       // Check for experimental console output flag
       let useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
@@ -69,7 +75,9 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
         }
 
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          eventRecorder.record(event, in: context)
+          if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
+            eventRecorder.record(event, in: context)
+          }
           oldEventHandler(event, context)
         }
       }
@@ -81,7 +89,9 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
           try? FileHandle.stderr.write(string)
         }
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          eventRecorder.record(event, in: context)
+          if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
+            eventRecorder.record(event, in: context)
+          }
           oldEventHandler(event, context)
         }
       }
@@ -127,6 +137,16 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       // Run the tests.
       let runner = await Runner(configuration: configuration)
       tests = runner.tests
+#if !SWT_NO_FILE_IO
+      if forSwiftPackageManager && tests.isEmpty, args.filter != nil || args.skip != nil {
+        // Swift Package Manager handles "no tests found/run" console output
+        // when the user applies any filtering. Don't bother logging to the
+        // console in this case. Note that if something is consuming the event
+        // stream, we still want to generate .runStarted etc., so we still call
+        // runner.run() for that purpose.
+        consoleOutputEnabled.store(false, ordering: .sequentiallyConsistent)
+      }
+#endif
       await runner.run()
     }
 
@@ -605,9 +625,14 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
   // Attachment output.
   if let attachmentsPath = args.attachmentsPath {
-    guard fileExists(atPath: attachmentsPath) else {
-      throw _EntryPointError.invalidArgument("---attachments-path", value: attachmentsPath)
-    }
+
+    #if canImport(Foundation)
+      try FileManager().createDirectory(atPath: attachmentsPath, withIntermediateDirectories: true)
+    #else
+      guard fileExists(atPath: attachmentsPath) else {
+        throw _EntryPointError.invalidArgument("---attachments-path", value: attachmentsPath)
+      }
+    #endif
     configuration.attachmentsPath = attachmentsPath
   }
 
@@ -631,18 +656,86 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
 #if canImport(_StringProcessing)
   // Filtering
+
+  // Filters currently come in two flavors: those with a prefix and those
+  // without. Those without a prefix are treated the same as those with an
+  // "id:" prefix.
+  enum FilterPrefix: String, CaseIterable {
+    case id = "id:"
+    case tag = "tag:"
+  }
   var filters = [Configuration.TestFilter]()
-  func testFilter(forRegularExpressions regexes: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
-    guard let regexes, !regexes.isEmpty else {
-      // Return early if empty, even though the `reduce` logic below can handle
-      // this case, in order to avoid the `#available` guard.
-      return .unfiltered
+  func testFilter(forOptionArguments optionArguments: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
+    var tagPatterns = [String]()
+    var idPatterns = [String]()
+
+    // If one of the patterns we encounter is surrounded by backticks, we can
+    // surmise the user intended to express a Swift raw identifier. In that
+    // case, we should alert the user that it's not going to match what the
+    // user expects and strip the backticks for them.
+    func stripBackticksAndReportIfEncountered(string: inout String) {
+      let backtickRegex = /^`[^`]*`$/
+      if string.contains(backtickRegex) {
+        let originalString = string
+        string = String(string.dropFirst().dropLast())
+#if !SWT_NO_FILE_IO
+        try? FileHandle.stderr.write("Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.\n")
+#endif
+      }
     }
 
-    return try Configuration.TestFilter(membership: membership, matchingAnyOf: regexes)
+    // Loop through all the option arguments, separating tags from regex filters
+    for var optionArg in optionArguments ?? [] {
+      if let prefix = FilterPrefix.allCases.first(where: { optionArg.hasPrefix($0.rawValue) }) {
+        // We have encountered a prefix, so trim it off and add the supplied
+        // argument to the appropriate filter list
+        optionArg.trimPrefix(prefix.rawValue)
+        stripBackticksAndReportIfEncountered(string: &optionArg)
+        switch prefix {
+          case .id: idPatterns.append(optionArg)
+          case .tag: tagPatterns.append(optionArg)
+        }
+      } else {
+        // No prefix was detected, so we treat this as a regex matching a test ID.
+        stripBackticksAndReportIfEncountered(string: &optionArg)
+        idPatterns.append(optionArg)
+      }
+    }
+
+    // If we didn't find any tags, the tagFilter should be .unfiltered,
+    // otherwise we construct it with the provided tags
+    let tagFilter: Configuration.TestFilter = if tagPatterns.isEmpty {
+      .unfiltered
+    } else {
+      switch membership {
+        case .including: try Configuration.TestFilter(includingTagsMatching: tagPatterns)
+        case .excluding: try Configuration.TestFilter(excludingTagsMatching: tagPatterns)
+      }
+    }
+
+    // If we didn't find any ID patterns, the idFilter should be .unfiltered
+    // (similar to above). Note that constructing it with an empty array of
+    // patterns is _not_ equivalent to `.unfiltered`.
+    let idFilter: Configuration.TestFilter = if idPatterns.isEmpty {
+      .unfiltered
+    } else {
+      try Configuration.TestFilter(membership: membership, matchingAnyOf: idPatterns)
+    }
+
+    // Passing an option more than once is an "or" operation. A test is included
+    // if it matches any --filter argument, and skipped if it matches any --skip
+    // argument. For --filter, `.or` expresses that directly. For --skip, the
+    // operator we want is `.and`, because an excluding filter keeps the tests
+    // it did _not_ match: by De Morgan's law, !(A || B) is equivalent to
+    // !A && !B, so `.and` skips a test that matches either the tag or the ID.
+    return switch membership {
+      case .including: idFilter.combining(with: tagFilter, using: .or)
+      case .excluding: idFilter.combining(with: tagFilter, using: .and)
+    }
   }
-  filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))
-  filters.append(try testFilter(forRegularExpressions: args.skip, label: "--skip", membership: .excluding))
+
+  filters.append(try testFilter(forOptionArguments: args.filter, label: "--filter", membership: .including))
+  filters.append(try testFilter(forOptionArguments: args.skip, label: "--skip", membership: .excluding))
 
   configuration.testFilter = filters.reduce(.unfiltered) { $0.combining(with: $1) }
   if args.includeHiddenTests == true {
@@ -720,7 +813,7 @@ func eventHandlerForStreamingEvents(
   forwardingTo targetEventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
 ) throws -> Event.Handler {
   let versionNumber = versionNumber ?? ABI.CurrentVersion.versionNumber
-  guard let abi = ABI._version(forVersionNumber: versionNumber) else {
+  guard let abi = ABI.version(forVersionNumber: versionNumber) else {
     throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(versionNumber)")
   }
   return abi.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: targetEventHandler)

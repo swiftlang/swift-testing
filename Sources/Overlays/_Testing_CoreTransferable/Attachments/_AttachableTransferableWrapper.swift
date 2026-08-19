@@ -24,6 +24,7 @@ import UniformTypeIdentifiers
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.4)
+///   @Available(Xcode, introduced: 27.0)
 /// }
 @available(_transferableAPI, *)
 public struct _AttachableTransferableWrapper<T>: Sendable where T: Transferable & Sendable {
@@ -53,11 +54,13 @@ public struct _AttachableTransferableWrapper<T>: Sendable where T: Transferable 
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.4)
+///   @Available(Xcode, introduced: 27.0)
 /// }
 @available(_transferableAPI, *)
 extension _AttachableTransferableWrapper: AttachableWrapper {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.4)
+  ///   @Available(Xcode, introduced: 27.0)
   /// }
   public var wrappedValue: T {
     _transferableValue
@@ -65,6 +68,7 @@ extension _AttachableTransferableWrapper: AttachableWrapper {
 
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.4)
+  ///   @Available(Xcode, introduced: 27.0)
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try _bytes.withUnsafeBytes(body)
@@ -72,6 +76,7 @@ extension _AttachableTransferableWrapper: AttachableWrapper {
 
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.4)
+  ///   @Available(Xcode, introduced: 27.0)
   /// }
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     let baseName = _transferableValue.suggestedFilename ?? suggestedName
