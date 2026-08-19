@@ -90,15 +90,11 @@ extension ABI.EncodedError {
     if !description.isEmpty {
       self.description = description
     }
-#if !hasFeature(Embedded)
     let domain = error._domain
     if domain != Self.unknownDomain {
       self.domain = domain
     }
     code = error._code
-#else
-    code = -1
-#endif
   }
 }
 

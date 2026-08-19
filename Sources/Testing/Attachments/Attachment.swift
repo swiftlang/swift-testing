@@ -550,12 +550,7 @@ extension Attachment where AttachableValue: ~Copyable {
         let preferredPath = appendPathComponent(preferredName, to: directoryPath)
 
         func isEEXIST(_ error: any Error) -> Bool {
-#if !hasFeature(Embedded)
           error._code == swt_EEXIST() && error._domain == "NSPOSIXErrorDomain"
-#else
-          // TODO: detect EEXIST without using _code/_domain?
-          false
-#endif
         }
 
         // Propagate any error *except* EEXIST, which would indicate that the
