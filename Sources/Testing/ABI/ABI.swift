@@ -21,35 +21,53 @@ extension ABI {
   public protocol Version: Sendable {
     /// The numeric representation of this ABI version.
     static var versionNumber: VersionNumber { get }
-  }
 
-  /// A protocol that extends the public ``ABI/Version`` protocol with
-  /// internal-only requirements.
-  protocol _Version: Version {
 #if !SWT_NO_ABI_JSON_SCHEMA
+    /// Create an event handler that encodes instances of ``Event`` as instances
+    /// of ``ABI/Record`` and forwards them to a handler function.
+    ///
+    /// - Parameters:
+    ///   - recordHandler: The record handler to forward events to.
+    ///
+    /// - Returns: An event handler.
+    ///
+    /// You can use this event handler with ``Configuration/eventHandler`` to
+    /// automatically transform instances of ``Event`` to ``ABI/Record``.
+    static func eventHandler(
+      forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
+    ) -> Event.Handler
+
     /// Create an event handler that encodes events as JSON and forwards them to
     /// an ABI-friendly event handler.
     ///
     /// - Parameters:
     ///   - encodeAsJSONLines: Whether or not to ensure JSON passed to
-    ///     `eventHandler` is encoded as JSON Lines (i.e. that it does not
+    ///     `recordHandler` is encoded as JSON Lines (i.e. that it does not
     ///     contain extra newlines.)
-    ///   - eventHandler: The event handler to forward events to.
+    ///   - recordHandler: The event handler to forward events to.
     ///
     /// - Returns: An event handler.
     ///
     /// The resulting event handler outputs data as JSON. For each event handled
     /// by the resulting event handler, a JSON object representing it and its
-    /// associated context is created and is passed to `eventHandler`.
+    /// associated context is created and is passed to `recordHandler`.
+    ///
+    /// If `encodeAsJSONLines` is `true`, the resulting JSON does not include
+    /// any newline characters (not even a trailing newline). If
+    /// `encodeAsJSONLines` is `false`, it is unspecified whether the resulting
+    /// JSON contains newline characters.
+    ///
+    /// You can use this event handler with ``Configuration/eventHandler`` to
+    /// automatically transform instances of ``Event`` to JSON.
     static func eventHandler(
       encodeAsJSONLines: Bool,
-      forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
+      forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
     ) -> Event.Handler
 #endif
   }
 
   /// The current supported ABI version (ignoring any experimental versions.)
-  public typealias CurrentVersion = v6_4
+  public typealias CurrentVersion = v6_5
 
   /// Get the type representing a given ABI version.
   ///
@@ -60,7 +78,7 @@ extension ABI {
   /// - Returns: A type conforming to ``ABI/Version`` that represents the given
   ///   ABI version, or `nil` if no such type exists.
   public static func version(forVersionNumber versionNumber: VersionNumber) -> (any Version.Type)? {
-    _version(forVersionNumber: versionNumber)
+    version(forVersionNumber: versionNumber, givenSwiftCompilerVersion: swiftCompilerVersion)
   }
 
   /// Get the type representing a given ABI version.
@@ -76,10 +94,10 @@ extension ABI {
   ///
   /// - Returns: A type conforming to ``ABI/Version`` that represents the given
   ///   ABI version, or `nil` if no such type exists.
-  static func _version(
+  static func version(
     forVersionNumber versionNumber: VersionNumber,
-    givenSwiftCompilerVersion swiftCompilerVersion: @autoclosure () -> VersionNumber = swiftCompilerVersion
-  ) -> (any _Version.Type)? {
+    givenSwiftCompilerVersion swiftCompilerVersion: @autoclosure () -> VersionNumber
+  ) -> (any Version.Type)? {
     if versionNumber >= ABI.ExperimentalVersion.versionNumber {
       // The experimental ABI version is higher than any real ABI version.
       return ABI.ExperimentalVersion.self
@@ -103,6 +121,8 @@ extension ABI {
     }
 
     return switch versionNumber {
+    case ABI.v6_5.versionNumber...:
+      ABI.v6_5.self
     case ABI.v6_4.versionNumber...:
       ABI.v6_4.self
     case ABI.v6_3.versionNumber...:
@@ -120,6 +140,86 @@ extension ABI {
     }
   }
 }
+
+#if !SWT_NO_ABI_JSON_SCHEMA
+// MARK: - Decoding record JSON
+
+extension ABI {
+  /// Decode an event from the given record JSON.
+  ///
+  /// - Parameters:
+  ///   - recordJSON: The record JSON to decode.
+  ///   - context: A context value that tracks decoded tests and events.
+  ///
+  /// - Returns: A tuple containing the decoded event and an associated event
+  ///   context. The event context's ``Event/Context/test`` and
+  ///   ``Event/Context/iteration`` properties are set if the encoded event has
+  ///   its corresponding properties set. The caller is responsible for setting
+  ///   any other properties of the context value that it needs. If `recordJSON`
+  ///   was invalid or could not be decoded, this function returns `nil`.
+  ///
+  /// Records of kind `"test"` are decoded as events of kind `testDiscovered`.
+  ///
+  /// This function infers the ABI version to use from the contents of
+  /// `recordJSON`.
+  public static func decodeEvent(fromRecordJSON recordJSON: UnsafeRawBufferPointer, in context: inout ABI.Context) -> (event: Event, context: Event.Context)? {
+    guard let versionNumber = try? VersionNumber(fromRecordJSON: recordJSON),
+          let abi = version(forVersionNumber: versionNumber) else {
+      return nil
+    }
+    return abi.decodeEvent(fromRecordJSON: recordJSON, in: &context)
+  }
+}
+
+extension ABI.Version {
+  /// Decode an event from the given record JSON.
+  ///
+  /// - Parameters:
+  ///   - recordJSON: The record JSON to decode.
+  ///   - context: A context value that tracks decoded tests and events.
+  ///
+  /// - Returns: A tuple containing the decoded event and an associated event
+  ///   context. The event context's ``Event/Context/test`` and
+  ///   ``Event/Context/iteration`` properties are set if the encoded event has
+  ///   its corresponding properties set. The caller is responsible for setting
+  ///   any other properties of the context value that it needs. If `recordJSON`
+  ///   was invalid or could not be decoded, this function returns `nil`.
+  ///
+  /// Records of kind `"test"` are decoded as events of kind `testDiscovered`.
+  ///
+  /// If `recordJSON` was encoded with an incompatible ABI version, this
+  /// function returns `nil`.
+  public static func decodeEvent(fromRecordJSON recordJSON: UnsafeRawBufferPointer, in context: inout ABI.Context) -> (event: Event, context: Event.Context)? {
+    var result: (event: Event, context: Event.Context)?
+
+    guard let record = try? JSON.decode(ABI.Record<Self>.self, from: recordJSON) else {
+      return nil
+    }
+
+    switch record.kind {
+    case let .test(encodedTest):
+      guard let test = Test(decoding: encodedTest, in: &context) else {
+        return nil
+      }
+      result = (
+        Event(.testDiscovered, testID: test.id, testCaseID: nil),
+        Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
+      )
+    case let .event(encodedEvent):
+      guard let event = Event(decoding: encodedEvent, in: &context) else {
+        return nil
+      }
+      let test = encodedEvent.testID.flatMap(context.test(identifiedBy:))
+      result = (
+        event,
+        Event.Context(test: test, testCase: nil, iteration: encodedEvent.iteration, configuration: nil)
+      )
+    }
+
+    return result
+  }
+}
+#endif
 
 // MARK: - Experimental fields
 
@@ -163,7 +263,7 @@ extension ABI {
   /// A namespace and version type for Xcode&nbsp;16 compatibility.
   ///
   /// - Warning: This type will be removed in a future update.
-  enum Xcode16: Sendable, Version, _Version {
+  enum Xcode16: Sendable, Version {
     static var versionNumber: VersionNumber {
       VersionNumber(-1, 0)
     }
@@ -171,7 +271,7 @@ extension ABI {
 #endif
 
   /// A namespace and type for ABI version 0 symbols.
-  public enum v0: Sendable, Version, _Version {
+  public enum v0: Sendable, Version {
     public static var versionNumber: VersionNumber {
       VersionNumber(0, 0)
     }
@@ -183,7 +283,7 @@ extension ABI {
   ///   @Available(Swift, introduced: 6.3)
   ///   @Available(Xcode, introduced: 26.4)
   /// }
-  public enum v6_3: Sendable, Version, _Version {
+  public enum v6_3: Sendable, Version {
     public static var versionNumber: VersionNumber {
       VersionNumber(6, 3)
     }
@@ -195,16 +295,27 @@ extension ABI {
   ///   @Available(Swift, introduced: 6.4)
   ///   @Available(Xcode, introduced: 27.0)
   /// }
-  public enum v6_4: Sendable, Version, _Version {
+  public enum v6_4: Sendable, Version {
     public static var versionNumber: VersionNumber {
       VersionNumber(6, 4)
+    }
+  }
+
+  /// A namespace and type for ABI version 6.5 symbols.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.5)
+  /// }
+  public enum v6_5: Sendable, Version {
+    public static var versionNumber: VersionNumber {
+      VersionNumber(6, 5)
     }
   }
 
   /// A namespace and type representing the ABI version whose symbols are
   /// considered experimental.
   @_spi(Experimental)
-  public enum ExperimentalVersion: Sendable, Version, _Version {
+  public enum ExperimentalVersion: Sendable, Version {
     public static var versionNumber: VersionNumber {
       VersionNumber(99, 0)
     }

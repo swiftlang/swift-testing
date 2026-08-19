@@ -244,8 +244,8 @@ after your tests finish running:
   `.build/attachments` by default. Visual Studio Code reports the paths to
   individual attachments in its Tests Results panel.
 - When using Swift Package Manager's `swift test` command, you can pass the
-  `--attachments-path` option. The testing library saves attachments to the
-  specified directory.
+  `--attachments-path` option. The testing library creates a directory at the
+  specified path and saves attachments to it.
 
   If you do not pass the `--attachments-path` option, the testing library does
   not save any attachments you record.
