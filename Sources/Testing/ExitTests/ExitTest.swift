@@ -469,7 +469,7 @@ func callExitTest(
   encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
-  expression: __Expression,
+  expression: @autoclosure () -> __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
@@ -528,7 +528,7 @@ func callExitTest(
 
   // Plumb the exit test's result through the general expectation machinery.
   func expressionWithCapturedRuntimeValues() -> __Expression {
-    var expression = expression.capturingRuntimeValues(result.exitStatus)
+    var expression = expression().capturingRuntimeValues(result.exitStatus)
 
     expression.subexpressions = [expectedExitCondition.exitStatus, result.exitStatus]
       .compactMap { exitStatus in
@@ -545,7 +545,7 @@ func callExitTest(
   }
   return __checkValue(
     expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
-    expression: expression,
+    expression: expression(),
     expressionWithCapturedRuntimeValues: expressionWithCapturedRuntimeValues(),
     mismatchedExitConditionDescription: #"expected exit status "\#(expectedExitCondition)", but "\#(result.exitStatus)" was reported instead"#,
     comments: comments(),
