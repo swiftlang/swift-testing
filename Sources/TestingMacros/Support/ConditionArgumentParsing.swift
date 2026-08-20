@@ -27,9 +27,6 @@ struct Condition {
   /// the testing library's `__Expression` type.
   var expression: ExprSyntax
 
-  /// How many negation operators were applied to the overall expression.
-  var negationCount = 0
-
   init(_ expandedFunctionName: String, arguments: [Argument], expression: ExprSyntax) {
     self.expandedFunctionName = .identifier(expandedFunctionName)
     self.arguments = arguments
@@ -458,7 +455,6 @@ private func _parseCondition(from expr: MemberAccessExprSyntax, for macro: some 
 private func _parseCondition(negating expr: ExprSyntax, isParenthetical: Bool, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
   var result = _parseCondition(from: expr, for: macro, in: context)
   result.expression = createExpressionExprForNegation(of: result.expression, isParenthetical: isParenthetical)
-  result.negationCount += 1
   return result
 }
 

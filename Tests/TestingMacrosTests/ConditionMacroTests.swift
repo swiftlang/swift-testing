@@ -37,7 +37,7 @@ struct ConditionMacroTests {
       ##"#expect("a" == "b")"##:
         ##"Testing.__checkBinaryOperation("a", { $0 == $1() }, "b", expression: .__fromBinaryOperation(.__fromStringLiteral(#""a""#, "a"), "==", .__fromStringLiteral(#""b""#, "b")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(!Bool.random())"##:
-        ##"Testing.__checkFunctionCall(Bool.self, calling: { $0.random() }, expression: .__fromNegation(.__fromFunctionCall(.__fromSyntaxNode("Bool"), "random"), false), negationCount: 1, comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkFunctionCall(Bool.self, calling: { $0.random() }, expression: .__fromNegation(.__fromFunctionCall(.__fromSyntaxNode("Bool"), "random"), false), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect((true && false))"##:
         ##"Testing.__checkBinaryOperation(true, { $0 && $1() }, false, expression: .__fromBinaryOperation(.__fromSyntaxNode("true"), "&&", .__fromSyntaxNode("false")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(try x())"##:
@@ -117,7 +117,7 @@ struct ConditionMacroTests {
       ##"#require("a" == "b")"##:
         ##"Testing.__checkBinaryOperation("a", { $0 == $1() }, "b", expression: .__fromBinaryOperation(.__fromStringLiteral(#""a""#, "a"), "==", .__fromStringLiteral(#""b""#, "b")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(!Bool.random())"##:
-        ##"Testing.__checkFunctionCall(Bool.self, calling: { $0.random() }, expression: .__fromNegation(.__fromFunctionCall(.__fromSyntaxNode("Bool"), "random"), false), negationCount: 1, comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkFunctionCall(Bool.self, calling: { $0.random() }, expression: .__fromNegation(.__fromFunctionCall(.__fromSyntaxNode("Bool"), "random"), false), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require((true && false))"##:
         ##"Testing.__checkBinaryOperation(true, { $0 && $1() }, false, expression: .__fromBinaryOperation(.__fromSyntaxNode("true"), "&&", .__fromSyntaxNode("false")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(try x())"##:
