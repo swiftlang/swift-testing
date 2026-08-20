@@ -51,6 +51,10 @@ array (also defined as in JSON) whose elements all follow rule `<T>`.
   "since1970": <number>, ; floating-point seconds since 1970-01-01 00:00:00 UT
 }
 
+<byte> ::= 0 . 255 ; an 8-bit unsigned byte in standard base 10 notation
+<bytes> ::= <array:byte> | <base64-string> ; either an array of bytes, or a
+  ; Base64-encoded representation of an octet stream (per RFC 4648)  
+
 <version> ::= "version": <version-number>
 <version-number> ::= 0 | "<version core>" ; as per https://semver.org
 ```
@@ -207,6 +211,7 @@ sufficient information to display the event in a human-readable format.
   ["testID": <test-id>,]
   ["iteration": <number>,] ; the iteration number (if the event is recorded
                            ; during test execution)
+  ["sourceLocation": <source-location>,] ; where the event occurred, if known
 }
 
 <event-kind> ::= "runStarted" | "testStarted" | "testCaseStarted" |
@@ -222,7 +227,12 @@ sufficient information to display the event in a human-readable format.
 }
 
 <attachment> ::= {
-  "path": <string>, ; the absolute path to the attachment on disk
+  ["path": <string>,] ; the absolute path to the attachment on disk
+  ["bytes": <bytes>,] ; the serialized form of the attachment
+  ["error": <error>,] ; an error previously encountered when trying to save the
+                      ; attachment
+  ["preferredName": <string>,] ; the preferred name of the attachment when
+                               ; saving it to disk
 }
 
 <message> ::= {
