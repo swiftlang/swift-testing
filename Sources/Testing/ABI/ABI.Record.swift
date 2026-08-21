@@ -28,6 +28,12 @@ extension ABI {
 
       /// An event record.
       case event(EncodedEvent<V>)
+
+      /// Some metadata regarding the test run, the current environment, etc.
+      ///
+      /// - Warning: Metadata is not yet part of the JSON schema.
+      @_spi(Experimental)
+      case metadata(EncodedMetadata<V>)
     }
 
     /// The kind of record.
@@ -39,6 +45,13 @@ extension ABI {
 
     public init(encoding event: borrowing EncodedEvent<V>) {
       kind = .event(copy event)
+    }
+
+    public init?(encoding metadata: borrowing EncodedMetadata<V>) {
+      guard V.includesExperimentalFields else {
+        return nil
+      }
+      kind = .metadata(copy metadata)
     }
   }
 }
@@ -52,14 +65,29 @@ extension ABI.Record {
   }
 
   init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message] = []) {
-    guard let event = ABI.EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) else {
-      return nil
+    switch event.kind {
+    case .testDiscovered:
+      guard let test = eventContext.test else {
+        return nil
+      }
+      self.init(encoding: test)
+    case let .metadataRecorded(metadata):
+      self.init(encoding: metadata)
+    default:
+      guard let event = ABI.EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) else {
+        return nil
+      }
+      if !V.includesExperimentalFields && event.kind.rawValue.first == "_" {
+        // Don't encode experimental event kinds.
+        return nil
+      }
+      self.init(encoding: event)
     }
-    if !V.includesExperimentalFields && event.kind.rawValue.first == "_" {
-      // Don't encode experimental event kinds.
-      return nil
-    }
-    self.init(encoding: event)
+  }
+
+  init?(encoding metadata: borrowing Event.Metadata) {
+    let metadata = ABI.EncodedMetadata<V>(encoding: metadata)
+    self.init(encoding: metadata)
   }
 }
 
@@ -82,6 +110,17 @@ extension ABI.Record: Codable {
     case let .event(event):
       try container.encode("event", forKey: .kind)
       try container.encode(event, forKey: .payload)
+    case let .metadata(metadata) where V.includesExperimentalFields:
+      try container.encode("_metadata", forKey: .kind)
+      try container.encode(metadata, forKey: .payload)
+    default:
+      throw EncodingError.invalidValue(
+        kind,
+        EncodingError.Context(
+          codingPath: encoder.codingPath + CollectionOfOne(CodingKeys.payload as any CodingKey),
+          debugDescription: "Record version \(V.versionNumber) does not support encoding records of kind \(kind)."
+        )
+      )
     }
   }
 
@@ -114,6 +153,9 @@ extension ABI.Record: Codable {
     case "event":
       let event = try container.decode(ABI.EncodedEvent<V>.self, forKey: .payload)
       kind = .event(event)
+    case "_metadata" where V.includesExperimentalFields:
+      let metadata = try container.decode(ABI.EncodedMetadata<V>.self, forKey: .payload)
+      kind = .metadata(metadata)
     case let kind:
       throw DecodingError.dataCorrupted(
         DecodingError.Context(

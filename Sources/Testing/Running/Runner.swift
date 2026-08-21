@@ -543,6 +543,9 @@ extension Runner {
       }
       schedule(tests)
 
+      for metadata in Event.Metadata.all {
+        Event.post(.metadataRecorded(metadata), for: (nil, nil), configuration: runner.configuration)
+      }
       Event.post(.runStarted, for: (nil, nil), configuration: runner.configuration)
       defer {
         Event.post(.runEnded, for: (nil, nil), configuration: runner.configuration)
