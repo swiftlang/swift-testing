@@ -133,7 +133,23 @@
     try JSON.withEncoding(of: encoded) { json in
       let jsonString = String(decoding: json, as: UTF8.self)
 
-      #expect(jsonString == #"{"isFailure":true,"severity":"error"}"#)
+      #expect(
+        jsonString == minified(#"""
+        {
+          "error":{
+            "code":1,
+            "domain":"org.swift.testing.KnownIssueNotRecordedError",
+            "type":{
+              "fullyQualifiedName":"Testing.KnownIssueNotRecordedError",
+              "mangledName":"$s7Testing26KnownIssueNotRecordedErrorV",
+              "unqualifiedName":"KnownIssueNotRecordedError"
+            }
+          },
+          "isFailure":true,
+          "severity":"error"
+        }
+        """#)
+      )
     }
 
     let decodedIssue = try #require(Issue(decoding: encoded))
@@ -152,7 +168,7 @@
     #expect(issue.kind.description == decodedIssue.kind.description)
   }
 
-  @Test func `Encodes confirmationMiscounted`() throws {
+  @Test func `Encodes confirmationMiscounted, single expected`() throws {
     let issue = Issue(kind: .confirmationMiscounted(actual: 5, expected: 10...10))
     let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: issue, in: Self.sampleEventContext)
     try JSON.withEncoding(of: encoded) { json in
@@ -175,7 +191,33 @@
     #expect(issue.kind.description == decodedIssue.kind.description)
   }
 
-  @Test func `Encodes known issue`() throws {
+  @Test func `Encodes confirmationMiscounted, range expected`() throws {
+    let issue = Issue(kind: .confirmationMiscounted(actual: 5, expected: 10...15))
+    let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: issue, in: Self.sampleEventContext)
+    try JSON.withEncoding(of: encoded) { json in
+      let jsonString = String(decoding: json, as: UTF8.self)
+      #expect(
+        jsonString == minified(#"""
+        {
+          "confirmationMiscount":{
+            "actual":5,
+            "expected":{
+              "max":15,
+              "min":10
+            }
+          },
+          "isFailure":true,
+          "severity":"error"
+        }
+        """#)
+      )
+    }
+
+    let decodedIssue = try #require(Issue(decoding: encoded))
+    #expect(issue.kind.description == decodedIssue.kind.description)
+  }
+
+  @Test func `Encodes known issue with user comment`() throws {
     let issue = {
       var issue = Issue(kind: .errorCaught(FakeError()))
       issue.knownIssueContext = .init(comment: "This issue was marked as known")
@@ -200,6 +242,41 @@
           },
           "isFailure":false,
           "isKnown":"This issue was marked as known",
+          "severity":"error"
+        }
+        """#)
+      )
+    }
+
+    let decodedIssue = try #require(Issue(decoding: encoded))
+    #expect(issue.kind.description == decodedIssue.kind.description)
+  }
+
+  @Test func `Encodes known issue without user comment`() throws {
+    let issue = {
+      var issue = Issue(kind: .errorCaught(FakeError()))
+      issue.knownIssueContext = .init()
+      return issue
+    }()
+    let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: issue, in: Self.sampleEventContext)
+    try JSON.withEncoding(of: encoded) { json in
+      let jsonString = String(decoding: json, as: UTF8.self)
+
+      #expect(
+        jsonString == minified(#"""
+        {
+          "error":{
+            "code":1,
+            "description":"FakeError()",
+            "domain":"TestingTests.`ABI.EncodedIssue Tests`.FakeError",
+            "type":{
+              "fullyQualifiedName":"TestingTests.`ABI.EncodedIssue Tests`.FakeError",
+              "mangledName":"$s12TestingTests0035ABIEncodedIssueTests_wtaFABFCjAGawaV9FakeErrorV",
+              "unqualifiedName":"FakeError"
+            }
+          },
+          "isFailure":false,
+          "isKnown":true,
           "severity":"error"
         }
         """#)
