@@ -115,6 +115,8 @@ extension ABI {
             EncodedError(encoding: APIMisuseError(description: ""))
           case .system:
             EncodedError(encoding: SystemError(description: ""))
+          case .knownIssueNotRecorded:
+            EncodedError(encoding: KnownIssueNotRecordedError(description: ""))
           default:
             nil
           }
@@ -238,6 +240,8 @@ extension Issue {
         issueKind = .apiMisused
       case SystemError.domain:
         issueKind = .system
+      case KnownIssueNotRecordedError.domain:
+        issueKind = .knownIssueNotRecorded
       default:
         issueKind = .errorCaught(error)
       }
