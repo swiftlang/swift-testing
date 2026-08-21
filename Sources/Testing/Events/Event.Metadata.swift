@@ -15,6 +15,10 @@ extension Event {
   /// Metadata is human-readable information such as the operating system
   /// version that can be used to help diagnose issues recorded during a test
   /// run.
+  ///
+  /// - Important: The properties of instances of this type are human-readable.
+  ///   They are not guaranteed to remain stable over multiple releases of the
+  ///   testing library. You should not attempt to parse them.
   public struct Metadata: Sendable {
     /// The name of the datum.
     public var name: String
