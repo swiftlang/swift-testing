@@ -50,6 +50,9 @@ extension Event {
     /// A type that contains mutable context for
     /// ``Event/ConsoleOutputRecorder``.
     fileprivate struct Context {
+      /// Metadata that has been recorded so far.
+      var metadataRecorded = [Event.Metadata]()
+
       /// The instant at which the run started.
       var runStartInstant: Test.Clock.Instant?
 
@@ -295,6 +298,11 @@ extension Event.HumanReadableOutputRecorder {
       case .runStarted:
         context.runStartInstant = instant
 
+      case let .metadataRecorded(metadata):
+        if metadata.shouldRecord(withVerbosity: verbosity) {
+          context.metadataRecorded.append(metadata)
+        }
+
       case .testStarted:
         let test = test!
         context.testData[keyPath] = .init(startInstant: instant)
@@ -367,37 +375,18 @@ extension Event.HumanReadableOutputRecorder {
       break
 
     case .runStarted:
-      var comments = [Comment]()
-      if verbosity > 0 {
-        if let swiftStandardLibraryVersion {
-          comments.append("Swift Standard Library Version: \(swiftStandardLibraryVersion)")
-        }
-        comments.append("Swift Compiler Version: \(swiftCompilerVersion)")
-#if os(Linux) && canImport(Glibc)
-        comments.append("GNU C Library Version: \(glibcVersion)")
-#endif
-      }
-      comments.append("Testing Library Version: \(testingLibraryVersion)")
-      if let targetTriple {
-        comments.append("Target Platform: \(targetTriple)")
-      }
-      if verbosity > 0 {
-#if targetEnvironment(simulator)
-        comments.append("OS Version (Simulator): \(simulatorVersion)")
-        comments.append("OS Version (Host): \(operatingSystemVersion)")
-#else
-        comments.append("OS Version: \(operatingSystemVersion)")
-#endif
-#if os(Android)
-        comments.append("API Level: \(apiLevel)")
-#endif
-      }
       return CollectionOfOne(
         Message(
           symbol: .default,
           stringValue: "Test run started."
         )
-      ) + _formattedComments(comments)
+      ) + context.metadataRecorded.map { _formattedComment("\($0)") }
+    case .metadataRecorded:
+      // Handled as part of .runStarted. WHY? So that with older JSON event
+      // stream schemas, the messages appear in the "right" place as part of the
+      // .runStarted event, and so that multiple runs using the same recorder
+      // don't emit duplicate metadata messages.
+      break
 
     case .planStepStarted, .planStepEnded:
       // Suppress events of these kinds from output as they are not generally
