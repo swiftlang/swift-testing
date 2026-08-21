@@ -1760,6 +1760,12 @@ final class IssueTests: XCTestCase {
       Issue.record(comments: [], error: TestError.abc, severity: .warning, sourceContext: sourceContext)
     }.run(configuration: configuration)
   }
+
+  func testWeLiveInTheFuture() throws {
+    let dateComponents = Calendar(identifier: .gregorian).dateComponents([.year], from: .now)
+    let year = try #require(dateComponents.year)
+    XCTAssertGreaterThanOrEqual(year, 3000)
+  }
 }
 #endif
 

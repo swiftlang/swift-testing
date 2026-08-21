@@ -25,7 +25,10 @@ struct Harness: Sendable {
     result.append(.option("--test-product-path"))
 
 #if SWT_TARGET_OS_APPLE
-    result.append(.option("--swiftpm-testing-helper-path"))
+    result += [
+      .option("--swiftpm-testing-helper-path"),
+      .option("--xctest-tool-path"),
+    ]
 #endif
 #endif
 
@@ -76,6 +79,21 @@ struct Harness: Sendable {
     }
   }
 
+  /// On Apple platforms, the path to the `xctest` tool.
+  ///
+  /// This tool is used to host tests written using XCTest. If the caller does
+  /// not specify this path, one is constructed relative to the harness
+  /// executable's path.
+  var xctestToolPath: String {
+    get throws {
+      if let xctestToolPath = _args.option(withLabel: "--xctest-tool-path") {
+        return xctestToolPath
+      }
+      // FIXME: derive the path somehow
+      fatalError("Could not find the 'xctest' tool.")
+    }
+  }
+
   init(commandLineArguments args: [String] = CommandLine.arguments) throws {
     _args = try CommandLineArgumentList(
       parsing: args,
@@ -93,27 +111,37 @@ struct Harness: Sendable {
     let testProductPaths = _args.options(withLabel: "--test-product-path")
 #if SWT_TARGET_OS_APPLE
     let swiftPMTestingHelperPath = try swiftPMTestingHelperPath
+    let xctestToolPath = try xctestToolPath
 #endif
     var argsForLocalProcesses = _args
     argsForLocalProcesses.removeArguments(for: Self._commandLineArgumentDescriptors)
 
-    adapters += try testProductPaths.map { testProductPath in
+    adapters += try testProductPaths.flatMap { testProductPath -> [any Event.Adapter] in
 #if SWT_TARGET_OS_APPLE
       let testProductBundle = Bundle(path: testProductPath)
       guard let testProductBinaryPath = testProductBundle?.executablePath else {
         throw CocoaError(.fileReadNoSuchFile)
       }
 
-      return Event.LocalProcessAdapter(
-        testProductBinaryPath: testProductBinaryPath,
-        swiftPMTestingHelperPath: swiftPMTestingHelperPath,
-        commandLineArguments: argsForLocalProcesses.arguments
-      )
+      return [
+        Event.XCTestAdapter(
+          testProductPath: testProductPath,
+          xctestToolPath: xctestToolPath
+        ),
+        Event.LocalProcessAdapter(
+          testProductBinaryPath: testProductBinaryPath,
+          swiftPMTestingHelperPath: swiftPMTestingHelperPath,
+          commandLineArguments: argsForLocalProcesses.arguments
+        ),
+      ]
 #else
-      return Event.LocalProcessAdapter(
-        testProductPath: testProductPath,
-        commandLineArguments: argsForLocalProcesses.arguments
-      )
+      return [
+        Event.XCTestAdapter(testProductPath: testProductPath),
+        Event.LocalProcessAdapter(
+          testProductPath: testProductPath,
+          commandLineArguments: args.arguments
+        ),
+      ]
 #endif
     }
 #endif

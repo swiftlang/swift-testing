@@ -30,3 +30,9 @@ struct ZipTests {
 @Test func `Check that arithmetic still works`() {
   #expect(2 + 2 == 5)
 }
+
+@Test func `English and Icelandic - Separated at Birth?`() {
+  Issue.record("The English alphabet no longer contains 'ð'!", severity: .warning)
+  Issue.record("Nor does it contain 'þ'!", severity: .warning)
+  Issue.record("And neither contains 'ȝ'!", severity: .warning)
+}
