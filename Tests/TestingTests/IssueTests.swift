@@ -1760,6 +1760,10 @@ final class IssueTests: XCTestCase {
       Issue.record(comments: [], error: TestError.abc, severity: .warning, sourceContext: sourceContext)
     }.run(configuration: configuration)
   }
+
+  func testFailingAllTheTimeSadly() {
+    XCTFail("I always fail. Sigh.")
+  }
 }
 #endif
 

@@ -28,6 +28,8 @@ import Foundation
   var testProductPaths: [String] = []
 
 #if SWT_TARGET_OS_APPLE
+  // TODO: derive these paths from toolchain root or some such?
+
   /// Storage for ``swiftPMTestingHelperPath``.
   @Option(name: "--swiftpm-testing-helper-path")
   private var _swiftPMTestingHelperPath: String?
@@ -51,6 +53,24 @@ import Foundation
         .appendingPathComponent("pm", isDirectory: true)
         .appendingPathComponent("swiftpm-testing-helper", isDirectory: false)
       return swiftPMTestingHelperURL.path
+    }
+  }
+
+  /// Storage for ``xctestToolPath``.
+  @Option(name: "--xctest-tool-path")
+  private var _xctestToolPath: String?
+
+  /// On Apple platforms, the path to the `xctest` tool.
+  ///
+  /// This tool is used to host tests written using XCTest. If the caller does
+  /// not specify this path, one is constructed relative to the harness
+  /// executable's path.
+  var xctestToolPath: String {
+    get throws {
+      if let xctestToolPath = _xctestToolPath {
+        return xctestToolPath
+      }
+      throw ValidationError("Could not find the 'xctest' tool.")
     }
   }
 #endif
@@ -96,20 +116,30 @@ import Foundation
     // each of them.
 #if SWT_TARGET_OS_APPLE
     let swiftPMTestingHelperPath = try swiftPMTestingHelperPath
+    let xctestToolPath = try xctestToolPath
 #endif
-    grommets += try testProductPaths.map { testProductPath in
+    grommets += try testProductPaths.flatMap { testProductPath -> [any Grommet] in
 #if SWT_TARGET_OS_APPLE
       let testProductBundle = Bundle(path: testProductPath)
       guard let testProductBinaryPath = testProductBundle?.executablePath else {
         throw CocoaError(.fileReadNoSuchFile)
       }
 
-      return LocalProcessGrommet(
-        testProductBinaryPath: testProductBinaryPath,
-        swiftPMTestingHelperPath: swiftPMTestingHelperPath
-      )
+      return [
+        XCTestGrommet(
+          testProductPath: testProductPath,
+          xctestToolPath: xctestToolPath
+        ),
+        LocalProcessGrommet(
+          testProductBinaryPath: testProductBinaryPath,
+          swiftPMTestingHelperPath: swiftPMTestingHelperPath
+        ),
+      ]
 #else
-      return LocalProcessGrommet(testProductPath: testProductPath)
+      return [
+        XCTestGrommet(testProductPath: testProductPath),
+        LocalProcessGrommet(testProductPath: testProductPath),
+      ]
 #endif
     }
 #endif
