@@ -113,14 +113,36 @@ public struct __Expression: Sendable {
     /// the value it represents contains substructural values.
     public var children: [Self]?
 
+    /// Forms textual representations and type information for the specified
+    /// subject.
+    ///
+    /// - Parameters:
+    ///   - subject: The subject to describe.
+    /// - Returns: A tuple containing the subject's description, debug
+    ///   description, and type information.
+    private static func _describingProperties(
+      of subject: Any
+    ) -> (
+      description: String,
+      debugDescription: String,
+      typeInfo: TypeInfo
+    ) {
+      (
+        String(describingForTest: subject),
+        String(reflecting: subject),
+        TypeInfo(describingTypeOf: subject)
+      )
+    }
+
     /// Initialize an instance of this type describing the specified subject.
     ///
     /// - Parameters:
     ///   - subject: The subject this instance should describe.
     init(describing subject: Any) {
-      description = String(describingForTest: subject)
-      debugDescription = String(reflecting: subject)
-      typeInfo = TypeInfo(describingTypeOf: subject)
+      let properties = Self._describingProperties(of: subject)
+      description = properties.description
+      debugDescription = properties.debugDescription
+      typeInfo = properties.typeInfo
 
 #if !hasFeature(Embedded)
       let mirror = Mirror(reflectingForTest: subject)
@@ -208,11 +230,15 @@ public struct __Expression: Sendable {
         return
       }
 
-      self.init(describing: subject)
+      let properties = Self._describingProperties(of: subject)
+      description = properties.description
+      debugDescription = properties.debugDescription
+      typeInfo = properties.typeInfo
       self.label = label
 
 #if !hasFeature(Embedded)
       let mirror = Mirror(reflectingForTest: subject)
+      isCollection = mirror.displayStyle?.isCollection ?? false
 
       // If the subject being reflected is an instance of a reference type (e.g.
       // a class), keep track of whether it has been seen previously. Later
@@ -268,6 +294,8 @@ public struct __Expression: Sendable {
         }
         self.children = children
       }
+#else
+      isCollection = false
 #endif
     }
   }
