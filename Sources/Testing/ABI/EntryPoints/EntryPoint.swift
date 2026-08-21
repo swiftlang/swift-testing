@@ -11,7 +11,7 @@
 #if canImport(Foundation)
 private import Foundation
 #endif
-private import _TestingInternals
+internal import _TestingInternals
 
 #if canImport(Synchronization)
 private import Synchronization
@@ -96,6 +96,15 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
         }
       }
     }
+
+    // The presence of a harness event stream implies suppression of the normal
+    // stderr output.
+#if os(Windows)
+    let hasHarnessEventStream = args.harnessEventStreamHANDLE
+#else
+    let hasHarnessEventStream = args.harnessEventStreamFileDescriptor
+#endif
+    consoleOutputEnabled.store(false, ordering: .sequentiallyConsistent)
 #endif
 
     // If the caller specified an alternate event handler, hook it up too.
@@ -313,6 +322,14 @@ public struct __CommandLineArguments_v0: Sendable {
   /// set the value of this property.
   var eventStreamVersionNumber: VersionNumber?
 
+#if os(Windows)
+  /// The value of the `--__harness-event-stream-handle` argument.
+  nonisolated(unsafe) var harnessEventStreamHANDLE: HANDLE?
+#else
+  /// The value of the `--__harness-event-stream-file-descriptor` argument.
+  var harnessEventStreamFileDescriptor: CInt?
+#endif
+
   /// The value of the `--event-stream-version` or `--experimental-event-stream-version`
   /// argument, representing the version of the event stream schema to use when
   /// writing events to ``eventStreamOutput``.
@@ -496,6 +513,24 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
       result.eventStreamVersionNumber = eventStreamVersion
     }
   }
+
+  // Harness event stream file descriptor (file handle on Windows)
+#if os(Windows)
+  if let handleString = args.argumentValue(forLabel: "--__harness-event-stream-handle") {
+    guard let handle = UInt(handleString).flatMap(HANDLE.init(bitPattern:)),
+          handle != INVALID_HANDLE_VALUE else {
+      throw _EntryPointError.invalidArgument("--__harness-event-stream-handle", value: handleString)
+    }
+    result.harnessEventStreamHANDLE = handle
+  }
+#else
+  if let fdString = args.argumentValue(forLabel: "--__harness-event-stream-file-descriptor") {
+    guard let fd = CInt(fdString) else {
+      throw _EntryPointError.invalidArgument("--__harness-event-stream-file-descriptor", value: fdString)
+    }
+    result.harnessEventStreamFileDescriptor = fd
+  }
+#endif
 #endif
 
   // XML output
@@ -644,6 +679,25 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       _ = try? file.withLock {
         try file.write(json)
         try file.write("\n")
+      }
+    }
+    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+      eventHandler(event, context)
+      oldEventHandler(event, context)
+    }
+  }
+
+  // Harness event stream output
+#if os(Windows)
+  let harnessFile = try args.harnessEventStreamHANDLE.map { try FileHandle(unsafeWindowsHANDLE: $0, options: [.writeAccess]) }
+#else
+  let harnessFile = try args.harnessEventStreamFileDescriptor.map { try FileHandle(unsafePOSIXFileDescriptor: $0, options: [.writeAccess]) }
+#endif
+  if let harnessFile {
+    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: ABI.HarnessVersion.versionNumber, encodeAsJSONLines: true) { json in
+      _ = try? harnessFile.withLock {
+        try harnessFile.write(json)
+        try harnessFile.write("\n")
       }
     }
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
