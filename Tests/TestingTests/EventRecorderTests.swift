@@ -90,10 +90,6 @@ struct EventRecorderTests {
       #expect(!buffer.contains("●"))
     }
 
-#if SWT_COLLECTION_DIFFING_ENABLED
-    #expect(buffer.contains("inserted ["))
-#endif
-
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")
     }
@@ -114,7 +110,7 @@ struct EventRecorderTests {
     await runTest(for: WrittenTests.self, configuration: configuration)
 
     let buffer = stream.buffer.rawValue
-    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter)   "abc": Swift.String"#))
+    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) "abc" == "xyz": Swift.Bool → false"#))
     #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter)   lhs: Swift.String → "987""#))
     #expect(buffer.contains(#""Animal Crackers" (aka 'WrittenTests')"#))
     #expect(buffer.contains(#""Not A Lobster" (aka 'actuallyCrab()')"#))
@@ -195,7 +191,7 @@ struct EventRecorderTests {
         .first != nil
     )
   }
-  
+
   @Test(
     "Log the total number of test cases in parameterized tests at the end of the test run",
     arguments: [
@@ -695,12 +691,6 @@ struct EventRecorderTests {
   func commented() {
     Issue.record()
   }
-
-#if SWT_COLLECTION_DIFFING_ENABLED
-  @Test(.hidden) func diffyDuck() {
-    #expect([1, 2, 3] as Array == [1, 2] as Array)
-  }
-#endif
 
   @Test(.hidden) func woefulWombat() {
     #expect(throws: MyError.self) {

@@ -111,9 +111,12 @@ struct TypeInfoTests {
       SomeEnum.self,
     ] as [Any.Type]
   ) func mangledTypeName(type: Any.Type) throws {
-    let mangledNameFromRuntime = try #require(_mangledTypeName(type))
-    let mangledNameFromRuntimeWithPrefix = "$s\(mangledNameFromRuntime)"
-    #expect(mangledNameFromRuntimeWithPrefix == TypeInfo(describing: type).mangledName)
+    func open<T>(_ type: T.Type) throws {
+      let mangledNameFromRuntime = try #require(_mangledTypeName(type))
+      let mangledNameFromRuntimeWithPrefix = "$s\(mangledNameFromRuntime)"
+      #expect(mangledNameFromRuntimeWithPrefix == TypeInfo(describing: type).mangledName)
+    }
+    try open(type)
   }
 
   @Test func isImportedFromC() {
@@ -128,7 +131,8 @@ struct TypeInfoTests {
 
   @Test func typeOfMoveOnlyValueIsInferred() {
     let value = MoveOnlyType()
-    #expect(TypeInfo(describingTypeOf: value).unqualifiedName == "MoveOnlyType")
+    let unqualifiedName = TypeInfo(describingTypeOf: value).unqualifiedName
+    #expect(unqualifiedName == "MoveOnlyType")
   }
 
   @Test func typeNameWithGenericClause() {

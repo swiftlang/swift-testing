@@ -493,9 +493,6 @@ extension Event.HumanReadableOutputRecorder {
       }
 
       var additionalMessages = [Message]()
-      if case let .expectationFailed(expectation) = issue.kind, let differenceDescription = expectation.differenceDescription {
-        additionalMessages.append(Message(symbol: .difference, stringValue: differenceDescription))
-      }
       additionalMessages += _formattedComments(issue.comments)
       if let knownIssueComment = issue.knownIssueContext?.comment {
         additionalMessages.append(_formattedComment(knownIssueComment))
