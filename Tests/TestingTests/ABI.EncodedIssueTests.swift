@@ -12,6 +12,7 @@
 
 #if !SWT_NO_ABI_JSON_SCHEMA
 @Suite struct `ABI.EncodedIssue Tests` {
+  // MARK: - Test Helpers
 
   /// Creates an EncodedIssue from a JSON string.
   ///
@@ -60,14 +61,21 @@
 
   // MARK: - Encode different issue types
 
-  @Test func `Encodes expectationFailed`() throws {
-    let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(
-      encoding: Self.expectationFailedIssue, in: Self.sampleEventContext)
-    try JSON.withEncoding(of: encoded) { json in
-      let jsonString = String(decoding: json, as: UTF8.self)
+  struct IssueEncodingTestCase: CustomTestStringConvertible {
+    var testDescription: String {
+      "Issue to encode: \(issueToEncode.description)"
+    }
 
-      #expect(
-        jsonString == minified(##"""
+    var issueToEncode: Issue
+    /// The JSON the issue should encode into. The test should minify this
+    /// before comparing to the actual JSON.
+    var expectedJSON: String
+  }
+
+  static let issueTestCases = [
+    IssueEncodingTestCase(
+      issueToEncode: Self.expectationFailedIssue,
+      expectedJSON: ##"""
         {
           "expression":{
             "sourceCode":"#expect(a == b)",
@@ -87,24 +95,10 @@
             "line":1
           }
         }
-        """##)
-      )
-    }
-
-    let decodedIssue = try #require(Issue(decoding: encoded))
-    // Using the Issue.Kind description as a workaround to compare two values
-    // that are enums with associated values
-    #expect(Self.expectationFailedIssue.kind.description == decodedIssue.kind.description)
-  }
-
-  @Test func `Encodes errorCaught`() throws {
-    let issue = Issue(kind: .errorCaught(FakeError()))
-    let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: issue, in: Self.sampleEventContext)
-    try JSON.withEncoding(of: encoded) { json in
-      let jsonString = String(decoding: json, as: UTF8.self)
-
-      #expect(
-        jsonString == minified(#"""
+        """##),
+    IssueEncodingTestCase(
+      issueToEncode: Issue(kind: .errorCaught(FakeError())),
+      expectedJSON: #"""
         {
           "error":{
             "code":1,
@@ -119,22 +113,10 @@
           "isFailure":true,
           "severity":"error"
         }
-        """#)
-      )
-    }
-
-    let decodedIssue = try #require(Issue(decoding: encoded))
-    #expect(issue.kind.description == decodedIssue.kind.description)
-  }
-
-  @Test func `Encodes knownIssueNotRecorded`() throws {
-    let issue = Issue(kind: .knownIssueNotRecorded)
-    let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: issue, in: Self.sampleEventContext)
-    try JSON.withEncoding(of: encoded) { json in
-      let jsonString = String(decoding: json, as: UTF8.self)
-
-      #expect(
-        jsonString == minified(#"""
+        """#),
+    IssueEncodingTestCase(
+      issueToEncode: Issue(kind: .knownIssueNotRecorded),
+      expectedJSON: #"""
         {
           "error":{
             "code":1,
@@ -148,33 +130,13 @@
           "isFailure":true,
           "severity":"error"
         }
-        """#)
-      )
-    }
-
-    let decodedIssue = try #require(Issue(decoding: encoded))
-    #expect(issue.kind.description == decodedIssue.kind.description)
-  }
-
-  @Test func `Encodes timeLimitExceeded`() throws {
-    let issue = Issue(kind: .timeLimitExceeded(timeLimitComponents: (60, 0)))
-    let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: issue, in: Self.sampleEventContext)
-    try JSON.withEncoding(of: encoded) { json in
-      let jsonString = String(decoding: json, as: UTF8.self)
-      #expect(jsonString == #"{"exceededTimeLimit":60,"isFailure":true,"severity":"error"}"#)
-    }
-
-    let decodedIssue = try #require(Issue(decoding: encoded))
-    #expect(issue.kind.description == decodedIssue.kind.description)
-  }
-
-  @Test func `Encodes confirmationMiscounted, single expected`() throws {
-    let issue = Issue(kind: .confirmationMiscounted(actual: 5, expected: 10...10))
-    let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: issue, in: Self.sampleEventContext)
-    try JSON.withEncoding(of: encoded) { json in
-      let jsonString = String(decoding: json, as: UTF8.self)
-      #expect(
-        jsonString == minified(#"""
+        """#),
+    IssueEncodingTestCase(
+      issueToEncode: Issue(kind: .timeLimitExceeded(timeLimitComponents: (60, 0))),
+      expectedJSON: #"{"exceededTimeLimit":60,"isFailure":true,"severity":"error"}"#),
+    IssueEncodingTestCase(
+      issueToEncode: Issue(kind: .confirmationMiscounted(actual: 5, expected: 10...10)),
+      expectedJSON: #"""
         {
           "confirmationMiscount":{
             "actual":5,
@@ -183,21 +145,10 @@
           "isFailure":true,
           "severity":"error"
         }
-        """#)
-      )
-    }
-
-    let decodedIssue = try #require(Issue(decoding: encoded))
-    #expect(issue.kind.description == decodedIssue.kind.description)
-  }
-
-  @Test func `Encodes confirmationMiscounted, range expected`() throws {
-    let issue = Issue(kind: .confirmationMiscounted(actual: 5, expected: 10...15))
-    let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: issue, in: Self.sampleEventContext)
-    try JSON.withEncoding(of: encoded) { json in
-      let jsonString = String(decoding: json, as: UTF8.self)
-      #expect(
-        jsonString == minified(#"""
+        """#),
+    IssueEncodingTestCase(
+      issueToEncode: Issue(kind: .confirmationMiscounted(actual: 5, expected: 10...15)),
+      expectedJSON: #"""
         {
           "confirmationMiscount":{
             "actual":5,
@@ -209,26 +160,14 @@
           "isFailure":true,
           "severity":"error"
         }
-        """#)
-      )
-    }
-
-    let decodedIssue = try #require(Issue(decoding: encoded))
-    #expect(issue.kind.description == decodedIssue.kind.description)
-  }
-
-  @Test func `Encodes known issue with user comment`() throws {
-    let issue = {
-      var issue = Issue(kind: .errorCaught(FakeError()))
-      issue.knownIssueContext = .init(comment: "This issue was marked as known")
-      return issue
-    }()
-    let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: issue, in: Self.sampleEventContext)
-    try JSON.withEncoding(of: encoded) { json in
-      let jsonString = String(decoding: json, as: UTF8.self)
-
-      #expect(
-        jsonString == minified(#"""
+        """#),
+    IssueEncodingTestCase(
+      issueToEncode: {
+        var issue = Issue(kind: .errorCaught(FakeError()))
+        issue.knownIssueContext = .init(comment: "This issue was marked as known")
+        return issue
+      }(),
+      expectedJSON: #"""
         {
           "error":{
             "code":1,
@@ -244,26 +183,14 @@
           "isKnown":"This issue was marked as known",
           "severity":"error"
         }
-        """#)
-      )
-    }
-
-    let decodedIssue = try #require(Issue(decoding: encoded))
-    #expect(issue.kind.description == decodedIssue.kind.description)
-  }
-
-  @Test func `Encodes known issue without user comment`() throws {
-    let issue = {
-      var issue = Issue(kind: .errorCaught(FakeError()))
-      issue.knownIssueContext = .init()
-      return issue
-    }()
-    let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: issue, in: Self.sampleEventContext)
-    try JSON.withEncoding(of: encoded) { json in
-      let jsonString = String(decoding: json, as: UTF8.self)
-
-      #expect(
-        jsonString == minified(#"""
+        """#),
+    IssueEncodingTestCase(
+      issueToEncode: {
+        var issue = Issue(kind: .errorCaught(FakeError()))
+        issue.knownIssueContext = .init()
+        return issue
+      }(),
+      expectedJSON: #"""
         {
           "error":{
             "code":1,
@@ -279,12 +206,26 @@
           "isKnown":true,
           "severity":"error"
         }
-        """#)
-      )
-    }
+        """#),
+  ]
 
+  @Test(arguments: Self.issueTestCases)
+  func `Encodes issue types to expected JSON`(testCase: IssueEncodingTestCase) throws {
+    let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: testCase.issueToEncode, in: Self.sampleEventContext)
+    try JSON.withEncoding(of: encoded) { json in
+      let jsonString = String(decoding: json, as: UTF8.self)
+      #expect(jsonString == minified(testCase.expectedJSON))
+    }
+  }
+
+  @Test(arguments: Self.issueTestCases)
+  func `Round trip encode/decode issue preserves issue kind`(testCase: IssueEncodingTestCase) throws {
+    let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: testCase.issueToEncode, in: Self.sampleEventContext)
     let decodedIssue = try #require(Issue(decoding: encoded))
-    #expect(issue.kind.description == decodedIssue.kind.description)
+
+    // Using the Issue.Kind description as a workaround to compare two values
+    // that are enums with associated values
+    #expect(testCase.issueToEncode.kind.description == decodedIssue.kind.description)
   }
 
   // MARK: - Backwards compatibility
