@@ -18,14 +18,17 @@ add_library(Testing
   ABI/ABI.swift
   ABI/Encoded/ABI.EncodedAttachment.swift
   ABI/Encoded/ABI.EncodedBacktrace.swift
+  ABI/Encoded/ABI.EncodedConfirmationMiscount.swift
   ABI/Encoded/ABI.EncodedError.swift
   ABI/Encoded/ABI.EncodedEvent.swift
   ABI/Encoded/ABI.EncodedExpression.swift
   ABI/Encoded/ABI.EncodedInstant.swift
   ABI/Encoded/ABI.EncodedIssue.swift
   ABI/Encoded/ABI.EncodedMessage.swift
+  ABI/Encoded/ABI.EncodedRange.swift
   ABI/Encoded/ABI.EncodedSourceLocation.swift
   ABI/Encoded/ABI.EncodedTest.swift
+  ABI/Encoded/ABI.EncodedTypeInfo.swift
   Attachments/Images/AttachableAsImage.swift
   Attachments/Images/_AttachableImageWrapper.swift
   Attachments/Images/AttachableImageFormat.swift

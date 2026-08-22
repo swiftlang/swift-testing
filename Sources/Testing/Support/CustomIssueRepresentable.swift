@@ -89,6 +89,25 @@ struct APIMisuseError: Error, CustomStringConvertible, CustomIssueRepresentable 
   }
 }
 
+
+/// A type representing a test issue due to a known issue being expected but not
+/// recorded.
+///
+/// This type is not part of the public interface of the testing library.
+/// External callers should generally record issues by throwing their own errors
+/// or by calling ``Issue/record(_:severity:sourceLocation:)``.
+struct KnownIssueNotRecordedError: Error, CustomStringConvertible {
+  var description: String
+
+  static var domain: String {
+    "org.swift.testing.KnownIssueNotRecordedError"
+  }
+
+  var _domain: String {
+    Self.domain
+  }
+}
+
 extension ExpectationFailedError: CustomIssueRepresentable {
   func customize(_ issue: consuming Issue) -> Issue {
     // Instances of this error type are thrown by `#require()` after an issue of

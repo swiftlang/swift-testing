@@ -371,6 +371,40 @@
     }
   }
 
+  // MARK: Comments
+
+  @Test func `'comments' field only encoded in 6.5 and above`() throws {
+    let test = Test {}
+    let event = Event(.issueRecorded(.init(kind: .unconditional, comments: ["User provided comment"], sourceContext: .init())), testID: .init(["SomeValidTestID", "testFunc()"]), testCaseID: nil)
+    let context = Event.Context(test: test, testCase: nil, iteration: 2, configuration: nil)
+
+
+    // v6.4
+    do {
+      let encoded = try #require(ABI.EncodedEvent<ABI.v6_4>(encoding: event, in: context))
+
+      #expect(encoded.comments == nil)
+      try JSON.withEncoding(of: encoded) { buf in
+        let str = String(decoding: buf, as: UTF8.self)
+        #expect(!str.contains(#""comments":"#))
+      }
+    }
+
+    // v6.5
+    do {
+      let encoded = try #require(ABI.EncodedEvent<ABI.v6_5>(encoding: event, in: context))
+
+      #expect(encoded.comments == ["User provided comment"])
+      try JSON.withEncoding(of: encoded) { buf in
+        let str = String(decoding: buf, as: UTF8.self)
+        #expect(str.contains(#""comments":"#))
+      }
+    }
+
+  }
+
+  // MARK: Messages
+
   @Test func `Fails to decode v6.3 record with missing 'messages' field`() throws {
     #expect(throws: DecodingError.self) {
       _ = try encodedEvent(
@@ -387,7 +421,7 @@
 
     #expect(throws: Never.self) {
       _ = try encodedEvent(
-        ABI.ExperimentalVersion.self,
+        ABI.v6_5.self,
         """
         {
           "kind": "testStarted",
