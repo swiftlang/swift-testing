@@ -431,6 +431,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
       .option("--verbosity"), .flag("--verbose"), .flag("-v"), .flag("--very-verbose"), .flag("--vv"), .flag("--quiet"), .flag("-q"),
       .option("--filter"), .option("--skip"),
       .option("--repetitions"), .option("--repeat-until"),
+      .option("--__harness-event-stream-handle"), .option("--__harness-event-stream-file-descriptor"),
     ],
     describingUnrecognizedArgumentWith: { _ in .anonymous }
   )
