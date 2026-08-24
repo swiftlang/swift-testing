@@ -167,7 +167,7 @@ public struct CommandLineArgumentList: Sendable {
   ///     throw an error.
   ///
   /// - Throws: Any error that occurs while parsing `arguments`.
-  init(
+  public init(
     parsing arguments: some Sequence<String>,
     describedBy descriptors: [Descriptor],
     describingUnrecognizedArgumentWith describeUnrecognizedArgument: ((String) throws -> Descriptor)? = nil

@@ -494,7 +494,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 
   // Harness event stream file descriptor (file handle on Windows)
 #if os(Windows)
-  if let handleString = args.argumentValue(forLabel: "--__harness-event-stream-handle") {
+  if let handleString = args.option(withLabel: "--__harness-event-stream-handle") {
     guard let handle = UInt(handleString).flatMap(HANDLE.init(bitPattern:)),
           handle != INVALID_HANDLE_VALUE else {
       throw _EntryPointError.invalidArgument("--__harness-event-stream-handle", value: handleString)
@@ -502,7 +502,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     result.harnessEventStreamHANDLE = handle
   }
 #else
-  if let fdString = args.argumentValue(forLabel: "--__harness-event-stream-file-descriptor") {
+  if let fdString = args.option(withLabel: "--__harness-event-stream-file-descriptor") {
     guard let fd = CInt(fdString) else {
       throw _EntryPointError.invalidArgument("--__harness-event-stream-file-descriptor", value: fdString)
     }
