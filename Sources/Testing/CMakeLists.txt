@@ -25,6 +25,7 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedInstant.swift
   ABI/Encoded/ABI.EncodedIssue.swift
   ABI/Encoded/ABI.EncodedMessage.swift
+  ABI/Encoded/ABI.EncodedMetadata.swift
   ABI/Encoded/ABI.EncodedSourceLocation.swift
   ABI/Encoded/ABI.EncodedTest.swift
   Attachments/Images/AttachableAsImage.swift
@@ -37,6 +38,7 @@ add_library(Testing
   Attachments/Attachment.swift
   Events/Clock.swift
   Events/Event.swift
+  Events/Event.Metadata.swift
   Events/Event+FallbackEventHandler.swift
   Events/Recorder/Event.AdvancedConsoleOutputRecorder.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
