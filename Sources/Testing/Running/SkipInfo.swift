@@ -104,7 +104,7 @@ extension SkipInfo {
 
     // Typically only a single comment is expected for SkipInfo.
     let comment = event.comments?.first.map(Comment.init(rawValue:))
-    let sourceLocation = event._sourceLocation.flatMap(SourceLocation.init(decoding:))
+    let sourceLocation = event.sourceLocation.flatMap(SourceLocation.init(decoding:))
     let sourceContext = SourceContext(backtrace: nil, sourceLocation: sourceLocation)
     self.init(comment: comment, sourceContext: sourceContext)
   }
