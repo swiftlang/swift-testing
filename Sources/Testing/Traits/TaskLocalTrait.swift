@@ -36,10 +36,15 @@ extension Trait {
 /// To add this trait to a test, use ``Trait/taskLocal(_:_:)``.
 public struct TaskLocalTrait<Value: Sendable>: SuiteTrait, TestTrait, TestScoping {
   /// This trait's task local.
-  fileprivate var taskLocal: TaskLocal<Value>
+  public var taskLocal: TaskLocal<Value>
 
   /// This trait's value.
   fileprivate var value: @Sendable () throws -> Value
+
+  /// Evaluate this trait's bound value.
+  public func evaluate() async throws -> Value {
+    try value()
+  }
 
   public var isRecursive: Bool { true }
 
