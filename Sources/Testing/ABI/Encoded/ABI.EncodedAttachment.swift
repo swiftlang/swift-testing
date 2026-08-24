@@ -217,7 +217,7 @@ extension ABI.EncodedAttachment: FileClonable {
     }
     return attachment.attachableValue.clone(toFileAtPath: filePath)
   }
-  
+
 }
 #endif
 
@@ -265,7 +265,7 @@ extension Attachment where AttachableValue == AnyAttachable {
       return nil
     }
     self.init(decoding: attachment)
-    if let sourceLocation = event._sourceLocation.flatMap(SourceLocation.init(decoding:)) {
+    if let sourceLocation = event.sourceLocation.flatMap(SourceLocation.init(decoding:)) {
       self.sourceLocation = sourceLocation
     }
   }

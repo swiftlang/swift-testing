@@ -55,6 +55,8 @@ extension ABI {
     var knownIssueComment: String?
 
     /// The location in source where this issue occurred, if available.
+    ///
+    /// TODO: how to handle this no longer being available in v6.5?
     public var sourceLocation: EncodedSourceLocation<V>?
 
     /// The backtrace where this issue occurred, if available.
@@ -91,6 +93,8 @@ extension ABI {
 
       // >= v6.5
       if V.versionNumber >= ABI.v6_5.versionNumber {
+        // SourceLocation is encoded in the parent Event structure instead
+        sourceLocation = nil
         if case .expectationFailed(let expectation) = issue.kind {
           expression = EncodedExpression(encoding: expectation.evaluatedExpression)
         }
@@ -219,7 +223,7 @@ extension Issue {
     guard let issue = event.issue else {
       return nil
     }
-    self.init(decoding: issue)
+    self.init(decoding: issue, sourceLocation: event.sourceLocation)
     if let comments = event.comments {
       self.comments += comments.map(Comment.init(rawValue:))
     }
@@ -229,10 +233,15 @@ extension Issue {
   ///
   /// - Parameters:
   ///   - issue: The encoded issue to initialize this instance from.
+  ///   - sourceLocation: The source location associated with the issue.
+  ///   If the encoded issue has a non-nil source location, this takes
+  ///   precedence. Required for >=v6.5, where sourceLocation is no longer
+  ///   available as part of the encoded issue.
   ///
   /// - Note: For higher fidelity, initialize the issue with an encoded event
   ///   representing a recorded issue rather than just the encoded issue.
-  init?<V>(decoding issue: ABI.EncodedIssue<V>) {
+  init?<V>(decoding issue: ABI.EncodedIssue<V>, sourceLocation: ABI.EncodedSourceLocation<V>? = nil) {
+    let sourceLocation = sourceLocation ?? issue.sourceLocation
     let issueKind: Issue.Kind
     if let error = issue.error {
       switch error.domain {
@@ -246,7 +255,7 @@ extension Issue {
         issueKind = .errorCaught(error)
       }
     } else if let expression = issue.expression.flatMap(__Expression.init(decoding:)),
-      let sourceLocation = issue.sourceLocation.flatMap(SourceLocation.init)
+      let sourceLocation = sourceLocation.flatMap(SourceLocation.init)
     {
       let expectation = Expectation(
         evaluatedExpression: expression,
@@ -279,7 +288,7 @@ extension Issue {
     }
     let sourceContext = SourceContext(
       backtrace: issue._backtrace.map { Backtrace(addresses: $0.symbolicatedAddresses.map(\.address)) },
-      sourceLocation: issue.sourceLocation.flatMap(SourceLocation.init)
+      sourceLocation: sourceLocation.flatMap(SourceLocation.init)
     )
     self.init(
       kind: issueKind,

@@ -87,13 +87,7 @@
             "value":"false"
           },
           "isFailure":true,
-          "severity":"error",
-          "sourceLocation":{
-            "column":1,
-            "fileID":"SomeTests\/SomeTests.swift",
-            "filePath":"\/path\/to\/SomeTests.swift",
-            "line":1
-          }
+          "severity":"error"
         }
         """##),
     IssueEncodingTestCase(
@@ -219,13 +213,18 @@
   }
 
   @Test(arguments: Self.issueTestCases)
-  func `Round trip encode/decode issue preserves issue kind`(testCase: IssueEncodingTestCase) throws {
-    let encoded = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: testCase.issueToEncode, in: Self.sampleEventContext)
+  func `Issue -> EncodedEvent -> Issue preserves issue kind, comments, and source location`(testCase: IssueEncodingTestCase) throws {
+    var issue = testCase.issueToEncode
+    issue.comments = ["Some User Comment"]
+    issue.sourceContext = .init(sourceLocation: Self.sourceLocation)
+    let encoded = try #require(ABI.EncodedEvent<ABI.CurrentVersion>(encoding: .init(.issueRecorded(issue), testID: nil, testCaseID: nil),  in: Self.sampleEventContext))
     let decodedIssue = try #require(Issue(decoding: encoded))
 
     // Using the Issue.Kind description as a workaround to compare two values
     // that are enums with associated values
     #expect(testCase.issueToEncode.kind.description == decodedIssue.kind.description)
+    #expect(decodedIssue.sourceLocation != nil)
+    #expect(!decodedIssue.comments.isEmpty)
   }
 
   // MARK: - Backwards compatibility
@@ -274,6 +273,7 @@
 
   /// Each of these issue kinds contain extra information that is only encoded
   /// in v6.5 of the issue, so they should all encode to the same JSON in v6.4.
+  /// sourceLocation is also removed in v6.5, but needs to stay for v6.4.
   @Test(arguments: [
     Self.expectationFailedIssue,
     Issue(kind: .errorCaught(FakeError()), sourceContext: .init(sourceLocation: Self.sourceLocation)),
@@ -281,7 +281,7 @@
     Issue(kind: .timeLimitExceeded(timeLimitComponents: (60, 0)), sourceContext: .init(sourceLocation: Self.sourceLocation)),
     Issue(kind: .confirmationMiscounted(actual: 5, expected: 10...10), sourceContext: .init(sourceLocation: Self.sourceLocation)),
   ])
-  func `Encodes v6.4 issues without fields added in v6.5`(issue: Issue) throws {
+  func `Maintains original encoding for v6.4 issues`(issue: Issue) throws {
     let encoded = ABI.EncodedIssue<ABI.v6_4>(encoding: issue, in: Self.sampleEventContext)
     try JSON.withEncoding(of: encoded) { json in
       let jsonString = String(decoding: json, as: UTF8.self)

@@ -174,11 +174,7 @@ extension ABI {
     /// the known issue matcher. In such cases, the secondary source location(s)
     /// are represented via a distinct property depending on the kind of that
     /// event.
-    ///
-    /// - Warning: Source locations at this level of the JSON schema are not yet
-    ///   part of said JSON schema.
-    @_spi(Experimental)
-    public var _sourceLocation: EncodedSourceLocation<V>?
+    public var sourceLocation: EncodedSourceLocation<V>?
 
     init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message] = []) {
       guard let encodedKind = Kind(encoding: event.kind, in: eventContext) else {
@@ -208,10 +204,14 @@ extension ABI {
         switch event.kind {
         case let .issueRecorded(recordedIssue):
           comments = recordedIssue.comments.map(\.rawValue)
+          sourceLocation = recordedIssue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
+        case let .valueAttached(attachment):
+          sourceLocation = EncodedSourceLocation<V>(encoding: attachment.sourceLocation)
         case let .testCaseCancelled(skipInfo),
           let .testSkipped(skipInfo),
           let .testCancelled(skipInfo):
           comments = Array(skipInfo.comment).map(\.rawValue)
+          sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         default:
           break
         }
@@ -219,19 +219,6 @@ extension ABI {
 
       // Experimental fields
       if V.includesExperimentalFields {
-        switch event.kind {
-        case let .issueRecorded(recordedIssue):
-          _sourceLocation = recordedIssue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
-        case let .valueAttached(attachment):
-          _sourceLocation = EncodedSourceLocation<V>(encoding: attachment.sourceLocation)
-        case let .testCaseCancelled(skipInfo),
-          let .testSkipped(skipInfo),
-          let .testCancelled(skipInfo):
-          _sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
-        default:
-          break
-        }
-
         if eventContext.test?.isParameterized == true {
           _testCase = eventContext.testCase.map(EncodedTestCase.init)
         }
@@ -254,7 +241,7 @@ extension ABI.EncodedEvent: Codable {
     case iteration
     case testCase = "_testCase"
     case comments
-    case sourceLocation = "_sourceLocation"
+    case sourceLocation
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -270,7 +257,7 @@ extension ABI.EncodedEvent: Codable {
     try container.encodeIfPresent(iteration, forKey: .iteration)
     try container.encodeIfPresent(_testCase, forKey: .testCase)
     try container.encodeIfPresent(comments, forKey: .comments)
-    try container.encodeIfPresent(_sourceLocation, forKey: .sourceLocation)
+    try container.encodeIfPresent(sourceLocation, forKey: .sourceLocation)
   }
 
   public init(from decoder: any Decoder) throws {
@@ -288,7 +275,7 @@ extension ABI.EncodedEvent: Codable {
     iteration = try container.decodeIfPresent(Int.self, forKey: .iteration)
     _testCase = try container.decodeIfPresent(ABI.EncodedTestCase<V>.self, forKey: .testCase)
     comments = try container.decodeIfPresent([String].self, forKey: .comments)
-    _sourceLocation = try container.decodeIfPresent(ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
+    sourceLocation = try container.decodeIfPresent(ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
   }
 }
 extension ABI.EncodedEvent.Kind: Codable {}
