@@ -17,6 +17,8 @@ extension ABI {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
+  ///
+  /// - Warning: Metadata is not yet part of the JSON schema.
   public struct EncodedMetadata<V>: Sendable where V: ABI.Version {
     /// The name of the datum.
     var name: String
