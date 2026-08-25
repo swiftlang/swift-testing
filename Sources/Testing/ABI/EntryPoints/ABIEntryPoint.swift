@@ -11,9 +11,6 @@
 #if !SWT_NO_ABI_ENTRY_POINT
 private import _TestingInternals
 
-#if SWT_NO_CODABLE
-#error("Platform-specific misconfiguration: support for the ABI entry point function requires support for 'Codable'")
-#endif
 #if SWT_NO_ABI_JSON_SCHEMA
 #error("Platform-specific misconfiguration: support for the ABI entry point function requires support for the ABI JSON schema")
 #endif
@@ -54,9 +51,16 @@ extension ABI.v0 {
   /// callback.
   public static var entryPoint: EntryPoint {
     return { configurationJSON, recordHandler in
+#if !SWT_NO_CODABLE
       let args = try configurationJSON.map { configurationJSON in
         try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
       }
+#else
+      guard configurationJSON == nil else {
+        throw APIMisuseError(description: "Cannot pass configuration JSON to the Swift Testing entry point because JSON decoding is not supported on this system.")
+      }
+      let args: __CommandLineArguments_v0? = nil
+#endif
       let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args?.eventStreamVersionNumber, encodeAsJSONLines: false, forwardingTo: recordHandler)
 
       switch await Testing.entryPoint(passing: args, eventHandler: eventHandler) {

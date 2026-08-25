@@ -9,9 +9,6 @@
 //
 
 #if !SWT_NO_ABI_JSON_SCHEMA
-#if SWT_NO_CODABLE
-#error("Platform-specific misconfiguration: support for the ABI JSON schema requires support for 'Codable'")
-#endif
 
 extension ABI {
   /// A type representing persistent context used when handling an ABI or JSON

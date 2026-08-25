@@ -144,8 +144,9 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.EncodedTest: Codable {}
 extension ABI.EncodedTest.Kind: Codable {}
 extension ABI.EncodedTest.Parameter: Codable {}
@@ -158,6 +159,50 @@ extension ABI.EncodedTest.ID: Codable {
 
   init(from decoder: any Decoder) throws {
     stringValue = try String(from: decoder)
+  }
+}
+#endif
+
+extension ABI.EncodedTest: JSON.Encodable {
+  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["kind"] = kind.rawValue.jsonValue(in: context)
+    result["name"] = name.jsonValue(in: context)
+    result["displayName"] = displayName?.jsonValue(in: context)
+    result["sourceLocation"] = sourceLocation.jsonValue(in: context)
+    result["id"] = id.stringValue.jsonValue(in: context)
+    result["_testCases"] = _testCases?.jsonValue(in: context)
+    result["isParameterized"] = isParameterized?.jsonValue(in: context)
+    result["_parameters"] = _parameters?.jsonValue(in: context)
+    result["_tags"] = _tags?.jsonValue(in: context)
+    result["tags"] = tags?.jsonValue(in: context)
+    result["bugs"] = bugs?.jsonValue(in: context)
+    result["timeLimit"] = timeLimit?.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
+
+extension ABI.EncodedTest.Parameter: JSON.Encodable {
+  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["name"] = name?.jsonValue(in: context)
+    result["typeName"] = typeName.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
+
+extension ABI.EncodedTestCase: JSON.Encodable {
+  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["id"] = id.jsonValue(in: context)
+    result["displayName"] = displayName.jsonValue(in: context)
+
+    return .object(result)
   }
 }
 

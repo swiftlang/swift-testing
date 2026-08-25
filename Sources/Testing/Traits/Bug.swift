@@ -46,11 +46,23 @@ extension Bug: Equatable, Hashable {
   }
 }
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension Bug: Codable {}
 #endif
+
+extension Bug: JSON.Encodable {
+  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["url"] = url?.jsonValue(in: context)
+    result["id"] = id?.jsonValue(in: context)
+    result["title"] = title?.rawValue.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
 
 // MARK: - Trait, TestTrait, SuiteTrait
 

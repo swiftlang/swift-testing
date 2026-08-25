@@ -51,8 +51,9 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.EncodedAttachment: Codable {
   private enum CodingKeys: String, CodingKey {
     case path
@@ -62,59 +63,7 @@ extension ABI.EncodedAttachment: Codable {
   }
 
   public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-
-    func encodeBytes(_ bytes: UnsafeRawBufferPointer) throws {
-#if canImport(Foundation)
-      // If possible, encode this structure as Base64 data.
-      let data = Data(bytesNoCopy: .init(mutating: bytes.baseAddress!), count: bytes.count, deallocator: .none)
-      try container.encode(data.base64EncodedString(), forKey: .bytes)
-#else
-      // Otherwise, it's an array of integers.
-      try container.encode(Array(bytes), forKey: .bytes)
-#endif
-    }
-
-    switch kind {
-    case let .savedAtPath(path):
-      try container.encode(path, forKey: .path)
-    case let .abstract(attachment):
-      if let path = attachment.fileSystemPath {
-        try container.encode(path, forKey: .path)
-      } else if V.includesExperimentalFields {
-        var errorWhileEncoding: (any Error)?
-        do {
-          try attachment.withUnsafeBytes { bytes in
-            do {
-              try encodeBytes(bytes)
-            } catch {
-              // An error occurred during encoding rather than coming from the
-              // attachment itself. Preserve it and throw it before returning.
-              errorWhileEncoding = error
-            }
-          }
-        } catch {
-          // An error occurred while serializing the attachment. Encode it
-          // separately for recovery on the calling side.
-          let error = ABI.EncodedError<V>(encoding: error)
-          try container.encode(error, forKey: .error)
-        }
-        if let errorWhileEncoding {
-          throw errorWhileEncoding
-        }
-      }
-    case let .inMemory(bytes):
-      if V.includesExperimentalFields {
-        try bytes.withUnsafeBytes(encodeBytes)
-      }
-    case let .error(error):
-      if V.includesExperimentalFields {
-        try container.encode(error, forKey: .error)
-      }
-    }
-    if V.includesExperimentalFields {
-      try container.encodeIfPresent(_preferredName, forKey: .preferredName)
-    }
+    try encoder.encodeJSONEncodableValue(self)
   }
 
   public init(from decoder: any Decoder) throws {
@@ -157,6 +106,55 @@ extension ABI.EncodedAttachment: Codable {
     if V.includesExperimentalFields {
       _preferredName = try container.decodeIfPresent(String.self, forKey: .preferredName)
     }
+  }
+}
+#endif
+
+extension ABI.EncodedAttachment: JSON.Encodable {
+  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    func encodeBytes(_ bytes: UnsafeRawBufferPointer) {
+#if canImport(Foundation)
+      // If possible, encode this structure as Base64 data.
+      let data = Data(bytesNoCopy: .init(mutating: bytes.baseAddress!), count: bytes.count, deallocator: .none)
+      result["_bytes"] = data.base64EncodedString().jsonValue(in: context)
+#else
+      // Otherwise, it's an array of integers.
+      result["_bytes"] = Array(bytes).jsonValue(in: context)
+#endif
+    }
+
+    switch kind {
+    case let .savedAtPath(path):
+      result["path"] = path.jsonValue(in: context)
+    case let .abstract(attachment):
+      if let path = attachment.fileSystemPath {
+        result["path"] = path.jsonValue(in: context)
+      } else if V.includesExperimentalFields {
+        do {
+          try attachment.withUnsafeBytes(encodeBytes)
+        } catch {
+          // An error occurred while serializing the attachment. Encode it
+          // separately for recovery on the calling side.
+          let error = ABI.EncodedError<V>(encoding: error)
+          result["_error"] = error.jsonValue(in: context)
+        }
+      }
+    case let .inMemory(bytes):
+      if V.includesExperimentalFields {
+        bytes.withUnsafeBytes(encodeBytes)
+      }
+    case let .error(error):
+      if V.includesExperimentalFields {
+        result["_error"] = error.jsonValue(in: context)
+      }
+    }
+    if V.includesExperimentalFields {
+      result["_preferredName"] = _preferredName?.jsonValue(in: context)
+    }
+
+    return .object(result)
   }
 }
 

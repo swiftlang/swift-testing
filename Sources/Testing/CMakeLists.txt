@@ -104,6 +104,7 @@ add_library(Testing
   Support/GetSymbol.swift
   Support/Graph.swift
   Support/JSON.swift
+  Support/JSON.Encodable.swift
   Support/Serializer.swift
   Support/SHA256.swift
   Support/VersionNumber.swift
