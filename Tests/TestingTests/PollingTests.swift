@@ -401,7 +401,7 @@ struct `Polling Confirmation Tests` {
           await incrementor.increment() != 0
         }
         let count = await incrementor.count
-        #expect(await count == 10)
+        #expect(count == 10)
       }
 
       @available(_clockAPI, *)

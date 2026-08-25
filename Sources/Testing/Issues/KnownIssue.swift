@@ -80,7 +80,7 @@ struct KnownIssueScope: Sendable {
 ///     function.
 ///   - sourceLocation: The source location to which the issue should be
 ///     attributed.
-private func _matchError(_ error: any Error, in scope: KnownIssueScope, comment: Comment?, sourceLocation: SourceLocation) throws {
+private func _matchError(_ error: any Error, in scope: IssueCapturingScope, comment: Comment?, sourceLocation: SourceLocation) throws {
   // ExpectationFailedError is thrown by expectation checking functions to
   // indicate a condition evaluated to `false`. Those functions record their
   // own issue, so we don't need to create a new issue and attempt to match it.
@@ -110,8 +110,8 @@ private func _matchError(_ error: any Error, in scope: KnownIssueScope, comment:
 ///     function.
 ///   - sourceLocation: The source location to which the issue should be
 ///     attributed.
-private func _handleMiscount(by matchCounter: Allocated<Atomic<Int>>, comment: Comment?, sourceLocation: SourceLocation) {
-  if matchCounter.value.load(ordering: .sequentiallyConsistent) == 0 {
+private func _handleMiscount(by matchCounter: Allocated<Mutex<[Issue]>>, comment: Comment?, sourceLocation: SourceLocation) {
+  if matchCounter.value.withLock({ $0.count }) == 0 {
     let issue = Issue(
       kind: .knownIssueNotRecorded,
       comments: Array(comment),
@@ -231,13 +231,13 @@ public func withKnownIssue(
   guard precondition() else {
     return try body()
   }
-  let scope = KnownIssueScope(issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
+  let scope = IssueCapturingScope(issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
   defer {
     if !isIntermittent {
-      _handleMiscount(by: scope.matchCounter, comment: comment, sourceLocation: sourceLocation)
+      _handleMiscount(by: scope.issues, comment: comment, sourceLocation: sourceLocation)
     }
   }
-  try KnownIssueScope.$current.withValue(scope) {
+  try IssueCapturingScope.$current.withValue(scope) {
     do {
       try body()
     } catch {
@@ -350,13 +350,13 @@ public func withKnownIssue(
   guard await precondition() else {
     return try await body()
   }
-  let scope = KnownIssueScope(issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
+  let scope = IssueCapturingScope(issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
   defer {
     if !isIntermittent {
-      _handleMiscount(by: scope.matchCounter, comment: comment, sourceLocation: sourceLocation)
+      _handleMiscount(by: scope.issues, comment: comment, sourceLocation: sourceLocation)
     }
   }
-  try await KnownIssueScope.$current.withValue(scope) {
+  try await IssueCapturingScope.$current.withValue(scope) {
     do {
       try await body()
     } catch {
