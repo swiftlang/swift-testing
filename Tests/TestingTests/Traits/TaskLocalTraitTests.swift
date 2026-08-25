@@ -10,17 +10,15 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-@Suite("Task Local Tests", .tags(.traitRelated))
-struct TaskLocalTests {
-  @Test(
-    ".taskLocal trait",
-    .taskLocal(local, withValue: true)
-  )
-  func taskLocalBinding() throws {
+@Suite(.tags(.traitRelated))
+struct `TaskLocalTrait tests` {
+  @Test(.taskLocal(local, withValue: true))
+  func `.taskLocal trait`() throws {
     #expect(local.wrappedValue == true)
   }
 
-  @Suite(.serialized, .taskLocal(stateLocal, withValue: State())) struct MutableLocal {
+  @Suite(.serialized, .taskLocal(stateLocal, withValue: State()))
+  struct `Mutable task local values` {
     @Test func run1() {
       #expect(stateLocal.wrappedValue.count == 0)
       stateLocal.wrappedValue.count += 1
@@ -32,10 +30,21 @@ struct TaskLocalTests {
       #expect(stateLocal.wrappedValue.count == 1)
     }
   }
+
+  @Test func `evaluate()`() async throws {
+    let trait = TaskLocalTrait.taskLocal(stateLocal, withValue: State(count: 99))
+    let state = try await trait.evaluate()
+    #expect(state.count == 99)
+  }
 }
+
+// MARK: - Fixtures
 
 private let local = TaskLocal(wrappedValue: false)
 private class State: @unchecked Sendable {
-  var count = 0
+  var count: Int
+  init(count: Int = 0) {
+    self.count = count
+  }
 }
 private let stateLocal = TaskLocal(wrappedValue: State())

@@ -8,9 +8,80 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+/// A type that that binds a task local value for the duration of a test or
+/// suite.
+///
+/// When an instance of this trait is applied to a suite, it is recursively
+/// inherited by all child suites and tests.
+///
+/// To add this trait to a test, use ``Trait/taskLocal(_:withValue:)``.
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.5)
+/// }
+public struct TaskLocalTrait<Value>: SuiteTrait, TestTrait where Value: Sendable {
+  /// This trait's task local.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.5)
+  /// }
+  public var taskLocal: TaskLocal<Value>
+
+  /// A closure which returns a value this trait's task local will be bound to.
+  private var _value: @Sendable () throws -> Value
+
+  fileprivate init(taskLocal: TaskLocal<Value>, value: @escaping @Sendable () throws -> Value) {
+    self.taskLocal = taskLocal
+    self._value = value
+  }
+
+  /// Evaluate this trait's bound value.
+  ///
+  /// - Returns: The result of invoking the `value` closure passed to
+  ///   ``Trait/taskLocal(_:withValue:)``.
+  ///
+  /// - Throws: Whatever is thrown when invoking the `value` closure passed to
+  ///   ``Trait/taskLocal(_:withValue:)``.
+  ///
+  /// Each call to this function invokes the closure that was passed to
+  /// ``Trait/taskLocal(_:withValue:)``. The resulting value isn't cached or
+  /// stored by this trait, so repeated calls may produce different values or
+  /// cause side effects to occur more than once.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.5)
+  /// }
+  public func evaluate() async throws -> Value {
+    try _value()
+  }
+
+  public var isRecursive: Bool {
+    true
+  }
+}
+
+// MARK: - TestScoping
+
+/// @Metadata {
+///   @Available(Swift, introduced: 6.5)
+/// }
+extension TaskLocalTrait: TestScoping {
+  public func provideScope(
+    for test: Test,
+    testCase: Test.Case?,
+    performing function: @Sendable () async throws -> Void
+  ) async throws {
+    try await taskLocal.withValue(evaluate()) {
+      try await function()
+    }
+  }
+}
+
+// MARK: -
+
 extension Trait {
-  /// Constructs a trait that binds a task local value for the duration of a test
-  /// or suite.
+  /// Constructs a trait that binds a task local value for the duration of a
+  /// test or suite.
   ///
   /// - Parameters:
   ///   - taskLocal: The task local to bind the value to.
@@ -21,40 +92,16 @@ extension Trait {
   ///     the task local and released once the trait is finished
   ///     providing scope for the test.
   ///
-  /// - Note: You must define the task local outside the test target where the trait is used.
-  public static func taskLocal<Value: Sendable>(
+  /// - Note: You must define the task local outside the test target where the
+  ///   trait is used.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.5)
+  /// }
+  public static func taskLocal<Value>(
     _ taskLocal: TaskLocal<Value>,
     withValue value: @autoclosure @escaping @Sendable () throws -> Value
-  ) -> Self
-  where Self == TaskLocalTrait<Value> {
+  ) -> Self where Value: Sendable, Self == TaskLocalTrait<Value> {
     TaskLocalTrait(taskLocal: taskLocal, value: value)
-  }
-}
-
-/// A type that that binds a task local value for the duration of a test or suite.
-///
-/// To add this trait to a test, use ``Trait/taskLocal(_:_:)``.
-public struct TaskLocalTrait<Value: Sendable>: SuiteTrait, TestTrait, TestScoping {
-  /// This trait's task local.
-  public var taskLocal: TaskLocal<Value>
-
-  /// This trait's value.
-  fileprivate var value: @Sendable () throws -> Value
-
-  /// Evaluate this trait's bound value.
-  public func evaluate() async throws -> Value {
-    try value()
-  }
-
-  public var isRecursive: Bool { true }
-
-  public func provideScope(
-    for test: Test,
-    testCase: Test.Case?,
-    performing function: @Sendable () async throws -> Void
-  ) async throws {
-    try await taskLocal.withValue(value()) {
-      try await function()
-    }
   }
 }
