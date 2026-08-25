@@ -123,7 +123,7 @@ func runTestAndRecordIssues(
     }
   }
   await Test(testFunction: testFunction).run(configuration: configuration)
-  return issues.rawValue
+  return issues.withLock { $0 }
 }
 
 /// Runs the passed-in `Test`, returning any issues recorded.
@@ -147,7 +147,7 @@ func runTestAndRecordIssues(
     }
   }
   await test.run(configuration: configuration)
-  return issues.rawValue
+  return issues.withLock { $0 }
 }
 
 extension Runner {

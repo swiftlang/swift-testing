@@ -291,7 +291,7 @@ final class KnownIssueTests: XCTestCase {
     await fulfillment(of: [issueRecorded], timeout: 0.0)
   }
 
-  func testNestedKnownIssueThatMatches() async {
+  func testKnownIssueNestingDoesNotCheckParentOnceIssueMatches() async {
     let reportedIssues = await runTestAndRecordIssues {
       withKnownIssue("parent") {
         withKnownIssue("child") {
@@ -300,10 +300,8 @@ final class KnownIssueTests: XCTestCase {
       }
     }
 
-    XCTExpectFailure("Will be fixed later in this PR") {
-      XCTAssertEqual(reportedIssues.count, 1)
-    }
-    // Issue is reported by the parent context as a known issue.
+    XCTAssertEqual(reportedIssues.count, 2)
+    // Issue is reported by the child context as a known issue.
     XCTAssert(
       reportedIssues.contains {
         guard case Issue.Kind.unconditional = $0.kind else {
@@ -315,25 +313,13 @@ final class KnownIssueTests: XCTestCase {
         $0.isFailure == false
       }
     )
-    // "context" does not report a `knownIssueNotRecorded` error, because the
-    // "parent" scope matches it.
+    // Parent context does report that no issues were passed to it.
     XCTAssert(
       reportedIssues.contains {
         guard case .knownIssueNotRecorded = $0.kind else { return false }
-        return $0.knownIssueContext == nil &&
-        $0.comments == ["child"]
-      } == false
+        return $0.knownIssueContext == nil && $0.comments == ["parent"]
+      }
     )
-    XCTExpectFailure("Will be fixed later in this PR") {
-      XCTAssert(
-        reportedIssues.contains {
-          guard case .knownIssueNotRecorded = $0.kind else {
-            return false
-          }
-          return $0.knownIssueContext == nil && $0.comments == ["parent"]
-        } == false
-      )
-    }
   }
 
   func testIssueIsKnownPropertyIsSetCorrectlyWithCustomIssueMatcher() async {
