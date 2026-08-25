@@ -20,17 +20,23 @@ private import Foundation
 #endif
 
 enum JSON {
+  /// String representations of non-finite floating-point values.
+  static var positiveInfinityString: String {
+    "Infinity"
+  }
+  static var negativeInfinityString: String {
+    "-Infinity"
+  }
+  static var nanString: String {
+    "NaN"
+  }
+
 #if !SWT_NO_CODABLE
   /// Whether or not pretty-printed JSON is enabled for this process.
   ///
   /// This is a debugging tool that can be used by developers working on the
   /// testing library to improve the readability of JSON output.
   private static let _prettyPrintingEnabled = Environment.flag(named: "SWT_PRETTY_PRINT_JSON") == true
-
-  /// String representations of non-finite floating-point values.
-  private static let _positiveInfinityString = "Infinity"
-  private static let _negativeInfinityString = "-Infinity"
-  private static let _nanString = "NaN"
 
   /// A JSON encoder to use with the default encoding configuration.
   ///
@@ -59,7 +65,7 @@ enum JSON {
   ///
   /// - Throws: Whatever is thrown by `body` or by the encoding process.
   static func withEncoding<R>(
-    of value: some Encodable,
+    of value: some Swift.Encodable,
     userInfo: [CodingUserInfoKey: any Sendable] = [:],
     _ body: (UnsafeRawBufferPointer) throws -> R
   ) throws -> R {
@@ -72,11 +78,11 @@ enum JSON {
       // Set user info keys that clients want to use during encoding.
       encoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
 
-      if encoder.userInfo[.allowNonFiniteFloatingPointValuesUserInfoKey] as? Bool == true {
+      if encoder.userInfo[.allowNonConformingFloatingPointValuesUserInfoKey] as? Bool == true {
         encoder.nonConformingFloatEncodingStrategy = .convertToString(
-          positiveInfinity: _positiveInfinityString,
-          negativeInfinity: _negativeInfinityString,
-          nan: _nanString
+          positiveInfinity: positiveInfinityString,
+          negativeInfinity: negativeInfinityString,
+          nan: nanString
         )
       }
 
@@ -89,6 +95,13 @@ enum JSON {
 
       return encoder
     }()
+
+#if DEBUG && !SWT_NO_FILE_IO
+    // Advise us to use our own encoder where possible.
+    if userInfo.isEmpty, value is any JSON.Encodable {
+      try? FileHandle.stderr.write("Using 'Codable' conformance to encode a value that also conforms to 'JSON.Encodable': \(value)\n")
+    }
+#endif
 
     let data = try encoder.encode(value)
     return try data.withUnsafeBytes(body)
@@ -160,11 +173,11 @@ enum JSON {
         // Set user info keys that clients want to use during decoding.
         decoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
 
-        if decoder.userInfo[.allowNonFiniteFloatingPointValuesUserInfoKey] as? Bool == true {
+        if decoder.userInfo[.allowNonConformingFloatingPointValuesUserInfoKey] as? Bool == true {
           decoder.nonConformingFloatDecodingStrategy = .convertFromString(
-            positiveInfinity: _positiveInfinityString,
-            negativeInfinity: _negativeInfinityString,
-            nan: _nanString
+            positiveInfinity: positiveInfinityString,
+            negativeInfinity: negativeInfinityString,
+            nan: nanString
           )
         }
 
@@ -180,8 +193,8 @@ enum JSON {
 extension CodingUserInfoKey {
   /// A coding user info key whose value is a `Bool` indicating whether or not
   /// non-finite floating-point values are allowed.
-  static var allowNonFiniteFloatingPointValuesUserInfoKey: Self {
-    Self(rawValue: "org.swift.testing.coding-user-info-key.allow-non-finite-floating-point-values")!
+  static var allowNonConformingFloatingPointValuesUserInfoKey: Self {
+    Self(rawValue: "org.swift.testing.coding-user-info-key.allow-non-conforming-floating-point-values")!
   }
 }
 #endif

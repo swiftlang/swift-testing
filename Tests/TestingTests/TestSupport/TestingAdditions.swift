@@ -432,8 +432,14 @@ extension JSON {
   ///
   /// - Throws: Any error encountered encoding or decoding `value`.
   static func encodeAndDecode<T>(_ value: T) throws -> T where T: Codable {
-    try JSON.withEncoding(of: value) { data in
-      try JSON.decode(T.self, from: data)
+    if let value = value as? any JSON.Encodable & Decodable {
+      try JSON.withEncoding(of: value, in: JSON.EncodingContext()) { data in
+        try JSON.decode(T.self, from: data)
+      }
+    } else {
+      try JSON.withEncoding(of: value) { data in
+        try JSON.decode(T.self, from: data)
+      }
     }
   }
 }

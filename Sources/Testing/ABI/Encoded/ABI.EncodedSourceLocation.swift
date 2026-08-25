@@ -53,9 +53,9 @@ extension ABI {
   }
 }
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.EncodedSourceLocation: Codable {
   private enum CodingKeys: String, CodingKey {
     case fileID
@@ -66,6 +66,20 @@ extension ABI.EncodedSourceLocation: Codable {
   }
 }
 #endif
+
+extension ABI.EncodedSourceLocation: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["fileID"] = fileID?.jsonValue(in: context)
+    result["_filePath"] = _filePath_v0?.jsonValue(in: context)
+    result["filePath"] = _filePath_v6_3?.jsonValue(in: context)
+    result["line"] = line.jsonValue(in: context)
+    result["column"] = column.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
 
 // MARK: - Conversion to/from library types
 

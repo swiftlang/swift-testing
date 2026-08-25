@@ -575,10 +575,10 @@ private let exit = Testing.exit
   }
 
   @Test(
-    "Capture list (non-finite floating-point values)",
+    "Capture list (non-conforming floating-point values)",
     arguments: [Double.infinity, -Double.infinity, Double.nan]
   )
-  func captureListWithNonFiniteFloatingPointValues(_ value: Double) async {
+  func captureListWithNonConformingFloatingPointValues(_ value: Double) async {
     let expectedIsNaN = value.isNaN
     let expectedIsNegative = value.sign == .minus
     await #expect(processExitsWith: .success) {
