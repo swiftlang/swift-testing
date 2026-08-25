@@ -83,8 +83,22 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.EncodedMessage: Codable {}
 extension ABI.EncodedMessage.Symbol: Codable {}
+#endif
+
+extension ABI.EncodedMessage: JSON.Encodable {
+  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["symbol"] = symbol.rawValue.jsonValue(in: context)
+    result["text"] = text.jsonValue(in: context)
+    result["_indentation"] = _indentation?.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
 #endif

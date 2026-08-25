@@ -113,10 +113,29 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.EncodedIssue: Codable {}
 extension ABI.EncodedIssue.Severity: Codable {}
+#endif
+
+extension ABI.EncodedIssue: JSON.Encodable {
+  public func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["severity"] = severity?.rawValue.jsonValue(in: context)
+    result["isFailure"] = isFailure?.jsonValue(in: context)
+    result["isKnown"] = isKnown.jsonValue(in: context)
+    result["_knownIssueComment"] = _knownIssueComment?.jsonValue(in: context)
+    result["sourceLocation"] = sourceLocation?.jsonValue(in: context)
+    result["_backtrace"] = _backtrace?.jsonValue(in: context)
+    result["_error"] = _error?.jsonValue(in: context)
+    result["_expression"] = _expression?.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
 
 // MARK: - Conversion to/from library types
 

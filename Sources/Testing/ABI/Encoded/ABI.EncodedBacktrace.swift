@@ -32,15 +32,23 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.EncodedBacktrace: Codable {
-  func encode(to encoder: any Encoder) throws {
-    try symbolicatedAddresses.encode(to: encoder)
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
   }
 
   init(from decoder: any Decoder) throws {
     self.symbolicatedAddresses = try [Backtrace.SymbolicatedAddress](from: decoder)
+  }
+}
+#endif
+
+extension ABI.EncodedBacktrace: JSON.Encodable {
+  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+    symbolicatedAddresses.jsonValue(in: context)
   }
 }
 #endif

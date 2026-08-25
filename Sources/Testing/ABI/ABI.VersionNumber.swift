@@ -164,9 +164,9 @@ extension ABI.VersionNumber: Equatable, Comparable {
   }
 }
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.VersionNumber: Codable {
   public init(from decoder: any Decoder) throws {
     let container = try decoder.singleValueContainer()
@@ -189,14 +189,7 @@ extension ABI.VersionNumber: Codable {
   }
 
   public func encode(to encoder: any Encoder) throws {
-    var container = encoder.singleValueContainer()
-    if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
-      // Version 0 and earlier are encoded as integers for compatibility with
-      // Swift 6.2 and earlier.
-      try container.encode(majorComponent)
-    } else {
-      try container.encode("\(majorComponent).\(minorComponent).\(patchComponent)")
-    }
+    try encoder.encodeJSONEncodableValue(self)
   }
 
 #if !SWT_NO_ABI_JSON_SCHEMA
@@ -216,3 +209,16 @@ extension ABI.VersionNumber: Codable {
 #endif
 }
 #endif
+
+extension ABI.VersionNumber: JSON.Encodable {
+  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+    if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
+      // Version 0 and earlier are encoded as integers for compatibility with
+      // Swift 6.2 and earlier.
+      return majorComponent.jsonValue(in: context)
+    } else {
+      return "\(majorComponent).\(minorComponent).\(patchComponent)".jsonValue(in: context)
+    }
+
+  }
+}

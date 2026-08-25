@@ -114,11 +114,23 @@ extension Backtrace {
   }
 }
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension Backtrace.SymbolicatedAddress: Codable {}
 #endif
+
+extension Backtrace.SymbolicatedAddress: JSON.Encodable {
+  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["address"] = address.jsonValue(in: context)
+    result["offset"] = offset?.jsonValue(in: context)
+    result["symbolName"] = symbolName?.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
 
 // MARK: - Swift runtime wrappers
 
