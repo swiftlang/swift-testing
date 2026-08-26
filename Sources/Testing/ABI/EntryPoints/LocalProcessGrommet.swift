@@ -10,19 +10,23 @@
 
 #if !SWT_NO_PROCESS_SPAWNING
 package struct LocalProcessGrommet: Grommet {
+  private var _commandLineArguments: [String]
+
 #if SWT_TARGET_OS_APPLE
   private var _testProductBinaryPath: String
   private var _swiftPMTestingHelperPath: String
 
-  package init(testProductBinaryPath: String, swiftPMTestingHelperPath: String) {
+  package init(testProductBinaryPath: String, swiftPMTestingHelperPath: String, commandLineArguments: [String]) {
     _testProductBinaryPath = testProductBinaryPath
     _swiftPMTestingHelperPath = swiftPMTestingHelperPath
+    _commandLineArguments = commandLineArguments
   }
 #else
   private var _testProductPath: String
 
-  package init(testProductPath: String) {
+  package init(testProductPath: String, commandLineArguments: [String]) {
     _testProductPath = testProductPath
+    _commandLineArguments = commandLineArguments
   }
 #endif
 
@@ -47,7 +51,7 @@ package struct LocalProcessGrommet: Grommet {
       arguments += [
         "--testing-library", "swift-testing",
       ]
-      arguments += CommandLine.arguments.dropFirst()
+      arguments += _commandLineArguments
 #if os(Windows)
       backChannelWriteEnd.withUnsafeWindowsHANDLE { handle in
         guard let handle else {

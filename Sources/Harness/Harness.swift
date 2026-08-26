@@ -35,6 +35,8 @@ struct Harness: Sendable {
     result.append(.option("--event-stream-input-path"))
 #endif
 
+    result.append(.option("--xunit-output"))
+
     return result
   }
 
@@ -96,6 +98,16 @@ struct Harness: Sendable {
 #if SWT_TARGET_OS_APPLE
     let swiftPMTestingHelperPath = try swiftPMTestingHelperPath
 #endif
+    var args = _args
+    args.setOptions([], forLabel: "--test-product-path")
+    args.setOptions([], forLabel: "--swiftpm-testing-helper-path")
+
+    // Process XML output at the harness layer.
+    let xmlOutputPath = args.option(withLabel: "--xunit-output")
+    if xmlOutputPath != nil {
+      args.setOptions([], forLabel: "--xunit-output")
+    }
+
     grommets += try testProductPaths.map { testProductPath in
 #if SWT_TARGET_OS_APPLE
       let testProductBundle = Bundle(path: testProductPath)
@@ -105,10 +117,14 @@ struct Harness: Sendable {
 
       return LocalProcessGrommet(
         testProductBinaryPath: testProductBinaryPath,
-        swiftPMTestingHelperPath: swiftPMTestingHelperPath
+        swiftPMTestingHelperPath: swiftPMTestingHelperPath,
+        commandLineArguments: args.arguments
       )
 #else
-      return LocalProcessGrommet(testProductPath: testProductPath)
+      return LocalProcessGrommet(
+        testProductPath: testProductPath,
+        commandLineArguments: args.arguments
+      )
 #endif
     }
 #endif
@@ -120,7 +136,11 @@ struct Harness: Sendable {
     grommets += try eventStreamInputPaths.map(FileGrommet.init(readingFromFileAtPath:))
 #endif
 
-    try await harnessEntryPoint(running: grommets, verbosity: verbosity) as Never
+    try await harnessEntryPoint(
+      running: grommets,
+      verbosity: verbosity,
+      xmlOutputPath: xmlOutputPath
+    ) as Never
   }
 }
 

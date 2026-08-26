@@ -31,6 +31,7 @@ extension ABI {
 /// - Parameters:
 ///   - grommets: The grommets to run.
 ///   - verbosity: The verbosity to run at.
+///   - xmlOutputPath: The path at which to write JUnit XML output, if any.
 ///
 /// - Returns: The exit code that the harness should exit with.
 ///
@@ -38,7 +39,8 @@ extension ABI {
 /// then handles the remainder of the harness' work.
 package func harnessEntryPoint(
   running grommets: [any Grommet],
-  verbosity: Int
+  verbosity: Int,
+  xmlOutputPath: String?
 ) async throws -> CInt {
   var exitCodes = [CInt]()
 
@@ -55,6 +57,16 @@ package func harnessEntryPoint(
     configuration.verbosity = verbosity
 
     return (eventRecorder, configuration)
+  }()
+
+  let xmlOutputRecorder: Event.JUnitXMLRecorder? = try {
+    guard let xmlOutputPath else {
+      return nil
+    }
+    let file = try FileHandle(forWritingAtPath: xmlOutputPath)
+    return Event.JUnitXMLRecorder { string in
+      try? file.write(string)
+    }
   }()
 #endif
 
@@ -115,6 +127,7 @@ package func harnessEntryPoint(
 #if !SWT_NO_FILE_IO
         if recordEvent, let eventRecorder {
           eventRecorder.record(event, in: eventContext, configuration: configuration)
+          xmlOutputRecorder?.record(event, in: eventContext)
         }
 #endif
       }
@@ -132,7 +145,9 @@ package func harnessEntryPoint(
 
 #if !SWT_NO_FILE_IO
   if let runEndedEvent = runEndedEvent.rawValue, let eventRecorder {
-    eventRecorder.record(runEndedEvent.0, in: runEndedEvent.1, configuration: configuration)
+    let (event, eventContext) = runEndedEvent
+    eventRecorder.record(event, in: eventContext, configuration: configuration)
+    xmlOutputRecorder?.record(event, in: eventContext)
   }
 #endif
 
@@ -152,6 +167,7 @@ package func harnessEntryPoint(
 /// - Parameters:
 ///   - grommets: The grommets to run.
 ///   - verbosity: The verbosity to run at.
+///   - xmlOutputPath: The path at which to write JUnit XML output, if any.
 ///
 /// The harness target is responsible for creating `grommets`; this function
 /// then handles the remainder of the harness' work.
@@ -160,8 +176,9 @@ package func harnessEntryPoint(
 /// caller.
 package func harnessEntryPoint(
   running grommets: [any Grommet],
-  verbosity: Int
+  verbosity: Int,
+  xmlOutputPath: String?
 ) async throws -> Never {
-  let exitCode: CInt = try await harnessEntryPoint(running: grommets, verbosity: verbosity)
+  let exitCode: CInt = try await harnessEntryPoint(running: grommets, verbosity: verbosity, xmlOutputPath: xmlOutputPath)
   exit(exitCode)
 }

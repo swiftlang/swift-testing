@@ -198,6 +198,26 @@ public struct CommandLineArgumentList: Sendable {
 // MARK: - Getting parsed arguments
 
 extension CommandLineArgumentList {
+  /// All represented arguments.
+  ///
+  /// The value of this property does not include the first argument (the
+  /// program name) from the original input.
+  ///
+  /// - Important: The order of arguments in this property's value may not match
+  ///   the order originally specified by the caller.
+  public var arguments: [String] {
+    var result = [String]()
+
+    result += _subcommandNames
+    result += _flags
+    result += _options.lazy.flatMap { label, values in
+      values.lazy.flatMap { [label, $0] }
+    }
+    result += _anonymousArgumentValues
+
+    return result
+  }
+
   /// All anonymous argument values found during argument parsing.
   ///
   /// For example, given the following command line parsed with appropriate
@@ -209,7 +229,12 @@ extension CommandLineArgumentList {
   ///
   /// The value of this property would be `["abc", "123"]`.
   public var anonymousArgumentValues: [String] {
-    _anonymousArgumentValues
+    get {
+      _anonymousArgumentValues
+    }
+    set {
+      _anonymousArgumentValues = newValue
+    }
   }
 
   /// All subcommand names found during argument parsing, in the order they were
@@ -224,7 +249,12 @@ extension CommandLineArgumentList {
   ///
   /// The value of this property would be `["abc"]`.
   public var subcommandNames: [String] {
-    _subcommandNames
+    get {
+      _subcommandNames
+    }
+    set {
+      _subcommandNames = newValue
+    }
   }
 
   /// Get the first value found during argument parsing for the option with the
@@ -269,6 +299,20 @@ extension CommandLineArgumentList {
     _options[label, default: []]
   }
 
+  /// Add or remove the given options.
+  ///
+  /// - Parameters:
+  ///   - options: The new values. Pass the empty array to remove the existing
+  ///     options for `label`.
+  ///   - label: The options' label, including leading dashes.
+  public mutating func setOptions(_ options: [String], forLabel label: String) {
+    if options.isEmpty {
+      _options[label] = nil
+    } else {
+      _options[label] = options
+    }
+  }
+
   /// Check whether the given flag was found during argument parsing.
   ///
   /// - Parameters:
@@ -286,6 +330,20 @@ extension CommandLineArgumentList {
   /// `"--unwrap-present"`, the result is `false`.
   public func hasFlag(withLabel label: String) -> Bool {
     _flags.contains(label)
+  }
+
+  /// Set or clear the given flag.
+  ///
+  /// - Parameters:
+  ///   - flag: The new value. Passing `true` ensures the flag is present in the
+  ///     argument list. Passing `false` removes it.
+  ///   - label: The flag's label, including leading dashes.
+  public mutating func setFlag(_ flag: Bool, forLabel label: String) {
+    if flag {
+      _flags.insert(label)
+    } else {
+      _flags.remove(label)
+    }
   }
 }
 
