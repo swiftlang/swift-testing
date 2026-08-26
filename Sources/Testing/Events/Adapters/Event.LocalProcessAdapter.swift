@@ -9,13 +9,29 @@
 //
 
 #if !SWT_NO_PROCESS_SPAWNING
+private import _TestingInternals
+
 extension Event {
-  package struct LocalProcessAdapter: Adapter {
-    private var _commandLineArguments: [String]
+  /// A class whose instances spawn a child process that runs tests, encodes
+  /// their events as [JSON Lines](https://jsonlines.org), and passes them back
+  /// to this (the parent) process.
+  ///
+  /// On Apple platforms, instances of this class spawn `swiftpm-testing-helper`
+  /// while on other platforms, they spawn the test product directly.
+  ///
+  /// This class does not support cross-target testing. All tests run on the
+  /// current system only.
+  package final class LocalProcessAdapter: Adapter {
+    /// The command-line arguments to pass to the child process, not including
+    /// those added by this instance.
+    private let _commandLineArguments: [String]
 
 #if SWT_TARGET_OS_APPLE
-    private var _testProductBinaryPath: String
-    private var _swiftPMTestingHelperPath: String
+    /// The path to the test product's binary (inside the `.xctest` bundle).
+    private let _testProductBinaryPath: String
+
+    /// The path to the `swiftpm-testing-helper` tool.
+    private let _swiftPMTestingHelperPath: String
 
     package init(testProductBinaryPath: String, swiftPMTestingHelperPath: String, commandLineArguments: [String]) {
       _testProductBinaryPath = testProductBinaryPath
@@ -23,7 +39,8 @@ extension Event {
       _commandLineArguments = commandLineArguments
     }
 #else
-    private var _testProductPath: String
+    /// The path to the test product.
+    private let _testProductPath: String
 
     package init(testProductPath: String, commandLineArguments: [String]) {
       _testProductPath = testProductPath
@@ -95,7 +112,31 @@ extension Event {
 
         // Wait for the child process to terminate.
         taskGroup.addTask(name: decorateTaskName("harness", withAction: "running test process")) {
-          _ = try await wait(for: processID)
+          let exitStatus = try await wait(for: processID)
+
+          if exitStatus == .exitCode(EXIT_SUCCESS) {
+            return
+          }
+
+          // Handle abnormal termination.
+          var exitCodeDescription = switch exitStatus {
+          case let .exitCode(exitCode):
+            "exit code \(exitCode)"
+          case let .signal(signal):
+            "signal \(signal)"
+          }
+          if let name = exitStatus.name {
+            exitCodeDescription += " (\(name))"
+          }
+
+          let issue = Issue(
+            kind: .unconditional,
+            comments: ["The test process exited with \(exitCodeDescription)"],
+            sourceContext: SourceContext(backtrace: nil, sourceLocation: nil)
+          )
+          let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
+          let eventContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
+          try await eventHandler(event, eventContext)
         }
 
         // Read events back out from the back channel.
