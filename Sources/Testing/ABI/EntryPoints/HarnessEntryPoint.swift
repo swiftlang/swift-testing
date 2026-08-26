@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if !SWT_NO_SIGINFO && !SWT_TARGET_OS_APPLE
+private import Dispatch
+#endif
+
 #if canImport(Synchronization)
 private import Synchronization
 #endif
@@ -57,6 +61,17 @@ package func harnessEntryPoint(
   // Collate multiple runs into a single virtual run.
   let runStartedEvent = Mutex<(Event, Event.Context)?>()
   let runEndedEvent = Mutex<(Event, Event.Context)?>()
+
+#if !SWT_NO_SIGINFO
+  let siginfoSource = DispatchSource.makeSignalSource(signal: SIGINFO, queue: .main)
+  siginfoSource.setEventHandler {
+    // TODO: SIGINFO handling
+  }
+  siginfoSource.resume()
+  defer {
+    extendLifetime(siginfoSource)
+  }
+#endif
 
   let grommetCount = grommets.count
   for grommet in grommets {

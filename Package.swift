@@ -550,6 +550,7 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_UNSTRUCTURED_TASKS": (platforms: .none, embedded: true),
       "SWT_NO_GLOBAL_ACTORS": (platforms: .none, embedded: true),
       "SWT_NO_SUSPENDING_CLOCK": (platforms: .none, embedded: true),
+      "SWT_NO_SIGINFO": (platforms: [.windows, .wasi], embedded: true),
 
       "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),
     ]
