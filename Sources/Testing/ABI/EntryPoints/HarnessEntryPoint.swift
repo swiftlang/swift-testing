@@ -29,16 +29,16 @@ extension ABI {
 /// The entry point function used by the harness.
 ///
 /// - Parameters:
-///   - grommets: The grommets to run.
+///   - adapters: The adapters to run.
 ///   - verbosity: The verbosity to run at.
 ///   - xmlOutputPath: The path at which to write JUnit XML output, if any.
 ///
 /// - Returns: The exit code that the harness should exit with.
 ///
-/// The harness target is responsible for creating `grommets`; this function
+/// The harness target is responsible for creating `adapters`; this function
 /// then handles the remainder of the harness' work.
 package func harnessEntryPoint(
-  running grommets: [any Grommet],
+  running adapters: [any Event.Adapter],
   verbosity: Int,
   xmlOutputPath: String?
 ) async throws -> CInt {
@@ -85,12 +85,12 @@ package func harnessEntryPoint(
   }
 #endif
 
-  let grommetCount = grommets.count
-  for grommet in grommets {
+  let adapterCount = adapters.count
+  for adapter in adapters {
     let exitCode = Atomic<CInt>(EXIT_SUCCESS)
 
-    func open(_ grommet: some Grommet) async throws {
-      try await grommet.run { event, eventContext in
+    func open(_ adapter: some Event.Adapter) async throws {
+      try await adapter.run { event, eventContext in
         var recordEvent = true
 
         switch event.kind {
@@ -106,12 +106,12 @@ package func harnessEntryPoint(
               recordEvent = false
             }
           }
-          if grommetCount > 1 {
-            try? FileHandle.stderr.write("Running '\(grommet.grommetName)'...\n")
+          if adapterCount > 1 {
+            try? FileHandle.stderr.write("Running '\(adapter.adapterName)'...\n")
           }
         case .runEnded:
           // Keep the last run-ended event, and suppress recording any run-ended
-          // events until the grommet loop is complete.
+          // events until the adapter loop is complete.
           runEndedEvent.withLock { runEndedEvent in
             runEndedEvent = (event, eventContext)
           }
@@ -134,7 +134,7 @@ package func harnessEntryPoint(
     }
 
     do {
-      try await open(grommet)
+      try await open(adapter)
     } catch {
       // TODO: handle errors at this layer in an interesting way
       exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
@@ -165,20 +165,20 @@ package func harnessEntryPoint(
 /// The entry point function used by the harness.
 ///
 /// - Parameters:
-///   - grommets: The grommets to run.
+///   - adapters: The adapters to run.
 ///   - verbosity: The verbosity to run at.
 ///   - xmlOutputPath: The path at which to write JUnit XML output, if any.
 ///
-/// The harness target is responsible for creating `grommets`; this function
+/// The harness target is responsible for creating `adapters`; this function
 /// then handles the remainder of the harness' work.
 ///
 /// This function terminates the current process. It does not return to its
 /// caller.
 package func harnessEntryPoint(
-  running grommets: [any Grommet],
+  running adapters: [any Event.Adapter],
   verbosity: Int,
   xmlOutputPath: String?
 ) async throws -> Never {
-  let exitCode: CInt = try await harnessEntryPoint(running: grommets, verbosity: verbosity, xmlOutputPath: xmlOutputPath)
+  let exitCode: CInt = try await harnessEntryPoint(running: adapters, verbosity: verbosity, xmlOutputPath: xmlOutputPath)
   exit(exitCode)
 }

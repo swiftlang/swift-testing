@@ -89,10 +89,10 @@ struct Harness: Sendable {
   }
 
   mutating func run() async throws {
-    var grommets = [any Grommet]()
+    var adapters = [any Event.Adapter]()
 
 #if !SWT_NO_PROCESS_SPAWNING
-    // Gather up any test targets to run and create "local process" grommets for
+    // Gather up any test targets to run and create "local process" adapters for
     // each of them.
     let testProductPaths = _args.options(withLabel: "--test-product-path")
 #if SWT_TARGET_OS_APPLE
@@ -108,20 +108,20 @@ struct Harness: Sendable {
       args.setOptions([], forLabel: "--xunit-output")
     }
 
-    grommets += try testProductPaths.map { testProductPath in
+    adapters += try testProductPaths.map { testProductPath in
 #if SWT_TARGET_OS_APPLE
       let testProductBundle = Bundle(path: testProductPath)
       guard let testProductBinaryPath = testProductBundle?.executablePath else {
         throw CocoaError(.fileReadNoSuchFile)
       }
 
-      return LocalProcessGrommet(
+      return Event.LocalProcessAdapter(
         testProductBinaryPath: testProductBinaryPath,
         swiftPMTestingHelperPath: swiftPMTestingHelperPath,
         commandLineArguments: args.arguments
       )
 #else
-      return LocalProcessGrommet(
+      return Event.LocalProcessAdapter(
         testProductPath: testProductPath,
         commandLineArguments: args.arguments
       )
@@ -130,14 +130,14 @@ struct Harness: Sendable {
 #endif
 
 #if !SWT_NO_FILE_IO
-    // Also create grommets for each event stream file that should be read and
+    // Also create adapters for each event stream file that should be read and
     // replayed.
     let eventStreamInputPaths = _args.options(withLabel: "--event-stream-input-path")
-    grommets += try eventStreamInputPaths.map(FileGrommet.init(readingFromFileAtPath:))
+    adapters += try eventStreamInputPaths.map(Event.JSONLinesFileAdapter.init(readingFromFileAtPath:))
 #endif
 
     try await harnessEntryPoint(
-      running: grommets,
+      running: adapters,
       verbosity: verbosity,
       xmlOutputPath: xmlOutputPath
     ) as Never
