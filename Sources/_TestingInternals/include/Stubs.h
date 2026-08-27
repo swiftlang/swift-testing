@@ -67,7 +67,7 @@ static int swt_errno(void) {
 /// declared if `_GNU_SOURCE` is set, but setting it causes build errors due
 /// to conflicts with Swift's Glibc module. The function is available in all
 /// supported versions of the GNU C Library.
-SWT_IMPORT_FROM_STDLIB void *memmem(const void *haystack, size_t hsize, const void *needle, size_t nsize);
+SWT_IMPORT_FROM_STDLIB void *_Nullable memmem(const void *haystack, size_t hsize, const void *needle, size_t nsize);
 #endif
 
 #if !SWT_NO_FILE_IO
