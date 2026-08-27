@@ -66,10 +66,10 @@
 /// running in the current task and an instance of ``ExpectationFailedError`` is
 /// thrown.
 @freestanding(expression) public macro require<T>(
-  _ optionalValue: T?,
+  _ optionalValue: consuming T?,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation
-) -> T = #externalMacro(module: "TestingMacros", type: "RequireMacro")
+) -> T = #externalMacro(module: "TestingMacros", type: "UnwrapMacro") where T: ~Copyable
 
 /// Unwrap an optional boolean value or, if it is `nil`, fail and throw an
 /// error.
@@ -89,7 +89,7 @@
 /// running in the current task and an instance of ``ExpectationFailedError`` is
 /// thrown.
 ///
-/// This overload of ``require(_:_:sourceLocation:)-6w9oo`` checks if
+/// This overload of ``require(_:_:sourceLocation:)-5l63q`` checks if
 /// `optionalValue` may be ambiguous (i.e. it is unclear if the developer
 /// intended to check for a boolean value or unwrap an optional boolean value)
 /// and provides additional compile-time diagnostics when it is.
@@ -118,16 +118,16 @@ public macro require(
 /// running in the current task and an instance of ``ExpectationFailedError`` is
 /// thrown.
 ///
-/// This overload of ``require(_:_:sourceLocation:)-6w9oo`` is used when a
+/// This overload of ``require(_:_:sourceLocation:)-5l63q`` is used when a
 /// non-optional, non-`Bool` value is passed to `#require()`. It emits a warning
 /// diagnostic indicating that the expectation is redundant.
 @freestanding(expression)
 @_documentation(visibility: private)
 public macro require<T>(
-  _ optionalValue: T,
+  _ optionalValue: consuming T,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation
-) -> T = #externalMacro(module: "TestingMacros", type: "NonOptionalRequireMacro")
+) -> T = #externalMacro(module: "TestingMacros", type: "NonOptionalRequireMacro") where T: ~Copyable
 
 // MARK: - Matching errors by type
 

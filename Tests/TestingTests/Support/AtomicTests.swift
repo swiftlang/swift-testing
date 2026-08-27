@@ -15,9 +15,11 @@ final class `Atomic tests`: Sendable {
   let atomicValue = Atomic(0)
 
   @Test func `Loading and storing`() {
-    #expect(atomicValue.load(ordering: .sequentiallyConsistent) == 0)
+    let loadedValue = atomicValue.load(ordering: .sequentiallyConsistent)
+    #expect(loadedValue == 0)
     atomicValue.store(1, ordering: .sequentiallyConsistent)
-    #expect(atomicValue.load(ordering: .sequentiallyConsistent) == 1)
+    let loadedValueAfter = atomicValue.load(ordering: .sequentiallyConsistent)
+    #expect(loadedValueAfter == 1)
   }
 
   @Test func `Repeatedly incrementing an atomic value`() async {
@@ -28,7 +30,8 @@ final class `Atomic tests`: Sendable {
         }
       }
     }
-    #expect(atomicValue.load(ordering: .sequentiallyConsistent) == 100_000)
+    let loadedValue = atomicValue.load(ordering: .sequentiallyConsistent)
+    #expect(loadedValue == 100_000)
   }
 }
 #endif
