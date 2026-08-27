@@ -208,6 +208,76 @@ extension ABI.VersionNumber: Codable {
   ///
   /// - Throws: Any error that prevented decoding an instance of this type.
   public init(fromRecordJSON recordJSON: UnsafeRawBufferPointer) throws {
+#if !os(Windows) // no memmem()
+    // This is sneaky: if we find the substring ""version": " in the JSON, and
+    // we only find it once, we can assume that what follows up to a comma,
+    // whitespace, or brace must be the record's version. This is not a safe or
+    // general way to parse JSON of course, so if it fails we fall back to full
+    // JSON decoding.
+    //
+    // "What happens if we extract the string from the wrong place?" Then the
+    // caller will proceed to decode the entire record with an incorrect
+    // ABI.VersionNumber and/or ABI.Version specialization, and decoding will
+    // throw an error (as it would have if we just used `JSON.decode()` below).
+    //
+    if #available(_stringInitValidatingAPI, *) {
+      let versionKey = (
+        UInt8(ascii: #"""#), UInt8(ascii: "v"), UInt8(ascii: "e"), UInt8(ascii: "r"),
+        UInt8(ascii: "s"), UInt8(ascii: "i"), UInt8(ascii: "o"), UInt8(ascii: "n"),
+        UInt8(ascii: #"""#), UInt8(ascii: ":"), UInt8(ascii: " ")
+      )
+      let result: Self? = withUnsafeBytes(of: versionKey) { versionKey in
+        // NOTE: firstRange(of:) is very slow in DEBUG configuration because it
+        // is completely unspecialized, so drop to memmem() to find the range.
+        func find(_ needle: UnsafeRawBufferPointer, in haystack: UnsafeRawBufferPointer) -> Range<UnsafeRawBufferPointer.Index>? {
+          guard let address = memmem(haystack.baseAddress!, haystack.count, needle.baseAddress!, needle.count) else {
+            return nil
+          }
+          let offset = UnsafeRawPointer(address) - haystack.baseAddress!
+          let startIndex = haystack.index(haystack.startIndex, offsetBy: offset)
+          let endIndex = haystack.index(startIndex, offsetBy: needle.count)
+          return startIndex ..< endIndex
+        }
+
+        // Find the "version" key.
+        guard let range = find(versionKey, in: recordJSON),
+              range.upperBound < recordJSON.endIndex else {
+          return nil
+        }
+        var slicedJSON = UnsafeRawBufferPointer(rebasing: recordJSON[range.endIndex...])
+        guard find(versionKey, in: slicedJSON) == nil else {
+          // The key was present twice, so this JSON is likely invalid.
+          return nil
+        }
+
+        if slicedJSON.first == UInt8(ascii: #"""#) {
+          // Appears to be a string. Find the next quote character; as long as
+          // there are no escape sequences, we can extract the string directly.
+          slicedJSON = UnsafeRawBufferPointer(rebasing: slicedJSON.dropFirst())
+          return withUnsafeBytes(of: UInt8(ascii: #"""#)) { quote in
+            guard let endQuoteRange = find(quote, in: slicedJSON) else {
+              return nil
+            }
+            slicedJSON = UnsafeRawBufferPointer(rebasing: slicedJSON[..<endQuoteRange.startIndex])
+            return withUnsafeBytes(of: UInt8(ascii: #"\"#)) { backslash in
+              guard find(backslash, in: slicedJSON) == nil,
+                    let stringValue = String(validating: slicedJSON, as: UTF8.self) else {
+                return nil
+              }
+              return Self(stringValue)
+            }
+          }
+        }
+
+        return nil
+      }
+      if let result {
+        self = result
+        return
+      }
+    }
+#endif
+
     struct MinimalRecord: Decodable {
       var version: ABI.VersionNumber
     }
