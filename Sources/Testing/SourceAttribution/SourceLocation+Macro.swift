@@ -31,7 +31,7 @@
 /// ```
 ///
 /// @DeprecationSummary {
-///   Use [`#Testing::sourceLocation`](``Testing/sourceLocation()``) instead.
+///   Use [`#Testing::sourceLocation`](doc:Testing/sourceLocation()) instead.
 /// }
 @available(swift, deprecated: 100000.0, message: "Use '#Testing::sourceLocation' instead.")
 @freestanding(expression) public macro _sourceLocation() -> SourceLocation = #externalMacro(module: "TestingMacros", type: "SourceLocationMacro")
