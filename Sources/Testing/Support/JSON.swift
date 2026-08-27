@@ -29,6 +29,22 @@ enum JSON {
   private static let _negativeInfinityString = "-Infinity"
   private static let _nanString = "NaN"
 
+  /// A JSON encoder to use with the default encoding configuration.
+  ///
+  /// We reuse this object to avoid allocating encoders repeatedly.
+  private static let _defaultEncoder: JSONEncoder = {
+    let encoder = JSONEncoder()
+
+    // Keys must be sorted to ensure deterministic matching of encoded data.
+    encoder.outputFormatting.insert(.sortedKeys)
+    if _prettyPrintingEnabled {
+      encoder.outputFormatting.insert(.prettyPrinted)
+      encoder.outputFormatting.insert(.withoutEscapingSlashes)
+    }
+
+    return encoder
+  }()
+
   /// Encode a value as JSON.
   ///
   /// - Parameters:
@@ -44,25 +60,32 @@ enum JSON {
     userInfo: [CodingUserInfoKey: any Sendable] = [:],
     _ body: (UnsafeRawBufferPointer) throws -> R
   ) throws -> R {
-    let encoder = JSONEncoder()
+    let encoder: JSONEncoder = {
+      if userInfo.isEmpty {
+        return _defaultEncoder
+      }
+      let encoder = JSONEncoder()
 
-    // Set user info keys that clients want to use during encoding.
-    encoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
+      // Set user info keys that clients want to use during encoding.
+      encoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
 
-    if encoder.userInfo[.allowNonFiniteFloatingPointValuesUserInfoKey] as? Bool == true {
-      encoder.nonConformingFloatEncodingStrategy = .convertToString(
-        positiveInfinity: _positiveInfinityString,
-        negativeInfinity: _negativeInfinityString,
-        nan: _nanString
-      )
-    }
+      if encoder.userInfo[.allowNonFiniteFloatingPointValuesUserInfoKey] as? Bool == true {
+        encoder.nonConformingFloatEncodingStrategy = .convertToString(
+          positiveInfinity: _positiveInfinityString,
+          negativeInfinity: _negativeInfinityString,
+          nan: _nanString
+        )
+      }
 
-    // Keys must be sorted to ensure deterministic matching of encoded data.
-    encoder.outputFormatting.insert(.sortedKeys)
-    if _prettyPrintingEnabled {
-      encoder.outputFormatting.insert(.prettyPrinted)
-      encoder.outputFormatting.insert(.withoutEscapingSlashes)
-    }
+      // Keys must be sorted to ensure deterministic matching of encoded data.
+      encoder.outputFormatting.insert(.sortedKeys)
+      if _prettyPrintingEnabled {
+        encoder.outputFormatting.insert(.prettyPrinted)
+        encoder.outputFormatting.insert(.withoutEscapingSlashes)
+      }
+
+      return encoder
+    }()
 
     let data = try encoder.encode(value)
     return try data.withUnsafeBytes(body)
@@ -94,6 +117,11 @@ enum JSON {
   }
 
 #if !SWT_NO_CODABLE
+  /// A JSON decoder to use with the default decoding configuration.
+  ///
+  /// We reuse this object to avoid allocating decoders repeatedly.
+  private static let _defaultDecoder = JSONDecoder()
+
   /// Decode a value from JSON data.
   ///
   /// - Parameters:
@@ -120,18 +148,25 @@ enum JSON {
       } else {
         Data()
       }
-      let decoder = JSONDecoder()
+      let decoder: JSONDecoder = {
+        if userInfo.isEmpty {
+          return _defaultDecoder
+        }
+        let decoder = JSONDecoder()
 
-      // Set user info keys that clients want to use during decoding.
-      decoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
+        // Set user info keys that clients want to use during decoding.
+        decoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
 
-      if decoder.userInfo[.allowNonFiniteFloatingPointValuesUserInfoKey] as? Bool == true {
-        decoder.nonConformingFloatDecodingStrategy = .convertFromString(
-          positiveInfinity: _positiveInfinityString,
-          negativeInfinity: _negativeInfinityString,
-          nan: _nanString
-        )
-      }
+        if decoder.userInfo[.allowNonFiniteFloatingPointValuesUserInfoKey] as? Bool == true {
+          decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+            positiveInfinity: _positiveInfinityString,
+            negativeInfinity: _negativeInfinityString,
+            nan: _nanString
+          )
+        }
+
+        return decoder
+      }()
       return try decoder.decode(type, from: data)
     }
   }
