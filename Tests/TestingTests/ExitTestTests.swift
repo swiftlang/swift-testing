@@ -490,7 +490,7 @@ private import _TestingInternals
 
   @Test("Arguments to the macro are not captured during expansion (do not need to be literals/const)")
   func argumentsAreNotCapturedDuringMacroExpansion() async throws {
-    let unrelatedSourceLocation = #_sourceLocation
+    let unrelatedSourceLocation = #Testing::sourceLocation
     func nonConstExitCondition() async throws -> ExitTest.Condition {
       .failure
     }
@@ -698,9 +698,9 @@ private import _TestingInternals
     }
   }
 
-  @Test("Capturing #_sourceLocation")
+  @Test("Capturing #Testing::sourceLocation")
   func captureListPreservesSourceLocationMacro() async {
-    func sl(_ sl: SourceLocation = #_sourceLocation) -> SourceLocation {
+    func sl(_ sl: SourceLocation = #Testing::sourceLocation) -> SourceLocation {
       sl
     }
     await #expect(processExitsWith: .success) { [sl = sl() as SourceLocation] in
