@@ -25,10 +25,15 @@
 /// default argument to a function.
 ///
 /// ```swift
-/// func cookBurger(sourceLocation: SourceLocation = #_sourceLocation) {
+/// func cookBurger(sourceLocation: SourceLocation = #Testing::sourceLocation) {
 ///   // ...
 /// }
 /// ```
+///
+/// @DeprecationSummary {
+///   Use [`#Testing::sourceLocation`](``Testing/sourceLocation()``) instead.
+/// }
+@available(swift, deprecated: 100000.0, message: "Use '#Testing::sourceLocation' instead.")
 @freestanding(expression) public macro _sourceLocation() -> SourceLocation = #externalMacro(module: "TestingMacros", type: "SourceLocationMacro")
 
 /// Get the current source location.
@@ -60,14 +65,17 @@
 ///   // ...
 /// }
 /// ```
-@_spi(Experimental)
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.5)
+/// }
 @freestanding(expression) public macro sourceLocation() -> SourceLocation = #externalMacro(module: "TestingMacros", type: "SourceLocationMacro")
 
 extension SourceLocation {
   /// Get the current source location as an instance of ``SourceLocation``.
   ///
-  /// - Warning: This function is used to implement the `#_sourceLocation`
-  ///   macro. Do not call it directly.
+  /// - Warning: This function is used to implement the
+  ///   `#Testing::sourceLocation` macro. Do not call it directly.
   public static func __here(
     fileID: String = #fileID,
     filePath: String = #filePath,
@@ -79,8 +87,8 @@ extension SourceLocation {
 
   /// Initialize an instance of this type without validating any arguments.
   ///
-  /// - Warning: This initializer is used to implement the `#_sourceLocation`
-  ///   macro. Do not call it directly.
+  /// - Warning: This function is used to implement the
+  ///   `#Testing::sourceLocation` macro. Do not call it directly.
   public init(__uncheckedFileID fileID: String, filePath: String, line: Int, column: Int) {
     self.fileID = fileID
     self.filePath = filePath
