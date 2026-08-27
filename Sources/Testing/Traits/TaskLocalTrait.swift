@@ -11,8 +11,9 @@
 /// A type that that binds a task local value for the duration of a test or
 /// suite.
 ///
-/// When an instance of this trait is applied to a suite, it is recursively
-/// inherited by all child suites and tests.
+/// When you apply an instance of this trait to a test suite, the testing
+/// library recursively applies it to all test suites and test functions within
+/// it.
 ///
 /// To add this trait to a test, use ``Trait/taskLocal(_:withValue:)``.
 ///
@@ -20,7 +21,7 @@
 ///   @Available(Swift, introduced: 6.5)
 /// }
 public struct TaskLocalTrait<Value>: SuiteTrait, TestTrait where Value: Sendable {
-  /// This trait's task local.
+  /// This trait's task-local value key.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.5)
@@ -55,6 +56,9 @@ public struct TaskLocalTrait<Value>: SuiteTrait, TestTrait where Value: Sendable
     try _value()
   }
 
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.5)
+  /// }
   public var isRecursive: Bool {
     true
   }
@@ -62,10 +66,10 @@ public struct TaskLocalTrait<Value>: SuiteTrait, TestTrait where Value: Sendable
 
 // MARK: - TestScoping
 
-/// @Metadata {
-///   @Available(Swift, introduced: 6.5)
-/// }
 extension TaskLocalTrait: TestScoping {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.5)
+  /// }
   public func provideScope(
     for test: Test,
     testCase: Test.Case?,
@@ -87,13 +91,12 @@ extension Trait {
   ///   - taskLocal: The task local to bind the value to.
   ///   - value: The value to bind to `taskLocal`.
   ///
-  ///     This value will only be evaluated if the test this
-  ///     trait is applied to runs, and it will be unbound from
-  ///     the task local and released once the trait is finished
-  ///     providing scope for the test.
+  ///     The testing library evaluates this value when the test this trait is
+  ///     applied to runs. The value is bound to `taskLocal`, the test runs, and
+  ///     then the value is unbound.
   ///
-  /// - Note: You must define the task local outside the test target where the
-  ///   trait is used.
+  /// - Note: You must define the task local outside the module where you use
+  ///   this trait.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.5)
@@ -101,7 +104,7 @@ extension Trait {
   public static func taskLocal<Value>(
     _ taskLocal: TaskLocal<Value>,
     withValue value: @autoclosure @escaping @Sendable () throws -> Value
-  ) -> Self where Value: Sendable, Self == TaskLocalTrait<Value> {
+  ) -> Self where Self == TaskLocalTrait<Value> {
     TaskLocalTrait(taskLocal: taskLocal, value: value)
   }
 }
