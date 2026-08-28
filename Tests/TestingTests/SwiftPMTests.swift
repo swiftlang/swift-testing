@@ -683,6 +683,55 @@ struct SwiftPMTests {
     }
     #expect(versionNumber == ABI.VersionNumber(1, 2, 3))
   }
+
+  @Test("semver prerelease IDs")
+  func preleaseIDs() throws {
+    let v123 = ABI.VersionNumber(1, 2, 3)
+
+    let v123Dev = try #require(VersionNumber("1.2.3-dev"))
+    #expect(v123Dev == ABI.VersionNumber(1, 2, 3, flags: [.developmentBuild]))
+    #expect(v123Dev < v123)
+    #expect(String(describing: v123Dev) == "1.2.3-dev")
+
+    let v123Debug = try #require(VersionNumber("1.2.3-debug"))
+    #expect(v123Dev != v123Debug)
+    #expect(v123Debug == ABI.VersionNumber(1, 2, 3, flags: [.debugBuild]))
+    #expect(v123Debug < v123)
+    #expect(String(describing: v123Debug) == "1.2.3-debug")
+
+    #expect(v123Debug < v123Dev)
+    #expect(v123Dev > v123Debug)
+    #expect(!(v123Dev < v123Dev))
+
+    let v246Dev = try #require(VersionNumber("2.4.6-dev"))
+    #expect(v246Dev == ABI.VersionNumber(2, 4, 6, flags: [.developmentBuild]))
+    #expect(v246Dev < ABI.VersionNumber(2, 4, 6))
+    #expect(String(describing: v246Dev) == "2.4.6-dev")
+    #expect(v246Dev > v123Dev)
+
+    let v246DevDebug = try #require(VersionNumber("2.4.6-debug.dev"))
+    #expect(v246DevDebug != v246Dev)
+    #expect(v246DevDebug == ABI.VersionNumber(2, 4, 6, flags: [.developmentBuild, .debugBuild]))
+    #expect(v246DevDebug < ABI.VersionNumber(2, 4, 6))
+    #expect(String(describing: v246DevDebug) == "2.4.6-dev.debug")
+    #expect(v246DevDebug > v246Dev)
+
+    let vN1Dev = try #require(VersionNumber("-1-dev"))
+    #expect(vN1Dev.majorComponent == -1)
+    #expect(vN1Dev.flags == [.developmentBuild])
+    
+    #expect(VersionNumber("") == nil)
+    #expect(VersionNumber("1.2.3-") == nil)
+    #expect(VersionNumber("1.2.3-invalid.flags") == nil)
+    #expect(VersionNumber("1.2.3-.debug") == nil)
+
+    let v63Dev = try #require(VersionNumber("6.3.0-dev"))
+    let v63DevABI = try #require(ABI.version(forVersionNumber: v63Dev))
+    #expect(v63DevABI.versionNumber.majorComponent == 6)
+    #expect(v63DevABI.versionNumber.minorComponent == 3)
+    #expect(v63DevABI.versionNumber.patchComponent == 0)
+    #expect(v63DevABI.versionNumber.flags == [.developmentBuild])
+  }
 #endif
 #endif
 
