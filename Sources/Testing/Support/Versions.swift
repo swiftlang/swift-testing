@@ -135,15 +135,20 @@ let apiLevel: String = {
 }()
 #endif
 
-/// A human-readable string describing the testing library's version.
-///
-/// This value's format is platform-specific and is not meant to be
-/// machine-readable. It is added to the output of a test run when using
-/// an event writer.
+/// The testing library's version, or `nil` if it could not be parsed or was not
+/// available at compile time.
 ///
 /// This value is not part of the public interface of the testing library.
-let testingLibraryVersion: String = {
-  var result = swt_getTestingLibraryVersion().flatMap(String.init(validatingCString:)) ?? "unknown"
+let testingLibraryVersion: VersionNumber? = {
+  swt_getTestingLibraryVersion().flatMap(VersionNumber.init(validatingCString:))
+}()
+
+/// A human-readable string describing the source control commit used to build
+/// the testing library, or `nil` if that information is not available.
+///
+/// This value is not part of the public interface of the testing library.
+let testingLibraryCommit: String? = {
+  var result: String? = nil
 
   // Get details of the git commit used when compiling the testing library.
   var commitHash: UnsafePointer<CChar>?
@@ -154,9 +159,9 @@ let testingLibraryVersion: String = {
     // Truncate to 15 characters of the hash to match `swift --version`.
     let commitHash = commitHash.prefix(15)
     if commitModified {
-      result = "\(result) (\(commitHash) - modified)"
+      result = "\(commitHash) - modified"
     } else {
-      result = "\(result) (\(commitHash))"
+      result = String(commitHash)
     }
   }
 
