@@ -32,19 +32,30 @@ struct IssueCapturingScope: Sendable {
   /// The issues this scope has matched.
   let issues: Allocated<Mutex<[Issue]>>
 
+  let captureSilently: Bool
+
   /// Create a new ``IssueCapturingScope`` by companing a new issue matcher
   /// with any already-active scope
   ///
   /// - Parameters:
   ///   - Parent: The context that should be checked next if `issueMatcher` fails
   ///     to match an issue. Defaults to ``IssueCapturingScope.current``.
+  ///   - captureSilently: If true, captured issues will not be immediately
+  ///     reported to the Testing library. This means that callers must manually
+  ///     report issues after the fact in order for them to be recorded.
   ///   - issueMatcher: A function to invoke when an issue occurs that is used
   ///     to determine if the issue should be captured by this scope.
   ///   - context: The context to be associated with issues matched by
   ///     `issueMatcher`.
-  init(parent: IssueCapturingScope? = .current, issueMatcher: @escaping KnownIssueMatcher, context: Issue.KnownIssueContext) {
+  init(
+    parent: IssueCapturingScope? = .current,
+    captureSilently: Bool,
+    issueMatcher: @escaping KnownIssueMatcher,
+    context: Issue.KnownIssueContext
+  ) {
     let issues = Allocated(Mutex([Issue]()))
     self.issues = issues
+    self.captureSilently = captureSilently
 
     matcher = { issue in
       let matchedContext = if issueMatcher(issue) {
@@ -74,6 +85,9 @@ struct IssueCapturingScope: Sendable {
 ///
 /// - Parameters:
 ///   - comment: An optional comment describing the context around this issue.
+///   - silently: If true, captured issues will not be immediately reported to
+///     the Testing library. This means that callers must manually report issues
+///     after the fact in order for them to be recorded.
 ///   - sourceLocation: The source location to which any recorded issues should
 ///     be attributed.
 ///   - body: The function to invoke.
@@ -90,23 +104,31 @@ struct IssueCapturingScope: Sendable {
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
 ///
 /// - Note: `issueMatcher` may be invoked more than once for the same issue.
-func captureIssues(
+func captureIssues<R>(
   _ comment: Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
-  _ body: () throws -> Void,
+  silently: Bool,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
+  _ body: () throws -> sending R,
   matching issueMatcher: @escaping KnownIssueMatcher = { _ in true }
-) rethrows -> [Issue] {
-  let scope = IssueCapturingScope(issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
-  try IssueCapturingScope.$current.withValue(scope) {
+) rethrows -> (R, [Issue]) {
+  let scope = IssueCapturingScope(
+    captureSilently: silently,
+    issueMatcher: issueMatcher,
+    context: Issue.KnownIssueContext(comment: comment)
+  )
+  let value = try IssueCapturingScope.$current.withValue(scope) {
     try body()
   }
-  return scope.issues.value.withLock { $0 }
+  return (value, scope.issues.value.withLock { $0 })
 }
 
 /// Invoke a function, and return any issues recorded during its execution.
 ///
 /// - Parameters:
 ///   - comment: An optional comment describing the context around this issue.
+///   - silently: If true, captured issues will not be immediately reported to
+///     the Testing library. This means that callers must manually report issues
+///     after the fact in order for them to be recorded.
 ///   - sourceLocation: The source location to which any recorded issues should
 ///     be attributed.
 ///   - body: The function to invoke.
@@ -123,16 +145,21 @@ func captureIssues(
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
 ///
 /// - Note: `issueMatcher` may be invoked more than once for the same issue.
-func captureIssues(
+func captureIssues<R>(
   _ comment: Comment? = nil,
+  silently: Bool,
   isolation: isolated (any Actor)? = #isolation,
-  sourceLocation: SourceLocation = #_sourceLocation,
-  _ body: () async throws -> Void,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
+  _ body: () async throws -> sending R,
   matching issueMatcher: @escaping KnownIssueMatcher = { _ in true }
-) async rethrows -> [Issue] {
-  let scope = IssueCapturingScope(issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
-  try await IssueCapturingScope.$current.withValue(scope) {
+) async rethrows -> (R, [Issue]) {
+  let scope = IssueCapturingScope(
+    captureSilently: silently,
+    issueMatcher: issueMatcher,
+    context: Issue.KnownIssueContext(comment: comment)
+  )
+  let value = try await IssueCapturingScope.$current.withValue(scope) {
     try await body()
   }
-  return scope.issues.value.withLock { $0 }
+  return (value, scope.issues.value.withLock { $0 })
 }
