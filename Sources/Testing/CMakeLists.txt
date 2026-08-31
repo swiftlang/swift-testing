@@ -33,6 +33,7 @@ add_library(Testing
   Attachments/Images/Attachment+AttachableAsImage.swift
   Attachments/Images/ImageAttachmentError.swift
   Attachments/Attachable.swift
+  Attachments/AttachableEncodingFormat.swift
   Attachments/AttachableWrapper.swift
   Attachments/Attachment.swift
   Events/Clock.swift
