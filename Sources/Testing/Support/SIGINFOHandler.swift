@@ -50,7 +50,7 @@ private nonisolated(unsafe) let _siginfoSource = {
       // Let the system handle it normally.
       return false
     }
-    _siginfoSource.add(data: 1)
+    (_siginfoSource as! any DispatchSourceUserDataAdd).add(data: 1)
     return true
   }, true)
 #else
