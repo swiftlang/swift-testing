@@ -16,7 +16,7 @@ private import Foundation
 
 private func configurationForEntryPoint(withArguments args: [String], emitWarnings: Bool = true) throws -> Configuration {
   let args = try parseCommandLineArguments(from: args)
-  return try configurationForEntryPoint(from: args)
+  return try configurationForEntryPoint(from: args, emitWarnings: emitWarnings)
 }
 
 #if !SWT_NO_ABI_JSON_SCHEMA
