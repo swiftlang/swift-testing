@@ -66,7 +66,7 @@ extension Issue {
   @available(*, deprecated, message: "Use record(_:severity:sourceLocation:) instead.")
   @discardableResult public static func record(
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     record(comment, severity: .error, sourceLocation: sourceLocation)
   }
@@ -94,7 +94,7 @@ extension Issue {
   @discardableResult public static func record(
     _ comment: Comment? = nil,
     severity: Severity = .error,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
     let issue = Issue(kind: .unconditional, severity: severity, comments: Array(comment), sourceContext: sourceContext)
@@ -122,7 +122,7 @@ extension Issue {
   @discardableResult public static func record(
     _ error: any Error,
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     record(error, comment, severity: .error, sourceLocation: sourceLocation)
   }
@@ -147,7 +147,7 @@ extension Issue {
     _ error: any Error,
     _ comment: Comment? = nil,
     severity: Severity,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     let backtrace = Backtrace(forFirstThrowOf: error) ?? Backtrace.current()
     let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
