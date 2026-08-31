@@ -34,7 +34,7 @@ private let _all = Mutex<[Weak<SIGINFOHandler<Void>>]>()
 
 /// The dispatch source that listens for `SIGINFO` (or the platform-specific
 /// equivalent).
-private let _siginfoSource = {
+private let _siginfoSource: Any = {
 #if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
   let source = DispatchSource.makeSignalSource(signal: SIGINFO, queue: .main)
 #elseif os(Linux) || os(Android)
