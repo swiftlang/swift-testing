@@ -283,6 +283,9 @@ after your tests finish running:
 - ``Attachable``
 - ``AttachableWrapper``
 
+### Attaching encodable values to tests
+
+- ``AttachableEncodingFormat``
 
 <!-- TODO: set up DocC content for overlays if possible
 ### Attaching files to tests

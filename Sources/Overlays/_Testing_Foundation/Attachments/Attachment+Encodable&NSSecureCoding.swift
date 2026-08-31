@@ -141,7 +141,7 @@ extension Attachment {
     switch encodingFormat.kind {
     case let .propertyListFormat(propertyListFormat):
       let plistEncoder = PropertyListEncoder()
-      plistEncoder.outputFormat = propertyListFormat
+      plistEncoder.outputFormat = .init(rawValue: propertyListFormat)!
       try self.init(encoding: encodableValue, using: plistEncoder, named: preferredName, sourceLocation: sourceLocation)
     case .json:
       // We cannot use our own JSON encoding wrapper here because that would
@@ -279,7 +279,7 @@ extension Attachment {
     switch encodingFormat.kind {
     case let .propertyListFormat(propertyListFormat):
       // This format is supported. (The OpenStep case was handled above).
-      let wrapper = _AttachableNSSecureCodingWrapper(encoding: encodableValue, as: propertyListFormat)
+      let wrapper = _AttachableNSSecureCodingWrapper(encoding: encodableValue, as: .init(rawValue: propertyListFormat)!)
       self.init(wrapper, named: preferredName, sourceLocation: sourceLocation)
     case .json:
       throw CocoaError(.propertyListWriteInvalid, userInfo: [NSLocalizedDescriptionKey: "An instance of \(T.self) cannot be encoded as JSON. Specify a property list format instead."])

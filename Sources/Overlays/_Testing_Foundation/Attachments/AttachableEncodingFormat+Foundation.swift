@@ -16,37 +16,10 @@ public import Foundation
 import UniformTypeIdentifiers
 #endif
 
-/// An enumeration describing the encoding formats that you can use when
-/// attaching a value that conforms to [`Encodable`](https://developer.apple.com/documentation/swift/encodable).
-///
-/// Pass an instance of this type to ``Testing/Attachment/init(encoding:as:named:sourceLocation:)``
-/// to specify what encoder and format to use when the testing library saves the
-/// resulting attachment.
-///
-/// If you want to attach a value that conforms to [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
-/// use [`PropertyListFormat`](https://developer.apple.com/documentation/foundation/propertylistserialization/propertylistformat)
-/// instead.
-///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.5)
 /// }
-public struct AttachableEncodingFormat: Sendable {
-  /// An enumeration describing the various kinds of encoding format the testing
-  /// library supports.
-  enum Kind: Sendable {
-    /// A property list format.
-    ///
-    /// - Parameters:
-    ///   - format: The corresponding property list format.
-    case propertyListFormat(_ format: PropertyListSerialization.PropertyListFormat)
-
-    /// The JSON format.
-    case json
-  }
-
-  /// The kind of encoding format represented by this instance.
-  var kind: Kind
-
+extension AttachableEncodingFormat {
   /// Create an instance of this type representing a property list format.
   ///
   /// - Parameters:
@@ -58,7 +31,7 @@ public struct AttachableEncodingFormat: Sendable {
   ///   @Available(Swift, introduced: 6.5)
   /// }
   public static func propertyListFormat(_ format: PropertyListSerialization.PropertyListFormat) -> Self {
-    .init(kind: .propertyListFormat(format))
+    .init(kind: .propertyListFormat(format.rawValue))
   }
 
   /// An instance of this type representing the JSON format.
@@ -74,9 +47,9 @@ public struct AttachableEncodingFormat: Sendable {
   /// The content type corresponding to this instance.
   var contentType: UTType {
     switch kind {
-    case .propertyListFormat(.binary):
+    case .propertyListFormat(PropertyListSerialization.PropertyListFormat.binary.rawValue):
       .binaryPropertyList
-    case .propertyListFormat(.xml):
+    case .propertyListFormat(PropertyListSerialization.PropertyListFormat.xml.rawValue):
       .xmlPropertyList
     case .propertyListFormat:
       .propertyList
@@ -109,7 +82,7 @@ public struct AttachableEncodingFormat: Sendable {
     lazy var pathExtension = (suggestedName as NSString).pathExtension
 
     // Leave ".xml" as the path extension when explicitly specified.
-    if kind == .propertyListFormat(.xml),
+    if kind == .propertyListFormat(PropertyListSerialization.PropertyListFormat.xml.rawValue),
        pathExtension.caseInsensitiveCompare("xml") == .orderedSame {
       return suggestedName
     }
@@ -127,14 +100,4 @@ public struct AttachableEncodingFormat: Sendable {
 #endif
   }
 }
-
-/// @Metadata {
-///   @Available(Swift, introduced: 6.5)
-/// }
-extension AttachableEncodingFormat: Equatable {}
-
-/// @Metadata {
-///   @Available(Swift, introduced: 6.5)
-/// }
-extension AttachableEncodingFormat.Kind: Equatable {}
 #endif
