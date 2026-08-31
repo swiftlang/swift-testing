@@ -387,45 +387,6 @@ extension __CommandLineArguments_v0: Codable {
 }
 #endif
 
-extension RandomAccessCollection<String> {
-  /// Get the value of the command line argument with the given name.
-  ///
-  /// - Parameters:
-  ///   - label: The label or name of the argument, e.g. `"--attachments-path"`.
-  ///   - index: The index where `label` should be found, or `nil` to search the
-  ///     entire collection.
-  ///
-  /// - Returns: The value of the argument named by `label` at `index`. If no
-  ///   value is available, or if `index` is not `nil` and the argument at
-  ///   `index` is not named `label`, returns `nil`.
-  ///
-  /// This function handles arguments of the form `--label value` and
-  /// `--label=value`. Other argument syntaxes are not supported.
-  fileprivate func argumentValue(forLabel label: String, at index: Index? = nil) -> String? {
-    guard let index else {
-      return indices.lazy
-        .compactMap { argumentValue(forLabel: label, at: $0) }
-        .first
-    }
-
-    let element = self[index]
-    if element == label {
-      let nextIndex = self.index(after: index)
-      if nextIndex < endIndex {
-        return self[nextIndex]
-      }
-    } else {
-      // Find an element equal to something like "--foo=bar" and split it.
-      let prefix = "\(label)="
-      if element.hasPrefix(prefix), let equalsIndex = element.firstIndex(of: "=") {
-        return String(element[equalsIndex...].dropFirst())
-      }
-    }
-
-    return nil
-  }
-}
-
 /// Initialize this instance given a sequence of command-line arguments passed
 /// from Swift Package Manager.
 ///
@@ -438,7 +399,24 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   var result = __CommandLineArguments_v0()
 
   // Do not consider the executable path AKA argv[0].
-  let args = args.dropFirst()
+  let args = try CommandLineArgumentList(
+    parsing: args,
+    describedBy: [
+      .flag("--list-tests"), .subcommand("list"),
+      .option("--configuration-path"), .option("--experimental-configuration-path"),
+      .option("--event-stream-output-path"), .option("--experimental-event-stream-output"),
+      .option("--event-stream-version"), .option("--experimental-event-stream-version"),
+      .option("--xunit-output"),
+      .option("--attachments-path"), .option("--experimental-attachments-path"),
+      .flag("--parallel"), .flag("--no-parallel"),
+      .option("--experimental-maximum-parallelization-width"),
+      .option("--symbolicate-backtraces"),
+      .option("--verbosity"), .flag("--verbose"), .flag("-v"), .flag("--very-verbose"), .flag("--vv"), .flag("--quiet"), .flag("-q"),
+      .option("--filter"), .option("--skip"),
+      .option("--repetitions"), .option("--repeat-until"),
+    ],
+    describingUnrecognizedArgumentWith: { _ in .anonymous }
+  )
 
 #if !SWT_NO_FILE_IO
 #if !SWT_NO_CODABLE
@@ -449,7 +427,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // NOTE: While the output event stream is opened later, it is necessary to
   // open the configuration file early (here) in order to correctly construct
   // the resulting __CommandLineArguments_v0 instance.
-  if let path = args.argumentValue(forLabel: "--configuration-path") ?? args.argumentValue(forLabel: "--experimental-configuration-path") {
+  if let path = args.option(withLabel: "--configuration-path") ?? args.option(withLabel: "--experimental-configuration-path") {
     let file = try FileHandle(forReadingAtPath: path)
     let configurationJSON = try file.readToEnd()
     result = try configurationJSON.withUnsafeBufferPointer { configurationJSON in
@@ -463,7 +441,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 #endif
 
   // Event stream output
-  if let path = args.argumentValue(forLabel: "--event-stream-output-path") ?? args.argumentValue(forLabel: "--experimental-event-stream-output") {
+  if let path = args.option(withLabel: "--event-stream-output-path") ?? args.option(withLabel: "--experimental-event-stream-output") {
     result.eventStreamOutputPath = path
   }
 
@@ -471,9 +449,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   do {
     var versionString: String?
     var allowExperimental = false
-    versionString = args.argumentValue(forLabel: "--event-stream-version")
+    versionString = args.option(withLabel: "--event-stream-version")
     if versionString == nil {
-      versionString = args.argumentValue(forLabel: "--experimental-event-stream-version")
+      versionString = args.option(withLabel: "--experimental-event-stream-version")
       if versionString != nil {
         allowExperimental = true
       }
@@ -499,69 +477,66 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 #endif
 
   // XML output
-  if let xunitOutputPath = args.argumentValue(forLabel: "--xunit-output") {
+  if let xunitOutputPath = args.option(withLabel: "--xunit-output") {
     result.xunitOutput = xunitOutputPath
   }
 
   // Attachment output
-  if let attachmentsPath = args.argumentValue(forLabel: "--attachments-path") ?? args.argumentValue(forLabel: "--experimental-attachments-path") {
+  if let attachmentsPath = args.option(withLabel: "--attachments-path") ?? args.option(withLabel: "--experimental-attachments-path") {
     result.attachmentsPath = attachmentsPath
   }
 
-  if args.contains("--list-tests") {
+  if args.hasFlag(withLabel: "--list-tests") {
     result.listTests = true
-  } else if args.first == "list" {
+  } else if args.subcommandNames == ["list"] {
     // Allow the "list" subcommand explicitly in place of "--list-tests". This
     // makes invocation from e.g. Wasmtime a bit more intuitive/idiomatic.
     result.listTests = true
   }
 
   // Parallelization (on by default)
-  if args.contains("--no-parallel") {
+  if args.hasFlag(withLabel: "--no-parallel") == true {
     result.parallel = false
   }
-  if let maximumParallelizationWidth = args.argumentValue(forLabel: "--experimental-maximum-parallelization-width").flatMap(Int.init) {
+  if let maximumParallelizationWidth = args.option(withLabel: "--experimental-maximum-parallelization-width").flatMap(Int.init) {
     // TODO: decide if we want to repurpose --num-workers for this use case?
     result.experimentalMaximumParallelizationWidth = maximumParallelizationWidth
   }
 
   // Whether or not to symbolicate backtraces in the event stream.
-  if let symbolicateBacktraces = args.argumentValue(forLabel: "--symbolicate-backtraces") {
+  if let symbolicateBacktraces = args.option(withLabel: "--symbolicate-backtraces") {
     result.symbolicateBacktraces = symbolicateBacktraces
   }
 
   // Verbosity
-  if let verbosity = args.argumentValue(forLabel: "--verbosity").flatMap(Int.init) {
+  if let verbosity = args.option(withLabel: "--verbosity").flatMap(Int.init) {
     result.verbosity = verbosity
   }
-  if args.contains("--verbose") || args.contains("-v") {
+  if args.hasFlag(withLabel: "--verbose") == true || args.hasFlag(withLabel: "-v") == true {
     result.verbose = true
   }
-  if args.contains("--very-verbose") || args.contains("--vv") {
+  if args.hasFlag(withLabel: "--very-verbose") == true || args.hasFlag(withLabel: "--vv") == true {
     result.veryVerbose = true
   }
-  if args.contains("--quiet") || args.contains("-q") {
+  if args.hasFlag(withLabel: "--quiet") == true || args.hasFlag(withLabel: "-q") == true {
     result.quiet = true
   }
 
   // Filtering
-  func filterValues(forArgumentsWithLabel label: String) -> [String] {
-    args.indices.compactMap { args.argumentValue(forLabel: label, at: $0) }
-  }
-  let filter = filterValues(forArgumentsWithLabel: "--filter")
+  let filter = args.options(withLabel: "--filter")
   if !filter.isEmpty {
     result.filter = result.filter.map { $0 + filter } ?? filter
   }
-  let skip = filterValues(forArgumentsWithLabel: "--skip")
+  let skip = args.options(withLabel: "--skip")
   if !skip.isEmpty {
     result.skip = result.skip.map { $0 + skip } ?? skip
   }
 
   // Set up the iteration policy for the test run.
-  if let repetitions = args.argumentValue(forLabel: "--repetitions").flatMap(Int.init) {
+  if let repetitions = args.option(withLabel: "--repetitions").flatMap(Int.init) {
     result.repetitions = repetitions
   }
-  if let repeatUntil = args.argumentValue(forLabel: "--repeat-until") {
+  if let repeatUntil = args.option(withLabel: "--repeat-until") {
     result.repeatUntil = repeatUntil
   }
 
@@ -979,6 +954,12 @@ private enum _EntryPointError: Error {
   /// - Parameters:
   ///   - versionNumber: The experimental ABI version number.
   case experimentalABIVersion(_ versionNumber: VersionNumber)
+
+  /// A failure occurred while parsing the command line arguments list.
+  ///
+  /// - Parameters:
+  ///   - error: The underlying error that occurred.
+  case commandLineParsingFailed(_ error: CommandLineArgumentList.ParseError)
 }
 
 extension _EntryPointError: CustomStringConvertible {
@@ -990,6 +971,8 @@ extension _EntryPointError: CustomStringConvertible {
       #"Invalid value "\#(value)" for argument \#(name)"#
     case let .experimentalABIVersion(versionNumber):
       "Event stream version \(versionNumber) is experimental. Use --experimental-event-stream-version to enable it."
+    case let .commandLineParsingFailed(error):
+      String(describing: error)
     }
   }
 }
