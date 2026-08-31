@@ -121,7 +121,7 @@ extension Backtrace.SymbolicatedAddress: Codable {}
 #endif
 
 extension Backtrace.SymbolicatedAddress: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     var result = [String: JSON.Value]()
 
     result["address"] = address.jsonValue(in: context)

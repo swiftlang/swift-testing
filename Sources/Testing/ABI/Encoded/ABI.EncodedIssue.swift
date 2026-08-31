@@ -121,7 +121,7 @@ extension ABI.EncodedIssue.Severity: Codable {}
 #endif
 
 extension ABI.EncodedIssue: JSON.Encodable {
-  public func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  public func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     var result = [String: JSON.Value]()
 
     result["severity"] = severity?.rawValue.jsonValue(in: context)

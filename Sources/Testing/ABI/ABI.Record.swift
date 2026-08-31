@@ -146,7 +146,7 @@ extension ABI.Record: Codable {
 #endif
 
 extension ABI.Record: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) throws(JSON.EncodingError) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) throws(JSON.EncodingError) -> JSON.Value {
     var result = [String: JSON.Value]()
 
     result["version"] = V.versionNumber.jsonValue(in: context)

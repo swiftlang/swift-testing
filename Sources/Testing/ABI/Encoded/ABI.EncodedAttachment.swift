@@ -111,10 +111,10 @@ extension ABI.EncodedAttachment: Codable {
 #endif
 
 extension ABI.EncodedAttachment: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     var result = [String: JSON.Value]()
 
-    func encodeBytes(_ bytes: UnsafeRawBufferPointer) {
+    lazy var encodeBytes = { [context = copy context] (_ bytes: UnsafeRawBufferPointer) in
 #if canImport(Foundation)
       // If possible, encode this structure as Base64 data.
       let data = Data(bytesNoCopy: .init(mutating: bytes.baseAddress!), count: bytes.count, deallocator: .none)
