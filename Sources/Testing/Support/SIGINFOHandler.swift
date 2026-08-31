@@ -37,7 +37,7 @@ private let _all = Mutex<[Weak<SIGINFOHandler<Void>>]>()
 ///
 /// This declaration is annotated `nonisolated(unsafe)` because dispatch sources
 /// do not conform to `Sendable` on non-Darwin targets.
-private nonisolated(unsafe) let _siginfoSource = {
+private nonisolated(unsafe) let _siginfoSource: Any = {
 #if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
   let source = DispatchSource.makeSignalSource(signal: SIGINFO, queue: .main)
 #elseif os(Linux) || os(Android)
