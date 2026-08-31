@@ -107,7 +107,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
-  public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
+  public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #Testing::sourceLocation) {
     self._storage = Allocated(attachableValue)
     self._preferredName = preferredName
     self.sourceLocation = sourceLocation
@@ -276,7 +276,7 @@ extension Attachment where AttachableValue: Sendable & ~Copyable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   @_documentation(visibility: private)
-  public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
+  public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #Testing::sourceLocation) {
     let attachmentCopy = Attachment<AnyAttachable>(attachment)
     Event.post(.valueAttached(attachmentCopy))
   }
@@ -306,7 +306,7 @@ extension Attachment where AttachableValue: Sendable & ~Copyable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   @_documentation(visibility: private)
-  public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
+  public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #Testing::sourceLocation) {
     record(Self(attachableValue, named: preferredName, sourceLocation: sourceLocation), sourceLocation: sourceLocation)
   }
 }
@@ -330,7 +330,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
-  public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
+  public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #Testing::sourceLocation) {
     do {
       let bufferCopy = try attachment.withUnsafeBytes { Array($0) }
       Attachment<Array>.record(bufferCopy, sourceLocation: sourceLocation)
@@ -364,7 +364,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
-  public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
+  public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #Testing::sourceLocation) {
     record(Self(attachableValue, named: preferredName, sourceLocation: sourceLocation), sourceLocation: sourceLocation)
   }
 }
@@ -550,12 +550,7 @@ extension Attachment where AttachableValue: ~Copyable {
         let preferredPath = appendPathComponent(preferredName, to: directoryPath)
 
         func isEEXIST(_ error: any Error) -> Bool {
-#if !hasFeature(Embedded)
           error._code == swt_EEXIST() && error._domain == "NSPOSIXErrorDomain"
-#else
-          // TODO: detect EEXIST without using _code/_domain?
-          false
-#endif
         }
 
         // Propagate any error *except* EEXIST, which would indicate that the

@@ -262,18 +262,6 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
   }
 }
 
-#if !hasFeature(Embedded)
-/// An empty protocol defining a type that conforms to `RangeExpression<Int>`.
-///
-/// In the future, when our minimum deployment target supports casting a value
-/// to a constrained existential type ([SE-0353](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0353-constrained-existential-types.md#effect-on-abi-stability)),
-/// we can remove this protocol and cast to `RangeExpression<Int>` instead.
-private protocol _RangeExpressionOverIntValues: RangeExpression & Sequence where Bound == Int, Element == Int {}
-extension ClosedRange<Int>: _RangeExpressionOverIntValues {}
-extension PartialRangeFrom<Int>: _RangeExpressionOverIntValues {}
-extension Range<Int>: _RangeExpressionOverIntValues {}
-#endif
-
 extension Issue.Kind: CustomStringConvertible {
   public var description: String {
     switch self {
@@ -292,7 +280,7 @@ extension Issue.Kind: CustomStringConvertible {
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
 #if !hasFeature(Embedded)
-      if let expected = expected as? any _RangeExpressionOverIntValues {
+      if let expected = expected as? any Sequence<Int> {
         let lowerBound = expected.first { _ in true }
         if let lowerBound {
           // Not actually an upper bound, just "any value greater than the lower

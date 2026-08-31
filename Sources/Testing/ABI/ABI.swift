@@ -214,6 +214,14 @@ extension ABI.Version {
         event,
         Event.Context(test: test, testCase: nil, iteration: encodedEvent.iteration, configuration: nil)
       )
+    case let .metadata(encodedMetadata):
+      guard let metadata = Event.Metadata(decoding: encodedMetadata) else {
+        return nil
+      }
+      result = (
+        Event(.metadataRecorded(metadata), testID: nil, testCaseID: nil),
+        Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
+      )
     }
 
     return result
