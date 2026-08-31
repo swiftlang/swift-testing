@@ -30,11 +30,11 @@ private import Synchronization
 /// Generally, this array will contain no more than `1` element, but it can be
 /// larger when testing the testing library or if multiple harnesses run in a
 /// single process.
-private let _all = Mutex<[SIGINFOHandler<Void>]>()
+private let _all = Mutex<[Weak<SIGINFOHandler<Void>>]>()
 
 /// The dispatch source that listens for `SIGINFO` (or the platform-specific
 /// equivalent).
-private let _siginfoSource: some DispatchSourceProtocol & Sendable = {
+private let _siginfoSource = {
 #if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
   let source = DispatchSource.makeSignalSource(signal: SIGINFO, queue: .main)
 #elseif os(Linux) || os(Android)
@@ -58,7 +58,7 @@ private let _siginfoSource: some DispatchSourceProtocol & Sendable = {
   source.setEventHandler {
     // Invoke all registered handler objects.
     for handler in _all.rawValue {
-      handler()
+      handler?.rawValue()
     }
   }
   source.activate()
@@ -79,13 +79,13 @@ final class SIGINFOHandler<T>: Sendable {
 
     _handler = handler
     _all.withLock { all in
-      all.append(self)
+      all.append(Weak(self))
     }
   }
 
   deinit {
     _all.withLock { all in
-      all.removeAll { $0 === self }
+      all.removeAll { $0.rawValue === self }
     }
   }
 
