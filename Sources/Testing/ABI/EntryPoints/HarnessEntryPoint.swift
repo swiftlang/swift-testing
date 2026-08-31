@@ -88,14 +88,38 @@ package func harnessEntryPoint(
   let runEndedEvent = Mutex<(Event, Event.Context)?>()
 
 #if !SWT_NO_SIGINFO
-  let siginfoSource = DispatchSource.makeSignalSource(signal: SIGINFO, queue: .main)
-  siginfoSource.setEventHandler {
+  let handleSIGINFO: @convention(c) () -> Void = {
     // TODO: SIGINFO handling
+#if DEBUG
+    try? FileHandle.stderr.write("SIGINFO (or equivalent)\n")
+#endif
+  }
+#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Linux) || os(Android)
+#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
+  let signalNumber = SIGINFO
+#elseif os(Linux) || os(Android)
+  // On Linux, SIGINFO is not defined, so we'll use SIGUSR1 for this purpose.
+  let signalNumber = SIGUSR1
+#endif
+  let siginfoSource = DispatchSource.makeSignalSource(signal: signalNumber, queue: .main)
+  siginfoSource.setEventHandler {
+    handleSIGINFO()
   }
   siginfoSource.resume()
   defer {
     extendLifetime(siginfoSource)
   }
+#elseif os(Windows)
+  SetConsoleCtrlHandler({ ctrlType in
+    guard ctrlType == CTRL_BREAK_EVENT else {
+      // Let the system handle it normally.
+      return false
+    }
+    handleSIGINFO()
+  }, true)
+#else
+#error("Platform-specific misconfiguration: support for SIGINFO requires that the platform implement SIGINFO or an appropriate alternative")
+#endif
 #endif
 
   let adapterCount = adapters.count
