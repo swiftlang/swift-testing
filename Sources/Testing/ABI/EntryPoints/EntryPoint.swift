@@ -573,6 +573,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 ///
 /// - Parameters:
 ///   - args: A previously-parsed command-line arguments structure to interpret.
+///   - emitWarnings: Whether or not to emit validation warnings to `stderr`.
 ///
 /// - Returns: An instance of ``Configuration``. Note that the caller is
 ///   responsible for setting this instance's ``Configuration/eventHandler``
@@ -580,7 +581,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 ///
 /// - Throws: If an argument is invalid, such as a malformed regular expression.
 @_spi(ForToolsIntegrationOnly)
-public func configurationForEntryPoint(from args: __CommandLineArguments_v0) throws -> Configuration {
+public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emitWarnings: Bool = true) throws -> Configuration {
   var configuration = Configuration()
 
   // Parallelization (on by default)
@@ -679,7 +680,13 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
         let originalString = string
         string = String(string.dropFirst().dropLast())
 #if !SWT_NO_FILE_IO
-        try? FileHandle.stderr.write("Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.\n")
+        if emitWarnings {
+          let warning = Event.ConsoleOutputRecorder.warning(
+            "Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.",
+            options: .for(.stderr)
+          )
+          try? FileHandle.stderr.write("\(warning)\n")
+        }
 #endif
       }
     }
