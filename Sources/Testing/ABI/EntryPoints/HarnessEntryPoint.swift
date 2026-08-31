@@ -10,10 +10,6 @@
 
 private import _TestingInternals
 
-#if !SWT_NO_SIGINFO && !SWT_TARGET_OS_APPLE
-private import Dispatch
-#endif
-
 #if canImport(Synchronization)
 private import Synchronization
 #endif
@@ -88,38 +84,19 @@ package func harnessEntryPoint(
   let runEndedEvent = Mutex<(Event, Event.Context)?>()
 
 #if !SWT_NO_SIGINFO
-  let handleSIGINFO: @convention(c) () -> Void = {
-    // TODO: SIGINFO handling
-#if DEBUG
-    try? FileHandle.stderr.write("SIGINFO (or equivalent)\n")
-#endif
-  }
-#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Linux) || os(Android)
-#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
-  let signalNumber = SIGINFO
-#elseif os(Linux) || os(Android)
-  // On Linux, SIGINFO is not defined, so we'll use SIGUSR1 for this purpose.
-  let signalNumber = SIGUSR1
-#endif
-  let siginfoSource = DispatchSource.makeSignalSource(signal: signalNumber, queue: .main)
-  siginfoSource.setEventHandler {
-    handleSIGINFO()
-  }
-  siginfoSource.resume()
-  defer {
-    extendLifetime(siginfoSource)
-  }
-#elseif os(Windows)
-  SetConsoleCtrlHandler({ ctrlType in
-    guard ctrlType == CTRL_BREAK_EVENT else {
-      // Let the system handle it normally.
-      return false
+  let siginfoHandler = SIGINFOHandler {
+    guard let lines = eventRecorder?.summarize() else {
+      return
     }
-    handleSIGINFO()
-  }, true)
-#else
-#error("Platform-specific misconfiguration: support for SIGINFO requires that the platform implement SIGINFO or an appropriate alternative")
-#endif
+    _ = try? FileHandle.stderr.withLock {
+      for line in lines {
+        try FileHandle.stderr.write(line)
+      }
+    }
+  }
+  defer {
+    extendLifetime(siginfoHandler)
+  }
 #endif
 
   let adapterCount = adapters.count
@@ -143,9 +120,6 @@ package func harnessEntryPoint(
               recordEvent = false
             }
           }
-          if adapterCount > 1 {
-            try? FileHandle.stderr.write("Running '\(adapter.adapterName)'...\n")
-          }
         case .runEnded:
           // Keep the last run-ended event, and suppress recording any run-ended
           // events until the adapter loop is complete.
@@ -168,6 +142,10 @@ package func harnessEntryPoint(
           eventHandler?(event, eventContext)
         }
 #endif
+
+        if case .runStarted = event.kind, adapterCount > 1 {
+          try? FileHandle.stderr.write("Running '\(adapter.adapterName)'...\n")
+        }
       }
     }
 

@@ -14,9 +14,9 @@ private import _TestingInternals
 private import Foundation
 #endif
 
-private func configurationForEntryPoint(withArguments args: [String]) throws -> Configuration {
+private func configurationForEntryPoint(withArguments args: [String], emitWarnings: Bool = true) throws -> Configuration {
   let args = try parseCommandLineArguments(from: args)
-  return try configurationForEntryPoint(from: args)
+  return try configurationForEntryPoint(from: args, emitWarnings: emitWarnings)
 }
 
 #if !SWT_NO_ABI_JSON_SCHEMA
@@ -212,7 +212,7 @@ struct SwiftPMTests {
 
   @Test("--filter tag: argument strips backticks around tag names")
   func filterByTagStripsBackticks() async throws {
-    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:`testTag`"])
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:`testTag`"], emitWarnings: false)
     let test1 = Test(.tags(.testTag), name: "hello") {}
     let test2 = Test(name: "goodbye") {}
     let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
@@ -428,7 +428,6 @@ struct SwiftPMTests {
         Issue.record("Test setup failure.  Could not create file at \(attachmentPath).")
       }
       defer {
-        print("removing \(attachmentPath) ...")
         _ = remove(attachmentPath)
       }
       #expect(throws: (any Error).self, "Attachment path is: \(attachmentPath)") {
