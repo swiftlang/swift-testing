@@ -211,7 +211,7 @@ extension ABI.VersionNumber: Codable {
 #endif
 
 extension ABI.VersionNumber: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
       // Version 0 and earlier are encoded as integers for compatibility with
       // Swift 6.2 and earlier.

@@ -47,7 +47,7 @@ extension ABI.EncodedBacktrace: Codable {
 #endif
 
 extension ABI.EncodedBacktrace: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     symbolicatedAddresses.jsonValue(in: context)
   }
 }

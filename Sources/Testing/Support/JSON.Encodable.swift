@@ -103,7 +103,7 @@ extension JSON {
     /// - Returns: An instance of ``JSON/Value`` representing this value.
     ///
     /// - Throws: Any error that prevents encoding this value as JSON.
-    func jsonValue(in context: JSON.EncodingContext) throws(JSONEncodingError) -> JSON.Value
+    func jsonValue(in context: borrowing JSON.EncodingContext) throws(JSONEncodingError) -> JSON.Value
   }
 
   /// A type representing errors that occur while encoding a JSON value.
@@ -411,25 +411,25 @@ extension JSON.Value {
 // MARK: - Basic JSON.Encodable conformances
 
 extension JSON.Value: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     self
   }
 }
 
 extension JSON.Number: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     .number(self)
   }
 }
 
 extension String: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     .string(self)
   }
 }
 
 extension SignedInteger where Self: FixedWidthInteger & JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     guard let value = JSON.Number.SignedInteger(exactly: self) else {
       let bitWidth = JSON.Number.SignedInteger.bitWidth
       preconditionFailure("Could not convert signed integer \(self) to an instance of 'Int\(bitWidth)'. \(fileABugMessage)")
@@ -445,7 +445,7 @@ extension Int64: JSON.Encodable {}
 extension Int: JSON.Encodable {}
 
 extension UnsignedInteger where Self: FixedWidthInteger & JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     guard let value = JSON.Number.UnsignedInteger(exactly: self) else {
       let bitWidth = JSON.Number.UnsignedInteger.bitWidth
       preconditionFailure("Could not convert unsigned integer \(self) to an instance of 'UInt\(bitWidth)'. \(fileABugMessage)")
@@ -461,15 +461,15 @@ extension UInt64: JSON.Encodable {}
 extension UInt: JSON.Encodable {}
 
 extension JSON.Number.FloatingPoint: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     .number(.floatingPoint(self))
   }
 }
 
 extension Dictionary: JSON.Encodable where Key == String, Value: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) throws(Value.JSONEncodingError) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) throws(Value.JSONEncodingError) -> JSON.Value {
     try .object(
-      self.mapValues { value throws(Value.JSONEncodingError) in
+      self.mapValues { [context = copy context] value throws(Value.JSONEncodingError) in
         try value.jsonValue(in: context)
       }
     )
@@ -477,9 +477,9 @@ extension Dictionary: JSON.Encodable where Key == String, Value: JSON.Encodable 
 }
 
 extension Array: JSON.Encodable where Element: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) throws(Element.JSONEncodingError) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) throws(Element.JSONEncodingError) -> JSON.Value {
     try .array(
-      self.map { element throws(Element.JSONEncodingError) in
+      self.map { [context = copy context] element throws(Element.JSONEncodingError) in
         try element.jsonValue(in: context)
       }
     )
@@ -487,7 +487,7 @@ extension Array: JSON.Encodable where Element: JSON.Encodable {
 }
 
 extension Bool: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     .bool(self)
   }
 }

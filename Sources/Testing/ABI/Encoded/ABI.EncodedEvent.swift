@@ -275,7 +275,7 @@ extension ABI.EncodedEvent.Kind: Codable {}
 #endif
 
 extension ABI.EncodedEvent: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     var result = [String: JSON.Value]()
 
     result["kind"] = kind.rawValue.jsonValue(in: context)

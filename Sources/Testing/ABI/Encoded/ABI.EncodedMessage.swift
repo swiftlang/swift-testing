@@ -91,7 +91,7 @@ extension ABI.EncodedMessage.Symbol: Codable {}
 #endif
 
 extension ABI.EncodedMessage: JSON.Encodable {
-  func jsonValue(in context: JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     var result = [String: JSON.Value]()
 
     result["symbol"] = symbol.rawValue.jsonValue(in: context)
