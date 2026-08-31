@@ -30,8 +30,7 @@ extension ABI {
 ///
 /// - Parameters:
 ///   - adapters: The adapters to run.
-///   - verbosity: The verbosity to run at.
-///   - xmlOutputPath: The path at which to write JUnit XML output, if any.
+///   - arguments: Arguments passed to the harness.
 ///
 /// - Returns: The exit code that the harness should exit with.
 ///
@@ -39,33 +38,47 @@ extension ABI {
 /// then handles the remainder of the harness' work.
 package func harnessEntryPoint(
   running adapters: [any Event.Adapter],
-  verbosity: Int,
-  xmlOutputPath: String?
+  arguments: CommandLineArgumentList
 ) async throws -> CInt {
   var exitCodes = [CInt]()
+
+  let args = try parseCommandLineArguments(from: arguments.arguments)
 
 #if !SWT_NO_FILE_IO
   let (eventRecorder, configuration) = {
     var eventRecorder: Event.ConsoleOutputRecorder?
-    if verbosity > .min {
+    if args.verbosity > .min {
       eventRecorder = .init(options: .for(.stderr)) { string in
         try? FileHandle.stderr.write(string)
       }
     }
 
     var configuration = Configuration()
-    configuration.verbosity = verbosity
+    configuration.verbosity = args.verbosity
 
     return (eventRecorder, configuration)
   }()
 
   let xmlOutputRecorder: Event.JUnitXMLRecorder? = try {
-    guard let xmlOutputPath else {
+    guard let xmlOutputPath = args.xunitOutput else {
       return nil
     }
     let file = try FileHandle(forWritingAtPath: xmlOutputPath)
     return Event.JUnitXMLRecorder { string in
       try? file.write(string)
+    }
+  }()
+
+  let eventHandler: (@Sendable (borrowing Event, borrowing Event.Context) -> Void)? = try {
+    guard let eventStreamOutputPath = args.eventStreamOutputPath else {
+      return nil
+    }
+    let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
+    return try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
+      _ = try? file.withLock {
+        try file.write(json)
+        try file.write("\n")
+      }
     }
   }()
 #endif
@@ -128,6 +141,7 @@ package func harnessEntryPoint(
         if recordEvent, let eventRecorder {
           eventRecorder.record(event, in: eventContext, configuration: configuration)
           xmlOutputRecorder?.record(event, in: eventContext)
+          eventHandler?(event, eventContext)
         }
 #endif
       }
@@ -148,6 +162,7 @@ package func harnessEntryPoint(
     let (event, eventContext) = runEndedEvent
     eventRecorder.record(event, in: eventContext, configuration: configuration)
     xmlOutputRecorder?.record(event, in: eventContext)
+    eventHandler?(event, eventContext)
   }
 #endif
 
@@ -176,9 +191,8 @@ package func harnessEntryPoint(
 /// caller.
 package func harnessEntryPoint(
   running adapters: [any Event.Adapter],
-  verbosity: Int,
-  xmlOutputPath: String?
+  arguments: CommandLineArgumentList
 ) async throws -> Never {
-  let exitCode: CInt = try await harnessEntryPoint(running: adapters, verbosity: verbosity, xmlOutputPath: xmlOutputPath)
+  let exitCode: CInt = try await harnessEntryPoint(running: adapters, arguments: arguments)
   exit(exitCode)
 }

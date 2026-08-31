@@ -240,6 +240,9 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [St
 /// - Warning: This type is used by Swift Package Manager. Do not use it
 ///   directly.
 public struct __CommandLineArguments_v0: Sendable {
+  /// The command-line argument list used to construct this instance, if any.
+  var commandLineArgumentList: CommandLineArgumentList?
+
   public init() {}
 
   /// The value of the `--list-tests` argument.
@@ -435,6 +438,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     ],
     describingUnrecognizedArgumentWith: { _ in .anonymous }
   )
+  result.commandLineArgumentList = args
 
 #if !SWT_NO_FILE_IO
 #if !SWT_NO_CODABLE

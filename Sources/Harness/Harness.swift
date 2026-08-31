@@ -33,9 +33,20 @@ struct Harness: Sendable {
     // The paths to zero or more files containing event stream output, encoded
     // as JSON Lines, that this harness should decode and replay.
     result.append(.option("--event-stream-input-path"))
-#endif
+
+    // TODO: honor --configuration-path at this layer
+    result += [
+      .option("--configuration-path"), .option("--experimental-configuration-path"),
+    ]
+
+    // We forward events to the event stream specified by the caller.
+    result += [
+      .option("--event-stream-output-path"), .option("--experimental-event-stream-output"),
+      .option("--event-stream-version"), .option("--experimental-event-stream-version"),
+    ]
 
     result.append(.option("--xunit-output"))
+#endif
 
     return result
   }
@@ -65,21 +76,6 @@ struct Harness: Sendable {
     }
   }
 
-  /// The value of the `--verbosity` argument.
-  ///
-  /// The logic of this property is equivalent to that of the
-  /// ``__CommandLineArguments_v0/verbosity`` property.
-  var verbosity: Int {
-    if _args.hasFlag(withLabel: "--very-verbose") || _args.hasFlag(withLabel: "--vv") {
-      return 2
-    } else if _args.hasFlag(withLabel: "--verbose") || _args.hasFlag(withLabel: "-v") {
-      return 1
-    } else if _args.hasFlag(withLabel: "--quiet") || _args.hasFlag(withLabel: "-q") {
-      return -1
-    }
-    return 0
-  }
-
   init(commandLineArguments args: [String] = CommandLine.arguments) throws {
     _args = try CommandLineArgumentList(
       parsing: args,
@@ -98,15 +94,8 @@ struct Harness: Sendable {
 #if SWT_TARGET_OS_APPLE
     let swiftPMTestingHelperPath = try swiftPMTestingHelperPath
 #endif
-    var args = _args
-    args.setOptions([], forLabel: "--test-product-path")
-    args.setOptions([], forLabel: "--swiftpm-testing-helper-path")
-
-    // Process XML output at the harness layer.
-    let xmlOutputPath = args.option(withLabel: "--xunit-output")
-    if xmlOutputPath != nil {
-      args.setOptions([], forLabel: "--xunit-output")
-    }
+    var argsForLocalProcesses = _args
+    argsForLocalProcesses.removeArguments(for: Self._commandLineArgumentDescriptors)
 
     adapters += try testProductPaths.map { testProductPath in
 #if SWT_TARGET_OS_APPLE
@@ -118,12 +107,12 @@ struct Harness: Sendable {
       return Event.LocalProcessAdapter(
         testProductBinaryPath: testProductBinaryPath,
         swiftPMTestingHelperPath: swiftPMTestingHelperPath,
-        commandLineArguments: args.arguments
+        commandLineArguments: argsForLocalProcesses.arguments
       )
 #else
       return Event.LocalProcessAdapter(
         testProductPath: testProductPath,
-        commandLineArguments: args.arguments
+        commandLineArguments: argsForLocalProcesses.arguments
       )
 #endif
     }
@@ -136,11 +125,7 @@ struct Harness: Sendable {
     adapters += try eventStreamInputPaths.map(Event.JSONLinesFileAdapter.init(readingFromFileAtPath:))
 #endif
 
-    try await harnessEntryPoint(
-      running: adapters,
-      verbosity: verbosity,
-      xmlOutputPath: xmlOutputPath
-    ) as Never
+    try await harnessEntryPoint(running: adapters, arguments: _args) as Never
   }
 }
 

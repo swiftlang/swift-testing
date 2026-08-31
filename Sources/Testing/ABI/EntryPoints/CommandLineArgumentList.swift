@@ -345,6 +345,25 @@ extension CommandLineArgumentList {
       _flags.remove(label)
     }
   }
+
+  /// Remove all arguments for the given descriptors.
+  ///
+  /// - Parameters:
+  ///   - descriptors: The descriptors for which arguments should be removed.
+  public mutating func removeArguments(for descriptors: [Descriptor]) {
+    for descriptor in descriptors {
+      switch descriptor {
+      case .anonymous:
+        _anonymousArgumentValues = []
+      case let .flag(label):
+        _flags.remove(label)
+      case let .option(label):
+        _options[label] = nil
+      case let .subcommand(commandName):
+        _subcommandNames.removeAll { $0 == commandName }
+      }
+    }
+  }
 }
 
 // MARK: -
