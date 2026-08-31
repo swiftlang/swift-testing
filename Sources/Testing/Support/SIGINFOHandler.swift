@@ -18,8 +18,8 @@ private import Dispatch
 private import Synchronization
 #endif
 
-#if SWT_NO_SIGINFO
-#if !SWT_NO_LIBDISPATCH
+#if !SWT_NO_SIGINFO
+#if SWT_NO_LIBDISPATCH
 #error("Platform-specific misconfiguration: support for SIGINFO handling requires support for libdispatch")
 #endif
 #endif
