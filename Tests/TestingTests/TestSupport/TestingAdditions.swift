@@ -168,7 +168,7 @@ extension Test {
   /// the `@Test` macro.
   init(
     _ traits: any TestTrait...,
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     name: String = #function,
     testFunction: @escaping @Sendable () async throws -> Void
@@ -199,7 +199,7 @@ extension Test {
     parameters: [Parameter] = [
       Parameter(index: 0, firstName: "x", type: C.Element.self),
     ],
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     column: Int = #column,
     name: String = #function,
@@ -216,7 +216,7 @@ extension Test {
     parameters: [Parameter] = [
       Parameter(index: 0, firstName: "x", type: C.Element.self),
     ],
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     column: Int = #column,
     name: String = #function,
@@ -252,7 +252,7 @@ extension Test {
       Parameter(index: 0, firstName: "x", type: C1.Element.self),
       Parameter(index: 1, firstName: "y", type: C2.Element.self),
     ],
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     name: String = #function,
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
@@ -280,7 +280,7 @@ extension Test {
       Parameter(index: 0, firstName: "x", type: C1.Element.self),
       Parameter(index: 1, firstName: "y", type: C2.Element.self),
     ],
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     name: String = #function,
     testFunction: @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void

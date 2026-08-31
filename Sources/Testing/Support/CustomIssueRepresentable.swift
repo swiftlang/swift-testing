@@ -47,6 +47,10 @@ protocol CustomIssueRepresentable: Error {
 struct SystemError: Error, CustomStringConvertible, CustomIssueRepresentable {
   var description: String
 
+  init(description: String) {
+    self.description = description
+  }
+
   static var domain: String {
     "org.swift.testing.SystemError"
   }
