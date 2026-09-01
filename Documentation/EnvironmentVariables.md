@@ -69,4 +69,4 @@ names prefixed with `SWT_`.
 | `SWT_EXPERIMENTAL_SERIALIZED_TRAIT_APPLIES_GLOBALLY` | `Bool` | Whether or not `.serialized` applies globally or just to its branch of the test graph. |
 | `SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH` | `Int` | The default parallelization width when parallelized testing is enabled. |
 
-[interop-modes]: ../Sources/Testing/Testing.docc/MigratingFromXCTest.md
+[interop-modes]: https://docs.swift.org/latest/documentation/testing/migratingfromxctest
