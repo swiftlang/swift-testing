@@ -284,6 +284,9 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The maximum number of test tasks to run in parallel.
   public var experimentalMaximumParallelizationWidth: Int?
 
+  /// The number of worker processes to spawn (only used by the harness).
+  public var numWorkers: Int?
+
   /// The value of the `--symbolicate-backtraces` argument.
   public var symbolicateBacktraces: String?
 
@@ -420,6 +423,7 @@ extension __CommandLineArguments_v0: Codable {
     case listTests
     case parallel
     case experimentalMaximumParallelizationWidth
+    case numWorkers
     case symbolicateBacktraces
     case verbose
     case veryVerbose
@@ -457,7 +461,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
       .option("--xunit-output"),
       .option("--attachments-path"), .option("--experimental-attachments-path"),
       .flag("--parallel"), .flag("--no-parallel"),
-      .option("--experimental-maximum-parallelization-width"),
+      .option("--experimental-maximum-parallelization-width"), .option("--num-workers"),
       .option("--symbolicate-backtraces"),
       .option("--verbosity"), .flag("--verbose"), .flag("-v"), .flag("--very-verbose"), .flag("--vv"), .flag("--quiet"), .flag("-q"),
       .option("--filter"), .option("--skip"),
@@ -581,8 +585,10 @@ func parseCommandLineArguments(from args: CommandLineArgumentList) throws -> __C
     result.parallel = false
   }
   if let maximumParallelizationWidth = args.option(withLabel: "--experimental-maximum-parallelization-width").flatMap(Int.init) {
-    // TODO: decide if we want to repurpose --num-workers for this use case?
     result.experimentalMaximumParallelizationWidth = maximumParallelizationWidth
+  }
+  if let numWorkers = args.option(withLabel: "--num-workers").flatMap(Int.init) {
+    result.numWorkers = numWorkers
   }
 
   // Whether or not to symbolicate backtraces in the event stream.

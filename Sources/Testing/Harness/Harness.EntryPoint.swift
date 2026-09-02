@@ -41,14 +41,13 @@ extension Harness {
     generatingEventsWith generators: [any Harness.EventGenerator],
     arguments: CommandLineArgumentList
   ) async throws -> CInt {
-    let argumentList = arguments
     let arguments = try parseCommandLineArguments(from: arguments)
     var configuration = try configurationForEntryPoint(from: arguments)
 
     // The number of concurrent workers to use (unless parallelization is off.)
     var numWorkers = 1
     if arguments.parallel != false {
-      numWorkers = argumentList.option(withLabel: "--num-workers").flatMap(Int.init) ?? numWorkers
+      numWorkers = arguments.numWorkers ?? numWorkers
     }
 
     // Enable console output (if appropriate).
