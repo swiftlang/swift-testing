@@ -11,7 +11,10 @@
 extension Harness {
   /// A protocol describing types that can generate events for the harness to
   /// handle.
-  package protocol EventGenerator: Sendable {
+  ///
+  /// Instances of conforming types may be copied a large number of times, so
+  /// such types must be classes to reduce memory usage.
+  package protocol EventGenerator: Sendable, AnyObject {
     /// A human-readable name for this instance.
     ///
     /// The testing harness presents the value of this property to users when

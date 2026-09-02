@@ -45,6 +45,9 @@ extension Event {
       ///
       /// Not all messages include a concise string.
       var conciseStringValue: String?
+
+      /// The name of the event generator that generated this message, if any.
+      var eventGeneratorName: String?
     }
 
     /// A type that contains mutable context for

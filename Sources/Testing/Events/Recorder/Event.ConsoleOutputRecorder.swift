@@ -311,6 +311,12 @@ extension Event.ConsoleOutputRecorder {
 // MARK: -
 
 extension Event.ConsoleOutputRecorder {
+  /// Whether or not to show the names of event generators that generate output
+  /// through instances of this type.
+  ///
+  /// This environment variable is used by the harness only.
+  private static let _showEventGeneratorNames = Environment.flag(named: "SWT_SHOW_EVENT_GENERATOR_NAMES") ?? false
+
   /// Generate representations of the given messages in this instance's output
   /// format.
   ///
@@ -329,16 +335,24 @@ extension Event.ConsoleOutputRecorder {
       let symbol = message.symbol?.stringValue(options: options) ?? symbolPlaceholder
       let indentation = String(repeating: "  ", count: message.indentation)
 
+      // Any additional information or suffix that we want to include in the
+      // resulting lines.
+      var suffix = ""
+      if Self._showEventGeneratorNames,
+         let eventGeneratorName = message.eventGeneratorName,
+         options.useANSIEscapeCodes, options.ansiColorBitDepth > 1 {
+        suffix = " \(_ansiEscapeCodePrefix)36m[\(eventGeneratorName)]\(_resetANSIEscapeCode)"
+      }
+
       if case .details = message.symbol {
         // Special-case the detail symbol to apply grey to the entire line of
         // text instead of just the symbol. Details may be multi-line messages,
         // so split the message on newlines and indent all lines to align them
         // to the indentation provided by the symbol.
         var lines = message.stringValue.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
-        lines = CollectionOfOne(lines[0]) + lines.dropFirst().map { line in
-          "\(indentation)\(symbolPlaceholder) \(line)"
-        }
-        let stringValue = lines.joined(separator: "\n")
+        lines = CollectionOfOne(lines[0] + suffix) + lines.dropFirst().lazy
+          .map { "\(indentation)\(symbolPlaceholder) \($0)" }
+        let stringValue: String = lines.joined(separator: "\n")
         if options.useANSIEscapeCodes, options.ansiColorBitDepth > 1 {
           return "\(_ansiEscapeCodePrefix)90m\(symbol) \(indentation)\(stringValue)\(_resetANSIEscapeCode)\n"
         } else {
@@ -346,7 +360,7 @@ extension Event.ConsoleOutputRecorder {
         }
       } else {
         let colorDots = tags.map { self.colorDots(for: $0, options: options) } ?? ""
-        return "\(symbol) \(indentation)\(colorDots)\(message.stringValue)\n"
+        return "\(symbol) \(indentation)\(colorDots)\(message.stringValue)\(suffix)\n"
       }
     }
 
@@ -389,7 +403,14 @@ extension Event.ConsoleOutputRecorder {
     in context: borrowing Event.Context,
     configuration: Configuration? = nil
   ) -> Bool {
-    let messages = _humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
+    var messages = _humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
+    if let eventGenerator = context.eventGenerator {
+      messages = messages.map { [eventGeneratorName = eventGenerator.humanReadableName] message in
+        var message = message
+        message.eventGeneratorName = eventGeneratorName
+        return message
+      }
+    }
     return _record(messages, tags: context.test?.tags)
   }
 

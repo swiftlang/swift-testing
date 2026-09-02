@@ -36,6 +36,12 @@ import Foundation
 #endif
 #endif
 
+
+    result += [
+      .flag("--parallel"), .flag("--no-parallel"),
+      .option("--num-workers"),
+    ]
+
 #if !SWT_NO_FILE_IO
     // The paths to zero or more files containing event stream output, encoded
     // as JSON Lines, that this harness should decode and replay.
@@ -108,6 +114,15 @@ import Foundation
 #endif
     var argsForLocalProcesses = _args
     argsForLocalProcesses.removeArguments(for: Self._commandLineArgumentDescriptors)
+
+    // These arguments are used both by the harness and runner, so add them back.
+    // TODO: make argument stripping more elegant
+    if _args.hasFlag(withLabel: "--parallel") {
+      argsForLocalProcesses.setFlag(true, forLabel: "--parallel")
+    }
+    if _args.hasFlag(withLabel: "--no-parallel") {
+      argsForLocalProcesses.setFlag(true, forLabel: "--no-parallel")
+    }
 
     if !_args.hasFlag(withLabel: "--disable-swift-testing") {
       eventGenerators += try testProductPaths.map { testProductPath in

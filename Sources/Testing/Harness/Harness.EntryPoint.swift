@@ -41,8 +41,15 @@ extension Harness {
     generatingEventsWith generators: [any Harness.EventGenerator],
     arguments: CommandLineArgumentList
   ) async throws -> CInt {
+    let argumentList = arguments
     let arguments = try parseCommandLineArguments(from: arguments)
     var configuration = try configurationForEntryPoint(from: arguments)
+
+    // The number of concurrent workers to use (unless parallelization is off.)
+    var numWorkers = 1
+    if arguments.parallel != false {
+      numWorkers = argumentList.option(withLabel: "--num-workers").flatMap(Int.init) ?? numWorkers
+    }
 
     // Enable console output (if appropriate).
     let consoleOutputEnabled = Allocated(Atomic(true))
@@ -63,13 +70,22 @@ extension Harness {
     }
 
     let context = Mutex(Context())
-    for generator in generators {
-      do {
-        try await _runGenerator(generator, in: context, configuration: configuration)
-      } catch {
-        // TODO: handle errors at this layer in an interesting way
-        exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
+
+    let serializer = Serializer<Void>(maximumWidth: numWorkers)
+    await withTaskGroup(of: Void.self) { [configuration] taskGroup in
+      for generator in generators {
+        taskGroup.addTask(name: decorateTaskName(generator.humanReadableName, withAction: "running")) {
+          await serializer.run {
+            do {
+              try await _runGenerator(generator, in: context, configuration: configuration)
+            } catch {
+              // TODO: handle errors at this layer in an interesting way
+              exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
+            }
+          }
+        }
       }
+      await taskGroup.waitForAll()
     }
 
 #if !SWT_NO_FILE_IO
@@ -115,7 +131,7 @@ extension Harness {
   ///   - context: The context shared between all generator runs.
   ///   - configuration: The configuration to use.
   private static func _runGenerator(_ generator: some Harness.EventGenerator, in context: borrowing Mutex<Context>, configuration: Configuration) async throws {
-    try await generator.run { event, eventContext in
+    try await generator.run { [weak generator] event, eventContext in
       var recordEvent = true
 
       switch event.kind {
@@ -146,6 +162,10 @@ extension Harness {
 
 #if !SWT_NO_FILE_IO
       if recordEvent {
+        var eventContext = copy eventContext
+        if eventContext.eventGenerator == nil {
+          eventContext.eventGenerator = generator
+        }
         configuration.eventHandler(event, eventContext)
       }
 #endif
