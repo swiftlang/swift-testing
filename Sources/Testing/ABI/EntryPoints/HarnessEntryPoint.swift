@@ -211,6 +211,11 @@ package func harnessEntryPoint(
 
 #if !SWT_NO_FILE_IO
 private func _summarize(_ events: [(Event, Event.Context)], using eventRecorder: Event.ConsoleOutputRecorder, withVerbosity verbosity: Int) {
+  guard verbosity >= 0 else {
+    // Don't summarize in quiet mode.
+    return
+  }
+
   let issueEvents = events.filter { event, _ in
     if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
       return true
@@ -252,15 +257,26 @@ private func _summarize(_ events: [(Event, Event.Context)], using eventRecorder:
       stringValue: "The following \(issuesByTest.keys.count.counting("test")) recorded \(issueEvents.count.counting("issue")):"
     ),
   ]
-  for (test, issues) in issuesByTest {
+  let sortedIssuesByTest: [(key: Test, value: [Issue])] = issuesByTest.sorted { lhs, rhs in
+    lhs.key.sourceLocation < rhs.key.sourceLocation
+  }
+  for (test, issues) in sortedIssuesByTest {
     summaryMessages += [
-      .init(
-        symbol: .default,
-        stringValue: "\(test.sourceLocation) - \(test.humanReadableName(withVerbosity: verbosity)):"
-      )
+      {
+        let sourceLocation = test.sourceLocation
+        let stringValue = if sourceLocation != .unknown {
+          "\(sourceLocation) - \(test.humanReadableName(withVerbosity: verbosity)):"
+        } else {
+          "\(test.humanReadableName(withVerbosity: verbosity)):"
+        }
+        return .init(
+          symbol: .default,
+          stringValue: stringValue
+        )
+      }(),
     ]
     summaryMessages += issues.map { issue in
-      let stringValue = if let sourceLocation = issue.sourceLocation {
+      let stringValue = if let sourceLocation = issue.sourceLocation, sourceLocation != .unknown {
         "\(sourceLocation) - \(issue)"
       } else {
         "\(issue)"
@@ -291,7 +307,7 @@ private func _summarize(_ events: [(Event, Event.Context)], using eventRecorder:
       )
     ]
     summaryMessages += orphanedIssues.map { issue in
-      let stringValue = if let sourceLocation = issue.sourceLocation {
+      let stringValue = if let sourceLocation = issue.sourceLocation, sourceLocation != .unknown {
         "\(sourceLocation) - \(issue)"
       } else {
         "\(issue)"
