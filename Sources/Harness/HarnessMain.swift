@@ -12,7 +12,14 @@
 import Foundation
 
 /// The harness' main command (i.e. its entry point).
-struct HarnessMain: Sendable {
+@main struct Main: Sendable {
+  static func main() async throws {
+    var main = try Main()
+    try await main.run()
+  }
+
+  /// The command-line arguments that the harness handles either for its own
+  /// purposes or on behalf of test libraries.
   private static var _commandLineArgumentDescriptors: [CommandLineArgumentList.Descriptor] {
     var result = [CommandLineArgumentList.Descriptor]()
 
@@ -46,6 +53,10 @@ struct HarnessMain: Sendable {
     ]
 
     result.append(.option("--xunit-output"))
+
+    result += [
+      .flag("--enable-swift-testing"), .flag("--disable-swift-testing"),
+    ]
 #endif
 
     return result
@@ -84,6 +95,7 @@ struct HarnessMain: Sendable {
     )
   }
 
+  /// Run the harness.
   mutating func run() async throws {
     var eventGenerators = [any Harness.EventGenerator]()
 
@@ -97,24 +109,26 @@ struct HarnessMain: Sendable {
     var argsForLocalProcesses = _args
     argsForLocalProcesses.removeArguments(for: Self._commandLineArgumentDescriptors)
 
-    eventGenerators += try testProductPaths.map { testProductPath in
+    if !_args.hasFlag(withLabel: "--disable-swift-testing") {
+      eventGenerators += try testProductPaths.map { testProductPath in
 #if SWT_TARGET_OS_APPLE
-      let testProductBundle = Bundle(path: testProductPath)
-      guard let testProductBinaryPath = testProductBundle?.executablePath else {
-        throw CocoaError(.fileReadNoSuchFile)
-      }
+        let testProductBundle = Bundle(path: testProductPath)
+        guard let testProductBinaryPath = testProductBundle?.executablePath else {
+          throw CocoaError(.fileReadNoSuchFile)
+        }
 
-      return Harness.LocalProcessEventGenerator(
-        testProductBinaryPath: testProductBinaryPath,
-        swiftPMTestingHelperPath: swiftPMTestingHelperPath,
-        commandLineArguments: argsForLocalProcesses.arguments
-      )
+        return Harness.LocalProcessEventGenerator(
+          testProductBinaryPath: testProductBinaryPath,
+          swiftPMTestingHelperPath: swiftPMTestingHelperPath,
+          commandLineArguments: argsForLocalProcesses.arguments
+        )
 #else
-      return Harness.LocalProcessEventGenerator(
-        testProductPath: testProductPath,
-        commandLineArguments: argsForLocalProcesses.arguments
-      )
+        return Harness.LocalProcessEventGenerator(
+          testProductPath: testProductPath,
+          commandLineArguments: argsForLocalProcesses.arguments
+        )
 #endif
+      }
     }
 #endif
 
@@ -126,14 +140,5 @@ struct HarnessMain: Sendable {
 #endif
 
     try await Harness.entryPoint(generatingEventsWith: eventGenerators, arguments: _args) as Never
-  }
-}
-
-// MARK: -
-
-@main struct Main {
-  static func main() async throws {
-    var state = try HarnessMain()
-    try await state.run()
   }
 }
