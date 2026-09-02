@@ -114,29 +114,30 @@ extension Event {
         taskGroup.addTask(name: decorateTaskName("harness", withAction: "running test process")) {
           let exitStatus = try await wait(for: processID)
 
-          if exitStatus == .exitCode(EXIT_SUCCESS) {
+          switch exitStatus {
+          case .exitCode(EXIT_SUCCESS), .exitCode(EXIT_FAILURE), .exitCode(EXIT_NO_TESTS_FOUND):
             return
-          }
+          default:
+            // Handle abnormal termination.
+            var exitCodeDescription = switch exitStatus {
+            case let .exitCode(exitCode):
+              "exit code \(exitCode)"
+            case let .signal(signal):
+              "signal \(signal)"
+            }
+            if let name = exitStatus.name {
+              exitCodeDescription += " (\(name))"
+            }
 
-          // Handle abnormal termination.
-          var exitCodeDescription = switch exitStatus {
-          case let .exitCode(exitCode):
-            "exit code \(exitCode)"
-          case let .signal(signal):
-            "signal \(signal)"
+            let issue = Issue(
+              kind: .unconditional,
+              comments: ["The test process exited with \(exitCodeDescription)"],
+              sourceContext: SourceContext(backtrace: nil, sourceLocation: nil)
+            )
+            let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
+            let eventContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
+            try await eventHandler(event, eventContext)
           }
-          if let name = exitStatus.name {
-            exitCodeDescription += " (\(name))"
-          }
-
-          let issue = Issue(
-            kind: .unconditional,
-            comments: ["The test process exited with \(exitCodeDescription)"],
-            sourceContext: SourceContext(backtrace: nil, sourceLocation: nil)
-          )
-          let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
-          let eventContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
-          try await eventHandler(event, eventContext)
         }
 
         // Read events back out from the back channel.

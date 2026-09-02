@@ -58,7 +58,7 @@ private let _siginfoSource = {
   source.setEventHandler {
     // Invoke all registered handler objects.
     for handler in _all.rawValue {
-      handler?.rawValue()
+      handler.rawValue?()
     }
   }
   source.activate()

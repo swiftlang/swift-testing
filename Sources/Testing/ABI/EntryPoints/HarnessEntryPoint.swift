@@ -82,6 +82,7 @@ package func harnessEntryPoint(
   // Collate multiple runs into a single virtual run.
   let runStartedEvent = Mutex<(Event, Event.Context)?>()
   let runEndedEvent = Mutex<(Event, Event.Context)?>()
+  let issueEvents = Mutex<[(Event, Event.Context)]>()
 
 #if !SWT_NO_SIGINFO
   let siginfoHandler = SIGINFOHandler {
@@ -131,6 +132,9 @@ package func harnessEntryPoint(
           if issue.isFailure {
             exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
           }
+          issueEvents.withLock { issueEvents in
+            issueEvents.append((event, eventContext))
+          }
         default:
           break
         }
@@ -166,6 +170,10 @@ package func harnessEntryPoint(
     xmlOutputRecorder?.record(event, in: eventContext)
     eventHandler?(event, eventContext)
   }
+
+  if args.verbosity > .min, let eventRecorder {
+    _summarize(issueEvents.rawValue, using: eventRecorder, withVerbosity: args.verbosity)
+  }
 #endif
 
   let noTestsFound = exitCodes.allSatisfy { $0 == EXIT_NO_TESTS_FOUND }
@@ -198,3 +206,102 @@ package func harnessEntryPoint(
   let exitCode: CInt = try await harnessEntryPoint(running: adapters, arguments: arguments)
   exit(exitCode)
 }
+
+// MARK: -
+
+#if !SWT_NO_FILE_IO
+private func _summarize(_ events: [(Event, Event.Context)], using eventRecorder: Event.ConsoleOutputRecorder, withVerbosity verbosity: Int) {
+  let issueEvents = events.filter { event, _ in
+    if case .issueRecorded = event.kind {
+      return true
+    }
+    return false
+  }
+  if issueEvents.isEmpty {
+    return
+  }
+
+  var issuesByTest = [Test: [Issue]]()
+  for (event, eventContext) in issueEvents {
+    guard let test = eventContext.test,
+          case let .issueRecorded(issue) = event.kind else {
+      continue
+    }
+    issuesByTest[test, default: []].append(issue)
+  }
+
+  let anyFailure: Bool = issuesByTest.values.lazy
+    .flatMap(\.self)
+    .contains(where: \.isFailure)
+
+  let terminalWidth: Int = {
+#if SWT_TARGET_OS_APPLE
+    return Int(clamping: swt_ioctl_TIOCGWINSZ(STDERR_FILENO).ws_col)
+#else
+    return 40
+#endif
+  }()
+
+  var summaryMessages = [Event.HumanReadableOutputRecorder.Message]()
+  summaryMessages += [
+    .init(stringValue: String(repeating: "=", count: min(40, terminalWidth / 2))),
+    .init(
+      symbol: anyFailure ? .fail : .pass(knownIssueCount: 1),
+      stringValue: "The following \(issuesByTest.keys.count.counting("test")) recorded \(issueEvents.count.counting("issue")):"
+    ),
+  ]
+  for (test, issues) in issuesByTest {
+    summaryMessages += [
+      .init(
+        symbol: .default,
+        stringValue: "\(test.sourceLocation) - \(test.humanReadableName(withVerbosity: verbosity)):"
+      )
+    ]
+    summaryMessages += issues.map { issue in
+      let stringValue = if let sourceLocation = issue.sourceLocation {
+        "\(sourceLocation) - \(issue)"
+      } else {
+        "\(issue)"
+      }
+      return .init(
+        symbol: issue.isFailure ? .fail : .pass(knownIssueCount: 1),
+        indentation: 1,
+        stringValue: stringValue
+      )
+    }
+  }
+
+  let orphanedIssues: [Issue] = issueEvents.compactMap { event, eventContext in
+    if eventContext.test != nil {
+      return nil
+    }
+    guard case let .issueRecorded(issue) = event.kind else {
+      return nil
+    }
+    return issue
+  }
+  if !orphanedIssues.isEmpty {
+    let anyFailure = orphanedIssues.contains(where: \.isFailure)
+    summaryMessages += [
+      .init(
+        symbol: anyFailure ? .fail : .pass(knownIssueCount: 1),
+        stringValue: "As well, the following \(orphanedIssues.count.counting("issue")) \(orphanedIssues.count.counting("was", or: "were")) recorded without an associated test:"
+      )
+    ]
+    summaryMessages += orphanedIssues.map { issue in
+      let stringValue = if let sourceLocation = issue.sourceLocation {
+        "\(sourceLocation) - \(issue)"
+      } else {
+        "\(issue)"
+      }
+      return .init(
+        symbol: issue.isFailure ? .fail : .pass(knownIssueCount: 1),
+        indentation: 1,
+        stringValue: stringValue
+      )
+    }
+  }
+
+  eventRecorder.record(summaryMessages)
+}
+#endif
