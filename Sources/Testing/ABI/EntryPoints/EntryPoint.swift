@@ -60,41 +60,9 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
 
 #if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
-    let consoleOutputEnabled = Atomic(true)
+    let consoleOutputEnabled = Allocated(Atomic(true))
     if configuration.verbosity > .min {
-      // Check for experimental console output flag
-      let useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
-#if !SWT_NO_ABI_JSON_SCHEMA
-      if useExperimentalConsoleOutput {
-        // Use experimental AdvancedConsoleOutputRecorder
-        var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>.Options()
-        advancedOptions.base = .for(.stderr)
-
-        let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>(options: advancedOptions) { string in
-          try? FileHandle.stderr.write(string)
-        }
-
-        configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
-            eventRecorder.record(event, in: context)
-          }
-          oldEventHandler(event, context)
-        }
-      }
-#endif
-
-      if !useExperimentalConsoleOutput {
-        // Use the standard console output recorder (default behavior)
-        let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
-          try? FileHandle.stderr.write(string)
-        }
-        configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
-            eventRecorder.record(event, in: context)
-          }
-          oldEventHandler(event, context)
-        }
-      }
+      configuration.enableConsoleOutput(to: .stderr, togglingWith: consoleOutputEnabled)
     }
 
     // The presence of a harness event stream implies suppression of the normal
@@ -104,7 +72,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
 #else
     let hasHarnessEventStream = args.harnessEventStreamFileDescriptor
 #endif
-    consoleOutputEnabled.store(false, ordering: .sequentiallyConsistent)
+    consoleOutputEnabled.value.store(false, ordering: .sequentiallyConsistent)
 #endif
 
     // If the caller specified an alternate event handler, hook it up too.
@@ -153,7 +121,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
         // console in this case. Note that if something is consuming the event
         // stream, we still want to generate .runStarted etc., so we still call
         // runner.run() for that purpose.
-        consoleOutputEnabled.store(false, ordering: .sequentiallyConsistent)
+        consoleOutputEnabled.value.store(false, ordering: .sequentiallyConsistent)
       }
 #endif
       await runner.run()
@@ -178,6 +146,68 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
   }
 
   return exitCode.load(ordering: .sequentiallyConsistent)
+}
+
+// MARK: - Standard console output
+
+extension Configuration {
+  /// Modify this configuration to enable output to the given file handle as the
+  /// process' output console.
+  ///
+  /// - Parameters:
+  ///   - fileHandle: The file handle to which console output should be written.
+  ///   - consoleOutputEnabled: An atomic boolean value that the caller can set
+  ///     to `true` or `false` to asynchronously enable or disable further
+  ///     console output.
+  mutating func enableConsoleOutput(to fileHandle: consuming FileHandle, togglingWith consoleOutputEnabled: Allocated<Atomic<Bool>>) {
+    // We need to consume the file handle, but we also need to reference it from
+    // multiple closures, so move it to the heap.
+    let fileHandle = Allocated(fileHandle)
+
+    // Check for experimental console output flag
+    let useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
+#if !SWT_NO_ABI_JSON_SCHEMA
+    if useExperimentalConsoleOutput {
+      // Use experimental AdvancedConsoleOutputRecorder
+      var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>.Options()
+      advancedOptions.base = .for(fileHandle.value)
+
+      let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>(options: advancedOptions) { string in
+        try? fileHandle.value.write(string)
+      }
+
+      eventHandler = { [oldEventHandler = eventHandler] event, context in
+        if consoleOutputEnabled.value.load(ordering: .sequentiallyConsistent) {
+          eventRecorder.record(event, in: context)
+        }
+        oldEventHandler(event, context)
+      }
+    }
+#endif
+
+    if !useExperimentalConsoleOutput {
+      // Use the standard console output recorder (default behavior)
+      let eventRecorder = Event.ConsoleOutputRecorder(options: .for(fileHandle.value)) { string in
+        try? fileHandle.value.write(string)
+      }
+      eventHandler = { [oldEventHandler = eventHandler] event, context in
+        if consoleOutputEnabled.value.load(ordering: .sequentiallyConsistent) {
+          eventRecorder.record(event, in: context)
+        }
+        oldEventHandler(event, context)
+      }
+      informationRequestHandler = {
+        if consoleOutputEnabled.value.load(ordering: .sequentiallyConsistent) {
+          let lines = eventRecorder.summarize()
+          _ = try? fileHandle.value.withLock {
+            for line in lines {
+              try fileHandle.value.write(line)
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 // MARK: - Listing tests
@@ -416,8 +446,6 @@ extension __CommandLineArguments_v0: Codable {
 /// This function generally assumes that Swift Package Manager has already
 /// validated the passed arguments.
 func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArguments_v0 {
-  var result = __CommandLineArguments_v0()
-
   // Do not consider the executable path AKA argv[0].
   let args = try CommandLineArgumentList(
     parsing: args,
@@ -438,6 +466,20 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     ],
     describingUnrecognizedArgumentWith: { _ in .anonymous }
   )
+
+  return try parseCommandLineArguments(from: args)
+}
+
+/// Initialize this instance given a sequence of command-line arguments passed
+/// from Swift Package Manager.
+///
+/// - Parameters:
+///   - args: The command-line arguments to interpret.
+///
+/// This function generally assumes that Swift Package Manager has already
+/// validated the passed arguments.
+func parseCommandLineArguments(from args: CommandLineArgumentList) throws -> __CommandLineArguments_v0 {
+  var result = __CommandLineArguments_v0()
   result.commandLineArgumentList = args
 
 #if !SWT_NO_FILE_IO
@@ -675,7 +717,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   let harnessFile = try args.harnessEventStreamFileDescriptor.map { try FileHandle(unsafePOSIXFileDescriptor: $0, options: [.writeAccess]) }
 #endif
   if let harnessFile {
-    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: ABI.HarnessVersion.versionNumber, encodeAsJSONLines: true) { json in
+    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: Harness.Version.versionNumber, encodeAsJSONLines: true) { json in
       _ = try? harnessFile.withLock {
         try harnessFile.write(json)
         try harnessFile.write("\n")

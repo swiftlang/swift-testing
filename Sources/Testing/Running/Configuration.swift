@@ -284,6 +284,28 @@ public struct Configuration: Sendable {
   /// the instance's event handler.
   public var verbosity: Int = 0
 
+  // MARK: - SIGINFO support
+
+#if !SWT_NO_SIGINFO
+  /// Storage for ``informationRequestHandler``.
+  private var _informationRequestHandler: (@Sendable () -> Void)?
+
+  /// Storage for ``informationRequestHandler``.
+  private var _siginfoHandler: SIGINFOHandler<Void>?
+
+  /// A handler to invoke when `SIGINFO` (or platform equivalent) is raised in
+  /// the current process.
+  var informationRequestHandler: @Sendable () -> Void {
+    get {
+      _informationRequestHandler ?? {}
+    }
+    set {
+      _informationRequestHandler = newValue
+      _siginfoHandler = SIGINFOHandler(handlingWith: newValue)
+    }
+  }
+#endif
+
   // MARK: - Test selection
 
   /// The test filter to which tests should be filtered when run.

@@ -8,26 +8,27 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-extension Event {
-  /// A protocol describing types that can generate event streams.
-  package protocol Adapter: Sendable {
+extension Harness {
+  /// A protocol describing types that can generate events for the harness to
+  /// handle.
+  package protocol EventGenerator: Sendable {
     /// A human-readable name for this instance.
     ///
     /// The testing harness presents the value of this property to users when
     /// running it.
-    var adapterName: String { get }
+    var humanReadableName: String { get }
 
-    /// Run this adapter.
+    /// Run this generator.
     ///
     /// - Parameters:
     ///   - eventHandler: An event handler function to invoke for each event
-    ///     that the adapter generates.
+    ///     that this generator generates.
     ///
     /// - Throws: Any error that prevents generating further events.
     ///
     /// Implementations should use this function to transform whatever their
     /// inputs may be into testing library events. The function should run until
     /// all its events have been generated, then return normally.
-    func run(_ eventHandler: @escaping @Sendable (borrowing Event, borrowing Event.Context) async throws -> Void) async throws
+    func run(_ eventHandler: @Sendable (borrowing Event, borrowing Event.Context) async throws -> Void) async throws
   }
 }

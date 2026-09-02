@@ -9,14 +9,18 @@
 //
 
 #if !SWT_NO_FILE_IO
-extension Event {
+#if canImport(Foundation)
+private import Foundation
+#endif
+
+extension Harness {
   /// A class whose instances can read from files containing previously-written
   /// JSON event streams and transform their contents into event streams.
   ///
   /// Instances of this class can read files that contain JSON event streams
   /// encoded as [JSON Lines](https://jsonlines.org).
-  package final class JSONLinesFileAdapter: Adapter {
-    /// The file that this adapter is reading from.
+  package final class JSONLinesFileEventGenerator: EventGenerator {
+    /// The file that this generator is reading from.
     private let _file: FileHandle
 
     /// The path to `_file` that was passed when this instance was created.
@@ -32,11 +36,15 @@ extension Event {
       self.init(readingFrom: file, atPath: filePath)
     }
 
-    package var adapterName: String {
+    package var humanReadableName: String {
+#if canImport(Foundation)
+      (_filePath as NSString).lastPathComponent
+#else
       _filePath
+#endif
     }
 
-    package func run(_ eventHandler: @escaping @Sendable (borrowing Event, borrowing Event.Context) async throws -> Void) async throws {
+    package func run(_ eventHandler: @Sendable (borrowing Event, borrowing Event.Context) async throws -> Void) async throws {
       var context = ABI.Context()
 
       var terminator: UInt8?

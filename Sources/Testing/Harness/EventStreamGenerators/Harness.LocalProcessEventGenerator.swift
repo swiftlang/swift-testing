@@ -11,7 +11,11 @@
 #if !SWT_NO_PROCESS_SPAWNING
 private import _TestingInternals
 
-extension Event {
+#if canImport(Foundation)
+private import Foundation
+#endif
+
+extension Harness {
   /// A class whose instances spawn a child process that runs tests, encodes
   /// their events as [JSON Lines](https://jsonlines.org), and passes them back
   /// to this (the parent) process.
@@ -21,7 +25,7 @@ extension Event {
   ///
   /// This class does not support cross-target testing. All tests run on the
   /// current system only.
-  package final class LocalProcessAdapter: Adapter {
+  package final class LocalProcessEventGenerator: EventGenerator {
     /// The command-line arguments to pass to the child process, not including
     /// those added by this instance.
     private let _commandLineArguments: [String]
@@ -48,15 +52,26 @@ extension Event {
     }
 #endif
 
-    package var adapterName: String {
+    package var humanReadableName: String {
 #if SWT_TARGET_OS_APPLE
-      _testProductBinaryPath
+      let path = _testProductBinaryPath
 #else
-      _testProductPath
+      let path = _testProductPath
+#endif
+#if canImport(Foundation)
+      return (path as NSString).lastPathComponent
+#else
+      return path
 #endif
     }
 
-    package func run(_ eventHandler: @escaping @Sendable (borrowing Event, borrowing Event.Context) async throws -> Void) async throws {
+    package func run(_ eventHandler: @Sendable (borrowing Event, borrowing Event.Context) async throws -> Void) async throws {
+      try await withoutActuallyEscaping(eventHandler) { eventHandler in
+        try await _run(eventHandler)
+      }
+    }
+
+    private func _run(_ eventHandler: @escaping @Sendable (borrowing Event, borrowing Event.Context) async throws -> Void) async throws {
       try await withThrowingTaskGroup(of: Void.self) { taskGroup in
         var backChannelReadEnd: FileHandle!
         var backChannelWriteEnd: FileHandle!
@@ -141,15 +156,15 @@ extension Event {
         }
 
         // Read events back out from the back channel.
-        let fileAdapter = JSONLinesFileAdapter(readingFrom: backChannelReadEnd!)
+        let fileGenerator = JSONLinesFileEventGenerator(readingFrom: backChannelReadEnd!)
         taskGroup.addTask(name: decorateTaskName("harness", withAction: "reading events from test process")) {
-          try await fileAdapter.run(eventHandler)
+          try await fileGenerator.run(eventHandler)
         }
 
         try await taskGroup.waitForAll()
       }
-
     }
+
   }
 }
 #endif

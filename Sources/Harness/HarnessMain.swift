@@ -12,7 +12,7 @@
 import Foundation
 
 /// The harness' main command (i.e. its entry point).
-struct Harness: Sendable {
+struct HarnessMain: Sendable {
   private static var _commandLineArgumentDescriptors: [CommandLineArgumentList.Descriptor] {
     var result = [CommandLineArgumentList.Descriptor]()
 
@@ -85,11 +85,11 @@ struct Harness: Sendable {
   }
 
   mutating func run() async throws {
-    var adapters = [any Event.Adapter]()
+    var eventGenerators = [any Harness.EventGenerator]()
 
 #if !SWT_NO_PROCESS_SPAWNING
-    // Gather up any test targets to run and create "local process" adapters for
-    // each of them.
+    // Gather up any test targets to run and create "local process" generators
+    // for each of them.
     let testProductPaths = _args.options(withLabel: "--test-product-path")
 #if SWT_TARGET_OS_APPLE
     let swiftPMTestingHelperPath = try swiftPMTestingHelperPath
@@ -97,20 +97,20 @@ struct Harness: Sendable {
     var argsForLocalProcesses = _args
     argsForLocalProcesses.removeArguments(for: Self._commandLineArgumentDescriptors)
 
-    adapters += try testProductPaths.map { testProductPath in
+    eventGenerators += try testProductPaths.map { testProductPath in
 #if SWT_TARGET_OS_APPLE
       let testProductBundle = Bundle(path: testProductPath)
       guard let testProductBinaryPath = testProductBundle?.executablePath else {
         throw CocoaError(.fileReadNoSuchFile)
       }
 
-      return Event.LocalProcessAdapter(
+      return Harness.LocalProcessEventGenerator(
         testProductBinaryPath: testProductBinaryPath,
         swiftPMTestingHelperPath: swiftPMTestingHelperPath,
         commandLineArguments: argsForLocalProcesses.arguments
       )
 #else
-      return Event.LocalProcessAdapter(
+      return Harness.LocalProcessEventGenerator(
         testProductPath: testProductPath,
         commandLineArguments: argsForLocalProcesses.arguments
       )
@@ -119,13 +119,13 @@ struct Harness: Sendable {
 #endif
 
 #if !SWT_NO_FILE_IO
-    // Also create adapters for each event stream file that should be read and
+    // Also create generators for each event stream file that should be read and
     // replayed.
     let eventStreamInputPaths = _args.options(withLabel: "--event-stream-input-path")
-    adapters += try eventStreamInputPaths.map(Event.JSONLinesFileAdapter.init(readingFromFileAtPath:))
+    eventGenerators += try eventStreamInputPaths.map(Harness.JSONLinesFileEventGenerator.init(readingFromFileAtPath:))
 #endif
 
-    try await harnessEntryPoint(running: adapters, arguments: _args) as Never
+    try await Harness.entryPoint(generatingEventsWith: eventGenerators, arguments: _args) as Never
   }
 }
 
@@ -133,7 +133,7 @@ struct Harness: Sendable {
 
 @main struct Main {
   static func main() async throws {
-    var state = try Harness()
+    var state = try HarnessMain()
     try await state.run()
   }
 }
