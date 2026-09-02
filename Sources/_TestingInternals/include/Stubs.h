@@ -77,10 +77,8 @@ static bool swt_S_ISFIFO(mode_t mode) {
 ///
 /// This function is provided because `ioctl()` is a variadic function and
 /// cannot be imported directly into Swift.
-static struct winsize swt_ioctl_TIOCGWINSZ(int fd) {
-  struct winsize result = {};
-  (void)ioctl(fd, TIOCGWINSZ, &result);
-  return result;
+static int swt_ioctl_TIOCGWINSZ(int fd, struct winsize *result) {
+  return ioctl(fd, TIOCGWINSZ, &result);
 }
 #endif
 #endif

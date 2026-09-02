@@ -212,7 +212,7 @@ package func harnessEntryPoint(
 #if !SWT_NO_FILE_IO
 private func _summarize(_ events: [(Event, Event.Context)], using eventRecorder: Event.ConsoleOutputRecorder, withVerbosity verbosity: Int) {
   let issueEvents = events.filter { event, _ in
-    if case .issueRecorded = event.kind {
+    if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
       return true
     }
     return false
@@ -236,10 +236,12 @@ private func _summarize(_ events: [(Event, Event.Context)], using eventRecorder:
 
   let terminalWidth: Int = {
 #if SWT_TARGET_OS_APPLE
-    return Int(clamping: swt_ioctl_TIOCGWINSZ(STDERR_FILENO).ws_col)
-#else
-    return 40
+    var windowSize = winsize()
+    if 0 == swt_ioctl_TIOCGWINSZ(STDERR_FILENO, &windowSize) {
+      return Int(clamping: windowSize.ws_col)
+    }
 #endif
+    return 40
   }()
 
   var summaryMessages = [Event.HumanReadableOutputRecorder.Message]()
