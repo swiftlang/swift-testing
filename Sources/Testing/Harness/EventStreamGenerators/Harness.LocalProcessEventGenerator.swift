@@ -71,6 +71,12 @@ extension Harness {
       }
     }
 
+    /// The implementation of ``run(_:)``.
+    ///
+    /// For more information, see ``Harness/EventGenerator/run(_:)``.
+    ///
+    /// This function is factored out to allow treating `eventHandler` as an
+    /// escaping closure.
     private func _run(_ eventHandler: @escaping @Sendable (borrowing Event, borrowing Event.Context) async throws -> Void) async throws {
       try await withThrowingTaskGroup(of: Void.self) { taskGroup in
         var backChannelReadEnd: FileHandle!

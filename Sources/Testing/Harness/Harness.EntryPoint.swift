@@ -41,37 +41,34 @@ extension Harness {
     generatingEventsWith generators: [any Harness.EventGenerator],
     arguments: CommandLineArgumentList
   ) async throws -> CInt {
+    let arguments = try parseCommandLineArguments(from: arguments)
+    var configuration = try configurationForEntryPoint(from: arguments)
 
-    let args = try parseCommandLineArguments(from: arguments)
-    var configuration = try configurationForEntryPoint(from: args)
-
+    // Enable console output (if appropriate).
     let consoleOutputEnabled = Allocated(Atomic(true))
     configuration.enableConsoleOutput(to: .stderr, togglingWith: consoleOutputEnabled)
 
     // Track the overall exit code for the run.
-    let exitCode = Allocated(Atomic(EXIT_SUCCESS))
+    let exitCode = Atomic(EXIT_SUCCESS)
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, eventContext in
       switch event.kind {
       case .testDiscovered:
-        _ = exitCode.value.compareExchange(expected: EXIT_SUCCESS, desired: EXIT_NO_TESTS_FOUND, ordering: .sequentiallyConsistent)
+        _ = exitCode.compareExchange(expected: EXIT_SUCCESS, desired: EXIT_NO_TESTS_FOUND, ordering: .sequentiallyConsistent)
       case let .issueRecorded(issue) where issue.isFailure:
-        exitCode.value.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
+        exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
       default:
         break
       }
       oldEventHandler(event, eventContext)
     }
 
-    // Collate multiple runs into a single virtual run.
     let context = Mutex(Context())
-
-    let generatorCount = generators.count
     for generator in generators {
       do {
-        try await _runGenerator(generator, in: context, configuration: configuration, generatorCount: generatorCount)
+        try await _runGenerator(generator, in: context, configuration: configuration)
       } catch {
         // TODO: handle errors at this layer in an interesting way
-        exitCode.value.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
+        exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
       }
     }
 
@@ -81,12 +78,12 @@ extension Harness {
       configuration.eventHandler(event, eventContext)
     }
 
-    if args.verbosity > .min {
-      _summarize(context.rawValue.issueEvents, withVerbosity: args.verbosity)
+    if arguments.verbosity > .min {
+      _summarize(context.rawValue.issueEvents, withVerbosity: arguments.verbosity)
     }
 #endif
 
-    return exitCode.value.load(ordering: .sequentiallyConsistent)
+    return exitCode.load(ordering: .sequentiallyConsistent)
   }
 
   /// The entry point function used by the harness.
@@ -111,7 +108,13 @@ extension Harness {
 
   // MARK: -
 
-  private static func _runGenerator(_ generator: some Harness.EventGenerator, in context: borrowing Mutex<Context>, configuration: Configuration, generatorCount: Int) async throws {
+  /// Run the given event generator and collate its generate events.
+  ///
+  /// - Parameters:
+  ///   - generator: The generator to run.
+  ///   - context: The context shared between all generator runs.
+  ///   - configuration: The configuration to use.
+  private static func _runGenerator(_ generator: some Harness.EventGenerator, in context: borrowing Mutex<Context>, configuration: Configuration) async throws {
     try await generator.run { event, eventContext in
       var recordEvent = true
 
@@ -146,10 +149,6 @@ extension Harness {
         configuration.eventHandler(event, eventContext)
       }
 #endif
-
-      if case .runStarted = event.kind, generatorCount > 1 {
-        try? FileHandle.stderr.write("Running '\(generator.humanReadableName)'...\n")
-      }
     }
   }
 
