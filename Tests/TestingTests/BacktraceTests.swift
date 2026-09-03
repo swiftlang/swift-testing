@@ -9,7 +9,7 @@
 //
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
-#if SWT_TARGET_OS_APPLE && canImport(Foundation)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FOUNDATION
 private import class Foundation.NSError
 #endif
 
@@ -72,7 +72,7 @@ struct BacktraceTests {
     }
   }
 
-#if SWT_TARGET_OS_APPLE && canImport(Foundation)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FOUNDATION
   @available(_typedThrowsAPI, *)
   @Test("Thrown NSError captures backtrace")
   func thrownNSErrorCapturesBacktrace() async throws {

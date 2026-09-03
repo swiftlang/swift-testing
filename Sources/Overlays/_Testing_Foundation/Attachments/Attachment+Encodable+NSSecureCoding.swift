@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 public import Testing
 public import Foundation
 #if canImport(Combine)

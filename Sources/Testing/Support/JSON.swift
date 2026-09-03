@@ -9,7 +9,7 @@
 //
 
 #if !SWT_NO_CODABLE
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 private import Foundation
 #else
 #error("Platform-specific misconfiguration: support for JSON encoding and decoding requires the 'Foundation' module")

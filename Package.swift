@@ -12,7 +12,7 @@
 
 import PackageDescription
 import CompilerPluginSupport
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 import Foundation
 #endif
 
@@ -560,13 +560,14 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_SUSPENDING_CLOCK": (platforms: .none, embedded: true),
 
       "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),
+      "SWT_NO_FOUNDATION": (platforms: .none, embedded: true),
     ]
 
     // Let the environment block override our settings above.
     let environmentVariables = Context.environment
       .filter { $0.key.starts(with: "SWT_NO_") }
       .compactMapValues { value in
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
         (value as NSString).boolValue
 #else
         Bool(value) ?? UInt64(value).map { $0 != 0 }
