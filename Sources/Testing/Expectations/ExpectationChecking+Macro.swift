@@ -1257,7 +1257,7 @@ public func __checkClosureCall<each T>(
 }
 #endif
 
-#if hasFeature(Embedded)
+#if !hasFeature(Embedded)
 // MARK: -
 
 /// Generate a description of an error that includes its type name if not
