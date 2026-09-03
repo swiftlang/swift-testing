@@ -309,18 +309,17 @@ extension Event.ConsoleOutputRecorder {
 // MARK: -
 
 extension Event.ConsoleOutputRecorder {
-  /// Record the specified messages by generating representations of them in
-  /// this instance's output format and writing them to this instance's
-  /// destination.
+  /// Generate representations of the given messages in this instance's output
+  /// format.
   ///
   /// - Parameters:
   ///   - messages: The messages to record.
   ///   - tags: Tags that may be colorized and which should be applied to
   ///     `messages`.
   ///
-  /// - Returns: Whether any output was produced and written to this instance's
-  ///   destination.
-  private func _record(_ messages: [Event.HumanReadableOutputRecorder.Message], tags: Set<Tag>?) -> Bool {
+  /// - Returns: An array of appropriately console-formatted strings
+  ///   representing `messages`.
+  private func _lines(for messages: [Event.HumanReadableOutputRecorder.Message], tags: Set<Tag>?) -> some Sequence<String> {
     let symbolPlaceholder = Event.Symbol.placeholderStringValue(options: options)
     let lines = messages.lazy.map { message in
       let symbol = message.symbol?.stringValue(options: options) ?? symbolPlaceholder
@@ -347,6 +346,22 @@ extension Event.ConsoleOutputRecorder {
       }
     }
 
+    return lines
+  }
+
+  /// Record the specified messages by generating representations of them in
+  /// this instance's output format and writing them to this instance's
+  /// destination.
+  ///
+  /// - Parameters:
+  ///   - messages: The messages to record.
+  ///   - tags: Tags that may be colorized and which should be applied to
+  ///     `messages`.
+  ///
+  /// - Returns: Whether any output was produced and written to this instance's
+  ///   destination.
+  private func _record(_ messages: [Event.HumanReadableOutputRecorder.Message], tags: Set<Tag>?) -> Bool {
+    let lines = _lines(for: messages, tags: tags)
     write(lines.joined())
     return !messages.isEmpty
   }
@@ -397,6 +412,12 @@ extension Event.ConsoleOutputRecorder {
     return _record(messages, tags: nil)
   }
 #endif
+
+  /// Summarize the current state of this recorder.
+  func summarize() -> [String] {
+    let messages = _humanReadableOutputRecorder.summarize()
+    return Array(_lines(for: messages, tags: nil))
+  }
 
   /// Get a message warning the user of some condition in the library that may
   /// affect test results.
