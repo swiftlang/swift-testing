@@ -305,11 +305,18 @@ extension ABI.VersionNumber: Codable {
 // MARK: - Converting flags to/from semver prerelease IDs
 
 extension ABI.VersionNumber.Flags {
+  /// The set of recognized prerelease IDs keyed by their corresponding ``Flag``
+  /// values.
   private static let _prereleaseIDsByFlag: [Self: String] = [
     .developmentBuild: "dev",
     .debugBuild: "debug",
   ]
 
+  /// The set of recognized ``Flag`` values keyed by their corresponding
+  /// prerelease IDs.
+  ///
+  /// The keys of this dictionary are substrings to allow lookup during parsing
+  /// without needing to copy substrings of the original string.
   private static let _flagsByPrereleaseID = Dictionary(
     uniqueKeysWithValues: _prereleaseIDsByFlag.map { ($1[...], $0) }
   )
