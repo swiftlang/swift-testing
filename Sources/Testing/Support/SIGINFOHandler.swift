@@ -25,6 +25,9 @@ private import Synchronization
 #endif
 
 #if !SWT_NO_SIGINFO
+/// The queue on which we handle `SIGINFO`.
+private let _queue = DispatchQueue(label: "Swift Testing signal handler")
+
 /// The set of `SIGINFO` handlers configured in this process.
 ///
 /// Generally, this array will contain no more than `1` element, but it can be
@@ -34,14 +37,14 @@ private let _all = Mutex<[Weak<SIGINFOHandler<Void>>]>()
 
 /// The dispatch source that listens for `SIGINFO` (or the platform-specific
 /// equivalent).
-private let _siginfoSource = {
+private nonisolated(unsafe) let _siginfoSource: Any = {
 #if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
-  let source = DispatchSource.makeSignalSource(signal: SIGINFO, queue: .main)
+  let source = DispatchSource.makeSignalSource(signal: SIGINFO, queue: _queue)
 #elseif os(Linux) || os(Android)
   // On Linux, SIGINFO is not defined, so we'll use SIGUSR1 for this purpose.
-  let source = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: .main)
+  let source = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: _queue)
 #elseif os(Windows)
-  let source = DispatchSource.makeUserDataAddSource(queue: .main)
+  let source = DispatchSource.makeUserDataAddSource(queue: _queue)
   SetConsoleCtrlHandler({ ctrlType in
     guard ctrlType == CTRL_BREAK_EVENT else {
       // Let the system handle it normally.
@@ -52,7 +55,7 @@ private let _siginfoSource = {
   }, true)
 #else
 #warning("Platform-specific implementation missing: SIGINFO handling unavailable")
-  let source = DispatchSource.makeUserDataAddSource(queue: .main)
+  let source = DispatchSource.makeUserDataAddSource(queue: _queue)
 #endif
 
   source.setEventHandler {
