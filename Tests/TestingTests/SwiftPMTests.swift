@@ -740,14 +740,14 @@ struct SwiftPMTests {
       let args = try parseCommandLineArguments(from: ["PATH", "list"])
       #expect(args.listTests == true)
     }
-    let testIDs = await listTestsForEntryPoint(Test.all, verbosity: 0)
+    let testIDs = await listTestsForEntryPoint(Test.all, configuration: Configuration())
     let currentTestID = String(describing: try #require(Test.current?.id.parent))
     #expect(testIDs.contains(currentTestID))
   }
 
   @Test("list --verbose subcommand")
   func listVerbose() async throws {
-    let testIDs = await listTestsForEntryPoint(Test.all, verbosity: 1)
+    let testIDs = await listTestsForEntryPoint(Test.all, configuration: Configuration())
     let currentTestID = String(describing: try #require(Test.current?.id))
     #expect(testIDs.contains(currentTestID))
     #expect(testIDs.allSatisfy { $0.contains(".swift:") })

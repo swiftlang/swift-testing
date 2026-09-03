@@ -248,7 +248,7 @@ func testIDsToListForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) ->
 ///   - configuration: The configuration to use.
 func listTestsForEntryPoint(_ tests: some Sequence<Test>, configuration: Configuration) {
   if configuration.verbosity > .min {
-    for testID in testIDsToListForEntryPoint(tests, verbosity: configuration.verbosity) {
+    for testID in testIDsToListForEntryPoint(tests, configuration: configuration) {
       // Print the test ID to stdout (classical CLI behavior.)
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
       try? FileHandle.stdout.write("\(testID)\n")
