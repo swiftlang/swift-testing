@@ -245,12 +245,13 @@ extension Test.Case {
           "\(label) → \(valueDescription)"
         }
 
+#if !hasFeature(Embedded)
         if includeTypeNames {
           let typeInfo = TypeInfo(describingTypeOf: argument.value)
           return "\(labeledArgument) (\(typeInfo.fullyQualifiedName))"
-        } else {
-          return labeledArgument
         }
+#endif
+        return labeledArgument
       }
       .joined(separator: ", ")
   }
@@ -455,11 +456,15 @@ extension Event.HumanReadableOutputRecorder {
       break
 
     case let .issueRecorded(issue):
+#if !hasFeature(Embedded)
       let parameterCount = if let parameters = test?.parameters {
         parameters.count
       } else {
         0
       }
+#else
+      let parameterCount = 0
+#endif
       let labeledArguments = if let testCase {
         testCase.labeledArguments()
       } else {

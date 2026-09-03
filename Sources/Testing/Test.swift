@@ -33,9 +33,13 @@ public struct Test: Sendable {
     var traits: [any Trait]
     var sourceBounds: __SourceBounds
     var containingTypeInfo: TypeInfo?
+#if !hasFeature(Embedded)
     var xcTestCompatibleSelector: __XCTestCompatibleSelector?
+#endif
     var testCasesState: TestCasesState?
+#if !hasFeature(Embedded)
     var parameters: [Parameter]?
+#endif
     var isSynthesized: Bool
 #if DEBUG
     var mutationCount = 0
@@ -138,6 +142,7 @@ public struct Test: Sendable {
     }
   }
 
+#if !hasFeature(Embedded)
   /// The XCTest-compatible Objective-C selector corresponding to this
   /// instance's underlying test function.
   ///
@@ -152,6 +157,7 @@ public struct Test: Sendable {
       _setValue(newValue, forKeyPath: \.xcTestCompatibleSelector)
     }
   }
+#endif
 
   /// An enumeration describing the evaluation state of a test's cases.
   fileprivate enum TestCasesState: Sendable {
@@ -207,7 +213,11 @@ public struct Test: Sendable {
         // error (because the test cannot be run.) If an error was thrown, a
         // `Runner.Plan` is expected to record issue for the test, rather than
         // attempt to run it, and thus never access this property.
+#if !hasFeature(Embedded)
         preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage(context: String(reflecting: testCasesState)))")
+#else
+        preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage)")
+#endif
       }
       return AnySequence(testCases)
     }
@@ -254,9 +264,14 @@ public struct Test: Sendable {
 
   /// Whether or not this test is parameterized.
   public var isParameterized: Bool {
+#if !hasFeature(Embedded)
     parameters?.isEmpty == false
+#else
+    false
+#endif
   }
 
+#if !hasFeature(Embedded)
   /// The test function parameters, if any.
   ///
   /// If this instance represents a test function, the value of this property is
@@ -272,6 +287,7 @@ public struct Test: Sendable {
       _setValue(newValue, forKeyPath: \.parameters)
     }
   }
+#endif
 
   /// Whether or not this instance is a test suite containing other tests.
   ///
@@ -334,6 +350,7 @@ public struct Test: Sendable {
     _properties = Allocated(properties)
   }
 
+#if !hasFeature(Embedded)
   /// Initialize an instance of this type representing a test function.
   init<S>(
     name: String,
@@ -383,6 +400,28 @@ public struct Test: Sendable {
     )
     _properties = Allocated(properties)
   }
+#else
+  /// Initialize an instance of this type representing a test function.
+  init(
+    name: String,
+    displayName: String? = nil,
+    traits: [any Trait],
+    sourceBounds: __SourceBounds,
+    containingTypeInfo: TypeInfo? = nil,
+    testCases: Test.Case.Generator<CollectionOfOne<Void>>
+  ) {
+    let properties = _Properties(
+      name: name,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      testCasesState: .evaluated(testCases),
+      isSynthesized: false
+    )
+    _properties = Allocated(properties)
+  }
+#endif
 }
 
 // MARK: - Equatable, Hashable

@@ -273,9 +273,11 @@ extension Test {
       self.typeInfo = typeInfo
     }
 
+#if !hasFeature(Embedded)
     init(index: Int, firstName: String, secondName: String? = nil, type: Any.Type) {
       self.init(index: index, firstName: firstName, secondName: secondName, typeInfo: TypeInfo(describing: type))
     }
+#endif
   }
 }
 

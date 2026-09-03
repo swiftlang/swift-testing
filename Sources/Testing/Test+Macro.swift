@@ -46,6 +46,7 @@ public typealias __XCTestCompatibleSelector = Never
 /// itself, the symbols in this file should not be used directly and are subject
 /// to change as the testing library evolves.
 
+#if !hasFeature(Embedded) // TODO: @Suite support in some form
 // MARK: - @Suite
 
 /// Declare a test suite.
@@ -113,6 +114,7 @@ extension Test {
     return Self(displayName: displayName, traits: traits, sourceLocation: sourceBounds.lowerBound, containingTypeInfo: containingTypeInfo)
   }
 }
+#endif
 
 // MARK: - @Test
 
@@ -144,6 +146,7 @@ public macro Test(
   _ traits: any TestTrait...
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro")
 
+#if !hasFeature(Embedded) // TODO: @Suite support in some form
 extension Test {
   /// Information about a parameter to a test function.
   ///
@@ -189,7 +192,26 @@ extension [Test.__Parameter] {
     }
   }
 }
+#else
+extension Test {
+  /// Create an instance of ``Test`` for a function.
+  ///
+  /// - Warning: This function is used to implement the `@Test` macro. Do not
+  ///   call it directly.
+  public static func __function(
+    named testFunctionName: String,
+    displayName: String? = nil,
+    traits: [any TestTrait],
+    sourceBounds: __SourceBounds,
+    testFunction: @escaping @Sendable () async throws -> Void
+  ) -> Self {
+    let caseGenerator = Case.Generator(testFunction: testFunction)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, testCases: caseGenerator)
+  }
+}
+#endif
 
+#if !hasFeature(Embedded)
 // MARK: - @Test(arguments:)
 
 /// This macro declaration is necessary to help the compiler disambiguate
@@ -495,6 +517,7 @@ extension Test {
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
+#endif
 
 // MARK: - Test pragmas
 
@@ -569,6 +592,7 @@ public var __defaultSynchronousIsolationContext: (any Actor)? {
   Configuration.current?.defaultSynchronousIsolationContext ?? #isolation
 }
 
+#if !hasFeature(Embedded)
 /// Run a test function as an XCTest-compatible method.
 ///
 /// This overload is used for types that are not classes. It always returns
@@ -584,7 +608,6 @@ public var __defaultSynchronousIsolationContext: (any Actor)? {
   false
 }
 
-#if !hasFeature(Embedded)
 /// The `XCTest.XCTest` Objective-C class.
 let xcTestClass: AnyClass? = {
 #if _runtime(_ObjC)
