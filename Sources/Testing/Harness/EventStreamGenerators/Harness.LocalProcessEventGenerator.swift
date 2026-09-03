@@ -15,6 +15,10 @@ private import _TestingInternals
 private import Foundation
 #endif
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 extension Harness {
   /// A class whose instances spawn a child process that runs tests, encodes
   /// their events as [JSON Lines](https://jsonlines.org), and passes them back

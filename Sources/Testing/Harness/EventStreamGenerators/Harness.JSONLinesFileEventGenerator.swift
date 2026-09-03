@@ -13,6 +13,10 @@
 private import Foundation
 #endif
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 extension Harness {
   /// A class whose instances can read from files containing previously-written
   /// JSON event streams and transform their contents into event streams.
