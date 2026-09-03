@@ -21,6 +21,14 @@ extension Harness {
     /// running it.
     var humanReadableName: String { get }
 
+    /// Get a list of tests for which this event generator will generate events
+    /// (i.e. the tests it will run).
+    ///
+    /// - Returns: An array of tests.
+    ///
+    /// - Throws: Any error that prevented getting said tests.
+    func listTests() async throws -> [Test]
+
     /// Run this generator.
     ///
     /// - Parameters:

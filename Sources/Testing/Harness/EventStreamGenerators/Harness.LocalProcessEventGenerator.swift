@@ -65,19 +65,38 @@ extension Harness {
 #endif
     }
 
+    package func listTests() async throws -> [Test] {
+      let result = Mutex<[Test]>()
+
+      try await _run(listOnly: true) { event, eventContext in
+        guard case .testDiscovered = event.kind, let test = eventContext.test else {
+          return
+        }
+        result.withLock { result in
+          result.append(test)
+        }
+      }
+
+      return result.rawValue
+    }
+
     package func run(_ eventHandler: @Sendable (borrowing Event, borrowing Event.Context) async throws -> Void) async throws {
       try await withoutActuallyEscaping(eventHandler) { eventHandler in
-        try await _run(eventHandler)
+        try await _run(listOnly: false, eventHandler)
       }
     }
 
-    /// The implementation of ``run(_:)``.
+    /// The implementation of ``listTests()`` and ``run(_:)``.
     ///
-    /// For more information, see ``Harness/EventGenerator/run(_:)``.
+    /// - Parameters:
+    ///   - listOnly: Whether to run the `list` subcommand.
+    ///
+    /// For more information, see ``Harness/EventGenerator/listTests()`` and
+    /// ``Harness/EventGenerator/run(_:)``.
     ///
     /// This function is factored out to allow treating `eventHandler` as an
     /// escaping closure.
-    private func _run(_ eventHandler: @escaping @Sendable (borrowing Event, borrowing Event.Context) async throws -> Void) async throws {
+    private func _run(listOnly: Bool, _ eventHandler: @escaping @Sendable (borrowing Event, borrowing Event.Context) async throws -> Void) async throws {
       try await withThrowingTaskGroup(of: Void.self) { taskGroup in
         var backChannelReadEnd: FileHandle!
         var backChannelWriteEnd: FileHandle!
@@ -112,6 +131,12 @@ extension Harness {
           ]
         }
 #endif
+
+        if listOnly {
+          arguments.append("list")
+        } else {
+          arguments.removeAll { $0 == "--list-tests" || $0 == "list" }
+        }
 
 #if SWT_TARGET_OS_APPLE
         let executablePath = _swiftPMTestingHelperPath

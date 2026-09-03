@@ -41,7 +41,7 @@ extension Harness {
     generatingEventsWith generators: [any Harness.EventGenerator],
     arguments: CommandLineArgumentList
   ) async throws -> CInt {
-    let arguments = try parseCommandLineArguments(from: arguments)
+    let arguments = try parseCommandLineArguments(from: arguments.arguments)
     var configuration = try configurationForEntryPoint(from: arguments)
 
     // The number of concurrent workers to use (unless parallelization is off.)
@@ -70,21 +70,37 @@ extension Harness {
 
     let context = Mutex(Context())
 
-    let serializer = Serializer<Void>(maximumWidth: numWorkers)
-    await withTaskGroup(of: Void.self) { [configuration] taskGroup in
+    if arguments.listTests == true {
+      var tests = [Test]()
+
       for generator in generators {
-        taskGroup.addTask(name: decorateTaskName(generator.humanReadableName, withAction: "running")) {
-          await serializer.run {
-            do {
-              try await _runGenerator(generator, in: context, configuration: configuration)
-            } catch {
-              // TODO: handle errors at this layer in an interesting way
-              exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
+        do {
+          tests += try await generator.listTests()
+        } catch {
+          // TODO: handle errors at this layer in an interesting way
+          exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
+        }
+      }
+
+      listTestsForEntryPoint(tests, configuration: configuration)
+
+    } else {
+      let serializer = Serializer<Void>(maximumWidth: numWorkers)
+      await withTaskGroup(of: Void.self) { [configuration] taskGroup in
+        for generator in generators {
+          taskGroup.addTask(name: decorateTaskName(generator.humanReadableName, withAction: "running")) {
+            await serializer.run {
+              do {
+                try await _runGenerator(generator, in: context, configuration: configuration)
+              } catch {
+                // TODO: handle errors at this layer in an interesting way
+                exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
+              }
             }
           }
         }
+        await taskGroup.waitForAll()
       }
-      await taskGroup.waitForAll()
     }
 
 #if !SWT_NO_FILE_IO

@@ -90,26 +90,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
     if args.listTests ?? false {
       tests = await Array(Test.all)
 
-      if args.verbosity > .min {
-        for testID in listTestsForEntryPoint(tests, verbosity: args.verbosity) {
-          // Print the test ID to stdout (classical CLI behavior.)
-#if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
-          try? FileHandle.stdout.write("\(testID)\n")
-#else
-          print(testID)
-#endif
-        }
-      }
-
-      // Synthesize any missing suites. Note we write to stdout before this
-      // step because we don't emit suites to stdout anyway.
-      tests = Runner.Plan.synthesizeSuites(for: tests)
-
-      // Post an event for every discovered test. These events are turned into
-      // JSON objects if JSON output is enabled.
-      for test in tests where !test.isHidden {
-        Event.post(.testDiscovered, for: (test, nil), configuration: configuration)
-      }
+      listTestsForEntryPoint(tests, configuration: configuration)
     } else {
       // Run the tests.
       let runner = await Runner(configuration: configuration)
@@ -212,8 +193,8 @@ extension Configuration {
 
 // MARK: - Listing tests
 
-/// List all of the given tests in the "specifier" format used by Swift Package
-/// Manager.
+/// Get a list of all of the given tests in the "specifier" format used by Swift
+/// Package Manager.
 ///
 /// - Parameters:
 ///   - tests: The tests to list.
@@ -221,7 +202,7 @@ extension Configuration {
 ///     inclusion of source locations for all tests.
 ///
 /// - Returns: An array of strings representing the IDs of `tests`.
-func listTestsForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [String] {
+func testIDsToListForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [String] {
   // Filter out hidden tests and test suites. Hidden tests should not generally
   // be presented to the user, and suites (XCTestCase classes) are not included
   // in the equivalent XCTest-based output.
@@ -257,6 +238,35 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [St
         }
     }.map(String.init(describing:))
     .sorted(by: <)
+}
+
+/// List the given sequence of tests on the command line and via events posted
+/// to an event handler.
+///
+/// - Parameters:
+///   - tests: The tests to list.
+///   - configuration: The configuration to use.
+func listTestsForEntryPoint(_ tests: some Sequence<Test>, configuration: Configuration) {
+  if configuration.verbosity > .min {
+    for testID in testIDsToListForEntryPoint(tests, verbosity: configuration.verbosity) {
+      // Print the test ID to stdout (classical CLI behavior.)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
+      try? FileHandle.stdout.write("\(testID)\n")
+#else
+      print(testID)
+#endif
+    }
+  }
+
+  // Synthesize any missing suites. Note we write to stdout before this
+  // step because we don't emit suites to stdout anyway.
+  let tests = Runner.Plan.synthesizeSuites(for: Array(tests))
+
+  // Post an event for every discovered test. These events are turned into
+  // JSON objects if JSON output is enabled.
+  for test in tests where !test.isHidden {
+    Event.post(.testDiscovered, for: (test, nil), configuration: configuration)
+  }
 }
 
 // MARK: - Command-line arguments and configuration
@@ -450,6 +460,8 @@ extension __CommandLineArguments_v0: Codable {
 /// This function generally assumes that Swift Package Manager has already
 /// validated the passed arguments.
 func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArguments_v0 {
+  var result = __CommandLineArguments_v0()
+
   // Do not consider the executable path AKA argv[0].
   let args = try CommandLineArgumentList(
     parsing: args,
@@ -470,20 +482,6 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     ],
     describingUnrecognizedArgumentWith: { _ in .anonymous }
   )
-
-  return try parseCommandLineArguments(from: args)
-}
-
-/// Initialize this instance given a sequence of command-line arguments passed
-/// from Swift Package Manager.
-///
-/// - Parameters:
-///   - args: The command-line arguments to interpret.
-///
-/// This function generally assumes that Swift Package Manager has already
-/// validated the passed arguments.
-func parseCommandLineArguments(from args: CommandLineArgumentList) throws -> __CommandLineArguments_v0 {
-  var result = __CommandLineArguments_v0()
   result.commandLineArgumentList = args
 
 #if !SWT_NO_FILE_IO

@@ -44,6 +44,21 @@ extension Harness {
 #endif
     }
 
+    package func listTests() async throws -> [Test] {
+      let result = Mutex<[Test]>()
+
+      try await run { event, eventContext in
+        guard case .testDiscovered = event.kind, let test = eventContext.test else {
+          return
+        }
+        result.withLock { result in
+          result.append(test)
+        }
+      }
+
+      return result.rawValue
+    }
+
     package func run(_ eventHandler: @Sendable (borrowing Event, borrowing Event.Context) async throws -> Void) async throws {
       var context = ABI.Context()
 
