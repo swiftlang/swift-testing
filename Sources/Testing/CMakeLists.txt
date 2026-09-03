@@ -33,6 +33,7 @@ add_library(Testing
   Attachments/Images/Attachment+AttachableAsImage.swift
   Attachments/Images/ImageAttachmentError.swift
   Attachments/Attachable.swift
+  Attachments/AttachableEncodingFormat.swift
   Attachments/AttachableWrapper.swift
   Attachments/Attachment.swift
   Events/Clock.swift
@@ -132,6 +133,7 @@ add_library(Testing
   Traits/Tags/Tag+Macro.swift
   Traits/Tags/Tag+Predefined.swift
   Traits/TimeLimitTrait.swift
+  Traits/TaskLocalTrait.swift
   Traits/Trait.swift)
 target_link_libraries(Testing PRIVATE
   _TestDiscovery
