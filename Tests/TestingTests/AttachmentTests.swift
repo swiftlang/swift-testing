@@ -16,7 +16,7 @@ import _Testing_AppKit
 #endif
 #if canImport(Foundation) && canImport(_Testing_Foundation)
 import Foundation
-import _Testing_Foundation
+@_spi(Experimental) import _Testing_Foundation
 #endif
 #if canImport(CoreGraphics) && canImport(_Testing_CoreGraphics)
 import CoreGraphics
@@ -460,6 +460,11 @@ struct AttachmentTests {
         let decodedStringValue = try args.decode(Data(bytes))
         #expect(decodedStringValue == "stringly speaking")
       }
+
+      if let ext = args.pathExtension {
+        let preferredExt = (attachment.preferredName as NSString).pathExtension
+        #expect(preferredExt.caseInsensitiveCompare(ext) == .orderedSame)
+      }
     }
 
     if args.forSecureCoding {
@@ -490,6 +495,73 @@ struct AttachmentTests {
       try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
     }
   }
+
+  @Test("Attach Codable-conformant value using Attachment.init(encoding:as:) and .json")
+  func attachCodableWithInitEncodingAsJSON() async throws {
+    let attachableValue = MyCodableAttachable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, as: .json)
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
+      #expect(bytes[0] == UInt8(ascii: "{"))
+    }
+  }
+
+  @Test("Attach Codable-conformant value using Attachment.init(encoding:as:) and .propertyListFormat(.xml)")
+  func attachCodableWithInitEncodingAsXMLByFormat() async throws {
+    let attachableValue = MyCodableAttachable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, as: .propertyListFormat(.xml))
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
+      #expect(bytes[0] == UInt8(ascii: "<"))
+    }
+    let ext = (attachment.preferredName as NSString).pathExtension
+    #expect(ext.caseInsensitiveCompare("plist") == .orderedSame)
+  }
+
+  @Test("Attach Codable-conformant value using Attachment.init(encoding:as:) and '.xml' path extension")
+  func attachCodableWithInitEncodingAsXMLByPathExtension() async throws {
+    let attachableValue = MyCodableAttachable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, named: "example.xml")
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
+      #expect(bytes[0] == UInt8(ascii: "<"))
+    }
+    let ext = (attachment.preferredName as NSString).pathExtension
+    #expect(ext.caseInsensitiveCompare("xml") == .orderedSame)
+  }
+
+  @Test("Attach Codable-conformant value using Attachment.init(encoding:using:) and PropertyListEncoder")
+  func attachCodableWithInitEncodingUsingPropertyListEncoder() async throws {
+    let attachableValue = MyCodableAttachable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, using: PropertyListEncoder())
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
+      #expect(bytes[0] == UInt8(ascii: "b"))
+    }
+  }
+
+  @Test("Attach Codable-conformant value using Attachment.init(encoding:using:) and JSONEncoder")
+  func attachCodableWithInitEncodingUsingJSONEncoder() async throws {
+    let attachableValue = MyCodableAttachable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, using: JSONEncoder())
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
+      #expect(bytes[0] == UInt8(ascii: "{"))
+    }
+  }
+
+#if !SWT_NO_GLOBAL_ACTORS
+  @Test("Attach value with isolated Codable conformance")
+  @MainActor
+  func attachValueWithIsolatedCodableConformance() throws {
+    let attachableValue = MyIsolatedCodable(string: "stringly speaking")
+    let attachment = try Attachment(encoding: attachableValue, using: JSONEncoder())
+    try attachment.withUnsafeBytes { bytes in
+      #expect(!bytes.isEmpty)
+      #expect(bytes[0] == UInt8(ascii: "{"))
+    }
+  }
+#endif
 #endif
 #endif
 
@@ -1161,6 +1233,12 @@ struct MyBadTransferable: Transferable, Equatable {
 struct MyCodableAttachable: Codable, Attachable, Sendable {
   var string: String
 }
+
+#if !SWT_NO_GLOBAL_ACTORS
+struct MyIsolatedCodable: @MainActor Codable {
+  var string: String
+}
+#endif
 #endif
 
 final class MySecureCodingAttachable: NSObject, NSSecureCoding, Attachable, Sendable {

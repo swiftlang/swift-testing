@@ -62,7 +62,7 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
   public init(
     contentsOf url: URL,
     named preferredName: String? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) async throws {
     guard url.isFileURL else {
       // TODO: network URLs?
