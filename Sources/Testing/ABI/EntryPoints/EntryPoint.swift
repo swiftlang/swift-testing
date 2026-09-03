@@ -14,7 +14,7 @@ private import Foundation
 internal import _TestingInternals
 
 #if canImport(Synchronization)
-private import Synchronization
+internal import Synchronization
 #endif
 
 /// The common implementation of the entry point functions in this package.
