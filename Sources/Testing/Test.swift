@@ -168,13 +168,13 @@ public struct Test: Sendable {
     /// - Parameters:
     ///   - function: The function to call to evaluate the test's cases. The
     ///     result is a sequence of test cases.
-    case unevaluated(_ function: @Sendable () async throws -> any Sequence<Test.Case> & Sendable)
+    case unevaluated(_ function: @Sendable () async throws -> AnySendableSequence<Test.Case>)
 
     /// The test's cases have been evaluated.
     ///
     /// - Parameters:
     ///   - testCases: The test's cases.
-    case evaluated(_ testCases: any Sequence<Test.Case> & Sendable)
+    case evaluated(_ testCases: AnySendableSequence<Test.Case>)
 
     /// An error was thrown when the testing library attempted to evaluate the
     /// test's cases.
@@ -221,7 +221,7 @@ public struct Test: Sendable {
         preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage)")
 #endif
       }
-      return AnySequence(testCases)
+      return testCases
     }
   }
 
@@ -236,7 +236,7 @@ public struct Test: Sendable {
   var uncheckedTestCases: (some Sequence<Test.Case>)? {
     testCasesState.flatMap { testCasesState in
       if case let .evaluated(testCases) = testCasesState {
-        return AnySequence(testCases)
+        return testCases
       }
       return nil
     }
@@ -354,6 +354,7 @@ public struct Test: Sendable {
       displayName = String(name.dropFirst().dropLast())
     }
     let sourceBounds = __SourceBounds(lowerBoundOnly: sourceLocation)
+#if !hasFeature(Embedded)
     let properties = _Properties(
       name: name,
       displayName: displayName,
@@ -362,6 +363,17 @@ public struct Test: Sendable {
       containingTypeInfo: containingTypeInfo,
       isSynthesized: isSynthesized
     )
+#else
+    let properties = _Properties(
+      name: name,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      parameterCount: 0,
+      isSynthesized: isSynthesized
+    )
+#endif
     _properties = Allocated(properties)
   }
 
@@ -384,7 +396,7 @@ public struct Test: Sendable {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCasesState: .unevaluated { try await testCases() },
+      testCasesState: .unevaluated { try await AnySendableSequence(testCases()) },
       parameters: parameters,
       isSynthesized: false
     )
@@ -409,7 +421,7 @@ public struct Test: Sendable {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCasesState: .evaluated(testCases),
+      testCasesState: .evaluated(AnySendableSequence(testCases)),
       parameters: parameters,
       isSynthesized: false
     )
@@ -432,7 +444,7 @@ public struct Test: Sendable {
       traits: traits,
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
-      testCasesState: .evaluated(testCases),
+      testCasesState: .evaluated(AnySendableSequence(testCases)),
       parameterCount: 0,
       isSynthesized: false
     )
