@@ -152,6 +152,9 @@ additional `"testCases"` field describing the individual test cases.
   ["displayName": <string>,] ; the user-supplied custom display name
   "sourceLocation": <source-location>, ; where the test suite is defined
   "id": <test-id>,
+  ["tags": <array:tag>,] ; the tags associated with this test suite
+  ["bugs": <array:bug>,] ; the bugs associated with this test suite
+  ["timeLimit": <number>,] ; the time limit associated with this test suite
 }
 
 <test-function> ::= {
@@ -163,7 +166,7 @@ additional `"testCases"` field describing the individual test cases.
   "isParameterized": <bool>, ; is this a parameterized test function or not?
   ["tags": <array:tag>,] ; the tags associated with this test function
   ["bugs": <array:bug>,] ; the bugs associated with this test function
-  ["timeLimit": <number>] ; the time limit associated with this test function
+  ["timeLimit": <number>,] ; the time limit associated with this test function
 }
 
 <test-id> ::= <string> ; an opaque string representing the test case
@@ -173,7 +176,7 @@ additional `"testCases"` field describing the individual test cases.
 <bug> ::= {
   ["url": <string>,] ; the bug URL
   ["id": <string>,] ; the bug id
-  ["title": <string>] ; the human readable bug title
+  ["title": <string>,] ; the human readable bug title
 }
 ```
 
