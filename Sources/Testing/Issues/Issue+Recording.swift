@@ -19,6 +19,7 @@ extension Issue {
   /// - Returns: The issue that was recorded (`self` or a modified copy of it.)
   @discardableResult
   func record(configuration: Configuration? = nil) -> Self {
+#if !hasFeature(Embedded)
     // If this issue is a caught error that has a custom issue representation,
     // perform that customization now.
     if case let .errorCaught(error) = kind {
@@ -27,6 +28,7 @@ extension Issue {
         return selfCopy.record(configuration: configuration)
       }
     }
+#endif
 
     // If this issue matches via the known issue matcher, set a copy of it to be
     // known and record the copy instead.

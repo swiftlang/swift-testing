@@ -33,9 +33,15 @@ public struct Test: Sendable {
     var traits: [any Trait]
     var sourceBounds: __SourceBounds
     var containingTypeInfo: TypeInfo?
+#if !hasFeature(Embedded)
     var xcTestCompatibleSelector: __XCTestCompatibleSelector?
+#endif
     var testCasesState: TestCasesState?
+#if !hasFeature(Embedded)
     var parameters: [Parameter]?
+#else
+    var parameterCount: Int
+#endif
     var isSynthesized: Bool
 #if DEBUG
     var mutationCount = 0
@@ -138,6 +144,7 @@ public struct Test: Sendable {
     }
   }
 
+#if !hasFeature(Embedded)
   /// The XCTest-compatible Objective-C selector corresponding to this
   /// instance's underlying test function.
   ///
@@ -152,6 +159,7 @@ public struct Test: Sendable {
       _setValue(newValue, forKeyPath: \.xcTestCompatibleSelector)
     }
   }
+#endif
 
   /// An enumeration describing the evaluation state of a test's cases.
   fileprivate enum TestCasesState: Sendable {
@@ -160,13 +168,13 @@ public struct Test: Sendable {
     /// - Parameters:
     ///   - function: The function to call to evaluate the test's cases. The
     ///     result is a sequence of test cases.
-    case unevaluated(_ function: @Sendable () async throws -> any Sequence<Test.Case> & Sendable)
+    case unevaluated(_ function: @Sendable () async throws -> AnySendableSequence<Test.Case>)
 
     /// The test's cases have been evaluated.
     ///
     /// - Parameters:
     ///   - testCases: The test's cases.
-    case evaluated(_ testCases: any Sequence<Test.Case> & Sendable)
+    case evaluated(_ testCases: AnySendableSequence<Test.Case>)
 
     /// An error was thrown when the testing library attempted to evaluate the
     /// test's cases.
@@ -207,9 +215,13 @@ public struct Test: Sendable {
         // error (because the test cannot be run.) If an error was thrown, a
         // `Runner.Plan` is expected to record issue for the test, rather than
         // attempt to run it, and thus never access this property.
+#if !hasFeature(Embedded)
         preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage(context: String(reflecting: testCasesState)))")
+#else
+        preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage)")
+#endif
       }
-      return AnySequence(testCases)
+      return testCases
     }
   }
 
@@ -224,7 +236,7 @@ public struct Test: Sendable {
   var uncheckedTestCases: (some Sequence<Test.Case>)? {
     testCasesState.flatMap { testCasesState in
       if case let .evaluated(testCases) = testCasesState {
-        return AnySequence(testCases)
+        return testCases
       }
       return nil
     }
@@ -254,9 +266,14 @@ public struct Test: Sendable {
 
   /// Whether or not this test is parameterized.
   public var isParameterized: Bool {
+#if !hasFeature(Embedded)
     parameters?.isEmpty == false
+#else
+    false
+#endif
   }
 
+#if !hasFeature(Embedded)
   /// The test function parameters, if any.
   ///
   /// If this instance represents a test function, the value of this property is
@@ -271,6 +288,20 @@ public struct Test: Sendable {
     set {
       _setValue(newValue, forKeyPath: \.parameters)
     }
+  }
+#endif
+
+  /// The number of parameters to the test function.
+  ///
+  /// If this instance represents a non-parameterized test function or a test
+  /// suite, the value of this property is `0`.
+  @_spi(ForToolsIntegrationOnly)
+  public var parameterCount: Int {
+#if !hasFeature(Embedded)
+    _properties.value.parameters?.count ?? 0
+#else
+    _properties.value.parameterCount
+#endif
   }
 
   /// Whether or not this instance is a test suite containing other tests.
@@ -323,6 +354,7 @@ public struct Test: Sendable {
       displayName = String(name.dropFirst().dropLast())
     }
     let sourceBounds = __SourceBounds(lowerBoundOnly: sourceLocation)
+#if !hasFeature(Embedded)
     let properties = _Properties(
       name: name,
       displayName: displayName,
@@ -331,9 +363,21 @@ public struct Test: Sendable {
       containingTypeInfo: containingTypeInfo,
       isSynthesized: isSynthesized
     )
+#else
+    let properties = _Properties(
+      name: name,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      parameterCount: 0,
+      isSynthesized: isSynthesized
+    )
+#endif
     _properties = Allocated(properties)
   }
 
+#if !hasFeature(Embedded)
   /// Initialize an instance of this type representing a test function.
   init<S>(
     name: String,
@@ -352,7 +396,7 @@ public struct Test: Sendable {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCasesState: .unevaluated { try await testCases() },
+      testCasesState: .unevaluated { try await AnySendableSequence(testCases()) },
       parameters: parameters,
       isSynthesized: false
     )
@@ -377,12 +421,36 @@ public struct Test: Sendable {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCasesState: .evaluated(testCases),
+      testCasesState: .evaluated(AnySendableSequence(testCases)),
       parameters: parameters,
       isSynthesized: false
     )
     _properties = Allocated(properties)
   }
+#else
+  /// Initialize an instance of this type representing a non-parameterized test
+  /// function.
+  init(
+    name: String,
+    displayName: String? = nil,
+    traits: [any Trait],
+    sourceBounds: __SourceBounds,
+    containingTypeInfo: TypeInfo? = nil,
+    testCases: Test.Case.Generator<CollectionOfOne<Void>>
+  ) {
+    let properties = _Properties(
+      name: name,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      testCasesState: .evaluated(AnySendableSequence(testCases)),
+      parameterCount: 0,
+      isSynthesized: false
+    )
+    _properties = Allocated(properties)
+  }
+#endif
 }
 
 // MARK: - Equatable, Hashable

@@ -92,11 +92,9 @@ struct DiscoveryTests {
       0xABCD1234,
       0,
       { outValue, type, hint, _ in
-#if !hasFeature(Embedded)
         guard type.load(as: Any.Type.self) == MyTestContent.self else {
           return false
         }
-#endif
         if let hint, hint.load(as: TestContentAccessorHint.self) != expectedHint {
           return false
         }

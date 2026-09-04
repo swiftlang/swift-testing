@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !hasFeature(Embedded)
 /// A protocol that provides instances of conforming types with the ability to
 /// record themselves as test issues.
 ///
@@ -31,6 +32,7 @@ protocol CustomIssueRepresentable: Error {
   /// - Returns: A customized copy of `issue`.
   func customize(_ issue: consuming Issue) -> Issue
 }
+#endif
 
 // MARK: - Internal error types
 
@@ -44,7 +46,7 @@ protocol CustomIssueRepresentable: Error {
 /// This type is not part of the public interface of the testing library.
 /// External callers should generally record issues by throwing their own errors
 /// or by calling ``Issue/record(_:severity:sourceLocation:)``.
-struct SystemError: Error, CustomStringConvertible, CustomIssueRepresentable {
+struct SystemError: Error, CustomStringConvertible {
   var description: String
 
   init(description: String) {
@@ -58,12 +60,6 @@ struct SystemError: Error, CustomStringConvertible, CustomIssueRepresentable {
   var _domain: String {
     Self.domain
   }
-
-  func customize(_ issue: consuming Issue) -> Issue {
-    issue.kind = .system
-    issue.comments.append("\(self)")
-    return issue
-  }
 }
 
 /// A type representing misuse of testing library API.
@@ -75,7 +71,7 @@ struct SystemError: Error, CustomStringConvertible, CustomIssueRepresentable {
 /// This type is not part of the public interface of the testing library.
 /// External callers should generally record issues by throwing their own errors
 /// or by calling ``Issue/record(_:severity:sourceLocation:)``.
-struct APIMisuseError: Error, CustomStringConvertible, CustomIssueRepresentable {
+struct APIMisuseError: Error, CustomStringConvertible {
   var description: String
 
   static var domain: String {
@@ -85,7 +81,20 @@ struct APIMisuseError: Error, CustomStringConvertible, CustomIssueRepresentable 
   var _domain: String {
     Self.domain
   }
+}
 
+#if !hasFeature(Embedded)
+// MARK: - CustomIssueRepresentable
+
+extension SystemError: CustomIssueRepresentable {
+  func customize(_ issue: consuming Issue) -> Issue {
+    issue.kind = .system
+    issue.comments.append("\(self)")
+    return issue
+  }
+}
+
+extension APIMisuseError: CustomIssueRepresentable {
   func customize(_ issue: consuming Issue) -> Issue {
     issue.kind = .apiMisused
     issue.comments.append("\(self)")
@@ -104,3 +113,4 @@ extension ExpectationFailedError: CustomIssueRepresentable {
     return issue
   }
 }
+#endif

@@ -62,10 +62,15 @@ extension Test.Case {
       // A beautiful hack to give us the right number of cases: iterate over a
       // collection containing a single Void value.
       self.init(sequence: CollectionOfOne(())) { _ in
+#if !hasFeature(Embedded)
         Test.Case(body: testFunction)
+#else
+        Test.Case(isParameterized: false, body: testFunction)
+#endif
       }
     }
 
+#if !hasFeature(Embedded)
     /// Initialize an instance of this type that iterates over the specified
     /// collection of argument values.
     ///
@@ -87,7 +92,6 @@ extension Test.Case {
       parameters: [Test.Parameter],
       testFunction: @escaping @Sendable (S.Element) async throws -> Void
     ) where S: Collection {
-#if !hasFeature(Embedded)
       if parameters.count > 1 {
         self.init(sequence: collection) { element in
           let mirror = Mirror(reflectingForTest: element)
@@ -103,7 +107,6 @@ extension Test.Case {
         }
         return
       }
-#endif
 
       self.init(sequence: collection) { element in
         Test.Case(values: [element], parameters: parameters) {
@@ -253,6 +256,7 @@ extension Test.Case {
         }
       }
     }
+#endif
   }
 }
 
@@ -270,6 +274,7 @@ extension Test.Case.Generator: Sequence {
         return nil
       }
 
+#if !hasFeature(Embedded)
       var testCase = _mapElement(element)
 
       if testCase.isParameterized {
@@ -285,6 +290,9 @@ extension Test.Case.Generator: Sequence {
       }
 
       return testCase
+#else
+      return _mapElement(element)
+#endif
     }
   }
 

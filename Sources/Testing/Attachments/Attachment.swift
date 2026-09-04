@@ -198,6 +198,7 @@ extension AnyAttachable: FileClonable {}
 
 // MARK: - Describing an attachment
 
+#if !hasFeature(Embedded)
 #if SWT_TARGET_OS_APPLE
 @_preInverseGenerics
 #endif
@@ -214,6 +215,7 @@ extension Attachment: CustomStringConvertible where AttachableValue: ~Copyable {
     return #""\#(preferredName)": instance of '\#(typeInfo.unqualifiedName)'"#
   }
 }
+#endif
 
 // MARK: - Getting an attachable value from an attachment
 

@@ -9,6 +9,7 @@
 //
 
 extension Tag {
+#if !hasFeature(Embedded)
   /// Create a tag representing a static member of ``Tag`` such as ``Tag/red``.
   ///
   /// - Parameters:
@@ -39,6 +40,9 @@ extension Tag {
 
     return Self(kind: .staticMember(fullyQualifiedMemberName))
   }
+#else
+  // TODO: flat-namespace tags in Embedded Swift
+#endif
 }
 
 /// Declare a tag that can be applied to a test function or test suite.

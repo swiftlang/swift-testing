@@ -9,7 +9,7 @@
 //
 
 #if !SWT_NO_ABI_JSON_SCHEMA
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 private import struct Foundation.Data
 private import struct Foundation.URL
 #endif

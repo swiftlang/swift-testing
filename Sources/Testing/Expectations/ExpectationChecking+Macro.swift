@@ -80,6 +80,7 @@ public func __checkValue(
     condition = !condition
   }
 
+#if !hasFeature(Embedded)
   // Capture the correct expression in the expectation.
   if !condition, let expressionWithCapturedRuntimeValues = expressionWithCapturedRuntimeValues() {
     expression = expressionWithCapturedRuntimeValues
@@ -87,6 +88,7 @@ public func __checkValue(
       expression = expression.capturingRuntimeValues(condition)
     }
   }
+#endif
 
   // Post an event for the expectation regardless of whether or not it passed.
   // If the current event handler is not configured to handle events of this
@@ -120,6 +122,7 @@ public func __checkValue(
   return .failure(ExpectationFailedError(expectation: expectation))
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Binary operators
 
 /// Call a binary operator, passing the left-hand and right-hand arguments.
@@ -869,7 +872,9 @@ public func __checkCast<V, T>(
     optionalValue.unsafelyUnwrapped
   }
 }
+#endif
 
+#if !hasFeature(Embedded) // TODO: support #expect(throws:) with typed throws
 // MARK: - Matching errors by type
 
 /// Check that an expression always throws an error.
@@ -1183,6 +1188,7 @@ public func __checkClosureCall<R>(
     sourceLocation: sourceLocation
   ).map { caughtError }
 }
+#endif
 
 // MARK: - Exit tests
 
@@ -1251,6 +1257,7 @@ public func __checkClosureCall<each T>(
 }
 #endif
 
+#if !hasFeature(Embedded)
 // MARK: -
 
 /// Generate a description of an error that includes its type name if not
@@ -1269,3 +1276,4 @@ private func _description(of error: any Error) -> String {
   }
   return "\(errorDescription) of type \(errorType)"
 }
+#endif

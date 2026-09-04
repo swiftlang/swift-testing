@@ -23,6 +23,7 @@ extension Test {
       /// non-parameterized test function.
       case nonParameterized
 
+#if !hasFeature(Embedded)
       /// A test case associated with a parameterized test function.
       ///
       /// - Parameters:
@@ -34,11 +35,16 @@ extension Test {
       ///   - isStable: Whether or not this test case is considered stable
       ///     across successive runs.
       case parameterized(arguments: [Argument], discriminator: Int, isStable: Bool)
+#else
+      /// A test case associated with a parameterized test function.
+      case parameterized
+#endif
     }
 
     /// The kind of this test case.
     private var _kind: _Kind
 
+#if !hasFeature(Embedded)
     /// A type representing an argument passed to a parameter of a parameterized
     /// test function.
     @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
@@ -154,12 +160,14 @@ extension Test {
         isStable
       }
     }
+#endif
 
     private init(kind: _Kind, body: @escaping @Sendable () async throws -> Void) {
       self._kind = kind
       self.body = body
     }
 
+#if !hasFeature(Embedded)
     /// Initialize a test case for a non-parameterized test function.
     ///
     /// - Parameters:
@@ -217,6 +225,24 @@ extension Test {
 
       self.init(kind: .parameterized(arguments: arguments, discriminator: 0, isStable: isStable), body: body)
     }
+#else
+    /// Initialize a test case for a test function.
+    ///
+    /// - Parameters:
+    ///   - isParameterized: Whether or not the test function is parameterized.
+    ///   - body: The body closure of this test case.
+    ///
+    /// The resulting test case will have zero arguments.
+    init(isParameterized: Bool, body: @escaping @Sendable () async throws -> Void) {
+      self.init(kind: isParameterized ? .parameterized : .nonParameterized, body: body)
+    }
+
+    /// Storage for ``id`` under Embedded Swift.
+    ///
+    /// This property cannot be `private` because it is used in another file.
+    /// Code outside `Test.Case` should use ``id`` instead.
+    var _id = ID()
+#endif
 
     /// Whether or not this test case is from a parameterized test.
     public var isParameterized: Bool {
@@ -235,6 +261,7 @@ extension Test {
     var body: @Sendable () async throws -> Void
   }
 
+#if !hasFeature(Embedded)
   /// A type representing a single parameter to a parameterized test function.
   ///
   /// This represents the parameter itself, and does not contain a specific
@@ -277,6 +304,7 @@ extension Test {
       self.init(index: index, firstName: firstName, secondName: secondName, typeInfo: TypeInfo(describing: type))
     }
   }
+#endif
 }
 
 #if !SWT_NO_CODABLE
@@ -288,8 +316,10 @@ extension Test.Case.Argument.ID: Codable {}
 
 // MARK: - Equatable, Hashable
 
+#if !hasFeature(Embedded)
 extension Test.Parameter: Hashable {}
 extension Test.Case.Argument.ID: Hashable {}
+#endif
 
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
