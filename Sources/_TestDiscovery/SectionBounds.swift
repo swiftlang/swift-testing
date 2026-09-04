@@ -306,7 +306,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> EmptyCollection<Secti
 /// `@_silgen_name` attribute.
 private struct _SectionBound: Sendable, ~Copyable {
   /// A property that forces the structure to have an in-memory representation.
-  private var _storage: CChar = 0
+  private var _storage: Int = 0
 
   static func ..<(lhs: inout Self, rhs: inout Self) -> Range<UnsafeRawPointer> {
     withUnsafeMutablePointer(to: &lhs) { lhs in
@@ -323,6 +323,16 @@ private struct _SectionBound: Sendable, ~Copyable {
 #elseif objectFormat(ELF) || objectFormat(Wasm)
 @_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
 @_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
+#elseif objectFormat(COFF)
+@section(".sw5test$A") private nonisolated(unsafe) var _testContentSectionLeadingPadding = _SectionBound()
+private nonisolated(unsafe) var _testContentSectionBegin: UnsafeRawPointer {
+  withUnsafeMutablePointer(to: &_testContentSectionLeadingPadding) { UnsafeRawPointer($0 + 1) }
+}
+
+@section(".sw5test$C") private nonisolated(unsafe) var _testContentSectionTrailingPadding = _SectionBound()
+private nonisolated(unsafe) var _testContentSectionEnd: UnsafeRawPointer {
+  withUnsafeMutablePointer(to: &_testContentSectionTrailingPadding) { UnsafeRawPointer($0) }
+}
 #else
 #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
 private nonisolated(unsafe) let _testContentSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
