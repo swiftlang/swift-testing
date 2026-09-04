@@ -60,6 +60,16 @@ static int swt_errno(void) {
   return errno;
 }
 
+#if defined(__linux__) || defined(__ANDROID__)
+/// Find a subsequence of bytes in a larger sequence of bytes.
+///
+/// On Linux, this function declaration is provided because `memmem()` is only
+/// declared if `_GNU_SOURCE` is set, but setting it causes build errors due
+/// to conflicts with Swift's Glibc module. The function is available in all
+/// supported versions of the GNU C Library.
+SWT_IMPORT_FROM_STDLIB void *_Nullable memmem(const void *haystack, size_t hsize, const void *needle, size_t nsize);
+#endif
+
 #if !SWT_NO_FILE_IO
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)
