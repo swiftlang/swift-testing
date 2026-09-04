@@ -71,6 +71,16 @@ static bool swt_S_ISFIFO(mode_t mode) {
   return S_ISFIFO(mode);
 }
 #endif
+
+#if __has_include(<sys/ioctl.h>) && defined(TIOCGWINSZ)
+/// Get the result of the `ioctl(TIOCGWINSZ)` call for the given file descriptor.
+///
+/// This function is provided because `ioctl()` is a variadic function and
+/// cannot be imported directly into Swift.
+static int swt_ioctl_TIOCGWINSZ(int fd, struct winsize *result) {
+  return ioctl(fd, TIOCGWINSZ, result);
+}
+#endif
 #endif
 
 #if defined(__APPLE__) && !SWT_NO_MACH_PORTS

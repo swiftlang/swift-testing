@@ -11,10 +11,10 @@
 #if canImport(Foundation)
 private import Foundation
 #endif
-private import _TestingInternals
+internal import _TestingInternals
 
 #if canImport(Synchronization)
-private import Synchronization
+internal import Synchronization
 #endif
 
 /// The common implementation of the entry point functions in this package.
@@ -56,46 +56,22 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       }
       oldEventHandler(event, context)
     }
-    configuration.verbosity = args.verbosity
 
 #if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
-    let consoleOutputEnabled = Atomic(true)
+    let consoleOutputEnabled = Allocated(Atomic(true))
     if configuration.verbosity > .min {
-      // Check for experimental console output flag
-      let useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
-#if !SWT_NO_ABI_JSON_SCHEMA
-      if useExperimentalConsoleOutput {
-        // Use experimental AdvancedConsoleOutputRecorder
-        var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>.Options()
-        advancedOptions.base = .for(.stderr)
-
-        let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>(options: advancedOptions) { string in
-          try? FileHandle.stderr.write(string)
-        }
-
-        configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
-            eventRecorder.record(event, in: context)
-          }
-          oldEventHandler(event, context)
-        }
-      }
-#endif
-
-      if !useExperimentalConsoleOutput {
-        // Use the standard console output recorder (default behavior)
-        let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
-          try? FileHandle.stderr.write(string)
-        }
-        configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
-            eventRecorder.record(event, in: context)
-          }
-          oldEventHandler(event, context)
-        }
-      }
+      configuration.enableConsoleOutput(to: .stderr, togglingWith: consoleOutputEnabled)
     }
+
+    // The presence of a harness event stream implies suppression of the normal
+    // stderr output.
+#if os(Windows)
+    let hasHarnessEventStream = args.harnessEventStreamHANDLE
+#else
+    let hasHarnessEventStream = args.harnessEventStreamFileDescriptor
+#endif
+    consoleOutputEnabled.value.store(false, ordering: .sequentiallyConsistent)
 #endif
 
     // If the caller specified an alternate event handler, hook it up too.
@@ -113,26 +89,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
     if args.listTests ?? false {
       tests = await Array(Test.all)
 
-      if args.verbosity > .min {
-        for testID in listTestsForEntryPoint(tests, verbosity: args.verbosity) {
-          // Print the test ID to stdout (classical CLI behavior.)
-#if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
-          try? FileHandle.stdout.write("\(testID)\n")
-#else
-          print(testID)
-#endif
-        }
-      }
-
-      // Synthesize any missing suites. Note we write to stdout before this
-      // step because we don't emit suites to stdout anyway.
-      tests = Runner.Plan.synthesizeSuites(for: tests)
-
-      // Post an event for every discovered test. These events are turned into
-      // JSON objects if JSON output is enabled.
-      for test in tests where !test.isHidden {
-        Event.post(.testDiscovered, for: (test, nil), configuration: configuration)
-      }
+      listTestsForEntryPoint(tests, configuration: configuration)
     } else {
       // Run the tests.
       let runner = await Runner(configuration: configuration)
@@ -144,7 +101,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
         // console in this case. Note that if something is consuming the event
         // stream, we still want to generate .runStarted etc., so we still call
         // runner.run() for that purpose.
-        consoleOutputEnabled.store(false, ordering: .sequentiallyConsistent)
+        consoleOutputEnabled.value.store(false, ordering: .sequentiallyConsistent)
       }
 #endif
       await runner.run()
@@ -171,10 +128,72 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
   return exitCode.load(ordering: .sequentiallyConsistent)
 }
 
+// MARK: - Standard console output
+
+extension Configuration {
+  /// Modify this configuration to enable output to the given file handle as the
+  /// process' output console.
+  ///
+  /// - Parameters:
+  ///   - fileHandle: The file handle to which console output should be written.
+  ///   - consoleOutputEnabled: An atomic boolean value that the caller can set
+  ///     to `true` or `false` to asynchronously enable or disable further
+  ///     console output.
+  mutating func enableConsoleOutput(to fileHandle: consuming FileHandle, togglingWith consoleOutputEnabled: Allocated<Atomic<Bool>>) {
+    // We need to consume the file handle, but we also need to reference it from
+    // multiple closures, so move it to the heap.
+    let fileHandle = Allocated(fileHandle)
+
+    // Check for experimental console output flag
+    let useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
+#if !SWT_NO_ABI_JSON_SCHEMA
+    if useExperimentalConsoleOutput {
+      // Use experimental AdvancedConsoleOutputRecorder
+      var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>.Options()
+      advancedOptions.base = .for(fileHandle.value)
+
+      let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>(options: advancedOptions) { string in
+        try? fileHandle.value.write(string)
+      }
+
+      eventHandler = { [oldEventHandler = eventHandler] event, context in
+        if consoleOutputEnabled.value.load(ordering: .sequentiallyConsistent) {
+          eventRecorder.record(event, in: context)
+        }
+        oldEventHandler(event, context)
+      }
+    }
+#endif
+
+    if !useExperimentalConsoleOutput {
+      // Use the standard console output recorder (default behavior)
+      let eventRecorder = Event.ConsoleOutputRecorder(options: .for(fileHandle.value)) { string in
+        try? fileHandle.value.write(string)
+      }
+      eventHandler = { [oldEventHandler = eventHandler] event, context in
+        if consoleOutputEnabled.value.load(ordering: .sequentiallyConsistent) {
+          eventRecorder.record(event, in: context)
+        }
+        oldEventHandler(event, context)
+      }
+      informationRequestHandler = {
+        if consoleOutputEnabled.value.load(ordering: .sequentiallyConsistent) {
+          let lines = eventRecorder.summarize()
+          _ = try? fileHandle.value.withLock {
+            for line in lines {
+              try fileHandle.value.write(line)
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 // MARK: - Listing tests
 
-/// List all of the given tests in the "specifier" format used by Swift Package
-/// Manager.
+/// Get a list of all of the given tests in the "specifier" format used by Swift
+/// Package Manager.
 ///
 /// - Parameters:
 ///   - tests: The tests to list.
@@ -182,7 +201,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
 ///     inclusion of source locations for all tests.
 ///
 /// - Returns: An array of strings representing the IDs of `tests`.
-func listTestsForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [String] {
+func testIDsToListForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [String] {
   // Filter out hidden tests and test suites. Hidden tests should not generally
   // be presented to the user, and suites (XCTestCase classes) are not included
   // in the equivalent XCTest-based output.
@@ -220,6 +239,35 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [St
     .sorted(by: <)
 }
 
+/// List the given sequence of tests on the command line and via events posted
+/// to an event handler.
+///
+/// - Parameters:
+///   - tests: The tests to list.
+///   - configuration: The configuration to use.
+func listTestsForEntryPoint(_ tests: some Sequence<Test>, configuration: Configuration) {
+  if configuration.verbosity > .min {
+    for testID in testIDsToListForEntryPoint(tests, verbosity: configuration.verbosity) {
+      // Print the test ID to stdout (classical CLI behavior.)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
+      try? FileHandle.stdout.write("\(testID)\n")
+#else
+      print(testID)
+#endif
+    }
+  }
+
+  // Synthesize any missing suites. Note we write to stdout before this
+  // step because we don't emit suites to stdout anyway.
+  let tests = Runner.Plan.synthesizeSuites(for: Array(tests))
+
+  // Post an event for every discovered test. These events are turned into
+  // JSON objects if JSON output is enabled.
+  for test in tests where !test.isHidden {
+    Event.post(.testDiscovered, for: (test, nil), configuration: configuration)
+  }
+}
+
 // MARK: - Command-line arguments and configuration
 
 /// A type describing the command-line arguments passed by Swift Package Manager
@@ -231,6 +279,9 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [St
 /// - Warning: This type is used by Swift Package Manager. Do not use it
 ///   directly.
 public struct __CommandLineArguments_v0: Sendable {
+  /// The command-line argument list used to construct this instance, if any.
+  var commandLineArgumentList: CommandLineArgumentList?
+
   public init() {}
 
   /// The value of the `--list-tests` argument.
@@ -241,6 +292,9 @@ public struct __CommandLineArguments_v0: Sendable {
 
   /// The maximum number of test tasks to run in parallel.
   public var experimentalMaximumParallelizationWidth: Int?
+
+  /// The number of worker processes to spawn (only used by the harness).
+  public var numWorkers: Int?
 
   /// The value of the `--symbolicate-backtraces` argument.
   public var symbolicateBacktraces: String?
@@ -313,6 +367,14 @@ public struct __CommandLineArguments_v0: Sendable {
   /// set the value of this property.
   var eventStreamVersionNumber: VersionNumber?
 
+#if os(Windows)
+  /// The value of the `--__harness-event-stream-handle` argument.
+  nonisolated(unsafe) var harnessEventStreamHANDLE: HANDLE?
+#else
+  /// The value of the `--__harness-event-stream-file-descriptor` argument.
+  var harnessEventStreamFileDescriptor: CInt?
+#endif
+
   /// The value of the `--event-stream-version` or `--experimental-event-stream-version`
   /// argument, representing the version of the event stream schema to use when
   /// writing events to ``eventStreamOutput``.
@@ -370,6 +432,7 @@ extension __CommandLineArguments_v0: Codable {
     case listTests
     case parallel
     case experimentalMaximumParallelizationWidth
+    case numWorkers
     case symbolicateBacktraces
     case verbose
     case veryVerbose
@@ -387,45 +450,6 @@ extension __CommandLineArguments_v0: Codable {
 }
 #endif
 
-extension RandomAccessCollection<String> {
-  /// Get the value of the command line argument with the given name.
-  ///
-  /// - Parameters:
-  ///   - label: The label or name of the argument, e.g. `"--attachments-path"`.
-  ///   - index: The index where `label` should be found, or `nil` to search the
-  ///     entire collection.
-  ///
-  /// - Returns: The value of the argument named by `label` at `index`. If no
-  ///   value is available, or if `index` is not `nil` and the argument at
-  ///   `index` is not named `label`, returns `nil`.
-  ///
-  /// This function handles arguments of the form `--label value` and
-  /// `--label=value`. Other argument syntaxes are not supported.
-  fileprivate func argumentValue(forLabel label: String, at index: Index? = nil) -> String? {
-    guard let index else {
-      return indices.lazy
-        .compactMap { argumentValue(forLabel: label, at: $0) }
-        .first
-    }
-
-    let element = self[index]
-    if element == label {
-      let nextIndex = self.index(after: index)
-      if nextIndex < endIndex {
-        return self[nextIndex]
-      }
-    } else {
-      // Find an element equal to something like "--foo=bar" and split it.
-      let prefix = "\(label)="
-      if element.hasPrefix(prefix), let equalsIndex = element.firstIndex(of: "=") {
-        return String(element[equalsIndex...].dropFirst())
-      }
-    }
-
-    return nil
-  }
-}
-
 /// Initialize this instance given a sequence of command-line arguments passed
 /// from Swift Package Manager.
 ///
@@ -438,7 +462,26 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   var result = __CommandLineArguments_v0()
 
   // Do not consider the executable path AKA argv[0].
-  let args = args.dropFirst()
+  let args = try CommandLineArgumentList(
+    parsing: args,
+    describedBy: [
+      .flag("--list-tests"), .subcommand("list"),
+      .option("--configuration-path"), .option("--experimental-configuration-path"),
+      .option("--event-stream-output-path"), .option("--experimental-event-stream-output"),
+      .option("--event-stream-version"), .option("--experimental-event-stream-version"),
+      .option("--xunit-output"),
+      .option("--attachments-path"), .option("--experimental-attachments-path"),
+      .flag("--parallel"), .flag("--no-parallel"),
+      .option("--experimental-maximum-parallelization-width"), .option("--num-workers"),
+      .option("--symbolicate-backtraces"),
+      .option("--verbosity"), .flag("--verbose"), .flag("-v"), .flag("--very-verbose"), .flag("--vv"), .flag("--quiet"), .flag("-q"),
+      .option("--filter"), .option("--skip"),
+      .option("--repetitions"), .option("--repeat-until"),
+      .option("--__harness-event-stream-handle"), .option("--__harness-event-stream-file-descriptor"),
+    ],
+    describingUnrecognizedArgumentWith: { _ in .anonymous }
+  )
+  result.commandLineArgumentList = args
 
 #if !SWT_NO_FILE_IO
 #if !SWT_NO_CODABLE
@@ -449,7 +492,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // NOTE: While the output event stream is opened later, it is necessary to
   // open the configuration file early (here) in order to correctly construct
   // the resulting __CommandLineArguments_v0 instance.
-  if let path = args.argumentValue(forLabel: "--configuration-path") ?? args.argumentValue(forLabel: "--experimental-configuration-path") {
+  if let path = args.option(withLabel: "--configuration-path") ?? args.option(withLabel: "--experimental-configuration-path") {
     let file = try FileHandle(forReadingAtPath: path)
     let configurationJSON = try file.readToEnd()
     result = try configurationJSON.withUnsafeBufferPointer { configurationJSON in
@@ -463,7 +506,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 #endif
 
   // Event stream output
-  if let path = args.argumentValue(forLabel: "--event-stream-output-path") ?? args.argumentValue(forLabel: "--experimental-event-stream-output") {
+  if let path = args.option(withLabel: "--event-stream-output-path") ?? args.option(withLabel: "--experimental-event-stream-output") {
     result.eventStreamOutputPath = path
   }
 
@@ -471,9 +514,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   do {
     var versionString: String?
     var allowExperimental = false
-    versionString = args.argumentValue(forLabel: "--event-stream-version")
+    versionString = args.option(withLabel: "--event-stream-version")
     if versionString == nil {
-      versionString = args.argumentValue(forLabel: "--experimental-event-stream-version")
+      versionString = args.option(withLabel: "--experimental-event-stream-version")
       if versionString != nil {
         allowExperimental = true
       }
@@ -496,72 +539,89 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
       result.eventStreamVersionNumber = eventStreamVersion
     }
   }
+
+  // Harness event stream file descriptor (file handle on Windows)
+#if os(Windows)
+  if let handleString = args.option(withLabel: "--__harness-event-stream-handle") {
+    guard let handle = UInt(handleString).flatMap(HANDLE.init(bitPattern:)),
+          handle != INVALID_HANDLE_VALUE else {
+      throw _EntryPointError.invalidArgument("--__harness-event-stream-handle", value: handleString)
+    }
+    result.harnessEventStreamHANDLE = handle
+  }
+#else
+  if let fdString = args.option(withLabel: "--__harness-event-stream-file-descriptor") {
+    guard let fd = CInt(fdString) else {
+      throw _EntryPointError.invalidArgument("--__harness-event-stream-file-descriptor", value: fdString)
+    }
+    result.harnessEventStreamFileDescriptor = fd
+  }
+#endif
 #endif
 
   // XML output
-  if let xunitOutputPath = args.argumentValue(forLabel: "--xunit-output") {
+  if let xunitOutputPath = args.option(withLabel: "--xunit-output") {
     result.xunitOutput = xunitOutputPath
   }
 
   // Attachment output
-  if let attachmentsPath = args.argumentValue(forLabel: "--attachments-path") ?? args.argumentValue(forLabel: "--experimental-attachments-path") {
+  if let attachmentsPath = args.option(withLabel: "--attachments-path") ?? args.option(withLabel: "--experimental-attachments-path") {
     result.attachmentsPath = attachmentsPath
   }
 
-  if args.contains("--list-tests") {
+  if args.hasFlag(withLabel: "--list-tests") {
     result.listTests = true
-  } else if args.first == "list" {
+  } else if args.subcommandNames == ["list"] {
     // Allow the "list" subcommand explicitly in place of "--list-tests". This
     // makes invocation from e.g. Wasmtime a bit more intuitive/idiomatic.
     result.listTests = true
   }
 
   // Parallelization (on by default)
-  if args.contains("--no-parallel") {
+  if args.hasFlag(withLabel: "--no-parallel") == true {
     result.parallel = false
   }
-  if let maximumParallelizationWidth = args.argumentValue(forLabel: "--experimental-maximum-parallelization-width").flatMap(Int.init) {
-    // TODO: decide if we want to repurpose --num-workers for this use case?
+  if let maximumParallelizationWidth = args.option(withLabel: "--experimental-maximum-parallelization-width").flatMap(Int.init) {
     result.experimentalMaximumParallelizationWidth = maximumParallelizationWidth
+  }
+  if let numWorkers = args.option(withLabel: "--num-workers").flatMap(Int.init) {
+    result.numWorkers = numWorkers
   }
 
   // Whether or not to symbolicate backtraces in the event stream.
-  if let symbolicateBacktraces = args.argumentValue(forLabel: "--symbolicate-backtraces") {
+  if let symbolicateBacktraces = args.option(withLabel: "--symbolicate-backtraces") {
     result.symbolicateBacktraces = symbolicateBacktraces
   }
 
   // Verbosity
-  if let verbosity = args.argumentValue(forLabel: "--verbosity").flatMap(Int.init) {
+  if let verbosity = args.option(withLabel: "--verbosity").flatMap(Int.init) {
     result.verbosity = verbosity
   }
-  if args.contains("--verbose") || args.contains("-v") {
+  if args.hasFlag(withLabel: "--verbose") == true || args.hasFlag(withLabel: "-v") == true {
     result.verbose = true
   }
-  if args.contains("--very-verbose") || args.contains("--vv") {
+  if args.hasFlag(withLabel: "--very-verbose") == true || args.hasFlag(withLabel: "--vv") == true {
     result.veryVerbose = true
   }
-  if args.contains("--quiet") || args.contains("-q") {
+  if args.hasFlag(withLabel: "--quiet") == true || args.hasFlag(withLabel: "-q") == true {
     result.quiet = true
   }
 
   // Filtering
-  func filterValues(forArgumentsWithLabel label: String) -> [String] {
-    args.indices.compactMap { args.argumentValue(forLabel: label, at: $0) }
-  }
-  let filter = filterValues(forArgumentsWithLabel: "--filter")
+  let filter = args.options(withLabel: "--filter")
   if !filter.isEmpty {
     result.filter = result.filter.map { $0 + filter } ?? filter
   }
-  let skip = filterValues(forArgumentsWithLabel: "--skip")
+  let skip = args.options(withLabel: "--skip")
   if !skip.isEmpty {
     result.skip = result.skip.map { $0 + skip } ?? skip
   }
 
   // Set up the iteration policy for the test run.
-  if let repetitions = args.argumentValue(forLabel: "--repetitions").flatMap(Int.init) {
+  if let repetitions = args.option(withLabel: "--repetitions").flatMap(Int.init) {
     result.repetitions = repetitions
   }
-  if let repeatUntil = args.argumentValue(forLabel: "--repeat-until") {
+  if let repeatUntil = args.option(withLabel: "--repeat-until") {
     result.repeatUntil = repeatUntil
   }
 
@@ -583,6 +643,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 @_spi(ForToolsIntegrationOnly)
 public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emitWarnings: Bool = true) throws -> Configuration {
   var configuration = Configuration()
+
+  // Verbosity level
+  configuration.verbosity = args.verbosity
 
   // Parallelization (on by default)
   if let parallel = args.parallel {
@@ -645,6 +708,25 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
       _ = try? file.withLock {
         try file.write(json)
         try file.write("\n")
+      }
+    }
+    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+      eventHandler(event, context)
+      oldEventHandler(event, context)
+    }
+  }
+
+  // Harness event stream output
+#if os(Windows)
+  let harnessFile = try args.harnessEventStreamHANDLE.map { try FileHandle(unsafeWindowsHANDLE: $0, options: [.writeAccess]) }
+#else
+  let harnessFile = try args.harnessEventStreamFileDescriptor.map { try FileHandle(unsafePOSIXFileDescriptor: $0, options: [.writeAccess]) }
+#endif
+  if let harnessFile {
+    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: Harness.Version.versionNumber, encodeAsJSONLines: true) { json in
+      _ = try? harnessFile.withLock {
+        try harnessFile.write(json)
+        try harnessFile.write("\n")
       }
     }
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
@@ -865,10 +947,8 @@ extension Event.ConsoleOutputRecorder.Options {
 
     // If color output is enabled, load tag colors from user/package preferences
     // on disk.
-    if result.useANSIEscapeCodes && result.ansiColorBitDepth > 1 {
-      if let tagColors = try? loadTagColors() {
-        result.tagColors = tagColors
-      }
+    if result.useColorANSIEscapeCodes, let tagColors = try? loadTagColors() {
+      result.tagColors = tagColors
     }
 
     return result
@@ -986,6 +1066,12 @@ private enum _EntryPointError: Error {
   /// - Parameters:
   ///   - versionNumber: The experimental ABI version number.
   case experimentalABIVersion(_ versionNumber: VersionNumber)
+
+  /// A failure occurred while parsing the command line arguments list.
+  ///
+  /// - Parameters:
+  ///   - error: The underlying error that occurred.
+  case commandLineParsingFailed(_ error: CommandLineArgumentList.ParseError)
 }
 
 extension _EntryPointError: CustomStringConvertible {
@@ -997,6 +1083,8 @@ extension _EntryPointError: CustomStringConvertible {
       #"Invalid value "\#(value)" for argument \#(name)"#
     case let .experimentalABIVersion(versionNumber):
       "Event stream version \(versionNumber) is experimental. Use --experimental-event-stream-version to enable it."
+    case let .commandLineParsingFailed(error):
+      String(describing: error)
     }
   }
 }

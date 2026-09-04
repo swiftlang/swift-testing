@@ -215,6 +215,7 @@ extension Event.JUnitXMLRecorder {
       }
     }
 
+
     return result.joined(separator: "\n")
   }
 
