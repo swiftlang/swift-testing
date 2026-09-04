@@ -32,8 +32,8 @@ syntactically valid.
 
 ### Common data types
 
-`<string>` and `<number>` are defined as in JSON. `<array:T>` represents an
-array (also defined as in JSON) whose elements all follow rule `<T>`.
+`<string>` and `<number>` are defined as per JSON. `<array:T>` represents an
+array (also defined as per JSON) whose elements all follow rule `<T>`.
 
 ```
 <bool> ::= true | false ; as in JSON
@@ -53,7 +53,8 @@ array (also defined as in JSON) whose elements all follow rule `<T>`.
 
 <byte> ::= 0 . 255 ; an 8-bit unsigned byte in standard base 10 notation
 <bytes> ::= <array:byte> | <base64-string> ; either an array of bytes, or a
-  ; Base64-encoded representation of an octet stream (per RFC 4648)  
+  ; Base64-encoded representation of an octet stream
+<base64-string> ::= <string> ; as per RFC 4648
 
 <version> ::= "version": <version-number>
 <version-number> ::= 0 | "<version core>" ; as per https://semver.org
@@ -262,3 +263,12 @@ sufficient information to display the event in a human-readable format.
 | [ST-0019](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0019-include-tags-bugs-and-timeline-in-event-stream.md#json-schema-changes) | Added `tags`, `bugs`, and `timeLimit`. | 6.4 | `"6.4"` |
 | [ST-0020](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0020-sourcelocation-filepath.md#detailed-design) | Added `filePath`. | 6.3 | `"6.3"` |
 | [ST-0024](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0024-per-test-case-repetitions.md)| Added `iteration`. | 6.4 | `"6.4"` |
+
+### External definitions and standards
+
+| | Applicable Standard | Reference URL |
+|-|-|-|
+| Base64 Encoding | RFC 4648 | https://www.rfc-editor.org/info/rfc4648/ |
+| JSON | ECMA-404 | https://ecma-international.org/publications-and-standards/standards/ecma-404/ |
+| Semantic Versioning (SemVer) | - | https://semver.org |
+| Swift File IDs | SE-0274 | https://github.com/swiftlang/swift-evolution/blob/main/proposals/0274-magic-file.md |
