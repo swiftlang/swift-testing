@@ -220,6 +220,7 @@ extension Test {
   }
 }
 
+#if !hasFeature(Embedded)
 extension Test.Case {
   /// The arguments of this test case, formatted for presentation, prefixed by
   /// their corresponding parameter label when available.
@@ -245,17 +246,16 @@ extension Test.Case {
           "\(label) → \(valueDescription)"
         }
 
-#if !hasFeature(Embedded)
         if includeTypeNames {
           let typeInfo = TypeInfo(describingTypeOf: argument.value)
           return "\(labeledArgument) (\(typeInfo.fullyQualifiedName))"
         }
-#endif
         return labeledArgument
       }
       .joined(separator: ", ")
   }
 }
+#endif
 
 // MARK: -
 
@@ -457,19 +457,12 @@ extension Event.HumanReadableOutputRecorder {
 
     case let .issueRecorded(issue):
 #if !hasFeature(Embedded)
-      let parameterCount = if let parameters = test?.parameters {
-        parameters.count
-      } else {
-        0
-      }
+      let parameterCount = test?.parameters?.count ?? 0
+      let labeledArguments = testCase?.labeledArguments() ?? ""
 #else
-      let parameterCount = 0
+      let parameterCount = test?.parameterCount ?? 0
+      let labeledArguments = ""
 #endif
-      let labeledArguments = if let testCase {
-        testCase.labeledArguments()
-      } else {
-        ""
-      }
       let symbol: Event.Symbol
       let subject: String
       if issue.isKnown {
@@ -547,8 +540,13 @@ extension Event.HumanReadableOutputRecorder {
       let iteration = eventContext.iteration ?? 1
 
       var message: String
-      if testCase.isParameterized, let arguments = testCase.arguments {
+      if testCase.isParameterized {
+#if !hasFeature(Embedded)
+        let arguments = testCase.arguments ?? []
         message = "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started"
+#else
+        message = "Test case passing \(test.parameterCount.counting("argument")) to \(testName) started"
+#endif
       } else if iteration > 1 {
         message = testStartedMessage(for: test)
       } else {
@@ -566,9 +564,14 @@ extension Event.HumanReadableOutputRecorder {
       ]
 
     case .testCaseEnded:
-      guard verbosity > 0, let test, let testCase, testCase.isParameterized, let arguments = testCase.arguments else {
+      guard verbosity > 0, let test, let testCase, testCase.isParameterized else {
         break
       }
+#if !hasFeature(Embedded)
+      guard let arguments = testCase.arguments else {
+        break
+      }
+#endif
 
       let testDataGraph = context.testData.subgraph(at: keyPath)
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
@@ -587,12 +590,21 @@ extension Event.HumanReadableOutputRecorder {
       } else {
         (symbol, verbed) = (.pass(knownIssueCount: issues.knownIssueCount), "passed")
       }
+#if !hasFeature(Embedded)
       return [
         Message(
           symbol: symbol,
           stringValue: "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) \(verbed) after \(duration)\(issues.description)\(cancellationComment)"
         )
       ]
+#else
+      return [
+        Message(
+          symbol: symbol,
+          stringValue: "Test case passing \(test.parameterCount.counting("argument")) to \(testName) \(verbed) after \(duration)\(issues.description)\(cancellationComment)"
+        )
+      ]
+#endif
 
     case .testCancelled, .testCaseCancelled:
       // Handled in .testEnded and .testCaseEnded

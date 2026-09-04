@@ -45,6 +45,7 @@ public protocol CustomTestArgumentEncodable: Sendable {
 }
 #endif
 
+#if !hasFeature(Embedded)
 extension Test.Case.Argument.ID {
   /// Initialize an ID instance with the specified test argument value.
   ///
@@ -139,6 +140,7 @@ extension Test.Case.Argument.ID {
     }
   }
 }
+#endif
 
 /// A encodable type which wraps a ``CustomTestArgumentEncodable`` value.
 struct CustomArgumentWrapper<T>: RawRepresentable, Encodable where T: CustomTestArgumentEncodable {

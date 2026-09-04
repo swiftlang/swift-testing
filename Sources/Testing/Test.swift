@@ -39,6 +39,8 @@ public struct Test: Sendable {
     var testCasesState: TestCasesState?
 #if !hasFeature(Embedded)
     var parameters: [Parameter]?
+#else
+    var parameterCount: Int
 #endif
     var isSynthesized: Bool
 #if DEBUG
@@ -289,6 +291,19 @@ public struct Test: Sendable {
   }
 #endif
 
+  /// The number of parameters to the test function.
+  ///
+  /// If this instance represents a non-parameterized test function or a test
+  /// suite, the value of this property is `0`.
+  @_spi(ForToolsIntegrationOnly)
+  public var parameterCount: Int {
+#if !hasFeature(Embedded)
+    _properties.value.parameters?.count ?? 0
+#else
+    _properties.value.parameterCount
+#endif
+  }
+
   /// Whether or not this instance is a test suite containing other tests.
   ///
   /// Instances of ``Test`` attached to types rather than functions are test
@@ -401,7 +416,8 @@ public struct Test: Sendable {
     _properties = Allocated(properties)
   }
 #else
-  /// Initialize an instance of this type representing a test function.
+  /// Initialize an instance of this type representing a non-parameterized test
+  /// function.
   init(
     name: String,
     displayName: String? = nil,
@@ -417,6 +433,7 @@ public struct Test: Sendable {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       testCasesState: .evaluated(testCases),
+      parameterCount: 0,
       isSynthesized: false
     )
     _properties = Allocated(properties)
