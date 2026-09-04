@@ -211,35 +211,48 @@ platform if it does not use an image format already supported by Swift Testing:
 ## Runtime test discovery with static linkage
 
 If your platform does not support dynamic linking and loading, you will need to
-use static linkage instead. Define the `"SWT_NO_DYNAMIC_LINKING"` compiler
-conditional for your platform in both `Package.swift` and
-`CompilerSettings.cmake`, then define the symbols `_testContentSectionBegin` and
-`_testContentSectionEnd` in `SectionBounds.swift`:
+use static linkage instead. Default implementations are already implemented for
+all platforms that use the Mach-O, ELF, and Wasm image formats. Otherwise,
+define the `"SWT_NO_DYNAMIC_LINKING"` compiler conditional for your platform in
+both `Package.swift` and `CompilerSettings.cmake`, then define the
+`_testContentSectionBoundsBuffer` symbol in `SectionBounds.swift`:
 
 ```diff
 --- a/Sources/_TestDiscovery/SectionBounds.swift
 +++ b/Sources/_TestDiscovery/SectionBounds.swift
  // ...
-+#elseif os(Classic)
-+@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
-+@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
- #else
- #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
- private nonisolated(unsafe) let _testContentSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
- private nonisolated(unsafe) let _testContentSectionEnd = _testContentSectionBegin
- #endif
++#elseif imageFormat(CFM)
++private var _testContentSectionBoundsBuffer: UnsafeRawBufferPointer? {
++  // ...
++}
+ #elseif hasFeature(Embedded)
  // ...
 ```
 
-These symbols must have unique addresses corresponding to the first byte of the
-test content section and the first byte _after_ the test content section,
-respectively. Their linker-level names will be platform-dependent: refer to the
+The value of this buffer represents the range of bytes in memory containing the
+test content section. For some image formats, the compiler and linker cooperate
+to implicitly define bounds symbols for each section. These symbols are defined
+in pairs and represent the first byte and the first byte _after_ each section.
+You can declare references to these symbols and implement
+`_testContentSectionBoundsBuffer` atop them:
+
+```diff
+--- a/Sources/_TestDiscovery/SectionBounds.swift
++++ b/Sources/_TestDiscovery/SectionBounds.swift
+ // ...
++#elseif imageFormat(CFM)
++@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
++@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
++private var _testContentSectionBoundsBuffer: UnsafeRawBufferPointer? {
++  _testContentSectionBegin ..< _testContentSectionEnd
++}
+ #elseif hasFeature(Embedded)
+ // ...
+```
+
+These symbols' linker-level names will be platform-dependent: refer to the
 linker documentation for your platform to determine what names to place in the
 `@_silgen_name` attribute applied to each.
-
-If your target platform statically links Swift Testing but the linker does not
-define section bounds symbols, please reach out to us in the Swift forums for
-advice.
 
 ## C++ stub implementations
 

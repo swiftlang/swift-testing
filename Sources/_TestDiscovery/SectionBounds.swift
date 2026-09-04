@@ -308,10 +308,12 @@ private struct _SectionBound: Sendable, ~Copyable {
   /// A property that forces the structure to have an in-memory representation.
   private var _storage: CChar = 0
 
-  static func ..<(lhs: inout Self, rhs: inout Self) -> Range<UnsafeRawPointer> {
+  static func ..<(lhs: inout Self, rhs: inout Self) -> UnsafeRawBufferPointer {
     withUnsafeMutablePointer(to: &lhs) { lhs in
       withUnsafeMutablePointer(to: &rhs) { rhs in
-        UnsafeRawPointer(lhs) ..< UnsafeRawPointer(rhs)
+        let lhs = UnsafeRawPointer(lhs)
+        let rhs = UnsafeRawPointer(rhs)
+        return UnsafeRawBufferPointer(start: lhs, count: rhs - lhs)
       }
     }
   }
@@ -320,13 +322,29 @@ private struct _SectionBound: Sendable, ~Copyable {
 #if objectFormat(MachO)
 @_silgen_name(raw: "section$start$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
 @_silgen_name(raw: "section$end$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
+private var _testContentSectionBoundsBuffer: UnsafeRawBufferPointer? {
+  _testContentSectionBegin ..< _testContentSectionEnd
+}
 #elseif objectFormat(ELF) || objectFormat(Wasm)
 @_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
 @_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
+private var _testContentSectionBoundsBuffer: UnsafeRawBufferPointer? {
+  _testContentSectionBegin ..< _testContentSectionEnd
+}
+#elseif hasFeature(Embedded)
+private nonisolated(unsafe) let _testContentSectionBoundsBuffer: UnsafeRawBufferPointer? = {
+  var begin: UnsafeRawPointer?
+  var end: UnsafeRawPointer?
+  if _swift_testing_getTestSectionBounds(&begin, &end), let begin, let end {
+    return UnsafeRawBufferPointer(start: begin, count: end - begin)
+  }
+  return nil
+}()
 #else
 #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
-private nonisolated(unsafe) let _testContentSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
-private nonisolated(unsafe) let _testContentSectionEnd = _testContentSectionBegin
+private var _testContentSectionBoundsBuffer: UnsafeRawBufferPointer? {
+  nil
+}
 #endif
 
 /// The common implementation of ``SectionBounds/all(_:)`` for platforms that do
@@ -338,11 +356,11 @@ private nonisolated(unsafe) let _testContentSectionEnd = _testContentSectionBegi
 /// - Returns: A structure describing the bounds of the type metadata section
 ///   contained in the same image as the testing library itself.
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> CollectionOfOne<SectionBounds> {
-  let range = switch kind {
+  var buffer = UnsafeRawBufferPointer(start: nil, count: 0)
+  switch kind {
   case .testContent:
-    _testContentSectionBegin ..< _testContentSectionEnd
+    buffer = _testContentSectionBoundsBuffer ?? buffer
   }
-  let buffer = UnsafeRawBufferPointer(start: range.lowerBound, count: range.count)
   let sb = SectionBounds(imageAddress: nil, buffer: buffer)
   return CollectionOfOne(sb)
 }
