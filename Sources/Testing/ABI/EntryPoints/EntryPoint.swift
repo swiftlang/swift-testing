@@ -945,10 +945,8 @@ extension Event.ConsoleOutputRecorder.Options {
 
     // If color output is enabled, load tag colors from user/package preferences
     // on disk.
-    if result.useANSIEscapeCodes && result.ansiColorBitDepth > 1 {
-      if let tagColors = try? loadTagColors() {
-        result.tagColors = tagColors
-      }
+    if result.useColorANSIEscapeCodes, let tagColors = try? loadTagColors() {
+      result.tagColors = tagColors
     }
 
     return result

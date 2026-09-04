@@ -96,6 +96,9 @@ add_library(Testing
   Support/Additions/ResultAdditions.swift
   Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
+  Support/Color/Color.swift
+  Support/Color/Color+ANSIEscapeCodes.swift
+  Support/Color/Color+Loading.swift
   Support/Allocated.swift
   Support/BugReporting.swift
   Support/CartesianProduct.swift
@@ -128,7 +131,6 @@ add_library(Testing
   Traits/ParallelizationTrait.swift
   Traits/ReducibleTrait.swift
   Traits/Tags/Tag.Color.swift
-  Traits/Tags/Tag.Color+Loading.swift
   Traits/Tags/Tag.List.swift
   Traits/Tags/Tag.swift
   Traits/Tags/Tag+Macro.swift
