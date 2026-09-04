@@ -87,7 +87,7 @@ extension Event.Metadata {
       append(_testingLibraryVersionName, testingLibraryVersion)
     }
     if let testingLibraryCommit {
-      append(_testingLibraryCommitName, testingLibraryVersion)
+      append(_testingLibraryCommitName, testingLibraryCommit)
     }
     if let targetTriple {
       append(_targetPlatformName, targetTriple)
