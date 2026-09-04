@@ -44,7 +44,7 @@ struct SkipInfoTests {
         "instant": { "since1970": 0, "absolute": 0 },
         "messages": [],
         "_comments": ["Skipped Test"],
-        "_sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
+        "sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
       }
       """#
     let event = try json.withUTF8 { json in
