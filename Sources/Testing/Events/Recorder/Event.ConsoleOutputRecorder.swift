@@ -249,8 +249,12 @@ extension Event.ConsoleOutputRecorder {
       var suffix = ""
       if Self._showEventGeneratorNames,
          let eventGeneratorName = message.eventGeneratorName,
-         options.useANSIEscapeCodes, options.ansiColorBitDepth > 1 {
-        suffix = " \(_ansiEscapeCodePrefix)36m[\(eventGeneratorName)]\(_resetANSIEscapeCode)"
+         options.useColorANSIEscapeCodes {
+        if let ansiEscapeCode = Color.harness.ansiEscapeCode(withBitDepth: options.ansiColorBitDepth) {
+          suffix = " \(ansiEscapeCode)[\(eventGeneratorName)]\(resetANSIEscapeCode)"
+        } else {
+          suffix = " [\(eventGeneratorName)]"
+        }
       }
 
       if case .details = message.symbol {

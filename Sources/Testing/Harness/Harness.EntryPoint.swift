@@ -25,6 +25,13 @@ extension Harness {
 
     /// All recorded events associated with issues.
     var issueEvents = [(Event, Event.Context)]()
+
+    /// The event generators the harness is using.
+    var eventGenerators: [any Harness.EventGenerator]
+
+    /// The serializer to use to serialize (or rather parallelize) event
+    /// generators.
+    var serializer: Serializer<Void>
   }
 
   /// The entry point function used by the harness.
@@ -46,9 +53,10 @@ extension Harness {
 
     // The number of concurrent workers to use (unless parallelization is off.)
     var numWorkers = 1
-    if arguments.parallel != false {
+    if arguments.parallel != false && arguments.listTests != true {
       numWorkers = arguments.numWorkers ?? numWorkers
     }
+    let serializer = Serializer<Void>(maximumWidth: numWorkers)
 
     // Enable console output (if appropriate).
     let consoleOutputEnabled = Allocated(Atomic(true))
@@ -68,7 +76,12 @@ extension Harness {
       oldEventHandler(event, eventContext)
     }
 
-    let context = Mutex(Context())
+    let context = Mutex(
+      Context(
+        eventGenerators: generators,
+        serializer: serializer
+      )
+    )
 
     if arguments.listTests == true {
       var tests = [Test]()
@@ -85,7 +98,6 @@ extension Harness {
       listTestsForEntryPoint(tests, configuration: configuration)
 
     } else {
-      let serializer = Serializer<Void>(maximumWidth: numWorkers)
       await withTaskGroup(of: Void.self) { [configuration] taskGroup in
         for generator in generators {
           taskGroup.addTask(name: decorateTaskName(generator.humanReadableName, withAction: "running")) {
@@ -105,7 +117,8 @@ extension Harness {
 
 #if !SWT_NO_FILE_IO
     if let runEndedEvent = context.rawValue.runEndedEvent {
-      let (event, eventContext) = runEndedEvent
+      var (event, eventContext) = runEndedEvent
+      eventContext.configuration = configuration
       configuration.eventHandler(event, eventContext)
     }
 
@@ -181,13 +194,38 @@ extension Harness {
         if eventContext.eventGenerator == nil {
           eventContext.eventGenerator = generator
         }
+        eventContext.configuration = configuration
         configuration.eventHandler(event, eventContext)
+      }
+
+      if case .runStarted = event.kind, let generator {
+        let context = context.rawValue
+        if context.eventGenerators.count > 1 {
+          var inParallelSuffix = ""
+          if context.serializer.maximumWidth > 1 {
+            inParallelSuffix = " in parallel"
+          }
+          let message = Event.HumanReadableOutputRecorder.Message(
+            symbol: .harness,
+            stringValue: "Started running '\(generator.humanReadableName)'\(inParallelSuffix)..."
+          )
+          let lines = Event.ConsoleOutputRecorder.lines(for: [message], options: _consoleOptions)
+          try? FileHandle.stderr.withLock {
+            for line in lines {
+              try FileHandle.stderr.write(line, flushAfterward: false)
+            }
+            FileHandle.stderr.flush()
+          }
+        }
       }
 #endif
     }
   }
 
 #if !SWT_NO_FILE_IO
+  /// The console options that ``report(_:)`` uses.
+  private static let _consoleOptions = Event.ConsoleOutputRecorder.Options.for(.stderr)
+
   private static func _summarize(_ events: [(Event, Event.Context)], withVerbosity verbosity: Int) {
     guard verbosity >= 0 else {
       // Don't summarize in quiet mode.
@@ -213,10 +251,6 @@ extension Harness {
       issuesByTest[test, default: []].append(issue)
     }
 
-    let anyFailure: Bool = issuesByTest.values.lazy
-      .flatMap(\.self)
-      .contains(where: \.isFailure)
-
     let terminalWidth: Int = {
 #if SWT_TARGET_OS_APPLE
       var windowSize = winsize()
@@ -231,7 +265,7 @@ extension Harness {
     summaryMessages += [
       .init(stringValue: String(repeating: "=", count: min(40, terminalWidth / 2))),
       .init(
-        symbol: anyFailure ? .fail : .pass(knownIssueCount: 1),
+        symbol: .harness,
         stringValue: "The following \(issuesByTest.keys.count.counting("test")) recorded \(issueEvents.count.counting("issue")):"
       ),
     ]
@@ -277,10 +311,9 @@ extension Harness {
       return issue
     }
     if !orphanedIssues.isEmpty {
-      let anyFailure = orphanedIssues.contains(where: \.isFailure)
       summaryMessages += [
         .init(
-          symbol: anyFailure ? .fail : .pass(knownIssueCount: 1),
+          symbol: .harness,
           stringValue: "As well, the following \(orphanedIssues.count.counting("issue")) \(orphanedIssues.count.counting("was", or: "were")) recorded without an associated test:"
         )
       ]

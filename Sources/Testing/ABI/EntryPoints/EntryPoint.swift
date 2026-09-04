@@ -56,7 +56,6 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       }
       oldEventHandler(event, context)
     }
-    configuration.verbosity = args.verbosity
 
 #if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
@@ -248,7 +247,7 @@ func testIDsToListForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) ->
 ///   - configuration: The configuration to use.
 func listTestsForEntryPoint(_ tests: some Sequence<Test>, configuration: Configuration) {
   if configuration.verbosity > .min {
-    for testID in testIDsToListForEntryPoint(tests, configuration: configuration) {
+    for testID in testIDsToListForEntryPoint(tests, verbosity: configuration.verbosity) {
       // Print the test ID to stdout (classical CLI behavior.)
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
       try? FileHandle.stdout.write("\(testID)\n")
@@ -644,6 +643,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 @_spi(ForToolsIntegrationOnly)
 public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emitWarnings: Bool = true) throws -> Configuration {
   var configuration = Configuration()
+
+  // Verbosity level
+  configuration.verbosity = args.verbosity
 
   // Parallelization (on by default)
   if let parallel = args.parallel {
