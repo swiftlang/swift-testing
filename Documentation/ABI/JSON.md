@@ -25,7 +25,7 @@ The order of keys in JSON objects is not normative. Whitespace in this schema is
 not normative; it is present to help the reader understand the content of the
 various JSON objects in the schema. The event stream is output using the JSON
 Lines format and does not include newline characters (except **one** at the end
-of the `<output-record-line>` rule.)
+of the `<output-record>` rule as used in the `<output-stream>` rule.)
 
 Trailing commas in JSON objects and arrays are only to be included where
 syntactically valid.
