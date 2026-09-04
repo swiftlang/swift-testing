@@ -51,10 +51,10 @@ array (also defined as per JSON) whose elements all follow rule `<T>`.
   "since1970": <number>, ; floating-point seconds since 1970-01-01 00:00:00 UT
 }
 
-<byte> ::= 0 . 255 ; an 8-bit unsigned byte in standard base 10 notation
+<byte> ::= 0 .. 255 ; an 8-bit unsigned byte in standard base 10 notation
 <bytes> ::= <array:byte> | <base64-string> ; either an array of bytes, or a
   ; Base64-encoded representation of an octet stream
-<base64-string> ::= <string> ; as per RFC 4648
+<base64-string> ::= <string> ; using the standard alphabet, as per RFC 4648
 
 <version> ::= "version": <version-number>
 <version-number> ::= 0 | "<version core>" ; as per https://semver.org
