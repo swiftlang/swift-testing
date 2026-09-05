@@ -35,7 +35,7 @@ extension Event {
     /// - Returns: Whether or not this instance should be recorded.
     func shouldRecord(withVerbosity verbosity: Int) -> Bool {
       switch name {
-      case Self._testingLibraryVersionName, Self._targetPlatformName:
+      case Self._testingLibraryVersionName, Self._testingLibraryCommitName, Self._targetPlatformName:
         true
       default:
         verbosity > 0
@@ -60,6 +60,7 @@ extension Event.Metadata {
   private static var _swiftCompilerVersionName: String { "Swift Compiler Version" }
   private static var _gnuCLibraryVersionName: String { "GNU C Library Version" }
   private static var _testingLibraryVersionName: String { "Testing Library Version" }
+  private static var _testingLibraryCommitName: String { "Testing Library Commit" }
   private static var _targetPlatformName: String { "Target Platform" }
   private static var _simulatorOSVersionName: String { "OS Version (Simulator)" }
   private static var _hostOSVersionName: String { "OS Version (Host)" }
@@ -82,7 +83,12 @@ extension Event.Metadata {
 #if os(Linux) && canImport(Glibc)
     append(_gnuCLibraryVersionName, glibcVersion)
 #endif
-    append(_testingLibraryVersionName, testingLibraryVersion)
+    if let testingLibraryVersion {
+      append(_testingLibraryVersionName, testingLibraryVersion)
+    }
+    if let testingLibraryCommit {
+      append(_testingLibraryCommitName, testingLibraryCommit)
+    }
     if let targetTriple {
       append(_targetPlatformName, targetTriple)
     }

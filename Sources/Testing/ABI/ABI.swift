@@ -22,6 +22,10 @@ extension ABI {
     /// The numeric representation of this ABI version.
     static var versionNumber: VersionNumber { get }
 
+    /// An ABI version equivalent to this one but set to represent development
+    /// builds.
+    associatedtype Dev: Version = _DevelopmentVersion<Self>
+
 #if !SWT_NO_ABI_JSON_SCHEMA
     /// Create an event handler that encodes instances of ``Event`` as instances
     /// of ``ABI/Record`` and forwards them to a handler function.
@@ -98,6 +102,19 @@ extension ABI {
     forVersionNumber versionNumber: VersionNumber,
     givenSwiftCompilerVersion swiftCompilerVersion: @autoclosure () -> VersionNumber
   ) -> (any Version.Type)? {
+    // If the caller needs a development version, check the logic for
+    // non-development versions, then return the resulting version type's
+    // equivalent development type.
+    if versionNumber.flags.contains(.developmentBuild) {
+      var versionNumberCopy = versionNumber
+      versionNumberCopy.flags.remove(.developmentBuild)
+      let result = version(forVersionNumber: versionNumberCopy, givenSwiftCompilerVersion: swiftCompilerVersion())
+      func open<V>(_: V.Type) -> any Version.Type where V: Version {
+        return V.Dev.self
+      }
+      return result.map { open($0) }
+    }
+
     if versionNumber >= ABI.ExperimentalVersion.versionNumber {
       // The experimental ABI version is higher than any real ABI version.
       return ABI.ExperimentalVersion.self
@@ -130,7 +147,7 @@ extension ABI {
     case ABI.v0.versionNumber...:
       ABI.v0.self
 #if !SWT_NO_SNAPSHOT_TYPES
-    case ABI.Xcode16.versionNumber:
+    case ABI.Xcode16.Dev.versionNumber:
       // Legacy support for Xcode 16. Support for this undocumented version will
       // be removed in a future update. Do not use it.
       ABI.Xcode16.self
@@ -327,6 +344,22 @@ extension ABI {
     public static var versionNumber: VersionNumber {
       VersionNumber(99, 0)
     }
+
+    public typealias Dev = Self
+  }
+}
+
+// MARK: - Development versions
+
+extension ABI {
+  public enum _DevelopmentVersion<V>: Sendable, Version where V: Version {
+    public static var versionNumber: VersionNumber {
+      var result = V.versionNumber
+      result.flags.insert(.developmentBuild)
+      return result
+    }
+
+    public typealias Dev = Self
   }
 }
 
