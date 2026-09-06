@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
+internal import _TestingInternals
 
 /// This file contains implementations of Swift Testing's Platform Abstraction
 /// Layer annex for use with non-Embedded Swift targets.
