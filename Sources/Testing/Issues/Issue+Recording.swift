@@ -36,6 +36,14 @@ extension Issue {
       return selfCopy.record(configuration: configuration)
     }
 
+    // If this issue is matched by an active withExpectedIssue scope, suppress
+    // it: the issue was intentionally expected by the caller, so it should not
+    // be forwarded to the event handler or trigger a failure breakpoint. The
+    // scope captures the issue internally so the caller can inspect it.
+    if let scope = ExpectedIssueScope.current, scope.matcher(self) {
+      return self
+    }
+
     Event.post(.issueRecorded(self), configuration: configuration)
 
     if !isKnown {
