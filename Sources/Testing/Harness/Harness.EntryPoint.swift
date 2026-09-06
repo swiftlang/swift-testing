@@ -223,7 +223,7 @@ extension Harness {
   }
 
 #if !SWT_NO_FILE_IO
-  /// The console options that ``report(_:)`` uses.
+  /// The console options that the harness uses to output its own content.
   private static let _consoleOptions = Event.ConsoleOutputRecorder.Options.for(.stderr)
 
   private static func _summarize(_ events: [(Event, Event.Context)], withVerbosity verbosity: Int) {
