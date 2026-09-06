@@ -34,13 +34,12 @@ internal import _TestingInternals
 }
 
 @c @implementation func _swift_testing_writeToConsole(_ chars: UnsafePointer<UInt8>, _ count: Int) {
+  let buffer = UnsafeBufferPointer<UInt8>(start: chars, count: count)
 #if !SWT_NO_FILE_IO
-  let buffer = UnsafeRawBufferPointer(start: chars, count: count)
   try? FileHandle.stderr.write(buffer)
 #else
   // The platform should still have some `print()` implementation.
   // TODO: determine if we need a further fallback or an availability check here
-  let buffer = UnsafeBufferPointer<UInt8>(start: chars, count: count)
   if let string = String(validating: buffer, as: UTF8.self) {
     print(string, terminator: "")
   }
