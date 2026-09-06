@@ -70,7 +70,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
         advancedOptions.base = .forCurrentSystemConsole
 
         let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>(options: advancedOptions) { string in
-          _swift_testing_writeCStringToConsole(string)
+          _swift_testing_writeToConsole(string)
         }
 
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
@@ -85,7 +85,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       if !useExperimentalConsoleOutput {
         // Use the standard console output recorder (default behavior)
         let eventRecorder = Event.ConsoleOutputRecorder(options: .forCurrentSystemConsole) { string in
-          _swift_testing_writeCStringToConsole(string)
+          _swift_testing_writeToConsole(string)
         }
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
           if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
@@ -157,7 +157,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       )
     }
   } catch {
-    _swift_testing_writeCStringToConsole("\(String(describingForTest: error))\n")
+    _swift_testing_writeToConsole("\(String(describingForTest: error))\n")
     exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
   }
 
@@ -640,13 +640,13 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
       eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
         _ = try? file.withLock {
           try file.write(json)
-          try file.write("\n")
+          try file.write(CollectionOfOne(.asciiNewlineCharacter))
         }
       }
     }
 #elseif hasFeature(Embedded)
     eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
-      var newline = UInt8(ascii: "\n")
+      var newline = UInt8.asciiNewlineCharacter
       _swift_testing_writeJSON(json.baseAddress!, json.count, &newline)
     }
 #endif
@@ -688,7 +688,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
             "Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.",
             options: .forCurrentSystemConsole
           )
-          _swift_testing_writeCStringToConsole("\(warning)\n")
+          _swift_testing_writeToConsole("\(warning)\n")
         }
       }
     }

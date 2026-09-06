@@ -94,6 +94,11 @@ typedef struct SWTConsoleCapabilities {
 /// The testing library uses this function to determine what, if any,
 /// capabilities the system console has.
 ///
+/// - Important: The testing library may add additional fields to the
+///   ``SWTConsoleCapabilities`` structure in the future in its reserved space.
+///   To ensure these fields are initialized correctly, zero-initialize the
+///   entire structure rather than its named fields individually.
+///
 /// This function can be implemented to simply return `false` if the current
 /// system's console has none of the supported capabilities:
 ///
@@ -136,33 +141,26 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getConsoleCapabilities(SWTConsoleCa
 ///
 /// ```c
 /// void _swift_testing_writeToConsole(const uint8_t *chars, size_t count) {
-///   for (size_t i = 0; i < count; i++) {
-///     char c = chars[i];
-///     if (isascii(c)) {
-///       fputc(c, stderr);
-///     } else {
-///       fputc('?', stderr);
+///   flockfile(stderr); {
+///     for (size_t i = 0; i < count; i++) {
+///       char c = chars[i];
+///       if (isascii(c)) {
+///         fputc(c, stderr);
+///       } else {
+///         fputc('?', stderr);
+///       }
 ///     }
-///   }
+///   } funlockfile(stderr);
 /// }
 /// ```
+///
+/// You can substitute platform-specific equivalents for `flockfile()` and
+/// `funlockfile()` if needed, or omit them entirely in single-threaded
+/// environments.
 ///
 /// If your platform does not support any form of human-readable console output,
 /// you can implement this function as a no-op.
 SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count);
-
-/// Writes a UTF-8 C string to the current system's console.
-///
-/// - Parameters:
-///   - cString: The `NULL`-terminated C string to write.
-///
-/// The testing library uses this function to write a _human-readable_
-/// transcript of a test run. This function is always implemented as a
-/// convenience over `_swift_testing_writeToConsole()`, which you must implement
-/// instead of this function.
-static inline void _swift_testing_writeCStringToConsole(const char *cString) {
-  _swift_testing_writeToConsole((const uint8_t *)cString, strlen(cString));
-}
 
 // MARK: - JSON output
 
@@ -184,7 +182,7 @@ static inline void _swift_testing_writeCStringToConsole(const char *cString) {
 ///
 /// This function can be implemented with the following algorithm:
 ///
-/// ```swift
+/// ```c
 /// FILE *f = ...;
 /// flockfile(f); {
 ///   fwrite(json, 1, count, f);

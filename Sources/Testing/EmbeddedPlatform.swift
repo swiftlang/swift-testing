@@ -13,8 +13,8 @@ internal import _TestingInternals
 /// This file contains implementations of Swift Testing's Platform Abstraction
 /// Layer annex for use with non-Embedded Swift targets.
 ///
-/// If you have a custom build workflow and you define these functions
-/// elsewhere, define `SWT_NO_PAL_ANNEX` to suppress this implementation.
+/// If you have a custom build workflow and define these functions elsewhere,
+/// define `SWT_NO_PAL_ANNEX` to suppress this implementation.
 
 #if !hasFeature(Embedded) && !SWT_NO_PAL_ANNEX
 // MARK: - Test discovery
@@ -44,6 +44,24 @@ internal import _TestingInternals
     print(string, terminator: "")
   }
 #endif
+}
+
+/// Writes a Swift string as UTF-8 to the current system's console.
+///
+/// - Parameters:
+///   - string: The string to write.
+///
+/// The testing library uses this function to write a _human-readable_
+/// transcript of a test run. This function is a convenience over
+/// `_swift_testing_writeToConsole()`, which PAL authors must implement instead
+/// of this function.
+@inline(always) func _swift_testing_writeToConsole(_ string: String) {
+  var string = string
+  string.withUTF8 { string in
+    if let baseAddress = string.baseAddress {
+      _swift_testing_writeToConsole(baseAddress, string.count)
+    }
+  }
 }
 
 // MARK: - JSON output
