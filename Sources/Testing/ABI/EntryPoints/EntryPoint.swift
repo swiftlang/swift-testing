@@ -843,7 +843,7 @@ extension Event.ConsoleOutputRecorder.Options {
 #else
     var result = Self()
 
-    var consoleCapabilities = SWTConsoleCapabilities()
+    var consoleCapabilities = swt_console_capabilities_t()
     if _swift_testing_getConsoleCapabilities(&consoleCapabilities) {
       result.useANSIEscapeCodes = consoleCapabilities.useANSIEscapeCodes != 0
       result.ansiColorBitDepth = Int8(clamping: consoleCapabilities.ansiColorBitDepth)

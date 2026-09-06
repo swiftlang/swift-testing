@@ -44,7 +44,7 @@ func _swift_testing_getEmbeddedSwiftTarget() -> UnsafePointer<CChar>? {
 #else
 @c @implementation
 #endif
-func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutablePointer<SWTConsoleCapabilities>) -> CBool {
+func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutablePointer<swt_console_capabilities_t>) -> CBool {
   false
 }
 
