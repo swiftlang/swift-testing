@@ -17,12 +17,12 @@ internal import _TestingInternals
 /// define `SWT_NO_PAL_ANNEX` to suppress this implementation.
 
 #if !hasFeature(Embedded)
-#if !SWT_NO_PAL_ANNEX
 // MARK: - Stubs replicating the core PAL
 @c func _swift_exit(_ exitCode: CInt) {
   exit(exitCode)
 }
 
+#if !SWT_NO_PAL_ANNEX
 // MARK: - Test discovery
 
 @available(*, unavailable) // intentionally not @c @implementation
