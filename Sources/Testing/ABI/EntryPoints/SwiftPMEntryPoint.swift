@@ -80,5 +80,4 @@ public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) 
 public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> Never {
   let exitCode: CInt = await __swiftPMEntryPoint(passing: args)
   _swift_exit(exitCode)
-  swt_unreachable()
 }

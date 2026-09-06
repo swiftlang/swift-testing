@@ -14,15 +14,11 @@ internal import _TestingInternals
 /// Layer annex for use with non-Embedded Swift targets.
 ///
 /// If you have a custom build workflow and define these functions elsewhere,
-/// define `SWT_NO_PAL_ANNEX` to suppress this implementation.
+/// define `SWT_NO_PLATFORM_ABSTRACTION_LAYER_ANNEX` to suppress this
+/// implementation.
 
 #if !hasFeature(Embedded)
-// MARK: - Stubs replicating the core PAL
-@c func _swift_exit(_ exitCode: CInt) {
-  exit(exitCode)
-}
-
-#if !SWT_NO_PAL_ANNEX
+#if !SWT_NO_PLATFORM_ABSTRACTION_LAYER_ANNEX
 // MARK: - Test discovery
 
 @available(*, unavailable) // intentionally not @c @implementation
@@ -44,7 +40,7 @@ func _swift_testing_getEmbeddedSwiftTarget() -> UnsafePointer<CChar>? {
 #else
 @c @implementation
 #endif
-func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutablePointer<swt_console_capabilities_t>) -> CBool {
+func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutablePointer<swift_testing_console_capabilities_t>) -> CBool {
   false
 }
 
@@ -67,9 +63,9 @@ func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutab
 func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {}
 #endif
 #else
-// MARK: - Forwards from the core PAL
+// MARK: - Forwards from the core Platform Abstraction Layer
 
-@_extern(c) func _swift_exit(_ exitCode: CInt)
+@_extern(c) private func _swift_exit(_ exitCode: CInt)
 #endif
 
 // MARK: - Common abstractions
@@ -81,8 +77,8 @@ func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ term
 ///
 /// The testing library uses this function to write a _human-readable_
 /// transcript of a test run. This function is a convenience over
-/// `_swift_testing_writeToConsole()`, which PAL authors must implement instead
-/// of this function.
+/// `_swift_testing_writeToConsole()`, which Platform Abstraction Layer authors
+/// must implement instead of this function.
 @inline(always) func _swift_testing_writeToConsole(_ string: String) {
   var string = string
   string.withUTF8 { string in
@@ -90,4 +86,21 @@ func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ term
       _swift_testing_writeToConsole(baseAddress, string.count)
     }
   }
+}
+
+/// Exits the current process as if the C `exit()` function were called.
+///
+/// - Parameters:
+///   - exitCode: The exit code for the process.
+///
+/// The testing library uses this function to exit the test process and exit
+/// test child processes. This function is a convenience over C's `exit()` and
+/// the Platform Abstraction Layer's `_swift_exit()`.
+@inline(always) func _swift_exit(_ exitCode: CInt) -> Never {
+#if !hasFeature(Embedded)
+  _TestingInternals.exit(exitCode)
+#else
+  _swift_exit(exitCode) as Void
+  swt_unreachable()
+#endif
 }

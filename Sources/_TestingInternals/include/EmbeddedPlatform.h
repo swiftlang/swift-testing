@@ -91,7 +91,7 @@ SWT_EXTERN SWT_NODISCARD const char *_Nullable _swift_testing_getEmbeddedSwiftTa
 // MARK: - Console output
 
 /// A type describing the capabilities of the current system's console output.
-typedef struct swt_console_capabilities_t {
+typedef struct swift_testing_console_capabilities_t {
   /// Whether or not the testing library should add ANSI escape codes to its
   /// console output.
   ///
@@ -121,15 +121,15 @@ typedef struct swt_console_capabilities_t {
   ///
   /// Set this field to `0`.
   uintptr_t reserved1;
-} swt_console_capabilities_t;
+} swift_testing_console_capabilities_t;
 
 /// Get the capabilities of the current system's console output.
 ///
 /// - Parameters:
 ///   - outConsoleCapabilities: A pointer to memory large enough to hold an
-///     instance of the ``swt_console_capabilities_t`` structure. On return,
-///     initialized to an instance of that type that describes the capabilities
-///     of the console to which `_swift_testing_writeToConsole()` writes.
+///     instance of the ``swift_testing_console_capabilities_t`` structure. On
+///     return, initialized to an instance of that type that describes the
+///     capabilities of the console `_swift_testing_writeToConsole()` writes to.
 ///
 /// - Returns: Whether or not `outConsoleCapabilities` was successfully
 ///   initialized. If it was not, the testing library assumes the system console
@@ -139,19 +139,24 @@ typedef struct swt_console_capabilities_t {
 /// capabilities the system console has.
 ///
 /// - Important: The testing library may add additional fields to the
-///   ``swt_console_capabilities_t`` structure in the future in its reserved
-///   space. To ensure these fields are initialized correctly, zero-initialize
-///   the entire structure rather than its named fields individually.
+///   ``swift_testing_console_capabilities_t`` structure in the future in its
+///   reserved space. To ensure source compatibility if the structure changes,
+///   be sure to initialize the entire structure:
+///
+///   ```c
+///   swift_testing_console_capabilities_t good = {};
+///   swift_testing_console_capabilities_t bad;
+///   ```
 ///
 /// This function can be implemented to simply return `false` if the current
 /// system's console has none of the supported capabilities:
 ///
 /// ```c
-/// bool _swift_testing_getConsoleCapabilities(swt_console_capabilities_t *outConsoleCapabilities) {
+/// bool _swift_testing_getConsoleCapabilities(swift_testing_console_capabilities_t *outConsoleCapabilities) {
 ///   return false;
 /// }
 /// ```
-SWT_EXTERN SWT_NODISCARD bool _swift_testing_getConsoleCapabilities(swt_console_capabilities_t *outConsoleCapabilities);
+SWT_EXTERN SWT_NODISCARD bool _swift_testing_getConsoleCapabilities(swift_testing_console_capabilities_t *outConsoleCapabilities);
 
 ///
 /// Writes a sequence of UTF-8 code points to the current system's console.
