@@ -20,7 +20,7 @@ private var _cpuCoreCount: Int? {
   var siInfo = SYSTEM_INFO()
   GetSystemInfo(&siInfo)
   return Int(siInfo.dwNumberOfProcessors)
-#elseif os(WASI)
+#elseif os(WASI) || os(Emscripten)
   return 1
 #else
 #warning("Platform-specific implementation missing: CPU core count unavailable")
