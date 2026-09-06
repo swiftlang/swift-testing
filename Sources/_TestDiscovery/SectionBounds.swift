@@ -104,13 +104,12 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 #if _runtime(_ObjC)
   if #available(_objcCopyImageHeadersAPI, *) {
     var imageCount = UInt32(0)
-    if let imageHeaders = swt_objc_copyImageHeaders(&imageCount) {
-      defer {
-        free(imageHeaders)
-      }
-      return UnsafeBufferPointer(start: imageHeaders, count: Int(clamping: imageCount))
-        .compactMap { _findSectionBounds(kind, in: $0) }
+    let imageHeaders = objc_copyImageHeaders(&imageCount)
+    defer {
+      free(imageHeaders)
     }
+    return UnsafeBufferPointer(start: imageHeaders, count: Int(clamping: imageCount))
+      .compactMap { _findSectionBounds(kind, in: $0) }
   }
 
   var imageCount = UInt32(0)
