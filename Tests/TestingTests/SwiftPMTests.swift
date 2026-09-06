@@ -55,6 +55,11 @@ struct SwiftPMTests {
     #expect(EXIT_NO_TESTS_FOUND != EXIT_FAILURE)
   }
 
+  @Test("Unrecognized arguments are ignored")
+  func ignoreUnrecognized() throws {
+    _ = try configurationForEntryPoint(withArguments: ["PATH", "--unrecognized", "123", "foo", "bar", "--foo=bar"])
+  }
+
   @Test("--parallel/--no-parallel argument")
   func parallel() throws {
     var configuration = try configurationForEntryPoint(withArguments: ["PATH"])
@@ -297,8 +302,12 @@ struct SwiftPMTests {
 
   @Test("--filter or --skip argument as last argument")
   func filterOrSkipAsLast() async throws {
-    _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter"])
-    _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
+    #expect(throws: CommandLineArgumentList.ParseError.missingValue(label: "--filter")) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter"])
+    }
+    #expect(throws: CommandLineArgumentList.ParseError.missingValue(label: "--skip")) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
+    }
   }
 
 #if !SWT_NO_EXIT_TESTS
@@ -361,8 +370,9 @@ struct SwiftPMTests {
   @Test("--xunit-output argument (missing path)")
   func xunitOutputWithMissingPath() throws {
     // Test that a missing path doesn't read off the end of the argument array.
-    let args = try parseCommandLineArguments(from: ["PATH", "--xunit-output"])
-    #expect(args.xunitOutput == nil)
+    #expect(throws: CommandLineArgumentList.ParseError.missingValue(label: "--xunit-output").self) {
+      _ = try parseCommandLineArguments(from: ["PATH", "--xunit-output"])
+    }
   }
 
   @Test("--xunit-output argument (writes to file)")
