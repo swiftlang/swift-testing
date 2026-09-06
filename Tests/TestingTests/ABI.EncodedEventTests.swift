@@ -371,6 +371,46 @@
     }
   }
 
+  // MARK: Comments
+
+  @Test(arguments: [
+    Event.Kind.issueRecorded(.init(kind: .unconditional, comments: ["User provided comment"], sourceContext: sourceContext)),
+    .testSkipped(.init(comment: "User provided comment", sourceContext: sourceContext)),
+    //    .testCancelled(.init(comment: "User provided comment", sourceContext: sourceContext)),
+    .testCaseCancelled(.init(comment: "User provided comment", sourceContext: sourceContext)),
+  ])
+  func `'comments' field only encoded in 6.5 and above`(kind: Event.Kind) throws {
+    let test = Test {}
+    let event = Event(kind, testID: .init(["SomeValidTestID", "testFunc()"]), testCaseID: nil)
+    let context = Event.Context(test: test, testCase: nil, iteration: 2, configuration: nil)
+
+
+    // v6.4
+    do {
+      let encoded = try #require(ABI.EncodedEvent<ABI.v6_4>(encoding: event, in: context))
+
+      #expect(encoded.comments == nil)
+      try JSON.withEncoding(of: encoded) { buf in
+        let str = String(decoding: buf, as: UTF8.self)
+        #expect(!str.contains(#""comments":"#))
+      }
+    }
+
+    // v6.5
+    do {
+      let encoded = try #require(ABI.EncodedEvent<ABI.v6_5>(encoding: event, in: context))
+
+      #expect(encoded.comments == ["User provided comment"])
+      try JSON.withEncoding(of: encoded) { buf in
+        let str = String(decoding: buf, as: UTF8.self)
+        #expect(str.contains(#""comments":"#))
+      }
+    }
+
+  }
+
+  // MARK: Messages
+
   @Test func `Fails to decode v6.3 record with missing 'messages' field`() throws {
     #expect(throws: DecodingError.self) {
       _ = try encodedEvent(
@@ -387,7 +427,7 @@
 
     #expect(throws: Never.self) {
       _ = try encodedEvent(
-        ABI.ExperimentalVersion.self,
+        ABI.v6_5.self,
         """
         {
           "kind": "testStarted",
@@ -431,6 +471,35 @@
     let event = Event(.runStarted, testID: nil, testCaseID: nil)
     let eventContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
     eventHandler(event, eventContext)
+  }
+
+  // MARK: Source Location
+
+  static let sourceContext = SourceContext(sourceLocation: .init(fileID: "Module/Tomato.swift", filePath: "/path/to/tomato.swift", line: 1, column: 1))
+
+  @Test(arguments: [
+    Event.Kind.issueRecorded(.init(kind: .system, sourceContext: sourceContext)),
+    .valueAttached(Attachment(Attachment("Tomato"))),
+    .testSkipped(.init(comment: "Skipped Test Comment", sourceContext: sourceContext)),
+//    .testCancelled(.init(comment: "Skipped Test Comment", sourceContext: sourceContext)),
+    .testCaseCancelled(.init(comment: "Skipped Test Comment", sourceContext: sourceContext)),
+  ])
+  func `Event-level 'sourceLocation' field only encoded in 6.5 and above`(kind: Event.Kind) throws {
+    let test = Test {}
+    let event = Event(kind, testID: .init(["TomatoTests", "testSauce()"]), testCaseID: nil)
+    let context = Event.Context(test: test, testCase: nil, iteration: 1, configuration: nil)
+
+    // v6.4
+    do {
+      let encoded = try #require(ABI.EncodedEvent<ABI.v6_4>(encoding: event, in: context))
+      #expect(encoded.sourceLocation == nil)
+    }
+
+    // v6.5
+    do {
+      let encoded = try #require(ABI.EncodedEvent<ABI.v6_5>(encoding: event, in: context))
+      #expect(encoded.sourceLocation != nil)
+    }
   }
 }
 #endif
