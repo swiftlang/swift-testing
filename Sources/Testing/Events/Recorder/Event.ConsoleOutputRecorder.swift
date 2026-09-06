@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+internal import _TestingInternals
+
 extension Event {
   /// A type which handles ``Event`` instances and outputs representations of
   /// them as human-readable strings.

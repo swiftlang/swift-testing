@@ -111,6 +111,7 @@ add_library(Testing
   Support/VersionNumber.swift
   Support/Versions.swift
   Discovery+Macro.swift
+  EmbeddedPlatform.swift
   Test.ID.Selection.swift
   Test.ID.swift
   Test.swift

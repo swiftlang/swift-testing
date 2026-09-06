@@ -1,0 +1,55 @@
+//
+// This source file is part of the Swift.org open source project
+//
+// Copyright (c) 2026 Apple Inc. and the Swift project authors
+// Licensed under Apache License v2.0 with Runtime Library Exception
+//
+// See https://swift.org/LICENSE.txt for license information
+// See https://swift.org/CONTRIBUTORS.txt for Swift project authors
+//
+
+private import _TestingInternals
+
+/// This file contains implementations of Swift Testing's Platform Abstraction
+/// Layer annex for use with non-Embedded Swift targets.
+///
+/// If you have a custom build workflow and you define these functions
+/// elsewhere, define `SWT_NO_PAL_ANNEX` to suppress this implementation.
+
+#if !hasFeature(Embedded) && !SWT_NO_PAL_ANNEX
+// MARK: - Test discovery
+
+@c @implementation func _swift_testing_getTestSectionBounds(_ outBegin: UnsafeMutablePointer<UnsafeRawPointer?>, _ outEnd: UnsafeMutablePointer<UnsafeRawPointer?>) -> CBool {
+  fatalError("Unexpectedly called \(#function) in a compile-time configuration that should not use it. \(fileABugMessage)")
+}
+
+// MARK: - Console output
+
+@c @implementation func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutablePointer<SWTConsoleCapabilities>) -> CBool {
+#if !SWT_NO_FILE_IO
+  fatalError("Unexpectedly called \(#function) in a compile-time configuration that should not use it. \(fileABugMessage)")
+#else
+  false
+#endif
+}
+
+@c @implementation func _swift_testing_writeToConsole(_ chars: UnsafePointer<UInt8>, _ count: Int) {
+#if !SWT_NO_FILE_IO
+  let buffer = UnsafeRawBufferPointer(start: chars, count: count)
+  try? FileHandle.stderr.write(buffer)
+#else
+  // The platform should still have some `print()` implementation.
+  // TODO: determine if we need a further fallback or an availability check here
+  let buffer = UnsafeBufferPointer<UInt8>(start: chars, count: count)
+  if let string = String(validating: buffer, as: UTF8.self) {
+    print(string, terminator: "")
+  }
+#endif
+}
+
+// MARK: - JSON output
+
+@c @implementation func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
+  fatalError("Unexpectedly called \(#function) in a compile-time configuration that should not use it. \(fileABugMessage)")
+}
+#endif
