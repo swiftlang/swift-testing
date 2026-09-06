@@ -19,18 +19,20 @@ internal import _TestingInternals
 #if !hasFeature(Embedded) && !SWT_NO_PAL_ANNEX
 // MARK: - Test discovery
 
-@c @implementation func _swift_testing_getTestSectionBounds(_ outBegin: UnsafeMutablePointer<UnsafeRawPointer?>, _ outEnd: UnsafeMutablePointer<UnsafeRawPointer?>) -> CBool {
-  fatalError("Unexpectedly called \(#function) in a compile-time configuration that should not use it. \(fileABugMessage)")
+@available(*, unavailable) // intentionally not @c @implementation
+func _swift_testing_getTestSectionBounds(_ outBegin: UnsafeMutablePointer<UnsafeRawPointer?>, _ outEnd: UnsafeMutablePointer<UnsafeRawPointer?>) -> CBool {
+  false
 }
 
 // MARK: - Console output
 
-@c @implementation func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutablePointer<SWTConsoleCapabilities>) -> CBool {
 #if !SWT_NO_FILE_IO
-  fatalError("Unexpectedly called \(#function) in a compile-time configuration that should not use it. \(fileABugMessage)")
+@available(*, unavailable) // intentionally not @c @implementation
 #else
-  false
+@c @implementation
 #endif
+func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutablePointer<SWTConsoleCapabilities>) -> CBool {
+  false
 }
 
 @c @implementation func _swift_testing_writeToConsole(_ chars: UnsafePointer<UInt8>, _ count: Int) {
@@ -66,7 +68,6 @@ internal import _TestingInternals
 
 // MARK: - JSON output
 
-@c @implementation func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
-  fatalError("Unexpectedly called \(#function) in a compile-time configuration that should not use it. \(fileABugMessage)")
-}
+@available(*, unavailable) // intentionally not @c @implementation
+func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {}
 #endif
