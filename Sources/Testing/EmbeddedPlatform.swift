@@ -16,12 +16,25 @@ internal import _TestingInternals
 /// If you have a custom build workflow and define these functions elsewhere,
 /// define `SWT_NO_PAL_ANNEX` to suppress this implementation.
 
-#if !hasFeature(Embedded) && !SWT_NO_PAL_ANNEX
+#if !hasFeature(Embedded)
+#if !SWT_NO_PAL_ANNEX
+// MARK: - Stubs replicating the core PAL
+@c func _swift_exit(_ exitCode: CInt) {
+  exit(exitCode)
+}
+
 // MARK: - Test discovery
 
 @available(*, unavailable) // intentionally not @c @implementation
 func _swift_testing_getTestSectionBounds(_ outBegin: UnsafeMutablePointer<UnsafeRawPointer?>, _ outEnd: UnsafeMutablePointer<UnsafeRawPointer?>) -> CBool {
   false
+}
+
+// MARK: - System information
+
+@available(*, unavailable) // intentionally not @c @implementation
+func _swift_testing_getEmbeddedSwiftTarget() -> UnsafePointer<CChar>? {
+  nil
 }
 
 // MARK: - Console output
@@ -48,6 +61,19 @@ func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutab
 #endif
 }
 
+// MARK: - JSON output
+
+@available(*, unavailable) // intentionally not @c @implementation
+func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {}
+#endif
+#else
+// MARK: - Forwards from the core PAL
+
+@_extern(c) func _swift_exit(_ exitCode: CInt)
+#endif
+
+// MARK: - Common abstractions
+
 /// Writes a Swift string as UTF-8 to the current system's console.
 ///
 /// - Parameters:
@@ -65,9 +91,3 @@ func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutab
     }
   }
 }
-
-// MARK: - JSON output
-
-@available(*, unavailable) // intentionally not @c @implementation
-func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {}
-#endif

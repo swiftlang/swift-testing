@@ -44,6 +44,50 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getTestSectionBounds(
   const void *_Nullable *_Nonnull outEnd
 );
 
+// MARK: - System metadata
+
+/// Get the name of the embedded system on which (or for which) Swift Testing
+/// has been built and is running.
+///
+/// - Returns: A UTF-8-encoded C string representing the human-readable name of
+///   the system. Whether this string represents the system's hardware,
+///   software, or other defining characteristics is implementation-defined. If
+///   no meaningful string is available, returns `NULL`. The string must remain
+///   valid for the lifetime of the process, and the caller is not responsible
+///   for deallocating it.
+///
+/// The testing library uses this function to determine the embedded system it
+/// is running on. This information is used for diagnostic purposes only.
+///
+/// An implementation may choose to return a static string, a string stored in
+/// statically-allocated memory, or a string allocated at runtime. The return
+/// value is implementation-defined, but where possible should include useful
+/// information about the system. For example, an implementation on a
+/// 68040-based Macintosh might return something like `"Quadra 950 (System 7.5.5)"`.
+///
+/// On POSIX-compliant targets, this function can be implemented as a call to
+/// `uname()`:
+///
+/// ```c
+/// const char *_swift_testing_getEmbeddedSwiftTarget(void) {
+///   static const char *result = NULL;
+///
+///   if (!result) {
+///     struct utsname name {};
+///     if (0 == uname(&name)) {
+///       (void)asprintf(&result, "%s (%s)", name.release, name.version);
+///     }
+///   }
+///
+///   return result;
+/// }
+/// ```
+///
+/// - Important: This function may be called concurrently in multithreaded
+///   environments. The implementation is responsible for ensuring its own
+///   thread-safety where necessary.
+SWT_EXTERN SWT_NODISCARD const char *_Nullable _swift_testing_getEmbeddedSwiftTarget(void);
+
 // MARK: - Console output
 
 /// A type describing the capabilities of the current system's console output.
