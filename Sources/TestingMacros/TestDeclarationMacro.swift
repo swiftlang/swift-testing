@@ -418,7 +418,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // Create the expression that returns the Test instance for the function.
     var testsBody: CodeBlockItemListSyntax = """
     return \(
-      _createFactoryFunctionCall(
+      _createFactoryFunctionCallExpr(
         DeclReferenceExprSyntax(baseName: thunkDecl.name),
         to: functionDecl,
         on: typeNameExpr,
@@ -444,7 +444,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
         private \(staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> Testing.Test {
           \(
-            _createFactoryFunctionCall(
+            _createFactoryFunctionCallExpr(
               ClosureExprSyntax {},
               to: functionDecl,
               on: typeNameExpr,
@@ -452,13 +452,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
               attributeInfo: attributeInfo,
               in: context
             )
-          )
-          .__function(
-            named: \(literal: functionDecl.completeName.trimmedDescription),
-            in: \(typeNameExpr),
-            xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
-            \(raw: attributeInfo.functionArgumentList(in: context)),
-            testFunction: {}
           )
         }
         """
@@ -517,7 +510,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
   ///
   /// - Returns: An expression representing a call to one of the `__function()`
   ///   factory function overloads in the testing library.
-  private static func _createFactoryFunctionCall(
+  private static func _createFactoryFunctionCallExpr(
     _ calleeExpr: some ExprSyntaxProtocol,
     to functionDecl: FunctionDeclSyntax,
     on typeNameExpr: some ExprSyntaxProtocol,
