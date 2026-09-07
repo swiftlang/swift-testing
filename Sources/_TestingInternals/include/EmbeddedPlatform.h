@@ -37,8 +37,9 @@ SWT_ASSUME_NONNULL_BEGIN
 ///   library to run.
 ///
 /// The testing library uses this function to determine the bounds of the test
-/// content section in the current image when built for Embedded Swift against
-/// a platform that does not use the Mach-O, ELF, or Wasm image format.
+/// content section in the current image when built for Embedded Swift. The
+/// layout of the test content section is described in
+/// `Documentation/ABI/TestContent.md` in the testing library's repository.
 SWT_EXTERN SWT_NODISCARD bool _swift_testing_getTestSectionBounds(
   const void *_Nullable *_Nonnull outBegin,
   const void *_Nullable *_Nonnull outEnd
