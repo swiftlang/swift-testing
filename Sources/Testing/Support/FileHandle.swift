@@ -614,8 +614,7 @@ extension FileHandle {
   /// - Throws: Any error that occurred while writing `string`. If an error
   ///   occurs while flushing the file, it is not thrown.
   ///
-  /// `string` is converted to a UTF-8 C string (UTF-16 on Windows) and written
-  /// to this file handle.
+  /// `string` is converted to a UTF-8 C string and written to this file handle.
   func write(_ string: String, flushAfterward: Bool = true) throws {
     try withUnsafeCFILEHandle { file in
       defer {
@@ -624,10 +623,9 @@ extension FileHandle {
         }
       }
 
-      try string.withCString { string in
-        if EOF == fputs(string, file) {
-          throw CError(rawValue: swt_errno())
-        }
+      var string = string
+      try string.withUTF8 { string in
+        try write(string, flushAfterward: flushAfterward)
       }
     }
   }

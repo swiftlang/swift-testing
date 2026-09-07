@@ -23,6 +23,10 @@ internal import _TestingInternals
 /// `_swift_testing_writeToConsole()`, which Platform Abstraction Layer authors
 /// must implement instead of this function.
 @inline(always) func _swift_testing_writeToConsole(_ string: String) {
+  if string.isEmpty {
+    return
+  }
+
 #if !hasFeature(Embedded)
 #if !SWT_NO_FILE_IO
   try? FileHandle.stderr.write(string)
@@ -32,9 +36,7 @@ internal import _TestingInternals
 #else
   var string = string
   string.withUTF8 { string in
-    if let baseAddress = string.baseAddress {
-      _swift_testing_writeToConsole(baseAddress, string.count)
-    }
+    _swift_testing_writeToConsole(string.baseAddress!, string.count)
   }
 #endif
 }
