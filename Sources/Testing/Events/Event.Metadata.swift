@@ -66,7 +66,7 @@ extension Event.Metadata {
   private static var _simulatorOSVersionName: String { "OS Version (Simulator)" }
   private static var _hostOSVersionName: String { "OS Version (Host)" }
   private static var _osVersionName: String { "OS Version" }
-  private static var _embeddedSwiftTargetName: String { "Embedded Swift Target" }
+  private static var _embeddedTargetInfoName: String { "Embedded Target Info" }
   private static var _apiLevelName: String { "API Level" }
 
   /// All metadata that the testing library collects.
@@ -97,8 +97,8 @@ extension Event.Metadata {
     append(_osVersionName, operatingSystemVersion)
 #endif
 #else
-    if let embeddedSwiftTarget {
-      append(_embeddedSwiftTargetName, embeddedSwiftTarget)
+    if let embeddedTargetInfo {
+      append(_embeddedTargetInfoName, embeddedTargetInfo)
     }
 #endif
 #if os(Android)

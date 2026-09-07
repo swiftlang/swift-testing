@@ -129,7 +129,7 @@ let simulatorVersion: String = {
 /// an event writer.
 ///
 /// This value is not part of the public interface of the testing library.
-let embeddedSwiftTarget: String? = _swift_testing_getEmbeddedSwiftTarget().flatMap(String.init(validatingCString:))
+let embeddedTargetInfo: String? = _swift_testing_getEmbeddedTargetInfo().flatMap(String.init(validatingCString:))
 #endif
 
 #if os(Android)

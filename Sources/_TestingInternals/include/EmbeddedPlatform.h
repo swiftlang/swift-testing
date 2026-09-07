@@ -70,7 +70,7 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getTestSectionBounds(
 /// `uname()`:
 ///
 /// ```c
-/// const char *_swift_testing_getEmbeddedSwiftTarget(void) {
+/// const char *_swift_testing_getEmbeddedTargetInfo(void) {
 ///   static const char *result = NULL;
 ///
 ///   if (!result) {
@@ -87,7 +87,7 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getTestSectionBounds(
 /// - Important: This function may be called concurrently in multithreaded
 ///   environments. The implementation is responsible for ensuring its own
 ///   thread-safety where necessary.
-SWT_EXTERN const char *_Nullable _swift_testing_getEmbeddedSwiftTarget(void);
+SWT_EXTERN const char *_Nullable _swift_testing_getEmbeddedTargetInfo(void);
 
 // MARK: - Console output
 
