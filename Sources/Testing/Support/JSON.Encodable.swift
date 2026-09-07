@@ -8,10 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if DEBUG && !SWT_NO_FILE_IO && canImport(Foundation)
-private import Foundation
-#endif
-
 extension JSON {
   /// A type representing a number that can be encoded as JSON.
   enum Number: Sendable {
@@ -148,24 +144,11 @@ extension JSON {
     try value.jsonValue(in: context).encode(in: context, into: &buffer)
 
     return try buffer.withUnsafeBytes { json in
-#if DEBUG && !SWT_NO_FILE_IO && canImport(Foundation)
-      if !json.isEmpty {
-        let data = Data(bytesNoCopy: .init(mutating: json.baseAddress!), count: json.count, deallocator: .none)
-        do {
-          try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
-        } catch {
-          try? FileHandle.stderr.withLock {
-            try FileHandle.stderr.write("Failed to correctly encode JSON for \(value): \(error)\n")
-            try FileHandle.stderr.write(json)
-            try FileHandle.stderr.write("\n")
-          }
-        }
-      }
-#endif
       return try body(json)
     }
   }
 
+#if !SWT_NO_CODABLE
   /// Encode a value as JSON.
   ///
   /// - Parameters:
@@ -187,6 +170,7 @@ extension JSON {
   ) throws -> R {
     try withEncoding(of: value, in: JSON.EncodingContext(), body)
   }
+#endif
 }
 
 // MARK: - CustomStringConvertible

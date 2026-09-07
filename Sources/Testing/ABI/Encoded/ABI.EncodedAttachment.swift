@@ -75,7 +75,7 @@ extension ABI.EncodedAttachment: Codable {
       }
 
       if V.includesExperimentalFields {
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
         // If possible, decode a whole Foundation Data object.
         if let data = try? container.decodeIfPresent(Data.self, forKey: .bytes) {
           return .inMemory([UInt8](data))
@@ -115,7 +115,7 @@ extension ABI.EncodedAttachment: JSON.Encodable {
     var result = [String: JSON.Value]()
 
     lazy var encodeBytes = { [context = copy context] (_ bytes: UnsafeRawBufferPointer) in
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
       // If possible, encode this structure as Base64 data.
       let data = if let baseAddress = bytes.baseAddress {
         Data(bytesNoCopy: .init(mutating: baseAddress), count: bytes.count, deallocator: .none)
@@ -184,7 +184,7 @@ extension ABI.EncodedAttachment: Attachable {
     switch kind {
     case let .savedAtPath(path):
 #if !SWT_NO_FILE_IO
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
       // Leverage Foundation's file-mapping logic since we're using Data anyway.
       let url = URL(fileURLWithPath: path, isDirectory: false)
       let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])
