@@ -240,26 +240,28 @@ extension JSON.Value {
     for c in string.utf8 {
       if requiresEscaping(c) {
         buffer.append(UInt8(ascii: #"\"#))
-      }
-      switch c {
-      case UInt8(ascii: #"\"#), UInt8(ascii: #"""#):
-        // These characters can be escaped verbatim. They can also be escaped as
-        // Unicode code points, but that's not very idiomatic for JSON.
-        buffer.append(c)
-      default:
-        buffer.append(UInt8(ascii: "u"))
-        buffer.append(UInt8(ascii: "0"))
-        buffer.append(UInt8(ascii: "0"))
+        switch c {
+        case UInt8(ascii: #"\"#), UInt8(ascii: #"""#):
+          // These characters can be escaped verbatim. They can also be escaped as
+          // Unicode code points, but that's not very idiomatic for JSON.
+          buffer.append(c)
+        default:
+          buffer.append(UInt8(ascii: "u"))
+          buffer.append(UInt8(ascii: "0"))
+          buffer.append(UInt8(ascii: "0"))
 
-        func encodeNybble(_ nybble: UInt8, to buffer: inout [UInt8]) {
-          if nybble < 0xA {
-            buffer.append(UInt8(ascii: "0") + nybble)
-          } else {
-            buffer.append(UInt8(ascii: "A") + (nybble - 0xA))
+          func encodeNybble(_ nybble: UInt8, to buffer: inout [UInt8]) {
+            if nybble < 0xA {
+              buffer.append(UInt8(ascii: "0") + nybble)
+            } else {
+              buffer.append(UInt8(ascii: "A") + (nybble - 0xA))
+            }
           }
+          encodeNybble((c & 0xF0) >> 4, to: &buffer)
+          encodeNybble((c & 0x0F) >> 0, to: &buffer)
         }
-        encodeNybble((c & 0xF0) >> 4, to: &buffer)
-        encodeNybble((c & 0x0F) >> 0, to: &buffer)
+      } else {
+        buffer.append(c)
       }
     }
   }
