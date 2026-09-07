@@ -640,7 +640,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
       eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
         _ = try? file.withLock {
           try file.write(json)
-          try file.write(CollectionOfOne(.asciiNewlineCharacter))
+          try file.write(.asciiNewlineCharacter)
         }
       }
     }

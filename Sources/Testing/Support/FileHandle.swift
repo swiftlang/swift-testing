@@ -579,6 +579,30 @@ extension FileHandle {
     }
   }
 
+  /// Write a single byte to this file handle.
+  ///
+  /// - Parameters:
+  ///   - byte: The byte to write.
+  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
+  ///     after writing. If `true`, `fflush()` is called even if an error
+  ///     occurred while writing.
+  ///
+  /// - Throws: Any error that occurred while writing `bytes`. If an error
+  ///   occurs while flushing the file, it is not thrown.
+  func write(_ byte: UInt8, flushAfterward: Bool = true) throws {
+    try withUnsafeCFILEHandle { file in
+      defer {
+        if flushAfterward {
+          _ = fflush(file)
+        }
+      }
+
+      if EOF == fputc(CInt(byte), file) {
+        throw CError(rawValue: swt_errno())
+      }
+    }
+  }
+
   /// Write a string to this file handle.
   ///
   /// - Parameters:
