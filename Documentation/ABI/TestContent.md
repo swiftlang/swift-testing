@@ -31,10 +31,11 @@ section in built test products:
   padding. This padding will be removed in a future update to the Swift
   toolchain ([swift-#87650](https://github.com/swiftlang/swift/issues/87650)).
 
-In Embedded Swift, there is a single statically linked test content section, and
-its location is implementation-defined. Swift Testing uses the Platform
-Abstraction Layer annex function `_swift_testing_getTestSectionBounds()` to find
-the test content section at runtime in Embedded Swift.
+In Embedded Swift, there is a single statically linked test content section. At
+this time, the section is named as in the table above, though this may be
+changed in the future to allow supporting more embedded targets.
+At runtime, Swift Testing uses the Platform Abstraction Layer annex function
+`_swift_testing_getTestSectionBounds()` to find the test content section.
 
 ### Record layout
 
