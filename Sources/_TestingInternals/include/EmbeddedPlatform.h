@@ -46,17 +46,17 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getTestSectionBounds(
 
 // MARK: - System metadata
 
-/// Get the name of the embedded system on which (or for which) Swift Testing
-/// has been built and is running.
+/// Get information about the embedded system on which (or for which) Swift
+/// Testing has been built and is running.
 ///
-/// - Returns: A UTF-8-encoded C string representing the human-readable name of
-///   the system. Whether this string represents the system's hardware,
-///   software, or other defining characteristics is implementation-defined. If
-///   no meaningful string is available, returns `NULL`. The string must remain
-///   valid for the lifetime of the process, and the caller is not responsible
-///   for deallocating it.
+/// - Returns: A UTF-8-encoded C string representing some human-readable
+///   information identifying the current system. Whether this string represents
+///   the system's hardware, software, or other defining characteristics is
+///   implementation-defined. If no meaningful information is available, returns
+///   `NULL`. The string must remain valid for the lifetime of the process, and
+///   the caller is not responsible for deallocating it.
 ///
-/// The testing library uses this function to determine the embedded system it
+/// The testing library uses this function to describe the embedded system it
 /// is running on. This information is used for diagnostic purposes only.
 ///
 /// An implementation may choose to return a static string, a string stored in
@@ -86,7 +86,7 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getTestSectionBounds(
 /// - Important: This function may be called concurrently in multithreaded
 ///   environments. The implementation is responsible for ensuring its own
 ///   thread-safety where necessary.
-SWT_EXTERN SWT_NODISCARD const char *_Nullable _swift_testing_getEmbeddedSwiftTarget(void);
+SWT_EXTERN const char *_Nullable _swift_testing_getEmbeddedSwiftTarget(void);
 
 // MARK: - Console output
 
