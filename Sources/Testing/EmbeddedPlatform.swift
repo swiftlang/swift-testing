@@ -10,65 +10,8 @@
 
 internal import _TestingInternals
 
-/// This file contains implementations of Swift Testing's Platform Abstraction
-/// Layer annex for use with non-Embedded Swift targets.
-///
-/// If you have a custom build workflow and define these functions elsewhere,
-/// define `SWT_NO_PLATFORM_ABSTRACTION_LAYER_ANNEX` to suppress this
-/// implementation.
-
-#if !hasFeature(Embedded)
-#if !SWT_NO_PLATFORM_ABSTRACTION_LAYER_ANNEX
-// MARK: - Test discovery
-
-@available(*, unavailable) // intentionally not @c @implementation
-func _swift_testing_getTestSectionBounds(_ outBegin: UnsafeMutablePointer<UnsafeRawPointer?>, _ outEnd: UnsafeMutablePointer<UnsafeRawPointer?>) -> CBool {
-  false
-}
-
-// MARK: - System information
-
-@available(*, unavailable) // intentionally not @c @implementation
-func _swift_testing_getEmbeddedSwiftTarget() -> UnsafePointer<CChar>? {
-  nil
-}
-
-// MARK: - Console output
-
-#if !SWT_NO_FILE_IO
-@available(*, unavailable) // intentionally not @c @implementation
-#else
-@c @implementation
-#endif
-func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutablePointer<swift_testing_console_capabilities_t>) -> CBool {
-  false
-}
-
-@c @implementation func _swift_testing_writeToConsole(_ chars: UnsafePointer<UInt8>, _ count: Int) {
-  let buffer = UnsafeBufferPointer<UInt8>(start: chars, count: count)
-#if !SWT_NO_FILE_IO
-  try? FileHandle.stderr.write(buffer)
-#else
-  // The platform should still have some `print()` implementation.
-  // TODO: determine if we need a further fallback or an availability check here
-  if let string = String(validating: buffer, as: UTF8.self) {
-    print(string, terminator: "")
-  }
-#endif
-}
-
-// MARK: - JSON output
-
-@available(*, unavailable) // intentionally not @c @implementation
-func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {}
-#endif
-#else
-// MARK: - Forwards from the core Platform Abstraction Layer
-
-@_extern(c) private func _swift_exit(_ exitCode: CInt)
-#endif
-
-// MARK: - Common abstractions
+/// This file contains abstractions over functionality that, under Embedded
+/// Swift, is provided by Swift Testing's Platform Abstraction Layer annex.
 
 /// Writes a Swift string as UTF-8 to the current system's console.
 ///
@@ -80,13 +23,25 @@ func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ term
 /// `_swift_testing_writeToConsole()`, which Platform Abstraction Layer authors
 /// must implement instead of this function.
 @inline(always) func _swift_testing_writeToConsole(_ string: String) {
+#if !hasFeature(Embedded)
+#if !SWT_NO_FILE_IO
+  try? FileHandle.stderr.write(string)
+#else
+  // TODO: determine whether we can reliably call `print()` here or something else
+#endif
+#else
   var string = string
   string.withUTF8 { string in
     if let baseAddress = string.baseAddress {
       _swift_testing_writeToConsole(baseAddress, string.count)
     }
   }
+#endif
 }
+
+#if hasFeature(Embedded)
+@_extern(c) private func _swift_exit(_ exitCode: CInt)
+#endif
 
 /// Exits the current process as if the C `exit()` function were called.
 ///

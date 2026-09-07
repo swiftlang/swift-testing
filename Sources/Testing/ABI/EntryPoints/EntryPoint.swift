@@ -634,6 +634,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   // Event stream output
   do {
     var eventHandler: Event.Handler?
+#if !hasFeature(Embedded)
 #if !SWT_NO_FILE_IO
     if let eventStreamOutputPath = args.eventStreamOutputPath {
       let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
@@ -644,7 +645,8 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
         }
       }
     }
-#elseif hasFeature(Embedded)
+#endif
+#else
     eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
       var newline = UInt8.asciiNewlineCharacter
       _swift_testing_writeJSON(json.baseAddress!, json.count, &newline)
@@ -838,8 +840,12 @@ extension Event.ConsoleOutputRecorder.Options {
   /// uses the standard error stream as the console, and this property's value
   /// is equivalent to the result of calling `.for(.stderr)`.
   static var forCurrentSystemConsole: Self {
+#if !hasFeature(Embedded)
 #if !SWT_NO_FILE_IO
     .for(.stderr)
+#else
+    Self()
+#endif
 #else
     var result = Self()
 
