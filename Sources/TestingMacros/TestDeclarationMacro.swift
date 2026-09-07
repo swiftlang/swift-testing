@@ -417,13 +417,15 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // Create the expression that returns the Test instance for the function.
     var testsBody: CodeBlockItemListSyntax = """
-    return .__function(
-      named: \(literal: functionDecl.completeName.trimmedDescription),
-      in: \(typeNameExpr),
-      xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
-      \(raw: attributeInfo.functionArgumentList(in: context)),
-      parameters: \(raw: functionDecl.testFunctionParameterList),
-      testFunction: \(thunkDecl.name)
+    return \(
+      _createFactoryFunctionCall(
+        DeclReferenceExprSyntax(baseName: thunkDecl.name),
+        to: functionDecl,
+        on: typeNameExpr,
+        xcTestCompatibleSelector: selectorExpr,
+        attributeInfo: attributeInfo,
+        in: context
+      )
     )
     """
 
@@ -441,6 +443,16 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         """
         @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
         private \(staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> Testing.Test {
+          \(
+            _createFactoryFunctionCall(
+              ClosureExprSyntax {},
+              to: functionDecl,
+              on: typeNameExpr,
+              xcTestCompatibleSelector: selectorExpr,
+              attributeInfo: attributeInfo,
+              in: context
+            )
+          )
           .__function(
             named: \(literal: functionDecl.completeName.trimmedDescription),
             in: \(typeNameExpr),
@@ -489,5 +501,51 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     )
 
     return result
+  }
+
+  /// Create a function call expression that calls the `Test` factory function
+  /// (`__function()`).
+  ///
+  /// - Parameters:
+  ///   - calleeExpr: The expression that will be called by the test.
+  ///   - functionDecl: The `@Test` function declaration.
+  ///   - typeNameExpr: The name of the type of which `functionDecl` is a
+  ///     member, if any.
+  ///   - selectorExpr: The Objective-C selector for `functionDecl`, if any.
+  ///   - attributeInfo: Information derived from the `@Test` attribute.
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: An expression representing a call to one of the `__function()`
+  ///   factory function overloads in the testing library.
+  private static func _createFactoryFunctionCall(
+    _ calleeExpr: some ExprSyntaxProtocol,
+    to functionDecl: FunctionDeclSyntax,
+    on typeNameExpr: some ExprSyntaxProtocol,
+    xcTestCompatibleSelector selectorExpr: (some ExprSyntaxProtocol)?,
+    attributeInfo: AttributeInfo,
+    in context: some MacroExpansionContext
+  ) -> ExprSyntax {
+    if !context.isTargetEmbedded {
+      let selectorExpr = selectorExpr.map { ExprSyntax($0.trimmed) } ?? "nil"
+      return """
+      .__function(
+        named: \(literal: functionDecl.completeName.trimmedDescription),
+        in: \(typeNameExpr.trimmed),
+        xcTestCompatibleSelector: \(selectorExpr),
+        \(raw: attributeInfo.functionArgumentList(in: context)),
+        parameters: \(raw: functionDecl.testFunctionParameterList),
+        testFunction: \(calleeExpr.trimmed)
+      )
+      """
+    } else {
+      return """
+      .__function(
+        named: \(literal: functionDecl.completeName.trimmedDescription),
+        \(raw: attributeInfo.functionArgumentList(in: context)),
+        parameterCount: \(raw: functionDecl.signature.parameterClause.parameters.count),
+        testFunction: \(calleeExpr.trimmed)
+      )
+      """
+    }
   }
 }

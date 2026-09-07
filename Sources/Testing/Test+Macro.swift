@@ -203,10 +203,11 @@ extension Test {
     displayName: String? = nil,
     traits: [any TestTrait],
     sourceBounds: __SourceBounds,
+    parameterCount: Int,
     testFunction: @escaping @Sendable () async throws -> Void
   ) -> Self {
     let caseGenerator = { @Sendable in Case.Generator(testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, testCases: caseGenerator, parameterCount: 0)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, testCases: caseGenerator, parameterCount: parameterCount)
   }
 }
 #endif
@@ -292,10 +293,11 @@ extension Test {
     traits: [any TestTrait],
     arguments collection: @escaping @Sendable () async throws -> C,
     sourceBounds: __SourceBounds,
+    parameterCount: Int,
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where C: Collection & Sendable, C.Element: Sendable {
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, testCases: caseGenerator, parameterCount: 1)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, testCases: caseGenerator, parameterCount: parameterCount)
   }
 #endif
 }
