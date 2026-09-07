@@ -256,6 +256,26 @@ extension Test.Case {
         }
       }
     }
+#else
+    /// Initialize an instance of this type that iterates over the specified
+    /// collection of argument values.
+    ///
+    /// - Parameters:
+    ///   - collection: The collection of argument values for which test cases
+    ///     should be generated.
+    ///   - testFunction: The test function to which each generated test case
+    ///     passes an argument value from `collection`.
+    @_disfavoredOverload
+    init(
+      arguments collection: S,
+      testFunction: @escaping @Sendable (S.Element) async throws -> Void
+    ) where S: Collection {
+      self.init(sequence: collection) { element in
+        Test.Case(isParameterized: true) {
+          try await testFunction(element)
+        }
+      }
+    }
 #endif
   }
 }

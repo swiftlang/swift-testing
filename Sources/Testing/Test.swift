@@ -430,13 +430,14 @@ public struct Test: Sendable {
 #else
   /// Initialize an instance of this type representing a non-parameterized test
   /// function.
-  init(
+  init<S>(
     name: String,
     displayName: String? = nil,
     traits: [any Trait],
     sourceBounds: __SourceBounds,
     containingTypeInfo: TypeInfo? = nil,
-    testCases: Test.Case.Generator<CollectionOfOne<Void>>
+    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
+    parameterCount: Int
   ) {
     let properties = _Properties(
       name: name,
@@ -444,8 +445,8 @@ public struct Test: Sendable {
       traits: traits,
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
-      testCasesState: .evaluated(AnySendableSequence(testCases)),
-      parameterCount: 0,
+      testCasesState: .unevaluated { try await AnySendableSequence(testCases()) },
+      parameterCount: parameterCount,
       isSynthesized: false
     )
     _properties = Allocated(properties)

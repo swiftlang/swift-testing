@@ -205,13 +205,12 @@ extension Test {
     sourceBounds: __SourceBounds,
     testFunction: @escaping @Sendable () async throws -> Void
   ) -> Self {
-    let caseGenerator = Case.Generator(testFunction: testFunction)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, testCases: caseGenerator)
+    let caseGenerator = { @Sendable in Case.Generator(testFunction: testFunction) }
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, testCases: caseGenerator, parameterCount: 0)
   }
 }
 #endif
 
-#if !hasFeature(Embedded)
 // MARK: - @Test(arguments:)
 
 /// This macro declaration is necessary to help the compiler disambiguate
@@ -257,6 +256,7 @@ public macro Test<C>(
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C: Collection & Sendable, C.Element: Sendable
 
 extension Test {
+#if !hasFeature(Embedded)
   /// Create an instance of ``Test`` for a parameterized function.
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
@@ -281,8 +281,26 @@ extension Test {
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
+#else
+  /// Create an instance of ``Test`` for a parameterized function.
+  ///
+  /// - Warning: This function is used to implement the `@Test` macro. Do not
+  ///   call it directly.
+  public static func __function<C>(
+    named testFunctionName: String,
+    displayName: String? = nil,
+    traits: [any TestTrait],
+    arguments collection: @escaping @Sendable () async throws -> C,
+    sourceBounds: __SourceBounds,
+    testFunction: @escaping @Sendable (C.Element) async throws -> Void
+  ) -> Self where C: Collection & Sendable, C.Element: Sendable {
+    let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), testFunction: testFunction) }
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, testCases: caseGenerator, parameterCount: 1)
+  }
+#endif
 }
 
+#if !hasFeature(Embedded)
 // MARK: - @Test(arguments:_:)
 
 /// Declare a test parameterized over two collections of values.
