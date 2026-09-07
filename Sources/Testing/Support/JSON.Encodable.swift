@@ -288,19 +288,19 @@ extension JSON.Value {
       if value == 0 {
         buffer.append(UInt8(ascii: "0"))
       } else {
-        withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 128) { digits in
-          var i = 0
+        withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 48) { digits in
+          var i = digits.count - 1
           var value = value
           while value > 0 {
-            assert(i < digits.count, "Ran out of space in a \(digits.count)-byte buffer to hold the string representation of \(originalValue). \(fileABugMessage)")
-            defer { i += 1 }
+            assert(i >= 0, "Ran out of space in a \(digits.count)-byte buffer to hold the string representation of \(originalValue). \(fileABugMessage)")
+            defer { i -= 1 }
 
             let digit: JSON.Number.UnsignedInteger
             (value, digit) = value.quotientAndRemainder(dividingBy: 10)
             digits[i] = UInt8(ascii: "0") + UInt8(truncatingIfNeeded: digit)
           }
 
-          buffer += digits[0 ..< i].reversed()
+          buffer += digits[i...].dropFirst()
         }
       }
     case let .floatingPoint(value):
