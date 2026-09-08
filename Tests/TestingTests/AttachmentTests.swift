@@ -527,7 +527,6 @@ struct AttachmentTests {
       #expect(bytes[0] == UInt8(ascii: "<"))
     }
     let ext = (attachment.preferredName as NSString).pathExtension
-    print(attachment.preferredName)
     #expect(ext.caseInsensitiveCompare("xml") == .orderedSame)
   }
 

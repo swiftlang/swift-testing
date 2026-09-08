@@ -42,3 +42,4 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 - ``Trait/scopeProvider(for:testCase:)-cjmg``
 - ``Trait/TestScopeProvider``
 - ``Trait/prepare(for:)-3s3zo``
+- ``Trait/taskLocal(_:withValue:)``
