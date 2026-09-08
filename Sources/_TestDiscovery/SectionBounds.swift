@@ -213,10 +213,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 ///
 /// - Returns: A structure describing the given section, or `nil` if the section
 ///   could not be found.
-private func _findSection(named sectionName: String, in hModule: HMODULE) -> some LazySequenceProtocol & Sequence<SectionBounds> {
+private func _findSection(named sectionName: String, in hModule: HMODULE) -> [SectionBounds] {
   hModule.withNTHeader { ntHeader in
     guard let ntHeader else {
-      return nil
+      return []
     }
 
     let sectionHeaders = UnsafeBufferPointer(
