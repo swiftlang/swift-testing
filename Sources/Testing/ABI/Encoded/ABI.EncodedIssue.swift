@@ -136,6 +136,9 @@ extension Issue {
     if let comments = event._comments {
       self.comments += comments.map(Comment.init(rawValue:))
     }
+    if sourceLocation == nil {
+      sourceLocation = event.sourceLocation.flatMap(SourceLocation.init)
+    }
   }
 
   /// Initialize an instance of this type from the given value.

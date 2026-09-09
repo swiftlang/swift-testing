@@ -24,16 +24,14 @@ extension ABI {
   public struct EncodedAttachment<V>: Sendable where V: ABI.Version {
     /// The different kinds of encoded attachment.
     fileprivate enum Kind: Sendable {
-      /// The attachment has already been saved to disk and we have its local
-      /// file system path.
-      case savedAtPath(String)
-
-      /// The attachment is stored in memory and we have its serialized form.
-      case inMemory([UInt8])
-
       /// The attachment has not been saved nor serialized yet and we still have
       /// it as an attachable value.
-      case abstract(Attachment<AnyAttachable>)
+      case unserialized(Attachment<AnyAttachable>)
+
+      /// The attachment was previously serialized and deserialized.
+      ///
+      /// - Precondition: At least one of `path` or `bytes` must not be `nil`.
+      case serialized(path: String?, bytes: [UInt8]?)
 
       /// An error occurred when the attachment was encoded that prevented it
       /// from being properly serialized.
@@ -44,10 +42,7 @@ extension ABI {
     fileprivate var kind: Kind
 
     /// The preferred name of the attachment.
-    ///
-    /// - Warning: Attachments' preferred names are not yet part of the JSON
-    ///   schema.
-    var _preferredName: String?
+    var preferredName: String?
   }
 }
 
@@ -56,9 +51,9 @@ extension ABI {
 extension ABI.EncodedAttachment: Codable {
   private enum CodingKeys: String, CodingKey {
     case path
-    case preferredName = "_preferredName"
-    case bytes = "_bytes"
-    case error = "_error"
+    case preferredName
+    case bytes
+    case error
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -76,12 +71,21 @@ extension ABI.EncodedAttachment: Codable {
     }
 
     switch kind {
-    case let .savedAtPath(path):
-      try container.encode(path, forKey: .path)
-    case let .abstract(attachment):
-      if let path = attachment.fileSystemPath {
+    case let .serialized(path, bytes):
+      if let path {
         try container.encode(path, forKey: .path)
-      } else if V.includesExperimentalFields {
+      }
+      if V.versionNumber >= ABI.v6_5.versionNumber, let bytes {
+        try bytes.withUnsafeBytes(encodeBytes)
+      }
+    case let .unserialized(attachment):
+      if let path = attachment.fileSystemPath {
+        // If the attachment has already been saved to disk, don't bother trying
+        // to serialize it a second time and just rely on the path. The
+        // assumption here is that, if the caller passed --attachments-path,
+        // they have access to that path and the files in it.
+        try container.encode(path, forKey: .path)
+      } else if V.versionNumber >= ABI.v6_5.versionNumber {
         var errorWhileEncoding: (any Error)?
         do {
           try attachment.withUnsafeBytes { bytes in
@@ -103,17 +107,13 @@ extension ABI.EncodedAttachment: Codable {
           throw errorWhileEncoding
         }
       }
-    case let .inMemory(bytes):
-      if V.includesExperimentalFields {
-        try bytes.withUnsafeBytes(encodeBytes)
-      }
     case let .error(error):
-      if V.includesExperimentalFields {
+      if V.versionNumber >= ABI.v6_5.versionNumber {
         try container.encode(error, forKey: .error)
       }
     }
-    if V.includesExperimentalFields {
-      try container.encodeIfPresent(_preferredName, forKey: .preferredName)
+    if V.versionNumber >= ABI.v6_5.versionNumber {
+      try container.encodeIfPresent(preferredName, forKey: .preferredName)
     }
   }
 
@@ -121,41 +121,36 @@ extension ABI.EncodedAttachment: Codable {
     let container = try decoder.container(keyedBy: CodingKeys.self)
 
     kind = try {
-      if let path = try container.decodeIfPresent(String.self, forKey: .path) {
-        return .savedAtPath(path)
-      }
+      let path = try container.decodeIfPresent(String.self, forKey: .path)
 
-      if V.includesExperimentalFields {
+      var bytes: [UInt8]?
+      if V.versionNumber >= ABI.v6_5.versionNumber {
 #if canImport(Foundation)
         // If possible, decode a whole Foundation Data object.
-        if let data = try? container.decodeIfPresent(Data.self, forKey: .bytes) {
-          return .inMemory([UInt8](data))
+        if bytes == nil,
+           let data = try? container.decodeIfPresent(Data.self, forKey: .bytes) {
+          bytes = [UInt8](data)
         }
 #endif
 
         // Fall back to trying to decode an array of integers.
-        if let bytes = try container.decodeIfPresent([UInt8].self, forKey: .bytes) {
-          return .inMemory(bytes)
-        }
-
-        // Finally, look for an error caught during encoding.
-        if let error = try container.decodeIfPresent(ABI.EncodedError<V>.self, forKey: .error) {
-          return .error(error)
+        if bytes == nil {
+          bytes = try container.decodeIfPresent([UInt8].self, forKey: .bytes)
         }
       }
 
-      // Couldn't find anything to decode.
-      throw DecodingError.valueNotFound(
-        String.self,
-        DecodingError.Context(
-          codingPath: decoder.codingPath + [CodingKeys.path],
-          debugDescription: "Encoded attachment did not include any persistent representation."
-        )
-      )
+      // Finally, look for an error caught during encoding.
+      if path == nil && bytes == nil,
+         V.versionNumber >= ABI.v6_5.versionNumber,
+         let error = try container.decodeIfPresent(ABI.EncodedError<V>.self, forKey: .error) {
+        return .error(error)
+      }
+
+      return .serialized(path: path, bytes: bytes)
     }()
 
-    if V.includesExperimentalFields {
-      _preferredName = try container.decodeIfPresent(String.self, forKey: .preferredName)
+    if V.versionNumber >= ABI.v6_5.versionNumber {
+      preferredName = try container.decodeIfPresent(String.self, forKey: .preferredName)
     }
   }
 }
@@ -165,11 +160,11 @@ extension ABI.EncodedAttachment: Codable {
 extension ABI.EncodedAttachment: Attachable {
   public var estimatedAttachmentByteCount: Int? {
     switch kind {
-    case .savedAtPath, .error:
+    case .error:
       return nil
-    case let .inMemory(bytes):
-      return bytes.count
-    case let .abstract(attachment):
+    case let .serialized(_, bytes):
+      return bytes?.count
+    case let .unserialized(attachment):
       return attachment.attachableValue.estimatedAttachmentByteCount
     }
   }
@@ -180,24 +175,30 @@ extension ABI.EncodedAttachment: Attachable {
 
   public borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     switch kind {
-    case let .savedAtPath(path):
+    case let .serialized(path, bytes):
+      if let bytes {
+        return try bytes.withUnsafeBytes(body)
+      }
+
 #if !SWT_NO_FILE_IO
+      if let path {
 #if canImport(Foundation)
-      // Leverage Foundation's file-mapping logic since we're using Data anyway.
-      let url = URL(fileURLWithPath: path, isDirectory: false)
-      let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])
+        // Leverage Foundation's file-mapping logic since we're using Data anyway.
+        let url = URL(fileURLWithPath: path, isDirectory: false)
+        let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])
 #else
-      let fileHandle = try FileHandle(forReadingAtPath: path)
-      let bytes = try fileHandle.readToEnd()
+        let fileHandle = try FileHandle(forReadingAtPath: path)
+        let bytes = try fileHandle.readToEnd()
 #endif
-      return try bytes.withUnsafeBytes(body)
-#else
-      // Cannot read the attachment from disk on this platform.
+        return try bytes.withUnsafeBytes(body)
+      }
+#endif
+
+      // Cannot read the attachment from disk on this platform, or the decoded
+      // attachment contained neither "path" nor "bytes".
       throw BytesUnavailableError()
-#endif
-    case let .inMemory(bytes):
-      return try bytes.withUnsafeBytes(body)
-    case let .abstract(attachment):
+
+    case let .unserialized(attachment):
       return try attachment.withUnsafeBytes(body)
     case let .error(error):
       throw error
@@ -205,14 +206,14 @@ extension ABI.EncodedAttachment: Attachable {
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
-    _preferredName ?? suggestedName
+    preferredName ?? suggestedName
   }
 }
 
 #if !SWT_NO_FILE_CLONING
 extension ABI.EncodedAttachment: FileClonable {
   package func clone(toFileAtPath filePath: String) -> Bool {
-    guard case let .abstract(attachment) = kind else {
+    guard case let .unserialized(attachment) = kind else {
       return false
     }
     return attachment.attachableValue.clone(toFileAtPath: filePath)
@@ -235,10 +236,8 @@ extension ABI.EncodedAttachment {
   /// - Parameters:
   ///   - attachment: The attachment to initialize this instance from.
   public init(encoding attachment: borrowing Attachment<AnyAttachable>) {
-    kind = .abstract(copy attachment)
-    if V.includesExperimentalFields {
-      _preferredName = attachment.preferredName
-    }
+    kind = .unserialized(copy attachment)
+    preferredName = attachment.preferredName
   }
 
   /// Initialize an instance of this type from the given value.
@@ -265,7 +264,7 @@ extension Attachment where AttachableValue == AnyAttachable {
       return nil
     }
     self.init(decoding: attachment)
-    if let sourceLocation = event._sourceLocation.flatMap(SourceLocation.init(decoding:)) {
+    if let sourceLocation = event.sourceLocation.flatMap(SourceLocation.init(decoding:)) {
       self.sourceLocation = sourceLocation
     }
   }
@@ -276,10 +275,13 @@ extension Attachment where AttachableValue == AnyAttachable {
   ///   - attachment: The encoded attachment to initialize this instance from.
   public init?<V>(decoding attachment: ABI.EncodedAttachment<V>) {
     switch attachment.kind {
-    case let .abstract(attachment):
+    case let .unserialized(attachment):
       self = attachment // No need to nest it further.
     default:
-      let attachmentCopy = Attachment<ABI.EncodedAttachment<V>>(attachment, sourceLocation: .unknown)
+      var attachmentCopy = Attachment<ABI.EncodedAttachment<V>>(attachment, sourceLocation: .unknown)
+      if case let .serialized(path, _) = attachment.kind {
+        attachmentCopy.fileSystemPath = path
+      }
       self.init(attachmentCopy)
     }
   }
