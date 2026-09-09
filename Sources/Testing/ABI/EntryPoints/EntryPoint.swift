@@ -61,6 +61,12 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
 #if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
     let consoleOutputEnabled = Atomic(true)
+#if !SWT_NO_SIGINFO
+    var siginfoHandler: SIGINFOHandler<Void>?
+    defer {
+      extendLifetime(siginfoHandler)
+    }
+#endif
     if configuration.verbosity > .min {
       // Check for experimental console output flag
       let useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
@@ -94,6 +100,16 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
           }
           oldEventHandler(event, context)
         }
+#if !SWT_NO_SIGINFO
+        siginfoHandler = SIGINFOHandler {
+          let lines = eventRecorder.summarize()
+          try? FileHandle.stderr.withLock {
+            for line in lines {
+              try FileHandle.stderr.write(line)
+            }
+          }
+        }
+#endif
       }
     }
 #endif

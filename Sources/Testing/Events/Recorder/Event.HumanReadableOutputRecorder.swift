@@ -56,6 +56,9 @@ extension Event {
       /// The instant at which the run started.
       var runStartInstant: Test.Clock.Instant?
 
+      /// The instant at which the run ended (if it has ended yet).
+      var runEndInstant: Test.Clock.Instant?
+
       /// The number of tests started or skipped during the run.
       ///
       /// This value does not include test suites.
@@ -259,6 +262,17 @@ extension Test.Case {
 // MARK: -
 
 extension Event.HumanReadableOutputRecorder {
+  /// Generate a human-readable description of a duration between two instants.
+  ///
+  /// - Parameters:
+  ///   - start: The starting instant.
+  ///   - end: The ending instant.
+  ///
+  /// - Returns: A description of the duration `end - start`.
+  private static func _descriptionOfDuration(from start: Test.Clock.Instant, to end: Test.Clock.Instant) -> String {
+    String(describing: TimeValue(rawValue: start.duration(to: end)))
+  }
+
   /// Record the specified event by generating zero or more messages that
   /// describe it.
   ///
@@ -336,6 +350,9 @@ extension Event.HumanReadableOutputRecorder {
       case let .testCancelled(skipInfo), let .testCaseCancelled(skipInfo):
         context.testData[keyPath]?.cancellationInfo = skipInfo
 
+      case .runEnded:
+        context.runEndInstant = instant
+
       default:
         // These events do not manipulate the context structure.
         break
@@ -356,11 +373,6 @@ extension Event.HumanReadableOutputRecorder {
       default:
         return []
       }
-    }
-
-    // A helper function for displaying test durations.
-    func descriptionOfDuration(from start: Test.Clock.Instant, to end: Test.Clock.Instant) -> String {
-      String(describing: TimeValue(rawValue: start.duration(to: end)))
     }
 
     func testStartedMessage(for test: Test) -> String {
@@ -407,7 +419,7 @@ extension Event.HumanReadableOutputRecorder {
       let testDataGraph = context.testData.subgraph(at: keyPath)
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
-      let duration = descriptionOfDuration(from: testData.startInstant, to: instant)
+      let duration = Self._descriptionOfDuration(from: testData.startInstant, to: instant)
       let testCasesCount = if test.isParameterized, let testDataGraph {
         " with \(testDataGraph.children.count.counting("test case"))"
       } else {
@@ -568,7 +580,7 @@ extension Event.HumanReadableOutputRecorder {
       let testDataGraph = context.testData.subgraph(at: keyPath)
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
-      let duration = descriptionOfDuration(from: testData.startInstant, to: instant)
+      let duration = Self._descriptionOfDuration(from: testData.startInstant, to: instant)
 
       var cancellationComment = "."
       let (symbol, verbed): (Event.Symbol, String)
@@ -598,27 +610,7 @@ extension Event.HumanReadableOutputRecorder {
       break
 
     case .runEnded:
-      let testCount = context.testCount
-      let suiteCount = context.suiteCount
-      let issues = _issueCounts(in: context.testData)
-      let runStartInstant = context.runStartInstant ?? instant
-      let duration = descriptionOfDuration(from: runStartInstant, to: instant)
-
-      return if issues.errorIssueCount > 0 {
-        [
-          Message(
-            symbol: .fail,
-            stringValue: "Test run with \(testCount.counting("test")) in \(suiteCount.counting("suite")) failed after \(duration)\(issues.description)."
-          )
-        ]
-      } else {
-        [
-          Message(
-            symbol: .pass(knownIssueCount: issues.knownIssueCount),
-            stringValue: "Test run with \(testCount.counting("test")) in \(suiteCount.counting("suite")) passed after \(duration)\(issues.description)."
-          )
-        ]
-      }
+      return _summarize(in: context, at: instant)
     }
 
     return []
@@ -677,6 +669,34 @@ extension Event.HumanReadableOutputRecorder {
     }
   }
 #endif
+
+  /// Summarize the current state of this recorder.
+  private func _summarize(in context: Context, at instant: Test.Clock.Instant) -> [Message] {
+    let testCount = context.testCount
+    let suiteCount = context.suiteCount
+    let issues = _issueCounts(in: context.testData)
+    let runStartInstant = context.runStartInstant ?? instant
+    let duration = Self._descriptionOfDuration(from: runStartInstant, to: instant)
+
+    let (symbol, verb): (Event.Symbol, String) = if context.runEndInstant == nil {
+      (.default, "ongoing")
+    } else if issues.errorIssueCount > 0 {
+      (.fail, "failed")
+    } else {
+      (.pass(knownIssueCount: issues.knownIssueCount), "passed")
+    }
+    return [
+      Message(
+        symbol: symbol,
+        stringValue: "Test run with \(testCount.counting("test")) in \(suiteCount.counting("suite")) \(verb) after \(duration)\(issues.description)."
+      )
+    ]
+  }
+
+  /// Summarize the current state of this recorder.
+  func summarize() -> [Message] {
+    _summarize(in: _context.value.rawValue, at: .now)
+  }
 }
 
 extension Test.ID {
