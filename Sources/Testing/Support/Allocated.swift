@@ -35,3 +35,18 @@ final class Allocated<T> where T: ~Copyable {
 }
 
 extension Allocated: Sendable where T: Sendable & ~Copyable {}
+
+// MARK: -
+
+/// A type that provides weak reference semantics via the type system.
+struct Weak<RawValue>: RawRepresentable where RawValue: AnyObject {
+  weak var rawValue: RawValue?
+}
+
+extension Weak {
+  init(_ value: RawValue) {
+    self.init(rawValue: value)
+  }
+}
+
+extension Weak: Sendable where RawValue: Sendable {}

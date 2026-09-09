@@ -46,6 +46,27 @@ extension Event {
 
     /// The symbol to use when describing an instance of ``Attachment``.
     case attachment
+
+    /// A custom symbol.
+    ///
+    /// - Parameters:
+    ///   - unicodeCharacter: The Unicode character to use to represent this
+    ///     symbol in text-based output.
+    ///   - windowsCharacter: The Unicode character to use to represent this
+    ///     symbol in text-based output on Windows, where the default console
+    ///     font has more limited Unicode support.
+    ///   - sfSymbolCharacter: The character corresponding to this symbol in the
+    ///     SF&nbsp;Symbols system font.
+    ///   - sfSymbolName: The name of the SF&nbsp;Symbol corresponding to this
+    ///     symbol.
+    ///   - color: The color to use when rendering this symbol, if any.
+    case custom(
+      unicodeCharacter: Character,
+      windowsCharacter: Character,
+      sfSymbolCharacter: Character,
+      sfSymbolName: String,
+      color: Color? = nil
+    )
   }
 }
 
@@ -76,15 +97,18 @@ extension Event.Symbol {
       ("\u{100135}", "arrow.turn.down.right")
     case .attachment:
       ("\u{100237}", "doc")
+    case let .custom(_, _, sfSymbolCharacter, sfSymbolName, _):
+      (sfSymbolCharacter, sfSymbolName)
     }
   }
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
   /// The SF&nbsp;Symbols character corresponding to this instance.
   ///
-  /// This property is not part of the public interface of the testing library.
-  /// Developers should use ``sfSymbolName`` instead.
-  var sfSymbolCharacter: Character {
+  /// - Important: This character only renders as an [SF&nbsp;Symbol](https://developer.apple.com/sf-symbols/)
+  ///   if the user has the SF&nbsp;Symbols app installed. Developers should
+  ///   generally use ``sfSymbolName`` instead.
+  public var sfSymbolCharacter: Character {
     _sfSymbolInfo.privateUseAreaCharacter
   }
 #endif
@@ -142,6 +166,8 @@ extension Event.Symbol {
       // TODO: decide on symbol
       // Unicode: PRINT SCREEN SYMBOL
       return "\u{2399}"
+    case let .custom(unicodeCharacter, _, _, _, _):
+      return unicodeCharacter
     }
 #elseif os(Windows)
     // The default Windows console font (Consolas) has limited Unicode support,
@@ -177,6 +203,8 @@ extension Event.Symbol {
       // TODO: decide on symbol
       // Unicode: PRINT SCREEN SYMBOL
       return "\u{2399}"
+    case let .custom(_, windowsCharacter, _, _, _):
+      return windowsCharacter
     }
 #else
 #warning("Platform-specific implementation missing: Unicode characters unavailable")
@@ -185,8 +213,33 @@ extension Event.Symbol {
   }
 }
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Color
 
-extension Event.Symbol: Codable {}
-#endif
+extension Event.Symbol {
+  /// A color to use when rendering a symbol.
+  public typealias Color = Testing.Color
+
+  /// The color to use when rendering this instance, if any.
+  public var color: Color? {
+    switch self {
+    case .default, .skip, .difference:
+      .darkGray
+    case let .pass(knownIssueCount):
+      if knownIssueCount > 0 {
+        .darkGray
+      } else {
+        .green
+      }
+    case .fail:
+      .red
+    case .warning:
+      .yellow
+    case .details:
+      nil
+    case .attachment:
+      .blue
+    case let .custom(_, _, _, _, color):
+      color
+    }
+  }
+}

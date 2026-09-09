@@ -120,15 +120,8 @@ let package = Package(
     // specified semantic version, meaning the most recent "prerelease" tag will
     // always be used.
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "605.0.0-latest"),
-
-    // Add a dependency on Swift Argument Parser. Note that the rest of the
-    // toolchain (as of this writing) uses 1.5.x, so we match that; if the
-    // toolchain updates its dependency, please update the version number here
-    // and in Sources/Harness/CMakeLists.txt.
-    .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.5.0")),
   ] : [
     .package(path: "../swift-syntax"),
-    .package(path: "../swift-argument-parser"),
   ],
 
   targets: [
@@ -290,7 +283,6 @@ let package = Package(
       name: "swift-testing-harness",
       dependencies: [
         "Testing",
-        .product(name: "ArgumentParser", package: "swift-argument-parser"),
       ],
       path: "Sources/Harness"
     ),
@@ -558,6 +550,7 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_UNSTRUCTURED_TASKS": (platforms: .none, embedded: true),
       "SWT_NO_GLOBAL_ACTORS": (platforms: .none, embedded: true),
       "SWT_NO_SUSPENDING_CLOCK": (platforms: .none, embedded: true),
+      "SWT_NO_SIGINFO": (platforms: [.wasi], embedded: true),
 
       "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),
     ]

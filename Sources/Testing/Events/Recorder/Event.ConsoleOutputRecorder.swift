@@ -47,6 +47,12 @@ extension Event {
       /// ``useANSIEscapeCodes`` is `true`.
       public var ansiColorBitDepth: Int8 = 1
 
+      /// Whether or not colors should be added to the output using
+      /// [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code).
+      var useColorANSIEscapeCodes: Bool {
+        useANSIEscapeCodes && ansiColorBitDepth >= 4
+      }
+
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
       /// Whether or not to use [SF&nbsp;Symbols](https://developer.apple.com/sf-symbols/)
       /// in the output.
@@ -62,7 +68,7 @@ extension Event {
 #endif
 
       /// Storage for ``tagColors``.
-      private var _tagColors = Tag.Color.predefined
+      private var _tagColors = Color.predefinedTagColors
 
       /// The colors to use for tags in the output.
       ///
@@ -75,14 +81,14 @@ extension Event {
       /// The value of this property is ignored unless the value of
       /// ``useANSIEscapeCodes`` is `true` and the value of
       /// ``ansiColorBitDepth`` is greater than `1`.
-      public var tagColors: [Tag: Tag.Color] {
+      public var tagColors: [Tag: Color] {
         get {
           _tagColors
         }
         set {
           // Assign the new value to this property, but do not allow the
           // predefined tag colors (red, orange, etc.) to be overridden.
-          var tagColors = Tag.Color.predefined
+          var tagColors = Color.predefinedTagColors
           tagColors.merge(
             newValue.lazy.filter { !$0.key.isPredefinedColor },
             uniquingKeysWith: { _, rhs in rhs }
@@ -122,12 +128,6 @@ extension Event {
 
 // MARK: - ANSI Escape Code support
 
-/// The ANSI escape code prefix.
-private let _ansiEscapeCodePrefix = "\u{001B}["
-
-/// The ANSI escape code to reset text output to default settings.
-private let _resetANSIEscapeCode = "\(_ansiEscapeCodePrefix)0m"
-
 extension Event.Symbol {
   /// Get the string value to use for a message with no associated symbol.
   ///
@@ -153,8 +153,6 @@ extension Event.Symbol {
   /// - Returns: A string representation of `self` appropriate for writing to
   ///   a stream.
   package func stringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
-    let useColorANSIEscapeCodes = options.useANSIEscapeCodes && options.ansiColorBitDepth >= 4
-
     var symbolCharacter = String(unicodeCharacter)
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
     if options.useSFSymbols {
@@ -169,113 +167,20 @@ extension Event.Symbol {
     }
 #endif
 
-    if useColorANSIEscapeCodes {
-      switch self {
-      case .default, .skip, .difference:
-        return "\(_ansiEscapeCodePrefix)90m\(symbolCharacter)\(_resetANSIEscapeCode)"
-      case let .pass(knownIssueCount):
-        if knownIssueCount > 0 {
-          return "\(_ansiEscapeCodePrefix)90m\(symbolCharacter)\(_resetANSIEscapeCode)"
-        }
-        return "\(_ansiEscapeCodePrefix)92m\(symbolCharacter)\(_resetANSIEscapeCode)"
-      case .warning:
-        return "\(_ansiEscapeCodePrefix)93m\(symbolCharacter)\(_resetANSIEscapeCode)"
-      case .fail:
-        return "\(_ansiEscapeCodePrefix)91m\(symbolCharacter)\(_resetANSIEscapeCode)"
-      case .attachment:
-        return "\(_ansiEscapeCodePrefix)94m\(symbolCharacter)\(_resetANSIEscapeCode)"
-      case .details:
-        return symbolCharacter
+    if options.useColorANSIEscapeCodes, let color {
+      // Apply color. Note that for built-in symbols, we always use 4-bit color
+      // because terminal apps' themes may adjust them significantly from what
+      // we expect.
+      let colorANSIEscapeCode: String? = if case .custom = self {
+        color.ansiEscapeCode(withBitDepth: options.ansiColorBitDepth)
+      } else {
+        color.closest16ColorEscapeCode()
+      }
+      if let colorANSIEscapeCode {
+        return "\(colorANSIEscapeCode)\(symbolCharacter)\(resetANSIEscapeCode)"
       }
     }
     return symbolCharacter
-  }
-}
-
-extension Tag.Color {
-  /// Get an ANSI escape code that sets the foreground text color to this color.
-  ///
-  /// - Parameters:
-  ///   - options: Options to use when writing this tag.
-  ///
-  /// - Returns: The corresponding ANSI escape code. If the
-  ///   ``Event/Recorder/Option/useANSIEscapeCodes(colorBitDepth:)`` option is
-  ///   not specified, returns `nil`.
-  fileprivate func ansiEscapeCode(options: Event.ConsoleOutputRecorder.Options) -> String? {
-    guard options.useANSIEscapeCodes && options.ansiColorBitDepth >= 4 else {
-      return nil
-    }
-    if options.ansiColorBitDepth >= 24 {
-      return "\(_ansiEscapeCodePrefix)38;2;\(redComponent);\(greenComponent);\(blueComponent)m"
-    }
-    if options.ansiColorBitDepth >= 8 {
-      // The formula for converting an RGB value to a 256-color ANSI color
-      // code can be found at https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit
-      let r = (Int(redComponent) * 5) / Int(UInt8.max)
-      let g = (Int(greenComponent) * 5) / Int(UInt8.max)
-      let b = (Int(blueComponent) * 5) / Int(UInt8.max)
-      let index = 16 + 36 * r + 6 * g + b
-      return "\(_ansiEscapeCodePrefix)38;5;\(index)m"
-    }
-    return closest16ColorEscapeCode()
-  }
-
-  /// Get the ANSI escape code that sets the foreground text color to whichever
-  /// 16-color value is closest to this instance.
-  ///
-  /// - Returns: The corresponding ANSI escape code.
-  ///
-  /// An idealized color space is assumed.
-  func closest16ColorEscapeCode() -> String {
-    if self == .orange {
-      // Special-case orange to dark yellow as it doesn't have a good mapping in
-      // most low-color terminals. NOTE: Historically, the IBM PC's CGA adapter
-      // and monitor had dedicated circuitry to display dark yellow as a shade
-      // of orange-brown, but modern terminal applications rarely emulate it.
-      return "\(_ansiEscapeCodePrefix)33m"
-    } else if self == .purple {
-      // Special-case purple as well since it is declared as true purple rather
-      // than magenta.
-      return "\(_ansiEscapeCodePrefix)95m"
-    }
-
-    let (hue, saturation, value) = hsvComponents
-    if saturation <= 0.25 {
-      // Some shade of gray (or a very pale color.)
-      let colorValue = switch Int(value * 3.0) {
-      case 0: // black
-        30
-      case 1: // dark gray
-        90
-      case 2: // light gray
-        37
-      default: // 3, white
-        97
-      }
-      return "\(_ansiEscapeCodePrefix)\(colorValue)m"
-    } else {
-      // There is some saturation, so figure out the closest available color.
-      let brightAddend = if value > 0.5 {
-        60
-      } else {
-        0
-      }
-      let hueAddend = switch Int(hue * 6.0) {
-      case 0, 6: // red
-        31
-      case 1: // yellow
-        33
-      case 2: // green
-        32
-      case 3: // cyan
-        36
-      case 4: // blue
-        34
-      default: // 5, magenta
-        35
-      }
-      return "\(_ansiEscapeCodePrefix)\(hueAddend + brightAddend)m"
-    }
   }
 }
 
@@ -285,22 +190,28 @@ extension Event.ConsoleOutputRecorder {
   ///
   /// - Parameters:
   ///   - tags: The tags for which colors are needed.
+  ///   - options: The options that should be used when formatting the resulting
+  ///     message.
   ///
   /// - Returns: A string describing the colors of `tags` as bullet characters
   ///   with ANSI escape codes used to colorize them. If ANSI escape codes are
   ///   not enabled or if no tag colors are set, returns the empty string.
-  fileprivate func colorDots(for tags: Set<Tag>) -> String {
+  fileprivate static func colorDots(for tags: Set<Tag>, options: Options) -> String {
+    guard options.useColorANSIEscapeCodes else {
+      return ""
+    }
+
     let tagColors = options.tagColors
     let unsortedColors = tags.lazy.compactMap { tagColors[$0] }
 
     let options = options
     var result: String = Set(unsortedColors)
       .sorted(by: <).lazy
-      .compactMap { $0.ansiEscapeCode(options: options) }
+      .compactMap { $0.ansiEscapeCode(withBitDepth: options.ansiColorBitDepth) }
       .map { "\($0)\u{25CF}" } // Unicode: BLACK CIRCLE
       .joined()
     if !result.isEmpty {
-      result += "\(_resetANSIEscapeCode) "
+      result += "\(resetANSIEscapeCode) "
     }
     return result
   }
@@ -309,6 +220,67 @@ extension Event.ConsoleOutputRecorder {
 // MARK: -
 
 extension Event.ConsoleOutputRecorder {
+  /// Whether or not to show the names of event generators that generate output
+  /// through instances of this type.
+  ///
+  /// This environment variable is used by the harness only.
+  private static let _showEventGeneratorNames = Environment.flag(named: "SWT_SHOW_EVENT_GENERATOR_NAMES") ?? false
+
+  /// Generate representations of the given messages in this instance's output
+  /// format.
+  ///
+  /// - Parameters:
+  ///   - messages: The messages to record.
+  ///   - tags: Tags that may be colorized and which should be applied to
+  ///     `messages`.
+  ///   - options: The options that should be used when formatting the resulting
+  ///     message.
+  ///
+  /// - Returns: An array of appropriately console-formatted strings
+  ///   representing `messages`.
+  static func lines(for messages: [Event.HumanReadableOutputRecorder.Message], tags: Set<Tag>? = nil, options: Options) -> some Sequence<String> {
+    let symbolPlaceholder = Event.Symbol.placeholderStringValue(options: options)
+    let lines = messages.lazy.map { message in
+      let symbol = message.symbol?.stringValue(options: options) ?? symbolPlaceholder
+      let indentation = String(repeating: "  ", count: message.indentation)
+
+      // Any additional information or suffix that we want to include in the
+      // resulting lines.
+      var suffix = ""
+      if Self._showEventGeneratorNames,
+         let eventGeneratorName = message.eventGeneratorName,
+         options.useColorANSIEscapeCodes {
+        if let ansiEscapeCode = Color.harness.ansiEscapeCode(withBitDepth: options.ansiColorBitDepth) {
+          suffix = " \(ansiEscapeCode)[\(eventGeneratorName)]\(resetANSIEscapeCode)"
+        } else {
+          suffix = " [\(eventGeneratorName)]"
+        }
+      }
+
+      if case .details = message.symbol {
+        // Special-case the detail symbol to apply grey to the entire line of
+        // text instead of just the symbol. Details may be multi-line messages,
+        // so split the message on newlines and indent all lines to align them
+        // to the indentation provided by the symbol.
+        var lines = message.stringValue.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+        lines = CollectionOfOne(lines[0] + suffix) + lines.dropFirst().lazy
+          .map { "\(indentation)\(symbolPlaceholder) \($0)" }
+        let stringValue = lines.joined(separator: "\n")
+        if options.useColorANSIEscapeCodes {
+          let ansiEscapeCode = Color.darkGray.closest16ColorEscapeCode()
+          return "\(ansiEscapeCode)\(symbol) \(indentation)\(stringValue)\(resetANSIEscapeCode)\n"
+        } else {
+          return "\(symbol) \(indentation)\(stringValue)\n"
+        }
+      } else {
+        let colorDots = tags.map { self.colorDots(for: $0, options: options) } ?? ""
+        return "\(symbol) \(indentation)\(colorDots)\(message.stringValue)\(suffix)\n"
+      }
+    }
+
+    return lines
+  }
+
   /// Record the specified messages by generating representations of them in
   /// this instance's output format and writing them to this instance's
   /// destination.
@@ -321,32 +293,7 @@ extension Event.ConsoleOutputRecorder {
   /// - Returns: Whether any output was produced and written to this instance's
   ///   destination.
   private func _record(_ messages: [Event.HumanReadableOutputRecorder.Message], tags: Set<Tag>?) -> Bool {
-    let symbolPlaceholder = Event.Symbol.placeholderStringValue(options: options)
-    let lines = messages.lazy.map { message in
-      let symbol = message.symbol?.stringValue(options: options) ?? symbolPlaceholder
-      let indentation = String(repeating: "  ", count: message.indentation)
-
-      if case .details = message.symbol {
-        // Special-case the detail symbol to apply grey to the entire line of
-        // text instead of just the symbol. Details may be multi-line messages,
-        // so split the message on newlines and indent all lines to align them
-        // to the indentation provided by the symbol.
-        var lines = message.stringValue.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
-        lines = CollectionOfOne(lines[0]) + lines.dropFirst().map { line in
-          "\(indentation)\(symbolPlaceholder) \(line)"
-        }
-        let stringValue = lines.joined(separator: "\n")
-        if options.useANSIEscapeCodes, options.ansiColorBitDepth > 1 {
-          return "\(_ansiEscapeCodePrefix)90m\(symbol) \(indentation)\(stringValue)\(_resetANSIEscapeCode)\n"
-        } else {
-          return "\(symbol) \(indentation)\(stringValue)\n"
-        }
-      } else {
-        let colorDots = tags.map { self.colorDots(for: $0) } ?? ""
-        return "\(symbol) \(indentation)\(colorDots)\(message.stringValue)\n"
-      }
-    }
-
+    let lines = Self.lines(for: messages, tags: tags, options: options)
     write(lines.joined())
     return !messages.isEmpty
   }
@@ -370,7 +317,14 @@ extension Event.ConsoleOutputRecorder {
     in context: borrowing Event.Context,
     configuration: Configuration? = nil
   ) -> Bool {
-    let messages = _humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
+    var messages = _humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
+    if let eventGenerator = context.eventGenerator {
+      messages = messages.map { [eventGeneratorName = eventGenerator.humanReadableName] message in
+        var message = message
+        message.eventGeneratorName = eventGeneratorName
+        return message
+      }
+    }
     return _record(messages, tags: context.test?.tags)
   }
 
@@ -397,6 +351,12 @@ extension Event.ConsoleOutputRecorder {
     return _record(messages, tags: nil)
   }
 #endif
+
+  /// Summarize the current state of this recorder.
+  func summarize() -> [String] {
+    let messages = _humanReadableOutputRecorder.summarize()
+    return Array(Self.lines(for: messages, tags: nil, options: options))
+  }
 
   /// Get a message warning the user of some condition in the library that may
   /// affect test results.

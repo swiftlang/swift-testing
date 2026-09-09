@@ -67,6 +67,10 @@
 #include <sys/param.h>
 #endif
 
+#if __has_include(<sys/ioctl.h>)
+#include <sys/ioctl.h>
+#endif
+
 #if __has_include(<sys/resource.h>) && !defined(__wasi__)
 #include <sys/resource.h>
 #endif
