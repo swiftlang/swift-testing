@@ -703,9 +703,3 @@ extension Event.Context {
     return keyPath
   }
 }
-
-#if !SWT_NO_CODABLE
-// MARK: - Codable
-
-extension Event.HumanReadableOutputRecorder.Message: Codable {}
-#endif
