@@ -217,6 +217,6 @@ extension Trait where Self == Comment {
 extension Test {
   /// The complete set of comments about this test from all of its traits.
   public var comments: [Comment] {
-    traits.flatMap(\.comments)
+    traits.flatMap { $0.comments }
   }
 }

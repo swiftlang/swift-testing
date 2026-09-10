@@ -186,7 +186,7 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [St
   // Early exit for verbose output (no need to check for ambiguity.)
   if verbosity > 0 {
     return tests.lazy
-      .map(\.id)
+      .map { $0.id }
       .map(String.init(describing:))
       .sorted(by: <)
   }
@@ -195,7 +195,7 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [St
   // components of two tests' IDs are ambiguous, present their source locations
   // to disambiguate.
   let initialGroups = Dictionary(
-    grouping: tests.lazy.map(\.id),
+    grouping: tests.lazy.map { $0.id },
     by: \.nameComponents
   ).values.lazy
     .map { ($0, isAmbiguous: $0.count > 1) }
@@ -1031,7 +1031,7 @@ extension __CommandLineArguments_v0 {
   @available(*, deprecated, message: "Use eventStreamSchemaVersion instead.")
   public var eventStreamVersion: Int? {
     get {
-      eventStreamVersionNumber.map(\.majorComponent).map(Int.init)
+      eventStreamVersionNumber.map { $0.majorComponent }.map(Int.init)
     }
     set {
       eventStreamVersionNumber = newValue.map { VersionNumber(majorComponent: .init(clamping: $0), minorComponent: 0) }
