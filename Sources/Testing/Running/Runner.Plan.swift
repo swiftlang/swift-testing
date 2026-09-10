@@ -90,7 +90,9 @@ extension Runner {
 
     /// The steps of the runner plan.
     public var steps: [Step] {
-      stepGraph.compactMap { $0.value }.sorted { $0.test.sourceLocation < $1.test.sourceLocation }
+      stepGraph
+        .compactMap { $0.value }
+        .sorted { $0.test.sourceLocation < $1.test.sourceLocation }
     }
 
     /// Initialize an instance of this type with the specified graph of test
