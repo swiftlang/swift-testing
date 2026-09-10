@@ -86,6 +86,7 @@ struct SwiftPMTests {
     }
   }
 
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
   @Test("--symbolicate-backtraces argument",
     arguments: [
       (String?.none, Backtrace.SymbolicationMode?.none),
@@ -101,6 +102,7 @@ struct SwiftPMTests {
     }
     #expect(configuration.backtraceSymbolicationMode == expectedMode)
   }
+#endif
 
   @Test("No --filter or --skip argument")
   func defaultFiltering() async throws {

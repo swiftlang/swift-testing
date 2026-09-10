@@ -150,7 +150,7 @@ struct BacktraceTests {
   }
 #endif
 
-#if !SWT_NO_DYNAMIC_LINKING
+#if !SWT_NO_DYNAMIC_LINKING && !SWT_NO_BACKTRACE_SYMBOLICATION
   @Test("Symbolication", arguments: [Backtrace.SymbolicationMode.mangled, .demangled])
   func symbolication(mode: Backtrace.SymbolicationMode) {
     let backtrace = Backtrace.current()
