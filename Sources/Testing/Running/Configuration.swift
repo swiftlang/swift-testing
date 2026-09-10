@@ -354,6 +354,7 @@ public struct Configuration: Sendable {
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Deprecated
 
 extension Configuration {
@@ -383,3 +384,4 @@ extension Configuration {
     }
   }
 }
+#endif

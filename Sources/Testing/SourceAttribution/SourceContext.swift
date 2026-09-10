@@ -43,6 +43,7 @@ extension SourceContext: Equatable, Hashable {}
 extension SourceContext: Codable {}
 #endif
 
+#if !hasFeature(Embedded)
 // MARK: - Deprecated
 
 extension SourceContext {
@@ -56,3 +57,4 @@ extension SourceContext {
     self.init(backtrace: nil, sourceLocation: sourceLocation)
   }
 }
+#endif

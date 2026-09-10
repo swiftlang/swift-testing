@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+internal import _TestingInternals
+
 extension Event {
   /// A type which handles ``Event`` instances and outputs representations of
   /// them as human-readable strings.
@@ -90,7 +92,7 @@ extension Event {
           // predefined tag colors (red, orange, etc.) to be overridden.
           var tagColors = Color.predefinedTagColors
           tagColors.merge(
-            newValue.lazy.filter { !$0.key.isPredefinedColor },
+            newValue.lazy.filter { !$0.key.isPredefinedColor }.map { $0 },
             uniquingKeysWith: { _, rhs in rhs }
           )
           _tagColors = tagColors
@@ -325,6 +327,7 @@ extension Event.ConsoleOutputRecorder {
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Deprecated
 
 extension Event.ConsoleOutputRecorder.Options {
@@ -334,3 +337,4 @@ extension Event.ConsoleOutputRecorder.Options {
     set {}
   }
 }
+#endif

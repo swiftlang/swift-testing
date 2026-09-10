@@ -18,6 +18,7 @@ public import Foundation
 // (which explicitly document what happens when a type conforms to both
 // protocols.)
 
+#if !hasFeature(Embedded)
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
@@ -30,4 +31,5 @@ extension Attachable where Self: Encodable & NSSecureCoding {
     return try attachment.withUnsafeBytes(body)
   }
 }
+#endif
 #endif

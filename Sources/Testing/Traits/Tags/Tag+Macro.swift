@@ -21,6 +21,7 @@ extension Tag {
   ///
   /// - Warning: This function is used to implement the `@Tag` macro. Do not
   ///   call it directly.
+#if !hasFeature(Embedded)
   public static func __fromStaticMember(of type: Any.Type, _ name: _const String) -> Self {
     // Split up the supplied type name into its fully-qualified components. We
     // will use this string array to reconstruct the fully-qualified name of the
@@ -39,6 +40,11 @@ extension Tag {
 
     return Self(kind: .staticMember(fullyQualifiedMemberName))
   }
+#else
+  public static func __fromStaticMember(_ type: Never? = nil, _ name: _const String) -> Self {
+    Self(kind: .staticMember(name))
+  }
+#endif
 }
 
 /// Declare a tag that can be applied to a test function or test suite.

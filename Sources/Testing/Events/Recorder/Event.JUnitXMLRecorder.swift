@@ -143,10 +143,10 @@ extension Event.JUnitXMLRecorder {
     case .runEnded:
       return _context.value.withLock { context in
         let issueCount = context.testData
-          .compactMap(\.value?.issues.count)
+          .compactMap { $0.value?.issues.count }
           .reduce(into: 0, +=) + context.issuesForUnknownTests.count
         let skipCount = context.testData
-          .compactMap(\.value?.skipInfo)
+          .compactMap { $0.value?.skipInfo }
           .count
         let durationSeconds = context.runStartInstant
           .map { $0.duration(to: instant) / .seconds(1) } ?? 0.0
@@ -236,7 +236,7 @@ extension Event.JUnitXMLRecorder {
       "&amp;"
     case _ where !character.isASCII || character.isNewline:
       character.unicodeScalars.lazy
-        .map(\.value)
+        .map { $0.value }
         .map { "&#\($0);" }
         .joined()
     default:

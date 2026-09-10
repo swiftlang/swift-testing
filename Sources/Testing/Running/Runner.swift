@@ -19,7 +19,7 @@ public struct Runner: Sendable {
   public var plan: Plan
 
   /// The set of tests this runner will run.
-  public var tests: [Test] { plan.steps.map(\.test) }
+  public var tests: [Test] { plan.steps.map { $0.test } }
 
   /// The runner's configuration.
   public var configuration: Configuration
@@ -121,8 +121,13 @@ extension Runner {
     // trait is the first one to be invoked.
     let executeAllTraits = test.traits.lazy
       .reversed()
-      .compactMap { $0.scopeProvider(for: test, testCase: testCase) }
-      .map { $0.provideScope(for:testCase:performing:) }
+      .compactMap { trait in
+#if !hasFeature(Embedded)
+        trait.scopeProvider(for: test, testCase: testCase)
+#else
+        trait.__scopeProvider(for: test, testCase: testCase)
+#endif
+      }.map { $0.provideScope(for:testCase:performing:) }
       .reduce(body) { executeAllTraits, provideScope in
         {
           try await provideScope(test, testCase, executeAllTraits)
@@ -393,7 +398,7 @@ extension Runner {
     }
 
     // Run the child nodes.
-    try await _forEach(in: childGraphs.lazy.map(\.value), namingTasksWith: taskNamer) { childGraph in
+    try await _forEach(in: childGraphs.lazy.map { $0.value }, namingTasksWith: taskNamer) { childGraph in
       try await _runStep(atRootOf: childGraph, context: context)
     }
   }

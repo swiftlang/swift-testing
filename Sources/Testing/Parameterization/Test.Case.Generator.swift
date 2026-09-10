@@ -104,7 +104,6 @@ extension Test.Case {
         return
       }
 #endif
-
       self.init(sequence: collection) { element in
         Test.Case(values: [element], parameters: parameters) {
           try await testFunction(element)
@@ -270,6 +269,7 @@ extension Test.Case.Generator: Sequence {
         return nil
       }
 
+#if !hasFeature(Embedded)
       var testCase = _mapElement(element)
 
       if testCase.isParameterized {
@@ -285,6 +285,9 @@ extension Test.Case.Generator: Sequence {
       }
 
       return testCase
+#else
+      return _mapElement(element)
+#endif
     }
   }
 

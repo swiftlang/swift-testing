@@ -411,6 +411,10 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // Enabled to allow tests to be added to ~Escapable suites.
       .enableExperimentalFeature("Lifetimes"),
 
+      // Enabled to allow us to forward-declare functions in the Platform
+      // Abstraction Layer.
+      .enableExperimentalFeature("Extern"),
+
       .enableUpcomingFeature("InferIsolatedConformances"),
 
       // When building as a package, the macro plugin always builds as an
@@ -549,9 +553,10 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_PIPES": (platforms: [.wasi], embedded: true),
       "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .nonApplePlatforms, embedded: true),
       "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
+      "SWT_NO_ENVIRONMENT_VARIABLES": (platforms: .none, embedded: true),
+      "SWT_NO_FILE_IO": (platforms: .none, embedded: true),
       "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
       "SWT_NO_ABI_ENTRY_POINT": (platforms: .none, embedded: true),
-      "SWT_NO_ABI_JSON_SCHEMA": (platforms: .none, embedded: true),
       "SWT_NO_CODABLE": (platforms: .none, embedded: true),
       "SWT_NO_INTEROP": (platforms: .none, embedded: true),
       "SWT_NO_HARNESS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),

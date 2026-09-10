@@ -111,6 +111,7 @@ extension SkipInfo {
 }
 #endif
 
+#if !hasFeature(Embedded)
 // MARK: - Deprecated
 
 extension SkipInfo {
@@ -119,3 +120,4 @@ extension SkipInfo {
     self.init(comment: comment, sourceContext: .init(backtrace: .current(), sourceLocation: nil))
   }
 }
+#endif

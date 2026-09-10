@@ -144,7 +144,7 @@ extension Test {
   public var tags: Set<Tag> {
     traits.lazy
       .compactMap { $0 as? Tag.List }
-      .map(\.tags)
+      .map { $0.tags }
       .reduce(into: []) { $0.formUnion($1) }
   }
 }

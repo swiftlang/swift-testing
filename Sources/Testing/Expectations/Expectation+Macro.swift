@@ -573,6 +573,7 @@ public macro require<E, R>(
   performing expression: () async throws -> R
 ) -> E = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro") where E: Error & Equatable
 
+#if !hasFeature(Embedded)
 // MARK: - Arbitrary error matching
 
 /// Check that an expression always throws an error matching some condition.
@@ -840,6 +841,7 @@ public macro require<R>(
   performing expression: () async throws -> R,
   throws errorMatcher: (any Error) async throws -> Bool
 ) -> any Error = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro")
+#endif
 
 // MARK: - Exit tests
 

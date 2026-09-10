@@ -16,6 +16,7 @@ public import Foundation
 // NSSecureCoding-conformant classes by default. The implementation uses
 // NSKeyedArchiver for encoding.
 
+#if !hasFeature(Embedded)
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
@@ -61,4 +62,5 @@ extension Attachable where Self: NSSecureCoding {
     return try attachment.withUnsafeBytes(body)
   }
 }
+#endif
 #endif

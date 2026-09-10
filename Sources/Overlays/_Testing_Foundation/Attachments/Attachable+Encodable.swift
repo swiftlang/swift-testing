@@ -16,6 +16,7 @@ private import Foundation
 // encoding to JSON. This lets developers provide trivial conformance to the
 // protocol for types that already support Codable.
 
+#if !hasFeature(Embedded)
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
@@ -63,4 +64,5 @@ extension Attachable where Self: Encodable {
     return try attachment.withUnsafeBytes(body)
   }
 }
+#endif
 #endif

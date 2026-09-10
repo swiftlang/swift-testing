@@ -9,10 +9,6 @@
 //
 
 #if !SWT_NO_ABI_JSON_SCHEMA
-#if SWT_NO_CODABLE
-#error("Platform-specific misconfiguration: support for the ABI JSON schema requires support for 'Codable'")
-#endif
-
 extension ABI {
   /// A type implementing the JSON encoding of records for the ABI entry point
   /// and event stream output.
@@ -91,6 +87,7 @@ extension ABI.Record {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.Record: Codable {
@@ -166,4 +163,5 @@ extension ABI.Record: Codable {
     }
   }
 }
+#endif
 #endif
