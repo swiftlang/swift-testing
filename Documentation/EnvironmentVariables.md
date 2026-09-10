@@ -69,4 +69,11 @@ names prefixed with `SWT_`.
 | `SWT_EXPERIMENTAL_SERIALIZED_TRAIT_APPLIES_GLOBALLY` | `Bool` | Whether or not `.serialized` applies globally or just to its branch of the test graph. |
 | `SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH` | `Int` | The default parallelization width when parallelized testing is enabled. |
 
+## Scoped environment variables in tests
+
+To apply custom environment variables to tests or suites, use the `Trait/environment(_:)`
+trait. Tests using this trait run serially, preventing data races in the process'
+environment block, and previous environment variable values are automatically restored
+after the test finishes.
+
 [interop-modes]: https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0021-targeted-interoperability-swift-testing-and-xctest.md#interoperability-modes

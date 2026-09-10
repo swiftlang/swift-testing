@@ -138,6 +138,7 @@ add_library(Testing
   Traits/Tags/Tag+Predefined.swift
   Traits/TimeLimitTrait.swift
   Traits/TaskLocalTrait.swift
+  Traits/EnvironmentTrait.swift
   Traits/Trait.swift)
 target_link_libraries(Testing PRIVATE
   _TestDiscovery

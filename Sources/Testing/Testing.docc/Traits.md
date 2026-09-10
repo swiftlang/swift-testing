@@ -65,6 +65,7 @@ types that customize the behavior of your tests.
 - ``Bug``
 - ``Comment``
 - ``ConditionTrait``
+- ``EnvironmentTrait``
 - ``IssueHandlingTrait``
 - ``ParallelizationTrait``
 - ``Tag``

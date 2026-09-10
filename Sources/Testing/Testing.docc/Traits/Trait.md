@@ -43,3 +43,7 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 - ``Trait/TestScopeProvider``
 - ``Trait/prepare(for:)-3s3zo``
 - ``Trait/taskLocal(_:withValue:)``
+- ``Trait/environment(_:)-80yv4``
+- ``Trait/environment(_:)-8j89x``
+- ``Trait/environment(_:_:)``
+- ``EnvironmentTrait``
