@@ -155,7 +155,7 @@ extension Runner {
     // second-to-last invokes the last, etc. and ultimately the first trait is
     // the first one to be invoked.
     let executeAllTraits = test.traits.lazy
-      .compactMap { $0.__as(IssueHandlingTrait.self) }
+      .compactMap { $0 as? IssueHandlingTrait }
       .reversed()
       .map { $0.provideScope(performing:) }
       .reduce(body) { executeAllTraits, provideScope in
