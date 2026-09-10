@@ -52,6 +52,7 @@ public struct Configuration: Sendable {
   @_spi(Experimental)
   public var maximumParallelizationWidth: Int = defaultParallelizationWidth
 
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
   /// How to symbolicate backtraces captured during a test run.
   ///
   /// If the value of this property is not `nil`, symbolication will be
@@ -61,6 +62,7 @@ public struct Configuration: Sendable {
   /// Swift in-process. When handling a backtrace in Swift, use its
   /// ``Backtrace/symbolicate(_:)`` function to symbolicate it.
   public var backtraceSymbolicationMode: Backtrace.SymbolicationMode?
+#endif
 
   /// A type describing whether or not, and how, to iterate a test case
   /// repeatedly.

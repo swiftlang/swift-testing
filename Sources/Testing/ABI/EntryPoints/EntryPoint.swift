@@ -594,6 +594,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
     configuration.maximumParallelizationWidth = maximumParallelizationWidth
   }
 
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
   // Whether or not to symbolicate backtraces in the event stream.
   if let symbolicateBacktraces = args.symbolicateBacktraces {
     switch symbolicateBacktraces.lowercased() {
@@ -606,6 +607,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
 
     }
   }
+#endif
 
 #if !SWT_NO_FILE_IO
   // XML output
