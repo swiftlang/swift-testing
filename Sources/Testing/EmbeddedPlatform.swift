@@ -22,9 +22,9 @@ internal import _TestingInternals
 ///     `stderr`.
 ///
 /// The testing library uses this function to write a _human-readable_
-/// transcript of a test run. This function is a convenience over
-/// `_swift_testing_writeToConsole()`, which Platform Abstraction Layer authors
-/// must implement instead of this function.
+/// transcript of a test run. This function abstracts away the destination of
+/// console output which differs between non-Embedded Swift and Embedded Swift
+/// builds.
 @inline(always) func writeToConsole(_ string: String, useStandardOutputIfAvailable: Bool = false) {
   if string.isEmpty {
     return
