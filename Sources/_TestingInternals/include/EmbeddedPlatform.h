@@ -94,16 +94,6 @@ typedef struct swift_testing_console_capabilities_t {
   ///
   /// - ``Event/ConsoleOutputRecorder/Options/ansiColorBitDepth``
   unsigned int ansiColorBitDepth : 5;
-
-  /// Reserved for future use.
-  ///
-  /// Set this field to `0`.
-  unsigned int reserved0: 10;
-
-  /// Reserved for future use.
-  ///
-  /// Set this field to `0`.
-  uintptr_t reserved1;
 } swift_testing_console_capabilities_t;
 
 /// Get the capabilities of the current system's console output.
@@ -122,9 +112,9 @@ typedef struct swift_testing_console_capabilities_t {
 /// capabilities the system console has.
 ///
 /// - Important: The testing library may add additional fields to the
-///   ``swift_testing_console_capabilities_t`` structure in the future in its
-///   reserved space. To ensure source compatibility if the structure changes,
-///   be sure to initialize the entire structure:
+///   ``swift_testing_console_capabilities_t`` structure in the future. To
+///   ensure source compatibility if the structure changes, be sure to
+///   initialize the entire structure:
 ///
 ///   ```c
 ///   swift_testing_console_capabilities_t good = {};
