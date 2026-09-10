@@ -19,7 +19,7 @@ public struct Runner: Sendable {
   public var plan: Plan
 
   /// The set of tests this runner will run.
-  public var tests: [Test] { plan.steps.map(\.test) }
+  public var tests: [Test] { plan.steps.map { $0.test } }
 
   /// The runner's configuration.
   public var configuration: Configuration
@@ -393,7 +393,7 @@ extension Runner {
     }
 
     // Run the child nodes.
-    try await _forEach(in: childGraphs.lazy.map(\.value), namingTasksWith: taskNamer) { childGraph in
+    try await _forEach(in: childGraphs.lazy.map { $0.value }, namingTasksWith: taskNamer) { childGraph in
       try await _runStep(atRootOf: childGraph, context: context)
     }
   }

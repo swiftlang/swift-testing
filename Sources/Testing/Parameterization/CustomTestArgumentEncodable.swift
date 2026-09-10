@@ -113,7 +113,7 @@ extension Test.Case.Argument.ID {
     if let argumentID = argumentIDs.first, argumentIDs.count == 1 {
       self = argumentID
     } else {
-      self.init(bytes: SHA256.hash(argumentIDs.flatMap(\.bytes)))
+      self.init(bytes: SHA256.hash(argumentIDs.flatMap { $0.bytes }))
     }
   }
 }

@@ -160,7 +160,7 @@ extension Event.HumanReadableOutputRecorder {
     }
     let errorIssueCount = graph.compactMap { $0.value?.issueCount[.error] }.reduce(into: 0, +=)
     let warningIssueCount = graph.compactMap { $0.value?.issueCount[.warning] }.reduce(into: 0, +=)
-    let knownIssueCount = graph.compactMap(\.value?.knownIssueCount).reduce(into: 0, +=)
+    let knownIssueCount = graph.compactMap { $0.value?.knownIssueCount }.reduce(into: 0, +=)
     let totalIssueCount = errorIssueCount + warningIssueCount + knownIssueCount
 
     // Construct a string describing the issue counts.
