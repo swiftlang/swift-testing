@@ -158,5 +158,96 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getConsoleCapabilities(swift_testin
 /// needed, or omit them entirely in single-threaded environments.
 SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count);
 
+// MARK: - Test timing
+
+/// Get the amount of time that has passed since the system's epoch.
+///
+/// - Parameters:
+///   - outSeconds: On successful return, set to the number of whole seconds
+///     since the system's epoch.
+///   - outNanoseconds: On successful return, set to the number of nanoseconds
+///     since the system's epoch (less the number of seconds returned in
+///     `outSeconds`). The value should be less than `1000000000`.
+///
+/// - Returns: Whether or not `*outSeconds` and `*outNanoseconds` were
+///   successfully initialized. If they were not, their values are undefined and
+///   the testing library assumes a time of `0`.
+///
+/// The testing library uses this function to determine how long tests take to
+/// run.
+///
+/// The system's epoch is typically the time when it booted or the time the
+/// current process started. Avoid using the UNIX epoch (1970-01-01 00:00:00 UT)
+/// or another realtime (wall-clock) epoch as the realtime clock can be adjusted
+/// at runtime and may unexpectedly decrease. The epoch time itself does not
+/// need to be representable in Swift.
+///
+/// The result of this function should have at least millisecond resolution. If
+/// the platform does not support millisecond resolution or finer, the
+/// implementation should still be as precise as possible. If the platform only
+/// supports one-second resolution or coarser, the implementation must set
+/// `*outNanoseconds` to `0` before successfully returning.
+///
+/// - Note: Where possible, the implementation should use a suspending clock
+///   rather than a continuous clock (that is, time the system spends asleep
+///   should not, ideally, count toward the result of this function).
+///
+/// ### Reference implementations
+///
+/// On systems with the POSIX `clock_gettime()`, this function can be
+/// implemented with the following algorithm:
+///
+/// ```c
+/// bool _swift_testing_getTimeSinceSystemEpoch(uint32_t *outSeconds, uint32_t *outNanoseconds) {
+///   struct timespec ts = {};
+///   if (0 != clock_gettime(CLOCK_MONOTONIC, &ts)) {
+///     return false;
+///   }
+///   *outSeconds = (uint32_t)ts.tv_sec;
+///   *outNanoseconds = (uint32_t)ts.tv_nsec;
+///   return true;
+/// }
+/// ```
+///
+/// - Note: POSIX-compliant systems implement a variety of different clocks, and
+///   they do not all implement `CLOCK_MONOTONIC`. Consult your platform's
+///   documentation to determine the correct clock constant to pass to
+///   `clock_gettime()`.
+///
+/// The implementation can also use system-specific interfaces to compute the
+/// current time. For example, if the target is an Arduino board, you could use
+/// the [`millis()`](https://docs.arduino.cc/language-reference/en/functions/time/millis/)
+/// function:
+///
+/// ```c
+/// bool _swift_testing_getTimeSinceSystemEpoch(uint32_t *outSeconds, uint32_t *outNanoseconds) {
+///   unsigned long ms = millis();
+///   *outSeconds = ms / 1000;
+///   *outNanoseconds = (ms % 1000) * 1000000; // ns per ms
+///   return true;
+/// }
+/// ```
+///
+/// If the platform does not provide any high-level interfaces for computing the
+/// current time, it may still provide lower-level interfaces for querying the
+/// system counter, which can then be divided by the CPU's frequency to get a
+/// time value. The implementation of this logic is left as an exercise for the
+/// reader.
+///
+/// This function can be implemented to simply return `false` if the platform
+/// has no way to get the current time:
+///
+/// ```c
+/// bool _swift_testing_getTimeSinceSystemEpoch(uint32_t *outSeconds, uint32_t *outNanoseconds) {
+///   return false;
+/// }
+/// ```
+///
+/// ### Concurrency support
+///
+/// This function's implementation must be concurrency-safe unless the system is
+/// single-threaded.
+SWT_EXTERN SWT_NODISCARD bool _swift_testing_getTimeSinceSystemEpoch(uint32_t *outSeconds, uint32_t *outNanoseconds);
+
 SWT_ASSUME_NONNULL_END
 #endif
