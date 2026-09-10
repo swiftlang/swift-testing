@@ -68,7 +68,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       if useExperimentalConsoleOutput {
         // Use experimental AdvancedConsoleOutputRecorder
         var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>.Options()
-        advancedOptions.base = .for(.stderr)
+        advancedOptions.base = .forCurrentSystemConsole
 
         let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>(options: advancedOptions) { string in
           writeToConsole(string)
@@ -85,7 +85,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
 
       if !useExperimentalConsoleOutput {
         // Use the standard console output recorder (default behavior)
-        let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
+        let eventRecorder = Event.ConsoleOutputRecorder(options: .forCurrentSystemConsole) { string in
           writeToConsole(string)
         }
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
@@ -677,7 +677,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
         if emitWarnings {
           let warning = Event.ConsoleOutputRecorder.warning(
             "Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.",
-            options: .for(.stderr)
+            options: .forCurrentSystemConsole
           )
           writeToConsole("\(warning)\n")
         }
@@ -825,7 +825,39 @@ func eventHandlerForStreamingEvents(
 
 extension Event.ConsoleOutputRecorder.Options {
 #if !SWT_NO_FILE_IO
-  /// The set of options to use when writing to the standard error stream.
+  /// The set of options to use when writing to the current system's console.
+  ///
+  /// On non-Embedded Swift targets that support file I/O, the testing library
+  /// uses the standard error stream as the console, and this property's value
+  /// is equivalent to the result of calling `.for(.stderr)`.
+  static var forCurrentSystemConsole: Self {
+#if !hasFeature(Embedded)
+#if !SWT_NO_FILE_IO
+    .for(.stderr)
+#else
+    Self()
+#endif
+#else
+    var result = Self()
+
+    var consoleCapabilities = swift_testing_console_capabilities_t()
+    if _swift_testing_getConsoleCapabilities(&consoleCapabilities) {
+      result.useANSIEscapeCodes = consoleCapabilities.useANSIEscapeCodes != 0
+      result.ansiColorBitDepth = Int8(clamping: consoleCapabilities.ansiColorBitDepth)
+    }
+
+    return result
+#endif
+  }
+
+  /// The set of options to use when writing to the given file handle.
+  ///
+  /// - Parameters:
+  ///   - fileHandle: The file handle for which options are needed.
+  ///     Platform-specific API is used to derive options from this file handle.
+  ///
+  /// - Returns: An instance of this type representing the appropriate options
+  ///   to use when writing to `fileHandle`.
   static func `for`(_ fileHandle: borrowing FileHandle) -> Self {
     var result = Self()
 
