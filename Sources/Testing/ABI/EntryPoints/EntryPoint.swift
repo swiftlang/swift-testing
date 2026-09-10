@@ -116,11 +116,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       if args.verbosity > .min {
         for testID in listTestsForEntryPoint(tests, verbosity: args.verbosity) {
           // Print the test ID to stdout (classical CLI behavior.)
-#if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
-          try? FileHandle.stdout.write("\(testID)\n")
-#else
-          print(testID)
-#endif
+          writeToConsole("\(testID)\n", useStandardOutputIfAvailable: true)
         }
       }
 

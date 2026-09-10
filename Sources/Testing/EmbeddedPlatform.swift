@@ -17,21 +17,29 @@ internal import _TestingInternals
 ///
 /// - Parameters:
 ///   - string: The string to write.
+///   - useStandardOutputIfAvailable: If the platform supports full file I/O
+///     then write to `stdout` instead of `stderr`. The default is to write to
+///     `stderr`.
 ///
 /// The testing library uses this function to write a _human-readable_
 /// transcript of a test run. This function is a convenience over
 /// `_swift_testing_writeToConsole()`, which Platform Abstraction Layer authors
 /// must implement instead of this function.
-@inline(always) func writeToConsole(_ string: String) {
+@inline(always) func writeToConsole(_ string: String, useStandardOutputIfAvailable: Bool = false) {
   if string.isEmpty {
     return
   }
 
 #if !hasFeature(Embedded)
 #if !SWT_NO_FILE_IO
-  try? FileHandle.stderr.write(string)
+  let file = useStandardOutputIfAvailable ? FileHandle.stdout : FileHandle.stderr
+  try? file.write(string)
 #else
-  // TODO: determine whether we can reliably call `print()` here or something else
+  if useStandardOutputIfAvailable {
+    print(string, terminator: "")
+  } else {
+    // TODO: determine whether we can reliably call `print()` here or something else
+  }
 #endif
 #else
   var string = string
