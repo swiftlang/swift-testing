@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 private import Foundation
 #endif
 private import _TestingInternals
@@ -627,7 +627,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   // Attachment output.
   if let attachmentsPath = args.attachmentsPath {
 
-    #if canImport(Foundation)
+    #if !SWT_NO_FOUNDATION
       try FileManager().createDirectory(atPath: attachmentsPath, withIntermediateDirectories: true)
     #else
       guard fileExists(atPath: attachmentsPath) else {
