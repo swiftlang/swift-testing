@@ -188,12 +188,6 @@ extension Comment: TestTrait, SuiteTrait {
   public var comments: [Comment] {
     [self]
   }
-
-#if hasFeature(Embedded)
-  public func __as(_: Comment.Type) -> Comment? {
-    self
-  }
-#endif
 }
 
 @_spi(Experimental)
