@@ -13,7 +13,7 @@ internal import _TestingInternals
 /// This file contains abstractions over functionality that, under Embedded
 /// Swift, is provided by Swift Testing's Platform Abstraction Layer annex.
 
-/// Writes a Swift string as UTF-8 to the current system's console.
+/// Writes a Swift string to the current system's console.
 ///
 /// - Parameters:
 ///   - string: The string to write.
