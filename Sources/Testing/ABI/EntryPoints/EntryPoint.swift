@@ -71,7 +71,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
         advancedOptions.base = .for(.stderr)
 
         let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>(options: advancedOptions) { string in
-          try? FileHandle.stderr.write(string)
+          writeToConsole(string)
         }
 
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
@@ -86,7 +86,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       if !useExperimentalConsoleOutput {
         // Use the standard console output recorder (default behavior)
         let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
-          try? FileHandle.stderr.write(string)
+          writeToConsole(string)
         }
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
           if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
@@ -161,10 +161,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       )
     }
   } catch {
-#if !SWT_NO_FILE_IO
-    try? FileHandle.stderr.write("\(String(describingForTest: error))\n")
-#endif
-
+    writeToConsole("\(String(describingForTest: error))\n")
     exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
   }
 
@@ -628,14 +625,13 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
 
   // Attachment output.
   if let attachmentsPath = args.attachmentsPath {
-
-    #if !SWT_NO_FOUNDATION
+#if !SWT_NO_FOUNDATION
       try FileManager().createDirectory(atPath: attachmentsPath, withIntermediateDirectories: true)
-    #else
+#else
       guard fileExists(atPath: attachmentsPath) else {
         throw _EntryPointError.invalidArgument("---attachments-path", value: attachmentsPath)
       }
-    #endif
+#endif
     configuration.attachmentsPath = attachmentsPath
   }
 
@@ -687,7 +683,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
             "Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.",
             options: .for(.stderr)
           )
-          try? FileHandle.stderr.write("\(warning)\n")
+          writeToConsole("\(warning)\n")
         }
 #endif
       }
