@@ -177,14 +177,9 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
       return nil
     }
 
-#if !hasFeature(Embedded)
     return withUnsafePointer(to: T.self) { typeAddress in
       Self._load(using: accessor, withTypeAt: typeAddress, withHint: hint)
     }
-#else
-    let typeAddress = UnsafeRawPointer(bitPattern: UInt(T.testContentKind.rawValue)).unsafelyUnwrapped
-    return Self._load(using: accessor, withTypeAt: typeAddress, withHint: hint)
-#endif
   }
 }
 
