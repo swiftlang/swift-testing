@@ -24,6 +24,71 @@ SWT_ASSUME_NONNULL_BEGIN
 
 // MARK: - Console output
 
+/// A type describing the capabilities of the current system's console output.
+typedef struct swift_testing_console_capabilities_t {
+  /// Whether or not the testing library should add ANSI escape codes to its
+  /// console output.
+  ///
+  /// ## See Also
+  ///
+  /// - ``Event/ConsoleOutputRecorder/Options/useANSIEscapeCodes``
+  unsigned int useANSIEscapeCodes : 1;
+
+  /// The bit depth of ANSI colors supported by the current system's console.
+  ///
+  /// For example, black-and-white output has a bit depth of `1`, and true color
+  /// output has a bit depth of `24`. Values of `1`, `4`, `8`, and `24` are
+  /// supported. `0` is treated as equivalent to `1`, while all other values are
+  /// rounded down to the nearest supported value.
+  ///
+  /// ## See Also
+  ///
+  /// - ``Event/ConsoleOutputRecorder/Options/ansiColorBitDepth``
+  unsigned int ansiColorBitDepth : 5;
+} swift_testing_console_capabilities_t;
+
+/// Get the capabilities of the current system's console output.
+///
+/// - Parameters:
+///   - outConsoleCapabilities: A pointer to memory large enough to hold an
+///     instance of the ``swift_testing_console_capabilities_t`` structure. On
+///     return, initialized to an instance of that type that describes the
+///     capabilities of the console `_swift_testing_writeToConsole()` writes to.
+///
+/// - Returns: Whether or not `outConsoleCapabilities` was successfully
+///   initialized. If it was not, the testing library assumes the system console
+///   has none of the supported capabilities.
+///
+/// The testing library uses this function to determine what, if any,
+/// capabilities the system console has.
+///
+/// - Important: The testing library may add additional fields to the
+///   ``swift_testing_console_capabilities_t`` structure in the future. To
+///   ensure source compatibility if the structure changes, be sure to
+///   initialize the entire structure:
+///
+///   ```c
+///   swift_testing_console_capabilities_t good = {};
+///   swift_testing_console_capabilities_t bad;
+///   ```
+///
+/// ### Reference implementations
+///
+/// This function can be implemented to simply return `false` if the current
+/// system's console has none of the supported capabilities:
+///
+/// ```c
+/// bool _swift_testing_getConsoleCapabilities(swift_testing_console_capabilities_t *outConsoleCapabilities) {
+///   return false;
+/// }
+/// ```
+///
+/// ### Concurrency support
+///
+/// This function's implementation must be concurrency-safe unless the system is
+/// single-threaded.
+SWT_EXTERN SWT_NODISCARD bool _swift_testing_getConsoleCapabilities(swift_testing_console_capabilities_t *outConsoleCapabilities);
+
 /// Writes a sequence of UTF-8 code points to the current system's console.
 ///
 /// - Parameters:
@@ -34,6 +99,12 @@ SWT_ASSUME_NONNULL_BEGIN
 /// transcript of a test run. If possible, the implementation should write
 /// output to the standard error stream. Calls to the Swift standard library's
 /// `print()` function (or similar interfaces) do not use this function.
+///
+/// - Important: If the `_swift_testing_getConsoleCapabilities()` function
+///   returns `true` and configures any of the supported capabilities, then
+///   `chars` may contain ANSI escape codes or other metacontent in addition to
+///   human-readable text. If the current system's console only supports plain
+///   text, make sure your implementation of that function returns `false`.
 ///
 /// ### Reference implementations
 ///
