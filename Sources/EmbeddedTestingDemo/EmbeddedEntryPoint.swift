@@ -9,10 +9,15 @@
 //
 
 #if hasFeature(Embedded)
+import Testing
+
+@c func swift_createDefaultExecutorsOnce() {}
+@c func _swift_willThrow() {}
+
 /// The main entry point for tests running under Embedded Swift.
 @main struct EmbeddedSwiftEntryPoint {
-  static func main() async {
-    await __swiftPMEntryPoint() as Never
+  static func main() {
+    listAllTests()
   }
 }
 #endif
