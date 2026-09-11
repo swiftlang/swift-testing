@@ -25,7 +25,7 @@ static inline void swt_unreachable(void) {
   __builtin_unreachable();
 }
 
-#if !SWT_NO_FILE_IO && 0
+#if !SWT_NO_FILE_IO
 /// The C file handle type.
 ///
 /// This typedef is necessary because `FILE *` may be imported into Swift as
@@ -57,7 +57,7 @@ static SWT_FILEHandle swt_stderr(void) {
 /// This function is provided because `errno` is a complex macro on some
 /// platforms and cannot be imported directly into Swift.
 static int swt_errno(void) {
-  return 0;
+  return errno;
 }
 
 #if !SWT_NO_FILE_IO
@@ -73,7 +73,7 @@ static bool swt_S_ISFIFO(mode_t mode) {
 #endif
 #endif
 
-#if defined(__APPLE__) && 0 && !SWT_NO_MACH_PORTS
+#if defined(__APPLE__) && !SWT_NO_MACH_PORTS
 /// Get a Mach port representing the current task (process.)
 ///
 /// This function is provided because `mach_task_self()` is a complex macro, but
@@ -137,7 +137,7 @@ SWT_IMPORT_FROM_STDLIB const struct mach_header *_Nullable _dyld_get_dlopen_imag
 __API_AVAILABLE(macos(13.0), ios(16.0), watchos(9.0), tvos(16.0));
 #endif
 
-#if defined(__APPLE__) && 0
+#if defined(__APPLE__)
 /// Define the minimal set of atomic operations supported and used by the
 /// testing library for a given C type.
 ///
@@ -273,13 +273,15 @@ static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
 #endif
 #endif
 
+#if defined(EEXIST)
 /// Get the value of `EEXIST`.
 ///
 /// This function is provided because `EEXIST` is a complex macro in wasi-libc
 /// and cannot be imported directly into Swift.
 static int swt_EEXIST(void) {
-  return 0;// EEXIST;
+  return EEXIST;
 }
+#endif
 
 #if defined(F_GETFD)
 /// Call `fcntl(F_GETFD)`.
@@ -314,31 +316,30 @@ static int swt_setfdflags(int fd, int flags) {
 /// - Note: The set of exit codes in `<sysexits.h>` is _de facto_ standardized
 ///   on platforms that include that header.
 static const char *_Nullable swt_getExitCodeName(int exitCode) {
-  return "foo";
-//#define SWT_EXIT_CODE(NAME) NAME: return #NAME
-//  switch (exitCode) {
-//    case SWT_EXIT_CODE(EXIT_SUCCESS);
-//    case SWT_EXIT_CODE(EXIT_FAILURE);
-//#if __has_include(<sysexits.h>)
-//    case SWT_EXIT_CODE(EX_USAGE);
-//    case SWT_EXIT_CODE(EX_DATAERR);
-//    case SWT_EXIT_CODE(EX_NOINPUT);
-//    case SWT_EXIT_CODE(EX_NOUSER);
-//    case SWT_EXIT_CODE(EX_NOHOST);
-//    case SWT_EXIT_CODE(EX_UNAVAILABLE);
-//    case SWT_EXIT_CODE(EX_SOFTWARE);
-//    case SWT_EXIT_CODE(EX_OSERR);
-//    case SWT_EXIT_CODE(EX_OSFILE);
-//    case SWT_EXIT_CODE(EX_CANTCREAT);
-//    case SWT_EXIT_CODE(EX_IOERR);
-//    case SWT_EXIT_CODE(EX_TEMPFAIL);
-//    case SWT_EXIT_CODE(EX_PROTOCOL);
-//    case SWT_EXIT_CODE(EX_NOPERM);
-//    case SWT_EXIT_CODE(EX_CONFIG);
-//#endif
-//    default: return 0;
-//  }
-//#undef SWT_SYSEXIT_CODE
+#define SWT_EXIT_CODE(NAME) NAME: return #NAME
+  switch (exitCode) {
+    case SWT_EXIT_CODE(EXIT_SUCCESS);
+    case SWT_EXIT_CODE(EXIT_FAILURE);
+#if __has_include(<sysexits.h>)
+    case SWT_EXIT_CODE(EX_USAGE);
+    case SWT_EXIT_CODE(EX_DATAERR);
+    case SWT_EXIT_CODE(EX_NOINPUT);
+    case SWT_EXIT_CODE(EX_NOUSER);
+    case SWT_EXIT_CODE(EX_NOHOST);
+    case SWT_EXIT_CODE(EX_UNAVAILABLE);
+    case SWT_EXIT_CODE(EX_SOFTWARE);
+    case SWT_EXIT_CODE(EX_OSERR);
+    case SWT_EXIT_CODE(EX_OSFILE);
+    case SWT_EXIT_CODE(EX_CANTCREAT);
+    case SWT_EXIT_CODE(EX_IOERR);
+    case SWT_EXIT_CODE(EX_TEMPFAIL);
+    case SWT_EXIT_CODE(EX_PROTOCOL);
+    case SWT_EXIT_CODE(EX_NOPERM);
+    case SWT_EXIT_CODE(EX_CONFIG);
+#endif
+    default: return 0;
+  }
+#undef SWT_SYSEXIT_CODE
 };
 
 #if !SWT_NO_INTEROP

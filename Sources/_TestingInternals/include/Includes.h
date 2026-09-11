@@ -26,9 +26,9 @@
 ///
 /// - Note: Avoid including headers that aren't actually used.
 
-//#include <ctype.h>
-//#include <errno.h>
-//#include <inttypes.h>
+#include <ctype.h>
+#include <errno.h>
+#include <inttypes.h>
 /// limits.h must be included before stdlib.h with glibc, otherwise the
 /// fortified realpath() in this module will differ from the one in SwiftGlibc.
 /// glibc bug: https://sourceware.org/bugzilla/show_bug.cgi?id=30516
@@ -42,12 +42,12 @@
 #if __has_include(<signal.h>) && !defined(__wasi__)
 #include <signal.h>
 #endif
-// #include <stdbool.h>
-// #include <stdint.h>
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <string.h>
-// #include <time.h>
+ #include <stdbool.h>
+ #include <stdint.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <time.h>
 
 #if __has_include(<unistd.h>)
 #include <unistd.h>
@@ -129,10 +129,10 @@
 
 // MARK: - Platform-specific includes
 
-#if defined(__APPLE__) && 0
+#if defined(__APPLE__)
 #if !SWT_NO_MACH_PORTS
-// #include <mach/mach_init.h>
-// #include <mach/task.h>
+ #include <mach/mach_init.h>
+ #include <mach/task.h>
 #endif
 
 #if !SWT_NO_LIBDISPATCH
@@ -144,7 +144,7 @@
 #endif
 
 #if !SWT_NO_OS_UNFAIR_LOCK
-//#include <os/lock.h>
+#include <os/lock.h>
 #endif
 
 #if !SWT_NO_FILE_CLONING

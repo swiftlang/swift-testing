@@ -314,7 +314,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // We use a second, inner thunk function here instead of just adding the
     // isolation parameter to the "real" thunk because adding it there prevents
     // correct tuple desugaring of the "real" arguments to the thunk.
-    if functionDecl.signature.effectSpecifiers?.asyncSpecifier == nil && !isMainActorIsolated && !functionDecl.isNonisolated {
+    if functionDecl.signature.effectSpecifiers?.asyncSpecifier == nil && !isMainActorIsolated && !functionDecl.isNonisolated && !context.isTargetEmbedded {
       // Get a unique name for this secondary thunk. We don't need it to be
       // uniqued against functionDecl because it's interior to the "real" thunk,
       // so its name can't conflict with any other names visible in this scope.
@@ -352,10 +352,18 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       in: context
     )
 
+    var nonisolatedModifier: DeclModifierSyntax?
+    if context.isTargetEmbedded && !functionDecl.isNonisolated {
+      nonisolatedModifier = DeclModifierSyntax(
+        name: .keyword(.nonisolated),
+        detail: DeclModifierDetailSyntax(detail: .keyword(.nonsending))
+      )
+    }
+
     let thunkName = context.makeUniqueName(thunking: functionDecl)
     let thunkDecl: DeclSyntax = """
     @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
-    @Sendable private \(staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
+    @Sendable private \(staticKeyword(for: typeName)) \(nonisolatedModifier)func \(thunkName)\(thunkParamsExpr) async throws -> Void {
       \(thunkBody)
     }
     """
