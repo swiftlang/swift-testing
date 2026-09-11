@@ -32,19 +32,18 @@
   }
 
   @Test func `Decode succeeds with missing fields`() throws {
-    let encodedData = Array(
+    let json = """
+        {
+          "unqualifiedName": "string"
+        }
       """
-      {
-        "unqualifiedName": "string"
-      }
-      """.utf8)
-    let decoded = try encodedData.withUnsafeBytes { encodedData in
-      try JSON.decode(ABI.EncodedTypeInfo<ABI.CurrentVersion>.self, from: encodedData)
-    }
+    let decoded = try JSON.decode(ABI.EncodedTypeInfo<ABI.CurrentVersion>.self, from: json)
 
     #expect(decoded.fullyQualifiedName == nil)
     #expect(decoded.unqualifiedName == "string")
     #expect(decoded.mangledName == nil)
+    let typeInfo = TypeInfo(decoding: decoded)
+    #expect(typeInfo == TypeInfo(fullyQualifiedNameComponents: [], unqualifiedName: "string", mangledName: nil))
   }
 
   @Test func `Round trips TypeInfo`() {

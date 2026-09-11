@@ -442,6 +442,41 @@ extension JSON {
       }
     }
   }
+
+  /// Encode a value to a JSON string.
+  ///
+  /// - Parameters:
+  ///   - value: The value to encode.
+  ///
+  /// - Returns: The encoded JSON string.
+  ///
+  /// - Throws: Any error encountered encoding or decoding `value`.
+  static func encode<T>(_ value: T) throws -> String where T: Codable {
+    try JSON.withEncoding(of: value) { data in
+      return String(decoding: data, as: UTF8.self)
+    }
+  }
+
+  /// Decode a value of a given type from a JSON string.
+  ///
+  /// For example, decode an encoded event from a JSON string:
+  /// ```swift
+  /// let event = try JSON.decode(ABI.EncodedEvent<ABI.v6_5>.self, from: "...")
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - type: The type to decode.
+  ///   - json: The JSON string to decode.
+  ///
+  /// - Returns: An instance of `type` decoded from `json`.
+  ///
+  /// - Throws: Any error encountered while decoding `json`.
+  static func decode<T>(_ type: T.Type, from json: String) throws -> T where T: Decodable {
+    var json = json
+    return try json.withUTF8 { json in
+      try JSON.decode(T.self, from: UnsafeRawBufferPointer(json))
+    }
+  }
 }
 #endif
 
