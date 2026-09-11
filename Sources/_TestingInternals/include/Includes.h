@@ -42,12 +42,12 @@
 #if __has_include(<signal.h>) && !defined(__wasi__)
 #include <signal.h>
 #endif
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+ #include <stdbool.h>
+ #include <stdint.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <time.h>
 
 #if __has_include(<unistd.h>)
 #include <unistd.h>
@@ -131,8 +131,8 @@
 
 #if defined(__APPLE__)
 #if !SWT_NO_MACH_PORTS
-#include <mach/mach_init.h>
-#include <mach/task.h>
+ #include <mach/mach_init.h>
+ #include <mach/task.h>
 #endif
 
 #if !SWT_NO_LIBDISPATCH
