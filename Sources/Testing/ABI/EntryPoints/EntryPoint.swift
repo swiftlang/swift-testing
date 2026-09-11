@@ -58,7 +58,6 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
     }
     configuration.verbosity = args.verbosity
 
-#if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
     let consoleOutputEnabled = Atomic(true)
     if configuration.verbosity > .min {
@@ -96,7 +95,6 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
         }
       }
     }
-#endif
 
     // If the caller specified an alternate event handler, hook it up too.
     if let eventHandler {
@@ -133,7 +131,6 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       // Run the tests.
       let runner = await Runner(configuration: configuration)
       tests = runner.tests
-#if !SWT_NO_FILE_IO
       if forSwiftPackageManager && tests.isEmpty, args.filter != nil || args.skip != nil {
         // Swift Package Manager handles "no tests found/run" console output
         // when the user applies any filtering. Don't bother logging to the
@@ -142,7 +139,6 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
         // runner.run() for that purpose.
         consoleOutputEnabled.store(false, ordering: .sequentiallyConsistent)
       }
-#endif
       await runner.run()
     }
 
@@ -673,7 +669,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
       if string.contains(backtickRegex) {
         let originalString = string
         string = String(string.dropFirst().dropLast())
-#if !SWT_NO_FILE_IO
         if emitWarnings {
           let warning = Event.ConsoleOutputRecorder.warning(
             "Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.",
@@ -681,7 +676,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
           )
           writeToConsole("\(warning)\n")
         }
-#endif
       }
     }
 
@@ -824,7 +818,6 @@ func eventHandlerForStreamingEvents(
 // MARK: - Command-line interface options
 
 extension Event.ConsoleOutputRecorder.Options {
-#if !SWT_NO_FILE_IO
   /// The set of options to use when writing to the current system's console.
   ///
   /// On non-Embedded Swift targets that support file I/O, the testing library
@@ -850,6 +843,7 @@ extension Event.ConsoleOutputRecorder.Options {
 #endif
   }
 
+#if !SWT_NO_FILE_IO
   /// The set of options to use when writing to the given file handle.
   ///
   /// - Parameters:
