@@ -450,6 +450,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     // respected (it should be the least "surprising" outcome of passing both.)
   }
 #endif
+#endif
 
   // Event stream output
   if let path = args.argumentValue(forLabel: "--event-stream-output-path") ?? args.argumentValue(forLabel: "--experimental-event-stream-output") {
@@ -485,7 +486,6 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
       result.eventStreamVersionNumber = eventStreamVersion
     }
   }
-#endif
 
   // XML output
   if let xunitOutputPath = args.argumentValue(forLabel: "--xunit-output") {
@@ -626,23 +626,39 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
 #endif
     configuration.attachmentsPath = attachmentsPath
   }
+#endif
 
 #if !SWT_NO_ABI_JSON_SCHEMA
   // Event stream output
-  if let eventStreamOutputPath = args.eventStreamOutputPath {
-    let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
-    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
-      _ = try? file.withLock {
-        try file.write(json)
-        try file.write("\n")
+  do {
+    var eventHandler: Event.Handler?
+#if !hasFeature(Embedded)
+    if let eventStreamOutputPath = args.eventStreamOutputPath {
+#if !SWT_NO_FILE_IO
+      let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
+      eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
+        _ = try? file.withLock {
+          try file.write(json)
+          try file.write(.asciiNewlineCharacter)
+        }
+      }
+#else
+      throw _EntryPointError.featureUnavailable("--event-stream-output-path requires support for file I/O, but Swift Testing has been built without it.")
+#endif
+    }
+#else
+    eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
+      var newline = UInt8.asciiNewlineCharacter
+      _swift_testing_writeJSON(json.baseAddress!, json.count, &newline)
+    }
+#endif
+    if let eventHandler {
+      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+        eventHandler(event, context)
+        oldEventHandler(event, context)
       }
     }
-    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-      eventHandler(event, context)
-      oldEventHandler(event, context)
-    }
   }
-#endif
 #endif
 
 #if canImport(_StringProcessing)
