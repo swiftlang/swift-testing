@@ -302,6 +302,20 @@ let package = Package(
         "Testing",
       ]
     ),
+
+    // A minimal executable which links Swift Testing and runs a handful of
+    // tests. It exists to confirm that a whole program can be built for an
+    // Embedded Swift target, e.g.:
+    //
+    //     SWT_EMBEDDED=1 swift build --target EmbeddedTestingDemo \
+    //       --toolset ./Toolsets/Embedded.json \
+    //       --triple armv7em-apple-none-macho --build-system native
+    .executableTarget(
+      name: "EmbeddedTestingDemo",
+      dependencies: [
+        "Testing",
+      ]
+    ),
   ],
 
   cxxLanguageStandard: .cxx20

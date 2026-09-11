@@ -38,7 +38,7 @@ func isSmall(_ i: Int) {
 /// Package Manager uses. An explicit (empty) arguments value is passed so that
 /// the testing library does not try to read command-line arguments, which are
 /// not generally available on an Embedded Swift target.
-@main struct Application {
+@main struct EmbeddedTestingDemo {
   static func main() async {
     await Testing.__swiftPMEntryPoint(passing: .init()) as Never
   }
