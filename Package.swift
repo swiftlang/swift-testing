@@ -143,8 +143,12 @@ let package = Package(
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       linkerSettings: [
         .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd])),
-        .linkedLibrary("_TestingInterop"),
-      ]
+      ] + {
+        if !buildingForEmbedded {
+          return [.linkedLibrary("_TestingInterop"),]
+        }
+        return []
+      }()
     ),
     .testTarget(
       name: "TestingTests",

@@ -9,6 +9,30 @@
 //
 
 internal import _TestingInternals
+import _Concurrency
+
+@c @implementation func _swift_testing_getEmbeddedTargetInfo() -> UnsafePointer<CChar>? {
+  return UnsafePointer(strdup("Wherever Jonathan Is")!)
+}
+
+@c @implementation func _swift_testing_getTimeSinceSystemEpoch(_ outSeconds: UnsafeMutablePointer<UInt32>, _ outNanoseconds: UnsafeMutablePointer<UInt32>) -> CBool {
+  var ts = timespec()
+  clock_gettime(CLOCK_MONOTONIC, &ts)
+  outSeconds.pointee = UInt32(ts.tv_sec)
+  outNanoseconds.pointee = UInt32(ts.tv_nsec)
+  return true
+}
+
+@c @implementation func _swift_testing_writeToConsole(_ chars: UnsafePointer<UInt8>, _ count: Int) {
+  for i in 0 ..< count {
+    putchar(CInt(chars[i]))
+  }
+}
+
+@c @implementation func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutablePointer<swift_testing_console_capabilities_t>) -> CBool {
+  false
+}
+
 
 /// This file contains abstractions over functionality that, under Embedded
 /// Swift, is provided by Swift Testing's Platform Abstraction Layer annex.

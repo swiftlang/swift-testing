@@ -5,5 +5,16 @@
       "-enable-experimental-feature", "Embedded",
       "-wmo"
     ]
-  }
+  },
+"linker": {
+  "extraCLIOptions": [
+"-lm",
+"-L/swift/usr/lib/swift/embedded/x86_64-unknown-linux-gnu/",
+"-lswift_Concurrency",
+"-lswift_ConcurrencyDefaultExecutor",
+"-lswiftUnicodeDataTables",
+"-lswiftEmbeddedPlatformPOSIX",
+"-lswiftEmbeddedPlatformMultiThreadedPOSIX",
+]
+}
 }
