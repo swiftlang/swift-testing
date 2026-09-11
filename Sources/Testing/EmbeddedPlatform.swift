@@ -13,7 +13,7 @@ internal import _TestingInternals
 /// This file contains abstractions over functionality that, under Embedded
 /// Swift, is provided by Swift Testing's Platform Abstraction Layer annex.
 
-/// Writes a Swift string as UTF-8 to the current system's console.
+/// Writes a Swift string to the current system's console.
 ///
 /// - Parameters:
 ///   - string: The string to write.
@@ -46,5 +46,30 @@ internal import _TestingInternals
   string.withUTF8 { string in
     _swift_testing_writeToConsole(string.baseAddress!, string.count)
   }
+#endif
+}
+
+#if hasFeature(Embedded)
+/// Exits the current process as if the C `exit()` function were called.
+///
+/// This declaration is provided because the function is declared in the core
+/// Platform Abstraction Layer header and is used by the testing library below.
+@_extern(c) private func _swift_exit(_ exitCode: CInt)
+#endif
+
+/// Exits the current process as if the C `exit()` function were called.
+///
+/// - Parameters:
+///   - exitCode: The exit code for the process.
+///
+/// The testing library uses this function to exit the test process and exit
+/// test child processes. This function is a convenience over C's `exit()` and
+/// the Platform Abstraction Layer's `_swift_exit()`.
+@inline(always) func exit(_ exitCode: CInt) -> Never {
+#if !hasFeature(Embedded)
+  _TestingInternals.exit(exitCode)
+#else
+  _swift_exit(exitCode)
+  swt_unreachable()
 #endif
 }
