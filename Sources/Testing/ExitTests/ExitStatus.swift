@@ -117,6 +117,7 @@ extension ExitStatus: CustomStringConvertible {
   var name: String? {
     var result: String?
 
+#if !hasFeature(Embedded)
     switch self {
     case let .exitCode(exitCode):
       result = swt_getExitCodeName(exitCode).flatMap(String.init(validatingCString:))
@@ -150,6 +151,7 @@ extension ExitStatus: CustomStringConvertible {
 #warning("Platform-specific implementation missing: signal names unavailable")
 #endif
     }
+#endif
 
     return result
   }

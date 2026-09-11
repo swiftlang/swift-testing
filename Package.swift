@@ -411,7 +411,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !target.isTest {
+    if !target.isTest && !target.name.contains("Demo") {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]
@@ -528,7 +528,7 @@ extension Array where Element: _CLanguageBuildSetting {
 
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !target.isTest {
+    if !target.isTest && !target.name.contains("Demo") {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]

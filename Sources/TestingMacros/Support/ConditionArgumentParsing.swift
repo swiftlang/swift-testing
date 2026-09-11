@@ -521,6 +521,11 @@ extension ConditionMacro {
   ///
   /// - Returns: An instance of ``Condition`` describing `expr`.
   static func parseCondition(from expr: ExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
+    // Embedded Swift does not support full argument expansion.
+    if context.isTargetEmbedded {
+      return Condition(expression: expr)
+    }
+
     // If the condition involves the `unsafe`, `try`, or `await` keywords, assume
     // we cannot expand it.
     let effectKeywordsFromNode = findEffectKeywords(in: expr)

@@ -153,7 +153,7 @@ extension FunctionParameterSyntax {
       if !isTargetEmbedded {
         LabeledExprSyntax(label: "type", expression: typeMetatypeExpression)
       } else {
-        LabeledExprSyntax(label: "typeName", expression: TypeExprSyntax(type: type.trimmed))
+        LabeledExprSyntax(label: "typeName", expression: StringLiteralExprSyntax(content: type.trimmedDescription))
       }
     }
   }
