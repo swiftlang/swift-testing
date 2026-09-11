@@ -10,10 +10,13 @@
 
 #include "Versions.h"
 
+#if __has_include(<array>) && __has_include(<algorithm>) && __has_include(<iterator>)
 #include <array>
 #include <algorithm>
 #include <iterator>
-#include <mutex>
+#else
+#define SWT_NO_CXX_STDLIB 1
+#endif
 
 const char *swt_getTestingLibraryVersion(void) {
 #if defined(SWT_TESTING_LIBRARY_VERSION)
@@ -22,6 +25,7 @@ const char *swt_getTestingLibraryVersion(void) {
   return SWT_TESTING_LIBRARY_VERSION;
 #elif __clang_major__ >= 17 && defined(__has_embed)
 #if __has_embed("../../VERSION.txt")
+#if !SWT_NO_CXX_STDLIB
   static constexpr std::array result = [] () {
     // Read the version from version.txt at the root of the package's repo.
     constexpr const char version[] = {
@@ -45,6 +49,22 @@ const char *swt_getTestingLibraryVersion(void) {
   }();
 
   return result.data();
+#else
+  static constinit char result[] = {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc23-extensions"
+#embed "../../VERSION.txt" suffix(, '\0')
+#pragma clang diagnostic pop
+  };
+  for (char& c : result) {
+    if (c == '\r' || c == '\n') {
+      c = '\0';
+      break;
+    }
+  }
+  __c11_atomic_thread_fence(__ATOMIC_SEQ_CST);
+  return result;
+#endif
 #else
 #warning SWT_TESTING_LIBRARY_VERSION not defined and VERSION.txt not found: testing library version is unavailable
   return nullptr;

@@ -117,6 +117,7 @@ extension ExitStatus: CustomStringConvertible {
   var name: String? {
     var result: String?
 
+#if !hasFeature(Embedded)
     switch self {
     case let .exitCode(exitCode):
       result = swt_getExitCodeName(exitCode).flatMap(String.init(validatingCString:))
@@ -152,6 +153,7 @@ extension ExitStatus: CustomStringConvertible {
 #endif
 #endif
     }
+#endif
 
     return result
   }

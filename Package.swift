@@ -138,8 +138,7 @@ let package = Package(
         "_TestDiscovery",
         "_TestingInternals",
       ] + {
-        // TODO: get macro target building for host when the target is embedded
-        buildingForEmbedded ? [] : ["TestingMacros"]
+        ["TestingMacros"]
       }(),
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       linkerSettings: [
@@ -307,6 +306,20 @@ let package = Package(
         "Testing",
       ]
     ),
+
+    // A minimal executable which links Swift Testing and runs a handful of
+    // tests. It exists to confirm that a whole program can be built for an
+    // Embedded Swift target, e.g.:
+    //
+    //     SWT_EMBEDDED=1 swift build --target EmbeddedTestingDemo \
+    //       --toolset ./Toolsets/Embedded.json \
+    //       --triple armv7em-apple-none-macho --build-system native
+    .executableTarget(
+      name: "EmbeddedTestingDemo",
+      dependencies: [
+        "Testing",
+      ]
+    ),
   ],
 
   cxxLanguageStandard: .cxx20
@@ -387,6 +400,10 @@ extension Array where Element == PackageDescription.SwiftSetting {
       result.append(.treatWarning("ExplicitSendable", as: .warning))
     }
 
+    // Macro plugins are host tools: they are always compiled for the build
+    // machine and link swift-syntax, which cannot be imported in Embedded Swift
+    // mode. Never apply the Embedded settings to them even when the rest of the
+    // package is being built for an Embedded Swift target.
     if buildingForEmbedded && target.type != .macro {
       result.append(.enableExperimentalFeature("Embedded"))
 
@@ -398,7 +415,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !target.isTest {
+    if !target.isTest && !target.name.contains("Demo") {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]
@@ -520,7 +537,7 @@ extension Array where Element: _CLanguageBuildSetting {
 
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !target.isTest {
+    if !target.isTest && !target.name.contains("Demo") {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]
