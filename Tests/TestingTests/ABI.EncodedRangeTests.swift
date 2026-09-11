@@ -16,7 +16,8 @@
     (ABI.EncodedRange<ABI.CurrentVersion>(expectedRange: 1...10), 1 as Int?, 10 as Int?),
     (ABI.EncodedRange<ABI.CurrentVersion>(expectedRange: 1..<10), 1, 9),
     (ABI.EncodedRange<ABI.CurrentVersion>(expectedRange: 1...), 1, nil),
-    // The following ranges are NOT supported by confirmation, but are included for completeness.
+    // The following ranges are NOT supported by confirmation because the lower
+    // bound must always be specified, but are included for completeness.
     (ABI.EncodedRange<ABI.CurrentVersion>(expectedRange: ...10), nil, 10),
     (ABI.EncodedRange<ABI.CurrentVersion>(expectedRange: ..<10), nil, 9),
   ]) func `Encodes a closed range`(range: ABI.EncodedRange<ABI.CurrentVersion>?, min: Int?, max: Int?) throws {

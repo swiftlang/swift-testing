@@ -374,13 +374,14 @@
   // MARK: Comments
 
   @Test(arguments: [
-    Event.Kind.issueRecorded(.init(kind: .unconditional, comments: ["User provided comment"], sourceContext: sourceContext)),
-    .testSkipped(.init(comment: "User provided comment", sourceContext: sourceContext)),
-    //    .testCancelled(.init(comment: "User provided comment", sourceContext: sourceContext)),
-    .testCaseCancelled(.init(comment: "User provided comment", sourceContext: sourceContext)),
+    Event.Kind.issueRecorded(.init(kind: .unconditional, comments: ["User provided comment"], sourceContext: .sample)),
+    .testSkipped(.init(comment: "User provided comment", sourceContext: .sample)),
+    .testCancelled(.init(comment: "User provided comment", sourceContext: .sample)),
+    .testCaseCancelled(.init(comment: "User provided comment", sourceContext: .sample)),
   ])
   func `'comments' field only encoded in 6.5 and above`(kind: Event.Kind) throws {
-    let test = Test {}
+    // Need a parameterised test to successfully encode testCancelled events
+    let test = Test.sampleParameterized
     let event = Event(kind, testID: .init(["SomeValidTestID", "testFunc()"]), testCaseID: nil)
     let context = Event.Context(test: test, testCase: nil, iteration: 2, configuration: nil)
 
@@ -390,10 +391,7 @@
       let encoded = try #require(ABI.EncodedEvent<ABI.v6_4>(encoding: event, in: context))
 
       #expect(encoded.comments == nil)
-      try JSON.withEncoding(of: encoded) { buf in
-        let str = String(decoding: buf, as: UTF8.self)
-        #expect(!str.contains(#""comments":"#))
-      }
+      #expect(try !JSON.encode(encoded).contains(#""comments":"#))
     }
 
     // v6.5
@@ -401,17 +399,14 @@
       let encoded = try #require(ABI.EncodedEvent<ABI.v6_5>(encoding: event, in: context))
 
       #expect(encoded.comments == ["User provided comment"])
-      try JSON.withEncoding(of: encoded) { buf in
-        let str = String(decoding: buf, as: UTF8.self)
-        #expect(str.contains(#""comments":"#))
-      }
+      #expect(try JSON.encode(encoded).contains(#""comments":"#))
     }
 
   }
 
   // MARK: Messages
 
-  @Test func `Fails to decode v6.3 record with missing 'messages' field`() throws {
+  @Test func `Fails to decode v6.3 record with missing 'messages'`() throws {
     #expect(throws: DecodingError.self) {
       _ = try encodedEvent(
         ABI.v6_3.self,
@@ -424,10 +419,11 @@
         """
       )
     }
+  }
 
+  @Test func `Can decode v6.5 record with missing 'messages'`() throws {
     #expect(throws: Never.self) {
-      _ = try encodedEvent(
-        ABI.v6_5.self,
+      _ = try JSON.decode(ABI.EncodedEvent<ABI.v6_5>.self, from:
         """
         {
           "kind": "testStarted",
@@ -475,18 +471,17 @@
 
   // MARK: Source Location
 
-  static let sourceContext = SourceContext(sourceLocation: .init(fileID: "Module/Tomato.swift", filePath: "/path/to/tomato.swift", line: 1, column: 1))
-
   @Test(arguments: [
-    Event.Kind.issueRecorded(.init(kind: .system, sourceContext: sourceContext)),
+    Event.Kind.issueRecorded(.init(kind: .system, sourceContext: .sample)),
     .valueAttached(Attachment(Attachment("Tomato"))),
-    .testSkipped(.init(comment: "Skipped Test Comment", sourceContext: sourceContext)),
-//    .testCancelled(.init(comment: "Skipped Test Comment", sourceContext: sourceContext)),
-    .testCaseCancelled(.init(comment: "Skipped Test Comment", sourceContext: sourceContext)),
+    .testSkipped(.init(comment: "User provided comment", sourceContext: .sample)),
+    .testCancelled(.init(comment: "User provided comment", sourceContext: .sample)),
+    .testCaseCancelled(.init(comment: "User provided comment", sourceContext: .sample)),
   ])
   func `Event-level 'sourceLocation' field only encoded in 6.5 and above`(kind: Event.Kind) throws {
-    let test = Test {}
-    let event = Event(kind, testID: .init(["TomatoTests", "testSauce()"]), testCaseID: nil)
+    var test = Test {}
+    test.parameters = [.init(index: 0, firstName: "sample", type: String.self)]
+    let event = Event(kind, testID: .sample, testCaseID: nil)
     let context = Event.Context(test: test, testCase: nil, iteration: 1, configuration: nil)
 
     // v6.4
@@ -503,3 +498,23 @@
   }
 }
 #endif
+
+extension SourceContext {
+  fileprivate static var sample: Self {
+    .init(sourceLocation: .init(fileID: "Module/Tomato.swift", filePath: "/path/to/tomato.swift", line: 1, column: 1))
+  }
+}
+
+extension Test {
+  fileprivate static var sampleParameterized: Self {
+    var test = Test {}
+    test.parameters = [.init(index: 0, firstName: "sample", type: String.self)]
+    return test
+  }
+}
+
+extension Test.ID {
+  fileprivate static var sample: Self {
+    .init(["SomeValidTestID", "testFunc()"])
+  }
+}

@@ -18,27 +18,23 @@
     }
   }
 
-  private let error = ABI.EncodedError<ABI.CurrentVersion>(encoding: FakeError())
-
   @Test func `Encodes a Swift error`() throws {
+    let error = ABI.EncodedError<ABI.CurrentVersion>(encoding: FakeError())
+
     #expect(error.domain == "TestingTests.`ABI.EncodedError Tests`.FakeError")
     #expect(error.description == "FakeError()")
     #expect(error.code == 1)
   }
 
   @Test func `Decodes all optional error fields `() throws {
-    let encodedData = Array(
-      """
-      {}
-      """.utf8)
-    let decoded = try encodedData.withUnsafeBytes { encodedData in
-      try JSON.decode(ABI.EncodedError<ABI.CurrentVersion>.self, from: encodedData)
-    }
+    let decoded = try JSON.decode(ABI.EncodedError<ABI.CurrentVersion>.self, from: "{}")
 
     #expect(decoded.description == nil)
     #expect(decoded.domain == nil)
-    #expect(decoded.code == nil)
     #expect(decoded.typeInfo == nil)
+    #expect(decoded.code == nil)
+    // For Error conformance, _code is filled with 1
+    #expect(decoded._code == 1)
   }
 
   @Test func `Expected field names`() throws {
