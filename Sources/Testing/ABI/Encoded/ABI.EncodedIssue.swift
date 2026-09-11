@@ -96,20 +96,19 @@ extension ABI {
       if V.versionNumber >= ABI.v6_5.versionNumber {
         // SourceLocation is encoded in the parent Event structure instead
         sourceLocation = nil
-        if case .expectationFailed(let expectation) = issue.kind {
+        switch issue.kind {
+        case .expectationFailed(let expectation):
           expression = EncodedExpression(encoding: expectation.evaluatedExpression)
-        }
-
-        if case .timeLimitExceeded(let components) = issue.kind {
+        case .timeLimitExceeded(let components):
           exceededTimeLimit = Double(components.seconds)
+        case .confirmationMiscounted(let actual, let expected):
+          confirmationMiscount = EncodedConfirmationMiscount(encoding: (actual: actual, expected: expected))
+        default:
+          break
         }
 
         if let knownIssueContext = issue.knownIssueContext {
           knownIssueComment = knownIssueContext.comment?.rawValue
-        }
-
-        if case .confirmationMiscounted(let actual, let expected) = issue.kind {
-          confirmationMiscount = EncodedConfirmationMiscount(encoding: (actual: actual, expected: expected))
         }
 
         error = if let error = issue.error {
