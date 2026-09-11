@@ -411,6 +411,10 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // Enabled to allow tests to be added to ~Escapable suites.
       .enableExperimentalFeature("Lifetimes"),
 
+      // Enabled to allow us to forward-declare functions in the Platform
+      // Abstraction Layer.
+      .enableExperimentalFeature("Extern"),
+
       .enableUpcomingFeature("InferIsolatedConformances"),
 
       // When building as a package, the macro plugin always builds as an
