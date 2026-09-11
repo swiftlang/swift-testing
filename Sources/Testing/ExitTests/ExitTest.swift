@@ -764,7 +764,7 @@ extension ExitTest {
     let eventHandler = ABI.BackChannelVersion.eventHandler(encodeAsJSONLines: true) { json in
       _ = try? backChannel.withLock {
         try backChannel.write(json)
-        try backChannel.write("\n")
+        try backChannel.write(.asciiNewlineCharacter)
       }
     }
     configuration.eventHandler = { event, eventContext in
@@ -961,7 +961,7 @@ extension ExitTest {
         try capturedValuesWriteEnd.withLock {
           try exitTest._withEncodedCapturedValuesForEntryPoint { capturedValuesJSON in
             try capturedValuesWriteEnd.write(capturedValuesJSON)
-            try capturedValuesWriteEnd.write("\n")
+            try capturedValuesWriteEnd.write(.asciiNewlineCharacter)
           }
         }
         capturedValuesReadEnd.close()
