@@ -15,7 +15,9 @@ private import _TestingInternals
 // Resolve ambiguity between C's exit() and our wrapper in the PAL annex. Code
 // in Swift Testing doesn't need to do this because it prefers symbols in the
 // same module, while code outside our package can't see our declaration.
-let exit = Testing.exit
+private func exit(_ exitCode: CInt) -> Never {
+  Testing.exit(exitCode)
+}
 
 @Suite("Exit test tests") struct ExitTestTests {
   @Test("Exit code names are reported (where supported)") func exitCodeName() {
