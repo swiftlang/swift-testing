@@ -65,7 +65,10 @@ internal import _TestingInternals
 /// The testing library uses this function to exit the test process and exit
 /// test child processes. This function is a convenience over C's `exit()` and
 /// the Platform Abstraction Layer's `_swift_exit()`.
-func exit(_ exitCode: CInt) -> Never {
+///
+/// - Bug: The extra `Void` argument works around a compiler crash on Android
+///   when verifying this function's SIL. ([swift-#92180](https://github.com/swiftlang/swift/issues/92180))
+@inline(always) func exit(_ exitCode: CInt, _: Void = ()) -> Never {
 #if !hasFeature(Embedded)
   _TestingInternals.exit(exitCode)
 #else
