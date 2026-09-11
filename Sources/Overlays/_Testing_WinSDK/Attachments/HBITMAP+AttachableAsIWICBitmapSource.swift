@@ -28,7 +28,7 @@ extension HBITMAP__: _AttachableByAddressAsIWICBitmapSource {
     // The only reasonable failure mode for `CopyImage()` is allocation failure,
     // and Swift treats allocation failures as fatal. Hence, we do not check for
     // `nil` on return.
-    CopyImage(imageAddress, UINT(IMAGE_BITMAP), 0, 0, 0).assumingMemoryBound(to: Self.self)
+    CopyImage(imageAddress, IMAGE_BITMAP, 0, 0, 0).assumingMemoryBound(to: Self.self)
   }
 
   public static func _deinitializeAttachableValue(at imageAddress: UnsafeMutablePointer<Self>) {
