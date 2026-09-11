@@ -43,6 +43,10 @@ extension ABI.EncodedInstant {
     since1970 = instant.wall.rawValue / .seconds(1)
 #endif
 #else
+    // The selection of the `absolute` field here is arbitrary, but based on the
+    // assumption that embedded targets are more likely to have monotonic clocks
+    // of some form (even just the CPU instruction counter times frequency) than
+    // they are to have accurate realtime wall clocks.
     absolute = instant.sinceSystemEpoch.rawValue / .seconds(1)
 #endif
   }
