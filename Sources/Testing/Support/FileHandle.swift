@@ -497,6 +497,13 @@ extension FileHandle {
 
     try withLock {
       try withUnsafeCFILEHandle { file in
+        // We're already holding the file's lock, so avoid locking for each
+        // byte we read if the platform supports it.
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+        let fgetc = getc_unlocked
+#elseif os(Windows)
+        let fgetc = _fgetc_nolock
+#endif
         while terminator == nil, let byteRead = UInt8(exactly: fgetc(file)) {
           if try isTerminator(byteRead) {
             terminator = byteRead
