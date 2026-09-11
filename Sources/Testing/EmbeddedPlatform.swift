@@ -50,6 +50,10 @@ internal import _TestingInternals
 }
 
 #if hasFeature(Embedded)
+/// Exits the current process as if the C `exit()` function were called.
+///
+/// This declaration is provided because the function is declared in the core
+/// Platform Abstraction Layer header and is used by the testing library below.
 @_extern(c) private func _swift_exit(_ exitCode: CInt)
 #endif
 
@@ -61,11 +65,15 @@ internal import _TestingInternals
 /// The testing library uses this function to exit the test process and exit
 /// test child processes. This function is a convenience over C's `exit()` and
 /// the Platform Abstraction Layer's `_swift_exit()`.
-@inline(always) func _swift_exit(_ exitCode: CInt) -> Never {
+///
+/// - Bug: This symbol is declared as a constant closure rather than a function
+///   to work around a compiler crash on Android when verifying this function's
+///   SIL. ([swift-#92180](https://github.com/swiftlang/swift/issues/92180))
+let exit: @Sendable (_ exitCode: CInt) -> Never = { exitCode in
 #if !hasFeature(Embedded)
   _TestingInternals.exit(exitCode)
 #else
-  _swift_exit(exitCode) as Void
+  _swift_exit(exitCode)
   swt_unreachable()
 #endif
 }

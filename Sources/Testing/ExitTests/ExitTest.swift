@@ -316,7 +316,7 @@ extension ExitTest {
 
     // If we get to this point without terminating, then we simulate main()'s
     // behavior which is to exit with EXIT_SUCCESS.
-    _swift_exit(EXIT_SUCCESS)
+    exit(EXIT_SUCCESS)
   }
 }
 
