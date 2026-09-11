@@ -9,13 +9,10 @@
 //
 
 #if hasFeature(Embedded)
-import _Concurrency
-
 /// The main entry point for tests running under Embedded Swift.
 @main struct EmbeddedSwiftEntryPoint {
   static func main() async {
-    let exitCode: CInt = await entryPoint(passing: nil, eventHandler: nil)
-    exit(exitCode)
+    await __swiftPMEntryPoint() as Never
   }
 }
 #endif
