@@ -9,24 +9,24 @@
 //
 
 #include "WillThrow.h"
-
-#include <atomic>
-
-/// The Swift runtime error-handling hook.
-SWT_IMPORT_FROM_STDLIB std::atomic<SWTWillThrowHandler> _swift_willThrow;
-
-SWTWillThrowHandler swt_setWillThrowHandler(SWTWillThrowHandler handler) {
-  return _swift_willThrow.exchange(handler, std::memory_order_acq_rel);
-}
-
-/// The Swift runtime typed-error-handling hook.
-SWT_IMPORT_FROM_STDLIB __attribute__((weak_import)) std::atomic<SWTWillThrowTypedHandler> _swift_willThrowTypedImpl;
-
-SWTWillThrowTypedHandler swt_setWillThrowTypedHandler(SWTWillThrowTypedHandler handler) {
-#if defined(__APPLE__)
-  if (&_swift_willThrowTypedImpl == nullptr) {
-    return nullptr;
-  }
-#endif
-  return _swift_willThrowTypedImpl.exchange(handler, std::memory_order_acq_rel);
-}
+//
+//#include <atomic>
+//
+///// The Swift runtime error-handling hook.
+//SWT_IMPORT_FROM_STDLIB std::atomic<SWTWillThrowHandler> _swift_willThrow;
+//
+//SWTWillThrowHandler swt_setWillThrowHandler(SWTWillThrowHandler handler) {
+//  return _swift_willThrow.exchange(handler, std::memory_order_acq_rel);
+//}
+//
+///// The Swift runtime typed-error-handling hook.
+//SWT_IMPORT_FROM_STDLIB __attribute__((weak_import)) std::atomic<SWTWillThrowTypedHandler> _swift_willThrowTypedImpl;
+//
+//SWTWillThrowTypedHandler swt_setWillThrowTypedHandler(SWTWillThrowTypedHandler handler) {
+//#if defined(__APPLE__)
+//  if (&_swift_willThrowTypedImpl == nullptr) {
+//    return nullptr;
+//  }
+//#endif
+//  return _swift_willThrowTypedImpl.exchange(handler, std::memory_order_acq_rel);
+//}

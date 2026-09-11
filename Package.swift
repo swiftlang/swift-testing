@@ -382,7 +382,11 @@ extension Array where Element == PackageDescription.SwiftSetting {
       result.append(.treatWarning("ExplicitSendable", as: .warning))
     }
 
-    if buildingForEmbedded {
+    // Macro plugins are host tools: they are always compiled for the build
+    // machine and link swift-syntax, which cannot be imported in Embedded Swift
+    // mode. Never apply the Embedded settings to them even when the rest of the
+    // package is being built for an Embedded Swift target.
+    if buildingForEmbedded && target.type != .macro {
       result.append(.enableExperimentalFeature("Embedded"))
 
       // Swift's concurrency module is not implicitly imported when building for

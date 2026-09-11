@@ -202,7 +202,7 @@ let swiftStandardLibraryVersion: VersionNumber? = {
 ///
 /// This value is not part of the public interface of the testing library.
 var swiftCompilerVersion: VersionNumber {
-  let packedValue = swt_getSwiftCompilerVersion()
+  let packedValue: UInt64 = 0 // swt_getSwiftCompilerVersion()
   if packedValue == 0, let swiftStandardLibraryVersion {
     // The compiler did not supply its version. This is currently expected on
     // non-Darwin targets in particular. Substitute the stdlib version (which

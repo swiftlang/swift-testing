@@ -10,7 +10,7 @@
 
 #include "ExecutablePath.h"
 
-#include <atomic>
+//#include <atomic>
 
 #if defined(__OpenBSD__)
 /// Storage for ``swt_getEarlyCWD()``.
