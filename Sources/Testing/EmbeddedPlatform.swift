@@ -65,7 +65,7 @@ internal import _TestingInternals
 /// The testing library uses this function to exit the test process and exit
 /// test child processes. This function is a convenience over C's `exit()` and
 /// the Platform Abstraction Layer's `_swift_exit()`.
-@inline(always) func exit(_ exitCode: CInt) -> Never {
+func exit(_ exitCode: CInt) -> Never {
 #if !hasFeature(Embedded)
   _TestingInternals.exit(exitCode)
 #else
