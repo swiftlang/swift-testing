@@ -11,6 +11,13 @@
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) private import _TestDiscovery
 private import _TestingInternals
 
+public func listAllTests() {
+  let records = Test.Generator.allTestContentRecords()
+  for record in records {
+    writeToConsole("Found a test in metadata \(record)!\n")
+  }
+}
+
 extension Test {
   /// A type that encapsulates test content records that produce instances of
   /// ``Test``.
