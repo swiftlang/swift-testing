@@ -196,9 +196,9 @@ extension TestContentRecord: Sendable where Context: Sendable {}
 
 extension TestContentRecord: CustomStringConvertible {
   public var description: String {
-    func desc(_ address: UnsafeRawPointer) -> String {
+    func desc(_ address: UnsafeRawPointer?) -> String {
 #if !hasFeature(Embedded)
-      String(describing: address)
+      address.map(String.init(describing:)) ?? "0x0"
 #else
       "0x\(String(UInt(bitPattern: address), radix: 16))"
 #endif
@@ -216,7 +216,7 @@ extension TestContentRecord: CustomStringConvertible {
 #if !hasFeature(Embedded)
     return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(context) }"
 #else
-    let context = unsafeBitCast(_recordAddress.pointee.context, to: UnsafeRawPointer.self)
+    let context = UnsafeRawPointer(bitPattern: _recordAddress.pointee.context)
     return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(desc(context)) }"
 #endif
   }
