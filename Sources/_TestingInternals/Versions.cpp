@@ -10,10 +10,10 @@
 
 #include "Versions.h"
 
-#include <array>
-#include <algorithm>
-#include <iterator>
-#include <mutex>
+template <size_t count>
+struct SWTCString {
+  char rawValue[count];
+};
 
 const char *swt_getTestingLibraryVersion(void) {
 #if defined(SWT_TESTING_LIBRARY_VERSION)
@@ -22,7 +22,7 @@ const char *swt_getTestingLibraryVersion(void) {
   return SWT_TESTING_LIBRARY_VERSION;
 #elif __clang_major__ >= 17 && defined(__has_embed)
 #if __has_embed("../../VERSION.txt")
-  static constexpr std::array result = [] () {
+  static constexpr SWTCString result = [] () {
     // Read the version from version.txt at the root of the package's repo.
     constexpr const char version[] = {
 #pragma clang diagnostic push
@@ -31,20 +31,21 @@ const char *swt_getTestingLibraryVersion(void) {
 #pragma clang diagnostic pop
     };
 
-    // Copy from the C string into a C++ array, stopping at the first newline if
-    // one is present.
-    std::array<char, std::size(version)> result {};
-    for (size_t i = 0; i < std::size(version); i++) {
+    // Copy from the C string into a wrapper structure, stopping at the first
+    // newline if one is present. We use a custom type instead of std::array
+    // because libc++ (or equivalent) may not be available in Embedded Swift.
+    SWTCString<sizeof(version)> result {};
+    for (size_t i = 0; i < sizeof(version); i++) {
       char c = version[i];
       if (c == '\r' || c == '\n') {
         break;
       }
-      result[i] = c;
+      result.rawValue[i] = c;
     }
     return result;
   }();
 
-  return result.data();
+  return result.rawValue;
 #else
 #warning SWT_TESTING_LIBRARY_VERSION not defined and VERSION.txt not found: testing library version is unavailable
   return nullptr;
