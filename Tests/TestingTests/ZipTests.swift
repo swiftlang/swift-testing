@@ -26,5 +26,3 @@ struct ZipTests {
     #expect(i == j)
   }
 }
-
-
