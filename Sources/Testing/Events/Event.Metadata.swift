@@ -8,8 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
-
 extension Event {
   /// A type describing metadata regarding a test run, the current environment,
   /// etc.
