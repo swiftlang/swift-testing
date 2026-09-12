@@ -18,19 +18,14 @@ extension ABI.Version {
       humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
     }
     return { [humanReadableOutputRecorder] event, context in
-      if case .testDiscovered = event.kind, let test = context.test {
-        let testRecord = ABI.Record<Self>(encoding: test)
-        recordHandler(testRecord)
-      } else {
-        var messages: [Event.HumanReadableOutputRecorder.Message] = []
-        if let humanReadableOutputRecorder {
-          var configuration = Configuration()
-          configuration.verbosity = 0
-          messages = humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
-        }
-        if let eventRecord = ABI.Record<Self>(encoding: event, in: context, messages: messages) {
-          recordHandler(eventRecord)
-        }
+      var messages: [Event.HumanReadableOutputRecorder.Message] = []
+      if let humanReadableOutputRecorder {
+        var configuration = Configuration()
+        configuration.verbosity = 0
+        messages = humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
+      }
+      if let record = ABI.Record<Self>(encoding: event, in: context, messages: messages) {
+        recordHandler(record)
       }
     }
   }
@@ -68,11 +63,14 @@ extension ABI.Xcode16 {
     forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
     return { event, context in
-      if case .testDiscovered = event.kind {
+      switch event.kind {
+      case .testDiscovered, .metadataRecorded:
         // Discard events of this kind rather than forwarding them to avoid a
         // crash in Xcode 16 (which does not expect any events to occur before
         // .runStarted.)
         return
+      default:
+        break
       }
 
       struct EventAndContextSnapshot: Codable {

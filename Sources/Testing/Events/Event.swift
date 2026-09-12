@@ -25,6 +25,13 @@ public struct Event: Sendable {
     /// regardless of whether or not they would run.
     case testDiscovered
 
+    /// Some metadata regarding the test run, the current environment, etc. was
+    /// recorded.
+    ///
+    /// - Parameters:
+    ///   - metadata: The recorded metadata.
+    indirect case metadataRecorded(_ metadata: Metadata)
+
     /// A test run started.
     ///
     /// This event is posted when ``Runner/run()`` is called after
@@ -416,6 +423,10 @@ extension Event.Kind {
     /// regardless of whether or not they would run.
     case testDiscovered
 
+    /// Some metadata regarding the test run, the current environment, etc. was
+    /// recorded.
+    case metadataRecorded
+
     /// A test run started.
     ///
     /// This event is posted when ``Runner/run()`` is called after
@@ -541,6 +552,8 @@ extension Event.Kind.Snapshot {
       self = .testDiscovered
     case .runStarted:
       self = .runStarted
+    case .metadataRecorded:
+      self = .metadataRecorded
     case .planStepStarted:
       self = .planStepStarted
     case .testStarted:

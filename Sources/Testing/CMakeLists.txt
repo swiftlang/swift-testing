@@ -24,6 +24,7 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedInstant.swift
   ABI/Encoded/ABI.EncodedIssue.swift
   ABI/Encoded/ABI.EncodedMessage.swift
+  ABI/Encoded/ABI.EncodedMetadata.swift
   ABI/Encoded/ABI.EncodedSourceLocation.swift
   ABI/Encoded/ABI.EncodedTest.swift
   Attachments/Images/AttachableAsImage.swift
@@ -32,10 +33,12 @@ add_library(Testing
   Attachments/Images/Attachment+AttachableAsImage.swift
   Attachments/Images/ImageAttachmentError.swift
   Attachments/Attachable.swift
+  Attachments/AttachableEncodingFormat.swift
   Attachments/AttachableWrapper.swift
   Attachments/Attachment.swift
   Events/Clock.swift
   Events/Event.swift
+  Events/Event.Metadata.swift
   Events/Event+FallbackEventHandler.swift
   Events/Recorder/Event.AdvancedConsoleOutputRecorder.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
@@ -90,8 +93,12 @@ add_library(Testing
   Support/Additions/MutexAdditions.swift
   Support/Additions/NumericAdditions.swift
   Support/Additions/ResultAdditions.swift
+  Support/Additions/SequenceAdditions.swift
   Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
+  Support/Color/Color.swift
+  Support/Color/Color+ANSIEscapeCodes.swift
+  Support/Color/Color+Loading.swift
   Support/Allocated.swift
   Support/BugReporting.swift
   Support/CartesianProduct.swift
@@ -107,6 +114,7 @@ add_library(Testing
   Support/VersionNumber.swift
   Support/Versions.swift
   Discovery+Macro.swift
+  EmbeddedPlatform.swift
   Test.ID.Selection.swift
   Test.ID.swift
   Test.swift
@@ -124,12 +132,12 @@ add_library(Testing
   Traits/ParallelizationTrait.swift
   Traits/ReducibleTrait.swift
   Traits/Tags/Tag.Color.swift
-  Traits/Tags/Tag.Color+Loading.swift
   Traits/Tags/Tag.List.swift
   Traits/Tags/Tag.swift
   Traits/Tags/Tag+Macro.swift
   Traits/Tags/Tag+Predefined.swift
   Traits/TimeLimitTrait.swift
+  Traits/TaskLocalTrait.swift
   Traits/Trait.swift)
 target_link_libraries(Testing PRIVATE
   _TestDiscovery

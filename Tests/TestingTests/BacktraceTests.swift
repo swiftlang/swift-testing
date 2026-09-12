@@ -9,7 +9,7 @@
 //
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
-#if SWT_TARGET_OS_APPLE && canImport(Foundation)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FOUNDATION
 private import class Foundation.NSError
 #endif
 
@@ -72,7 +72,7 @@ struct BacktraceTests {
     }
   }
 
-#if SWT_TARGET_OS_APPLE && canImport(Foundation)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FOUNDATION
   @available(_typedThrowsAPI, *)
   @Test("Thrown NSError captures backtrace")
   func thrownNSErrorCapturesBacktrace() async throws {
@@ -150,7 +150,7 @@ struct BacktraceTests {
   }
 #endif
 
-#if !SWT_NO_DYNAMIC_LINKING
+#if !SWT_NO_DYNAMIC_LINKING && !SWT_NO_BACKTRACE_SYMBOLICATION
   @Test("Symbolication", arguments: [Backtrace.SymbolicationMode.mangled, .demangled])
   func symbolication(mode: Backtrace.SymbolicationMode) {
     let backtrace = Backtrace.current()

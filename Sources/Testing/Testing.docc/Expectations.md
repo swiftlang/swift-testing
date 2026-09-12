@@ -95,6 +95,6 @@ the test when the code doesn't satisfy a requirement, use
 ### Representing source locations
 
 - ``SourceLocation``
-<!-- - ``sourceLocation()`` -->
+- ``sourceLocation()``
 <!-- - ``SourceContext`` -->
 <!-- - ``Backtrace`` -->

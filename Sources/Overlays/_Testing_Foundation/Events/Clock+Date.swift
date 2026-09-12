@@ -8,7 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && !SWT_NO_UTC_CLOCK
+#if !hasFeature(Embedded)
+#if !SWT_NO_FOUNDATION && !SWT_NO_UTC_CLOCK
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) public import Testing
 public import Foundation
 
@@ -45,4 +46,5 @@ extension Date {
   }
 #endif
 }
+#endif
 #endif

@@ -79,7 +79,7 @@ extension NSImage: AttachableAsImage, AttachableAsCGImage {
 
     // Check whether the image contains any representations that we don't think
     // are safe. If it does, then make a "safe" copy.
-    let allImageRepsAreSafe = representations.allSatisfy(\.isEffectivelySendable)
+    let allImageRepsAreSafe = representations.allSatisfy { $0.isEffectivelySendable }
     if !allImageRepsAreSafe, let safeCopy = tiffRepresentation.flatMap(Self.init(data:)) {
       // Create a "safe" copy of this image by flattening it to TIFF and then
       // creating a new NSImage instance from it.

@@ -46,7 +46,7 @@ extension Attachment {
     _ image: T,
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) where AttachableValue: _AttachableImageWrapper<T> & AttachableWrapper {
     let imageWrapper = AttachableValue(image: image, imageFormat: imageFormat)
     self.init(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
@@ -80,7 +80,7 @@ extension Attachment {
     _ image: T,
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) where AttachableValue: _AttachableImageWrapper<T> & AttachableWrapper {
 #if !SWT_NO_IMAGE_ATTACHMENTS
     let attachment = Self(image, named: preferredName, as: imageFormat, sourceLocation: sourceLocation)

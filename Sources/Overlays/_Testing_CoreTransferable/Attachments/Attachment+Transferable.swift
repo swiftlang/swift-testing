@@ -62,7 +62,7 @@ extension Attachment {
     exporting transferableValue: T,
     as contentType: UTType? = nil,
     named preferredName: String? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) async throws where T: Transferable & Sendable, AttachableValue == _AttachableTransferableWrapper<T> {
     let transferableWrapper = try await _AttachableTransferableWrapper(exporting: transferableValue, as: contentType)
     self.init(transferableWrapper, named: preferredName, sourceLocation: sourceLocation)

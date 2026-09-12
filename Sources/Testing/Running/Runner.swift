@@ -19,7 +19,7 @@ public struct Runner: Sendable {
   public var plan: Plan
 
   /// The set of tests this runner will run.
-  public var tests: [Test] { plan.steps.map(\.test) }
+  public var tests: [Test] { plan.steps.map { $0.test } }
 
   /// The runner's configuration.
   public var configuration: Configuration
@@ -155,7 +155,7 @@ extension Runner {
     // second-to-last invokes the last, etc. and ultimately the first trait is
     // the first one to be invoked.
     let executeAllTraits = test.traits.lazy
-      .compactMap { $0.__as(IssueHandlingTrait.self) }
+      .compactMap { $0 as? IssueHandlingTrait }
       .reversed()
       .map { $0.provideScope(performing:) }
       .reduce(body) { executeAllTraits, provideScope in
@@ -393,7 +393,7 @@ extension Runner {
     }
 
     // Run the child nodes.
-    try await _forEach(in: childGraphs.lazy.map(\.value), namingTasksWith: taskNamer) { childGraph in
+    try await _forEach(in: childGraphs.lazy.map { $0.value }, namingTasksWith: taskNamer) { childGraph in
       try await _runStep(atRootOf: childGraph, context: context)
     }
   }
@@ -543,6 +543,9 @@ extension Runner {
       }
       schedule(tests)
 
+      for metadata in Event.Metadata.all {
+        Event.post(.metadataRecorded(metadata), for: (nil, nil), configuration: runner.configuration)
+      }
       Event.post(.runStarted, for: (nil, nil), configuration: runner.configuration)
       defer {
         Event.post(.runEnded, for: (nil, nil), configuration: runner.configuration)

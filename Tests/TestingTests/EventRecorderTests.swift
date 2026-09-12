@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 import Foundation // for XML API
 #endif
 #if canImport(FoundationXML)
@@ -429,7 +429,7 @@ struct EventRecorderTests {
   }
 #endif
 
-#if canImport(Foundation) || canImport(FoundationXML)
+#if !SWT_NO_FOUNDATION || canImport(FoundationXML)
   @Test(
     "JUnitXMLRecorder outputs valid XML",
     .bug("https://github.com/swiftlang/swift-testing/issues/254")

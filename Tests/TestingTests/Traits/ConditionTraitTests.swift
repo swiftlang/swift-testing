@@ -40,7 +40,7 @@ struct ConditionTraitTests {
   
   @Test
   func evaluateCondition() async throws {
-    let trueUnconditional = ConditionTrait(kind: .unconditional(true), comments: [], sourceLocation: #_sourceLocation)
+    let trueUnconditional = ConditionTrait(kind: .unconditional(true), comments: [], sourceLocation: #Testing::sourceLocation)
     let falseUnconditional = ConditionTrait.disabled()
     let enabledTrue = ConditionTrait.enabled(if: true)
     let enabledFalse = ConditionTrait.enabled(if: false)
