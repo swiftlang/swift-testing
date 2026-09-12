@@ -1,20 +1,11 @@
 name: Manual FreeBSD build
 
-permissions:
-  contents: read
-
 on:
-  push:
-    branches:
-      - 'main'
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_dispatch:
 
 jobs:
   tests:
-    name: Test
+    name: Test on FreeBSD
     uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.15
     with:
       enable_freebsd_checks: true
