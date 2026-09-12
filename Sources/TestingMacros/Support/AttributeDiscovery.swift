@@ -174,11 +174,17 @@ struct AttributeInfo {
         "(\(traitExpr.trimmed)) as \(traitType)"
       }
     }
-    arguments.append(Argument(label: .identifier("traits"), expression: ArrayExprSyntax {
-      for traitExpr in traits {
-        ArrayElementSyntax(expression: makeTraitExpr(traitExpr))
+    var traitsArrayExpr: ExprSyntax = ExprSyntax(
+      ArrayExprSyntax {
+        for traitExpr in traits {
+          ArrayElementSyntax(expression: makeTraitExpr(traitExpr))
+        }
       }
-    }))
+    )
+    if isTargetEmbedded {
+      traitsArrayExpr = "\(traitsArrayExpr) as [\(traitType)]"
+    }
+    arguments.append(Argument(label: .identifier("traits"), expression: traitsArrayExpr))
 
     // If there are any parameterized test function arguments, wrap each in a
     // closure so they may be evaluated lazily at runtime.
