@@ -450,12 +450,12 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     // respected (it should be the least "surprising" outcome of passing both.)
   }
 #endif
+#endif
 
   // Event stream output
   if let path = args.argumentValue(forLabel: "--event-stream-output-path") ?? args.argumentValue(forLabel: "--experimental-event-stream-output") {
     result.eventStreamOutputPath = path
   }
-#endif
 
   // Event stream version
   do {
@@ -633,8 +633,8 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   do {
     var eventHandler: Event.Handler?
 #if !hasFeature(Embedded)
-#if !SWT_NO_FILE_IO
     if let eventStreamOutputPath = args.eventStreamOutputPath {
+#if !SWT_NO_FILE_IO
       let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
       eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
         _ = try? file.withLock {
@@ -642,8 +642,10 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
           try file.write(.asciiNewlineCharacter)
         }
       }
-    }
+#else
+      throw _EntryPointError.featureUnavailable("--event-stream-output-path requires support for file I/O, but Swift Testing has been built without it.")
 #endif
+    }
 #else
     eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
       var newline = UInt8.asciiNewlineCharacter
