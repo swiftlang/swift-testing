@@ -383,7 +383,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       result.append(.treatWarning("ExplicitSendable", as: .warning))
     }
 
-    if buildingForEmbedded {
+    if buildingForEmbedded && target.type != .macro {
       result.append(.enableExperimentalFeature("Embedded"))
 
       // Swift's concurrency module is not implicitly imported when building for
