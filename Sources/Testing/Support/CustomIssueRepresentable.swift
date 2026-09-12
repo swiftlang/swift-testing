@@ -32,6 +32,38 @@ protocol CustomIssueRepresentable: Error {
   func customize(_ issue: consuming Issue) -> Issue
 }
 
+/// Customize the given issue if its type conforms to ``CustomIssueRepresentable``.
+///
+/// - Parameters:
+///   - issue: The issue to customize. The function consumes this value.
+///
+/// - Returns: A customized copy of `issue`, or `nil` if its type does not
+///   conform to ``CustomIssueRepresentable``.
+func customizeIssueIfNeeded(_ issue: Issue) -> Issue? {
+  guard case let .errorCaught(error) = issue.kind else {
+    return nil
+  }
+
+  lazy var issue = issue
+#if !hasFeature(Embedded)
+  if let error = error as? any CustomIssueRepresentable {
+    return error.customize(issue)
+  }
+#else
+  // We can't dynamically cast to `any CustomIssueRepresentable`, so hard-code
+  // all conformances to `CustomIssueRepresentable` we know about.
+  if let error = error as? SystemError {
+    return error.customize(issue)
+  } else if let error = error as? APIMisuseError {
+    return error.customize(issue)
+  } else if let error = error as? ExpectationFailedError {
+    return error.customize(issue)
+  }
+#endif
+
+  return nil
+}
+
 // MARK: - Internal error types
 
 /// A type representing an error in the testing library or its underlying
@@ -100,7 +132,11 @@ extension ExpectationFailedError: CustomIssueRepresentable {
     // this error does not generate a new issue, but code that passes this error
     // to Issue.record() is misbehaving.
     issue.kind = .apiMisused
+#if !hasFeature(Embedded)
     issue.comments.append("Recorded an error of type \(Self.self) representing an expectation that failed and was already recorded: \(expectation)")
+#else
+    issue.comments.append("Recorded an error of type \(Self.self) representing an expectation that failed and was already recorded at \(expectation.sourceLocation)")
+#endif
     return issue
   }
 }

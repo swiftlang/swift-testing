@@ -21,11 +21,8 @@ extension Issue {
   func record(configuration: Configuration? = nil) -> Self {
     // If this issue is a caught error that has a custom issue representation,
     // perform that customization now.
-    if case let .errorCaught(error) = kind {
-      if let error = error as? any CustomIssueRepresentable {
-        let selfCopy = error.customize(self)
-        return selfCopy.record(configuration: configuration)
-      }
+    if let selfCopy = customizeIssueIfNeeded(self) {
+      return selfCopy.record(configuration: configuration)
     }
 
     // If this issue matches via the known issue matcher, set a copy of it to be
@@ -216,12 +213,14 @@ extension Issue {
     configuration: Configuration? = nil,
     _ body: () throws -> Void
   ) -> (any Error)? {
+#if !hasFeature(Embedded)
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
     Backtrace.startCachingForThrownErrors()
     defer {
       Backtrace.flushThrownErrorCache()
     }
+#endif
 
     do {
       try body()
@@ -261,12 +260,14 @@ extension Issue {
     isolation: isolated (any Actor)? = #isolation,
     _ body: () async throws -> Void
   ) async -> (any Error)? {
+#if !hasFeature(Embedded)
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
     Backtrace.startCachingForThrownErrors()
     defer {
       Backtrace.flushThrownErrorCache()
     }
+#endif
 
     do {
       try await body()
