@@ -46,6 +46,13 @@ public typealias __XCTestCompatibleSelector = Never
 /// itself, the symbols in this file should not be used directly and are subject
 /// to change as the testing library evolves.
 
+/// The type of an array of traits passed to one of the constructor functions
+/// in this file.
+#if !hasFeature(Embedded)
+public typealias __TraitArray<T> = [T]
+#else
+public typealias __TraitArray<T> = [any Trait]
+#endif
 #if !hasFeature(Embedded) // TODO: @Suite support in some form
 // MARK: - @Suite
 
@@ -107,7 +114,7 @@ extension Test {
   public static func __type<S>(
     _ containingType: S.Type,
     displayName: String? = nil,
-    traits: [any SuiteTrait],
+    traits: __TraitArray<any SuiteTrait>,
     sourceBounds: __SourceBounds
   ) -> Self where S: ~Copyable & ~Escapable {
     let containingTypeInfo = TypeInfo(describing: containingType)
@@ -167,7 +174,7 @@ extension Test {
     in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
-    traits: [any Trait],
+    traits: __TraitArray<any TestTrait>,
     sourceBounds: __SourceBounds,
     parameters: [__Parameter] = [],
     testFunction: @escaping @Sendable () async throws -> Void
@@ -254,7 +261,7 @@ extension Test {
     in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
-    traits: [any Trait],
+    traits: __TraitArray<any TestTrait>,
     arguments collection: @escaping @Sendable () async throws -> C,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
@@ -403,7 +410,7 @@ extension Test {
     in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
-    traits: [any Trait],
+    traits: __TraitArray<any TestTrait>,
     arguments collection1: @escaping @Sendable () async throws -> C1, _ collection2: @escaping @Sendable () async throws -> C2,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
@@ -433,7 +440,7 @@ extension Test {
     in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
-    traits: [any Trait],
+    traits: __TraitArray<any TestTrait>,
     arguments collection: @escaping @Sendable () async throws -> C,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
@@ -464,7 +471,7 @@ extension Test {
     in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
-    traits: [any Trait],
+    traits: __TraitArray<any TestTrait>,
     arguments dictionary: @escaping @Sendable () async throws -> C,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
@@ -489,7 +496,7 @@ extension Test {
     in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
-    traits: [any Trait],
+    traits: __TraitArray<any TestTrait>,
     arguments zippedCollections: @escaping @Sendable () async throws -> Zip2Sequence<C1, C2>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
