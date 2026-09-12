@@ -160,23 +160,9 @@ struct AttributeInfo {
     if let displayName {
       arguments.append(Argument(label: .identifier("displayName"), expression: displayName))
     }
-
-    let isTargetEmbedded = context.isTargetEmbedded
-    let traitType: TypeSyntax = if declaration.is(FunctionDeclSyntax.self) {
-      "any Testing.TestTrait"
-    } else {
-      "any Testing.SuiteTrait"
-    }
-    func makeTraitExpr(_ traitExpr: ExprSyntax) -> ExprSyntax {
-      if !isTargetEmbedded {
-        traitExpr.trimmed
-      } else {
-        "(\(traitExpr.trimmed)) as \(traitType)"
-      }
-    }
     arguments.append(Argument(label: .identifier("traits"), expression: ArrayExprSyntax {
       for traitExpr in traits {
-        ArrayElementSyntax(expression: makeTraitExpr(traitExpr))
+        ArrayElementSyntax(expression: traitExpr).trimmed
       }
     }))
 
