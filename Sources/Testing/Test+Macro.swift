@@ -177,7 +177,7 @@ extension Test {
     traits: __TraitArray<any TestTrait>,
     sourceBounds: __SourceBounds,
     parameters: [__Parameter] = [],
-    testFunction: @escaping @Sendable () async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable {
 #if !hasFeature(Embedded)
     let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
@@ -265,7 +265,7 @@ extension Test {
     arguments collection: @escaping @Sendable () async throws -> C,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: @escaping @Sendable (C.Element) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element: Sendable {
 #if !hasFeature(Embedded)
     // Don't use Optional.map here due to a miscompile/crash. Expand out to an
@@ -414,7 +414,7 @@ extension Test {
     arguments collection1: @escaping @Sendable () async throws -> C1, _ collection2: @escaping @Sendable () async throws -> C2,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
 #if !hasFeature(Embedded)
     // Don't use Optional.map here due to a miscompile/crash. Expand out to an
@@ -444,7 +444,7 @@ extension Test {
     arguments collection: @escaping @Sendable () async throws -> C,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
 #if !hasFeature(Embedded)
     let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
@@ -475,7 +475,7 @@ extension Test {
     arguments dictionary: @escaping @Sendable () async throws -> C,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: @escaping @Sendable (C.Element) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: ExpressibleByDictionaryLiteral & Collection & Sendable, C.Element == (key: C.Key, value: C.Value), C.Key: Sendable, C.Value: Sendable {
 #if !hasFeature(Embedded)
     let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
@@ -500,7 +500,7 @@ extension Test {
     arguments zippedCollections: @escaping @Sendable () async throws -> Zip2Sequence<C1, C2>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
 #if !hasFeature(Embedded)
     let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
@@ -568,7 +568,7 @@ extension Test {
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @_lifetime(copy value)
-@inlinable public func __requiringAwait<T>(_ value: consuming T, isolation: isolated (any Actor)? = #isolation) async -> T where T: ~Copyable & ~Escapable {
+@inlinable public nonisolated(nonsending) func __requiringAwait<T>(_ value: consuming T) async -> T where T: ~Copyable & ~Escapable {
   value
 }
 
