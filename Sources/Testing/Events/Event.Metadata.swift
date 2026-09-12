@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 extension Event {
   /// A type describing metadata regarding a test run, the current environment,
   /// etc.
@@ -64,6 +66,7 @@ extension Event.Metadata {
   private static var _simulatorOSVersionName: String { "OS Version (Simulator)" }
   private static var _hostOSVersionName: String { "OS Version (Host)" }
   private static var _osVersionName: String { "OS Version" }
+  private static var _embeddedTargetInfoName: String { "Embedded Target Info" }
   private static var _apiLevelName: String { "API Level" }
 
   /// All metadata that the testing library collects.
@@ -86,11 +89,17 @@ extension Event.Metadata {
     if let targetTriple {
       append(_targetPlatformName, targetTriple)
     }
+#if !hasFeature(Embedded)
 #if targetEnvironment(simulator)
     append(_simulatorOSVersionName, simulatorVersion)
     append(_hostOSVersionName, operatingSystemVersion)
 #else
     append(_osVersionName, operatingSystemVersion)
+#endif
+#else
+    if let embeddedTargetInfo {
+      append(_embeddedTargetInfoName, embeddedTargetInfo)
+    }
 #endif
 #if os(Android)
     append(_apiLevelName, apiLevel)
