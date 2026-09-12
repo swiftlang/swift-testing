@@ -122,6 +122,14 @@ let simulatorVersion: String = {
 }()
 #endif
 #else
+/// A human-readable C string describing the current Embedded Swift target.
+///
+/// We keep a reference directly to the C string in order to avoid an apparent
+/// memory leak if the implementation heap-allocates it.
+///
+/// For more information, see ``embeddedTargetInfo``.
+private let _embeddedTargetInfoCString = _swift_testing_getEmbeddedTargetInfo()
+
 /// A human-readable string describing the current Embedded Swift target.
 ///
 /// This value's format is platform-specific and is not meant to be
@@ -129,7 +137,7 @@ let simulatorVersion: String = {
 /// an event writer.
 ///
 /// This value is not part of the public interface of the testing library.
-let embeddedTargetInfo: String? = _swift_testing_getEmbeddedTargetInfo().flatMap(String.init(validatingCString:))
+let embeddedTargetInfo = _embeddedTargetInfoCString.flatMap(String.init(validatingCString:))
 #endif
 
 #if os(Android)

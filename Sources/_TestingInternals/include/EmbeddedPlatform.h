@@ -66,8 +66,7 @@ SWT_ASSUME_NONNULL_BEGIN
 /// ### Concurrency support
 ///
 /// The testing library calls this function at most once during the lifetime of
-/// a test process. The testing library does not free the function's result, so
-/// the implementation can return the same C string more than once.
+/// a test process.
 SWT_EXTERN const char *_Nullable _swift_testing_getEmbeddedTargetInfo(void);
 
 // MARK: - Console output
