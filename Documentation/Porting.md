@@ -17,8 +17,10 @@ deep wisdoms about porting Swift Testing.
 > [!NOTE]
 > This document uses Classic Mac OS ("Classic") as an example target platform.
 > In this hypothetical scenario, we assume that the Swift compiler identifies
-> Classic with `os(Classic)` and that the C++ compiler identifies it with
-> `defined(macintosh)`. Other platforms would be identified differently.
+> Classic with `os(Classic)`, that it identifies the Code Fragment Manager's
+> image format with `objectFormat(CFM)`, and that the C++ compiler identifies
+> Classic with `defined(macintosh)`. Other platforms would be identified
+> differently.
 
 ## Getting started
 
@@ -99,7 +101,7 @@ on Classic, so we would add that header to `Includes.h` in the internal target:
 We intentionally don't import platform-specific C standard library modules
 (`Darwin`, `Glibc`, `WinSDK`, etc.) in Swift because they often include overlay
 code written in Swift and adding those modules as dependencies would make it
-more difficult to test that Swift code using Swift Testing. 
+more difficult to test that Swift code using Swift Testing.
 
 ### Changes in Swift
 
@@ -127,8 +129,8 @@ Once the header is included, we can call `GetDateTime()` from `Clock.swift`:
 ## Runtime test discovery
 
 When porting to a new platform, you may need to provide a new implementation for
-`_sectionBounds(_:)` in `Discovery+Platform.swift`. Test discovery is dependent
-on Swift metadata discovery which is an inherently platform-specific operation.
+`_sectionBounds(_:)` in `SectionBounds.swift`. Test discovery is dependent on
+Swift metadata discovery which is an inherently platform-specific operation.
 
 _Most_ platforms in use today use the ELF image format and will be able to reuse
 the implementation used by Linux, FreeBSD, etc. On platforms that use the ELF
@@ -170,14 +172,14 @@ to load that information:
 +      continue
 +    }
 +    let sb = SectionBounds(
-+      imageAddress: UnsafeRawPointer(bitPattern: UInt(refNum)),
++      imageAddress: nil,
 +      buffer: UnsafeRawBufferPointer(
 +        start: handle.pointee,
 +        count: GetHandleSize(handle)
 +      )
 +    )
 +    result.append(sb)
-+  } while noErr == GetNextResourceFile(refNum, &refNum))
++  } while noErr == GetNextResourceFile(refNum, &refNum)
 +  return result
 +}
 +
@@ -190,6 +192,15 @@ to load that information:
  }
  #endif
 ```
+
+`imageAddress` is the base address where the image is loaded into memory. This
+value is only used for diagnostic purposes and can be `nil` if your platform
+does not provide it. Since Classic does not map images into memory contiguously,
+you would pass `nil`.
+
+`buffer` is the range of bytes in that section. If you pass an empty buffer
+pointer (with a base address of `nil` and a count of `0`), the testing library
+ignores it.
 
 You may also need to update the `makeTestContentRecordDecl()` function in the
 `TestingMacros` target to emit the correct `@section` attribute for your
@@ -210,17 +221,24 @@ platform if it does not use an image format already supported by Swift Testing:
 
 ## Runtime test discovery with static linkage
 
-If your platform does not support dynamic linking and loading, you will need to
-use static linkage instead. Define the `"SWT_NO_DYNAMIC_LINKING"` compiler
-conditional for your platform in both `Package.swift` and
-`CompilerSettings.cmake`, then define the symbols `_testContentSectionBegin` and
-`_testContentSectionEnd` in `SectionBounds.swift`:
+If your platform does not support dynamic linking and loading, or if you need
+to support Embedded Swift or `swiftc -static-stdlib`, you will need to use
+static linkage. When you use static linkage, the testing library only looks for
+a single test content section in the main executable image rather than looking
+for one in every loaded image.
+
+To use static linkage during test discovery, define the
+`"SWT_NO_DYNAMIC_LINKING"` compiler conditional for your platform in both
+`Package.swift` and `CompilerSettings.cmake`, then define the symbols
+`_imageAddress`, `_testContentSectionBegin` and `_testContentSectionEnd` in
+`SectionBounds.swift`:
 
 ```diff
 --- a/Sources/_TestDiscovery/SectionBounds.swift
 +++ b/Sources/_TestDiscovery/SectionBounds.swift
  // ...
 +#elseif os(Classic)
++private nonisolated(unsafe) let _imageAddress: UnsafeRawPointer? = nil
 +@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
 +@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
  #else
@@ -231,11 +249,16 @@ conditional for your platform in both `Package.swift` and
  // ...
 ```
 
-These symbols must have unique addresses corresponding to the first byte of the
-test content section and the first byte _after_ the test content section,
-respectively. Their linker-level names will be platform-dependent: refer to the
-linker documentation for your platform to determine what names to place in the
-`@_silgen_name` attribute applied to each.
+`_imageAddress`, as with the `imageAddress` argument in the dynamic-loading
+example above, is the base address where the image is loaded into memory.
+
+`_testContentSectionBegin` and `_testContentSectionEnd` represent the first byte
+of and the first byte _after_, respectively, the test content section that is
+statically linked into the program. The range of addresses between them is
+equivalent to the `buffer` argument in the dynamic-loading section above. Their
+linker-level names will be platform-dependent: refer to the linker documentation
+for your platform to determine what names to place in the `@_silgen_name`
+attribute applied to each.
 
 If your target platform statically links Swift Testing but the linker does not
 define section bounds symbols, please reach out to us in the Swift forums for
