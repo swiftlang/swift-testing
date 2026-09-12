@@ -45,6 +45,13 @@ public struct AttachableImageFormat: Sendable {
     /// The (widely-supported) JPEG image format.
     case jpeg
 
+    /// A platform-specific type describing a platform-specific image format.
+#if !hasFeature(Embedded)
+    package typealias SystemValue = any Sendable & Equatable & Hashable
+#else
+    package typealias SystemValue = Never
+#endif
+
     /// A platform-specific image format.
     ///
     /// - Parameters:
@@ -54,7 +61,11 @@ public struct AttachableImageFormat: Sendable {
     ///
     /// On Apple platforms, `value` should be an instance of `UTType`. On
     /// Windows, it should be an instance of `CLSID`.
-    case systemValue(_ value: any Sendable & Equatable & Hashable)
+    ///
+    /// Support for platform-specific attachable image formats is not available
+    /// in Embedded Swift.
+    @_unavailableInEmbedded
+    case systemValue(_ value: SystemValue)
   }
 
   /// The kind of image format represented by this instance.
@@ -101,11 +112,13 @@ extension AttachableImageFormat.Kind: Equatable, Hashable {
     switch (lhs, rhs) {
     case (.png, .png), (.jpeg, .jpeg):
       return true
+#if !hasFeature(Embedded)
     case let (.systemValue(lhs), .systemValue(rhs)):
       func open<T>(_ lhs: T) -> Bool where T: Equatable {
         lhs == (rhs as? T)
       }
       return open(lhs)
+#endif
     default:
       return false
     }
@@ -117,8 +130,10 @@ extension AttachableImageFormat.Kind: Equatable, Hashable {
       hasher.combine("png")
     case .jpeg:
       hasher.combine("jpeg")
+#if !hasFeature(Embedded)
     case let .systemValue(systemValue):
       hasher.combine(systemValue)
+#endif
     }
   }
 }
@@ -156,6 +171,21 @@ extension AttachableImageFormat: CustomStringConvertible, CustomDebugStringConve
     return "\(kindDescription) at quality \(encodingQuality)"
   }
 }
+
+#if hasFeature(Embedded) && !SWT_NO_IMAGE_ATTACHMENTS
+// NOTE: In non-Embedded Swift, conformance to CustomStringConvertible is
+// provided by platform-specific cross-import overlays.
+extension AttachableImageFormat.Kind: CustomStringConvertible {
+  package var description: String {
+    switch self {
+    case .png:
+      "PNG image"
+    case .jpeg:
+      "JPEG image"
+    }
+  }
+}
+#endif
 
 // MARK: -
 

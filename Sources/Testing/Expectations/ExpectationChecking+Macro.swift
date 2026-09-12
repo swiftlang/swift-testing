@@ -643,8 +643,8 @@ public func __checkPropertyAccess<T, U>(
       return nil
     }
     let difference = lhs.difference(from: rhs)
-    let insertions = difference.insertions.map(\.element)
-    let removals = difference.removals.map(\.element)
+    let insertions = difference.insertions.map { $0.element }
+    let removals = difference.removals.map { $0.element }
     switch (!insertions.isEmpty, !removals.isEmpty) {
     case (true, true):
       return "inserted \(insertions), removed \(removals)"

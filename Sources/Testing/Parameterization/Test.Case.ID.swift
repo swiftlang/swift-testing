@@ -50,7 +50,7 @@ extension Test.Case {
 
   @_spi(ForToolsIntegrationOnly)
   public var id: ID {
-    let argumentIDs = arguments.map { [Argument.ID(combining: $0.map(\.id))] }
+    let argumentIDs = arguments.map { [Argument.ID(combining: $0.map { $0.id })] }
     return ID(argumentIDs: argumentIDs, discriminator: discriminator, isStable: isStable)
   }
 }

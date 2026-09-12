@@ -210,14 +210,14 @@ extension ABI {
       if V.includesExperimentalFields {
         switch event.kind {
         case let .issueRecorded(recordedIssue):
-          _comments = recordedIssue.comments.map(\.rawValue)
+          _comments = recordedIssue.comments.map { $0.rawValue }
           _sourceLocation = recordedIssue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         case let .valueAttached(attachment):
           _sourceLocation = EncodedSourceLocation<V>(encoding: attachment.sourceLocation)
         case let .testCaseCancelled(skipInfo),
           let .testSkipped(skipInfo),
           let .testCancelled(skipInfo):
-          _comments = Array(skipInfo.comment).map(\.rawValue)
+          _comments = Array(skipInfo.comment).map { $0.rawValue }
           _sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         default:
           break

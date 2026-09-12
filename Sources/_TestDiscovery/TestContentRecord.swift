@@ -177,14 +177,9 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
       return nil
     }
 
-#if !hasFeature(Embedded)
     return withUnsafePointer(to: T.self) { typeAddress in
       Self._load(using: accessor, withTypeAt: typeAddress, withHint: hint)
     }
-#else
-    let typeAddress = UnsafeRawPointer(bitPattern: UInt(T.testContentKind.rawValue)).unsafelyUnwrapped
-    return Self._load(using: accessor, withTypeAt: typeAddress, withHint: hint)
-#endif
   }
 }
 
@@ -201,6 +196,14 @@ extension TestContentRecord: Sendable where Context: Sendable {}
 
 extension TestContentRecord: CustomStringConvertible {
   public var description: String {
+    func desc(_ address: UnsafeRawPointer) -> String {
+#if !hasFeature(Embedded)
+      String(describing: address)
+#else
+      "0x\(String(UInt(bitPattern: address), radix: 16))"
+#endif
+    }
+
 #if !hasFeature(Embedded)
     let typeName = String(describing: Self.self)
 #else
@@ -208,9 +211,14 @@ extension TestContentRecord: CustomStringConvertible {
 #endif
     let recordAddress = imageAddress.map { imageAddress in
       let recordAddressDelta = UnsafeRawPointer(_recordAddress) - imageAddress
-      return "\(imageAddress)+0x\(String(recordAddressDelta, radix: 16))"
-    } ?? "\(_recordAddress)"
+      return "\(desc(imageAddress))+0x\(String(recordAddressDelta, radix: 16))"
+    } ?? desc(_recordAddress)
+#if !hasFeature(Embedded)
     return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(context) }"
+#else
+    let context = unsafeBitCast(_recordAddress.pointee.context, to: UnsafeRawPointer.self)
+    return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(desc(context)) }"
+#endif
   }
 }
 

@@ -12,6 +12,11 @@
 private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
+// Resolve ambiguity between C's exit() and our wrapper in the PAL annex. Code
+// in Swift Testing doesn't need to do this because it prefers symbols in the
+// same module, while code outside our package can't see our declaration.
+private let exit = Testing.exit
+
 @Suite("Exit test tests") struct ExitTestTests {
   @Test("Exit code names are reported (where supported)") func exitCodeName() {
     #expect(String(describing: ExitStatus.exitCode(EXIT_SUCCESS)) == ".exitCode(EXIT_SUCCESS)")
