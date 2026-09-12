@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
 private import _TestingInternals
 
 /// A type representing a backtrace or stack trace.
@@ -164,4 +165,5 @@ private func _withDbgHelpLibrary(_ body: (HANDLE?) -> Void) {
     }
   }
 }
+#endif
 #endif

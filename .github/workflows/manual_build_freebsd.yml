@@ -1,0 +1,20 @@
+name: Manual FreeBSD build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: Test on FreeBSD
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.15
+    with:
+      enable_freebsd_checks: true
+      freebsd_swift_versions: '["nightly-main"]'
+      freebsd_os_versions: '["14.3"]'
+      enable_linux_checks: false
+      enable_windows_checks: false
+      enable_macos_checks: false
+      enable_ios_checks: false
+      enable_wasm_sdk_build: false
+      enable_android_sdk_build: false
+      enable_android_sdk_checks: false

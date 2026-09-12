@@ -176,10 +176,13 @@ extension Issue {
       // Prior to 6.3, all Issues are errors
         .error
     }
-    let sourceContext = SourceContext(
-      backtrace: issue._backtrace.map { Backtrace(addresses: $0.symbolicatedAddresses.map(\.address)) },
-      sourceLocation: issue.sourceLocation.flatMap(SourceLocation.init)
-    )
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
+    let backtrace = issue._backtrace.map { Backtrace(addresses: $0.symbolicatedAddresses.map { $0.address }) }
+#else
+    let backtrace = issue._backtrace.map { Backtrace(addresses: $0.addresses) }
+#endif
+    let sourceLocation = issue.sourceLocation.flatMap(SourceLocation.init)
+    let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
     self.init(
       kind: issueKind,
       severity: severity,

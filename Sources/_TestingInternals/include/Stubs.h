@@ -273,6 +273,7 @@ static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
 #endif
 #endif
 
+#if defined(EEXIST)
 /// Get the value of `EEXIST`.
 ///
 /// This function is provided because `EEXIST` is a complex macro in wasi-libc
@@ -280,6 +281,7 @@ static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
 static int swt_EEXIST(void) {
   return EEXIST;
 }
+#endif
 
 #if defined(F_GETFD)
 /// Call `fcntl(F_GETFD)`.

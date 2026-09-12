@@ -137,7 +137,7 @@ extension ABI {
       // TODO: define an encodable form of Test.Case.ID
       id = String(describing: testCase.id)
       displayName = arguments.lazy
-        .map(\.value)
+        .map { $0.value }
         .map(String.init(describingForTest:))
         .joined(separator: ", ")
     }

@@ -10,14 +10,6 @@
 
 private import _TestingInternals
 
-/// Context for the implementation of ``Array/binarySearch(_:)``.
-///
-/// This type is declared outside an extension to `Array` because it cannot be
-/// generic over `Array.Element`.
-private struct _BinarySearchContext {
-  var compare: (UnsafeRawPointer?) -> CInt
-}
-
 extension Array {
   /// Initialize an array from a single optional value.
   ///
@@ -35,36 +27,49 @@ extension Array {
   /// the given predicate function.
   ///
   /// - Parameters:
-  ///   - predicate: A predicate function to call. It should return a negative
-  ///     number if the instance of `Element` passed to it sorts _before_ the
-  ///     desired instance, a positive number if it sorts _after_, and `0` if it
-  ///     equals the desired instance.
+  ///   - predicate: A predicate function to call. Elements from this array are
+  ///     passed to it, and it returns the relative orderings of the desired
+  ///     element and those elements.
   ///
   /// - Returns: The first element found that matches `predicate`, or `nil` if
   ///   no matching element is found.
   ///
+  /// - Throws: Whatever error is thrown by `predicate`.
+  ///
   /// - Precondition: The array _must_ already be sorted according to
   ///   `predicate`. If it is not sorted, the result is undefined.
-  func binarySearch(_ predicate: (borrowing Element) -> Int) -> Element? {
-    withoutActuallyEscaping(predicate) { predicate in
-      let context = _BinarySearchContext { elementAddress in
-        let elementAddress = elementAddress!.assumingMemoryBound(to: Element.self)
-        return CInt(clamping: predicate(elementAddress.pointee))
-      }
-      return withUnsafePointer(to: context) { context in
-        self.withUnsafeBufferPointer { elements in
-          let result = bsearch(context, elements.baseAddress!, elements.count, MemoryLayout<Element>.stride) { contextAddress, elementAddress in
-            // Some platforms mark this argument `_Nonnull`, so unconditionally
-            // cast it to an optional before loading from it (the compiler will
-            // optimize this line away).
-            let contextAddress: UnsafeRawPointer? = contextAddress
-            let context = contextAddress!.load(as: _BinarySearchContext.self)
-            return context.compare(elementAddress)
-          }
-          return result?.load(as: Element.self)
-        }
+  ///
+  /// The result of `predicate` should reflect the relative ordering of the
+  /// desired element and the element passed to `predicate`:
+  ///
+  /// | Relative Ordering | Result |
+  /// |-|-:|
+  /// | `desired < $0` | `< 0` |
+  /// | `desired == $0` | `0` |
+  /// | `desired > $0` | `> 0` |
+  ///
+  /// The implementation of this function is borrowed (almost) verbatim from
+  /// [`partitioningIndex(where:)`](https://github.com/apple/swift-algorithms/blob/5b7143f8e291dee0e14c118fd0212487f0b37af5/Sources/Algorithms/Partition.swift#L229)
+  /// in the swift-collections package.
+  func binarySearch<E>(_ predicate: (borrowing Element) throws(E) -> Int) throws(E) -> Element? {
+    var n = count
+    var l = startIndex
+
+    while n > 0 {
+      let half = n / 2
+      let mid = index(l, offsetBy: half)
+      if try predicate(self[mid]) <= 0 {
+        n = half
+      } else {
+        l = index(after: mid)
+        n -= half + 1
       }
     }
+
+    if l < endIndex, case let element = self[l], try predicate(element) == 0 {
+      return element
+    }
+    return nil
   }
 }
 

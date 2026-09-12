@@ -19,15 +19,23 @@ extension ABI {
   ///
   /// - Warning: Backtraces are not yet part of the JSON schema.
   struct EncodedBacktrace<V>: Sendable where V: ABI.Version {
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
     /// The frames in the backtrace.
     var symbolicatedAddresses: [Backtrace.SymbolicatedAddress]
-
+#else
+    /// The frames in the backtrace.
+    var addresses: [Backtrace.Address]
+#endif
     init(encoding backtrace: borrowing Backtrace, in eventContext: borrowing Event.Context) {
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
       if let symbolicationMode = eventContext.configuration?.backtraceSymbolicationMode {
         symbolicatedAddresses = backtrace.symbolicate(symbolicationMode)
       } else {
         symbolicatedAddresses = backtrace.addresses.map { Backtrace.SymbolicatedAddress(address: $0) }
       }
+#else
+      addresses = backtrace.addresses
+#endif
     }
   }
 }
@@ -36,11 +44,21 @@ extension ABI {
 
 extension ABI.EncodedBacktrace: Codable {
   func encode(to encoder: any Encoder) throws {
-    try symbolicatedAddresses.encode(to: encoder)
+    var container = encoder.singleValueContainer()
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
+    try container.encode(symbolicatedAddresses)
+#else
+    try container.encode(addresses)
+#endif
   }
 
   init(from decoder: any Decoder) throws {
-    self.symbolicatedAddresses = try [Backtrace.SymbolicatedAddress](from: decoder)
+    let container = try decoder.singleValueContainer()
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
+    symbolicatedAddresses = try container.decode([Backtrace.SymbolicatedAddress].self)
+#else
+    addresses = try container.decode([Backtrace.Address].self)
+#endif
   }
 }
 #endif
