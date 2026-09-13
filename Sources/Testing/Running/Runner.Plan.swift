@@ -144,7 +144,7 @@ extension Runner.Plan {
     testGraph.children = testGraph.children.mapValues { child in
       var child = child
       _recursivelyApplyTraits(traits, to: &child)
-      child.value?.traits.insert(contentsOf: traits, at: 0)
+      child.value?.traits.insert(contentsOf: traits.map { $0 as any Trait }, at: 0)
       return child
     }
   }
@@ -351,12 +351,14 @@ extension Runner.Plan {
   ///
   /// - Returns: A graph of the steps corresponding to `tests`.
   private static func _constructStepGraph(from tests: some Sequence<Test>, configuration: Configuration) async -> Graph<String, Step?> {
+#if !hasFeature(Embedded)
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
     Backtrace.startCachingForThrownErrors()
     defer {
       Backtrace.flushThrownErrorCache()
     }
+#endif
 
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining

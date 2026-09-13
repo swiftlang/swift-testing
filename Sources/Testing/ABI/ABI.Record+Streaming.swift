@@ -30,6 +30,7 @@ extension ABI.Version {
     }
   }
 
+#if !SWT_NO_CODABLE
   public static func eventHandler(
     encodeAsJSONLines: Bool,
     forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
@@ -46,6 +47,7 @@ extension ABI.Version {
       }
     }
   }
+#endif
 }
 
 #if !SWT_NO_SNAPSHOT_TYPES

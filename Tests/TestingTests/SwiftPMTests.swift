@@ -19,14 +19,13 @@ private func configurationForEntryPoint(withArguments args: [String], emitWarnin
   return try configurationForEntryPoint(from: args, emitWarnings: emitWarnings)
 }
 
-#if !SWT_NO_ABI_JSON_SCHEMA
-
 private extension Tag {
   @Tag static var testTag: Self
   @Tag static var testTagOther: Self
   @Tag static var unrelatedTag: Self
 }
 
+#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
 /// Reads event stream output from the provided file matching event stream
 /// version `V`.
 private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String) throws -> [ABI.Record<V>] {
@@ -440,6 +439,7 @@ struct SwiftPMTests {
     )
   }
 
+#if !SWT_NO_CODABLE
   @Test("--configuration-path argument", arguments: [
     "--configuration-path", "--experimental-configuration-path",
   ])
@@ -469,6 +469,7 @@ struct SwiftPMTests {
     #expect(args.skip == nil)
     #expect(args.parallel == false)
   }
+#endif
 
   @available(*, deprecated)
   @Test("Deprecated eventStreamVersion property")
@@ -537,7 +538,7 @@ struct SwiftPMTests {
   }
 #endif
 
-#if !SWT_NO_ABI_JSON_SCHEMA
+#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
   @Test("Severity and isFailure fields included in version 6.3")
   func validateEventStreamContents() async throws {
     let tempDirPath = try temporaryDirectory()

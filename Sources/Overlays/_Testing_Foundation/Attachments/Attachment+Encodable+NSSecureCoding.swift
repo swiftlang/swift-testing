@@ -11,7 +11,7 @@
 #if !SWT_NO_FOUNDATION
 public import Testing
 public import Foundation
-#if canImport(Combine)
+#if canImport(Combine) && !SWT_NO_CODABLE
 public import Combine
 #endif
 
@@ -23,7 +23,6 @@ import UniformTypeIdentifiers
 ///   @Available(Swift, introduced: 6.5)
 /// }
 extension Attachment {
-#if !SWT_NO_CODABLE
   /// Derive an instance of `AttachableEncodingFormat` from the arguments to one
   /// of the initializers in this file.
   ///
@@ -87,6 +86,7 @@ extension Attachment {
     return `default`
   }
 
+#if !SWT_NO_CODABLE
   /// Initialize an instance of this type representing a value that conforms to
   /// the [`Encodable`](https://developer.apple.com/documentation/swift/encodable)
   /// protocol.
