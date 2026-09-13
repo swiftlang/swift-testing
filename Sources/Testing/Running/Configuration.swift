@@ -353,33 +353,3 @@ public struct Configuration: Sendable {
     public var maximumChildDepth: Int = 10
   }
 }
-
-// MARK: - Deprecated
-
-extension Configuration {
-#if !SWT_NO_GLOBAL_ACTORS
-  @available(*, deprecated, message: "Set defaultSynchronousIsolationContext instead.")
-  public var isMainActorIsolationEnforced: Bool {
-    get {
-      defaultSynchronousIsolationContext === MainActor.shared
-    }
-    set {
-      if newValue {
-        defaultSynchronousIsolationContext = MainActor.shared
-      } else {
-        defaultSynchronousIsolationContext = nil
-      }
-    }
-  }
-#endif
-
-  @available(*, deprecated, message: "Set eventHandlingOptions.isExpectationCheckedEventEnabled instead.")
-  public var deliverExpectationCheckedEvents: Bool {
-    get {
-      eventHandlingOptions.isExpectationCheckedEventEnabled
-    }
-    set {
-      eventHandlingOptions.isExpectationCheckedEventEnabled = newValue
-    }
-  }
-}

@@ -1035,6 +1035,7 @@ extension _EntryPointError: CustomStringConvertible {
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Deprecated
 
 extension __CommandLineArguments_v0 {
@@ -1048,3 +1049,4 @@ extension __CommandLineArguments_v0 {
     }
   }
 }
+#endif

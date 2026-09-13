@@ -163,6 +163,7 @@ struct SourceLocationTests {
     #expect(sourceLocation.filePath == "A")
   }
 
+#if !hasFeature(Embedded)
   @available(swift, deprecated: 6.3)
   @Test("SourceLocation._filePath property")
   func sourceLocation_filePath() {
@@ -172,6 +173,7 @@ struct SourceLocationTests {
     sourceLocation._filePath = "A"
     #expect(sourceLocation._filePath == "A")
   }
+#endif
 
   @Test("SourceLocation comparisons")
   func comparisons() {

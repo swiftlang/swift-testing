@@ -110,12 +110,3 @@ extension SkipInfo {
   }
 }
 #endif
-
-// MARK: - Deprecated
-
-extension SkipInfo {
-  @available(*, deprecated, message: "Use init(comment:sourceContext:) and pass an explicit SourceContext.")
-  public init(comment: Comment? = nil) {
-    self.init(comment: comment, sourceContext: .init(backtrace: .current(), sourceLocation: nil))
-  }
-}
