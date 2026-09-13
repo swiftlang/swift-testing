@@ -51,6 +51,7 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedAttachment: Codable {
@@ -159,6 +160,7 @@ extension ABI.EncodedAttachment: Codable {
     }
   }
 }
+#endif
 
 // MARK: - Attachable
 

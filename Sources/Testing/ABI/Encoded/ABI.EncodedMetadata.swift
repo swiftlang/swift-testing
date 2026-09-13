@@ -28,9 +28,11 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedMetadata: Codable {}
+#endif
 
 // MARK: - Conversion to/from library types
 
