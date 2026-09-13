@@ -111,6 +111,13 @@ public protocol Trait: Sendable {
   func scopeProvider(for test: Test, testCase: Test.Case?) -> TestScopeProvider?
 
 #if hasFeature(Embedded)
+  /// Get this trait's scope provider for the specified test and optional test
+  /// case.
+  ///
+  /// - Warning: This function is used to implement traits under Embedded Swift.
+  ///   Do not use it or provide an implementation for it.
+  func __scopeProvider(for test: Test, testCase: Test.Case?) -> (any TestScoping)?
+
   /// Get this value as an instance of ``TestTrait``.
   ///
   /// - Warning: This function is used to implement traits under Embedded Swift.
@@ -179,6 +186,14 @@ public protocol TestScoping: Sendable {
   /// }
   func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws
 }
+
+#if hasFeature(Embedded)
+extension Trait {
+  public func __scopeProvider(for test: Test, testCase: Test.Case?) -> (any TestScoping)? {
+    scopeProvider(for: test, testCase: testCase)
+  }
+}
+#endif
 
 extension Trait where Self: TestScoping {
   /// Get this trait's scope provider for the specified test or test case.

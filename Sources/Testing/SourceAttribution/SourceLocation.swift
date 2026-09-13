@@ -283,6 +283,7 @@ extension SourceLocation {
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Deprecated
 
 extension SourceLocation {
@@ -301,3 +302,4 @@ extension SourceLocation {
     }
   }
 }
+#endif

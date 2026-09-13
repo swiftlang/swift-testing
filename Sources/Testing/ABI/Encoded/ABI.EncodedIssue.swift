@@ -94,7 +94,11 @@ extension ABI {
           _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
         }
         _error = if let error = issue.error {
+#if !hasFeature(Embedded)
           EncodedError(encoding: error)
+#else
+          EncodedError(encoding: error as any Error)
+#endif
         } else {
           switch issue.kind {
           case .apiMisused:
@@ -113,10 +117,12 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedIssue: Codable {}
 extension ABI.EncodedIssue.Severity: Codable {}
+#endif
 
 // MARK: - Conversion to/from library types
 

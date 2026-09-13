@@ -90,7 +90,7 @@ extension Event {
           // predefined tag colors (red, orange, etc.) to be overridden.
           var tagColors = Color.predefinedTagColors
           tagColors.merge(
-            newValue.lazy.filter { !$0.key.isPredefinedColor },
+            newValue.lazy.filter { !$0.key.isPredefinedColor }.map { $0 },
             uniquingKeysWith: { _, rhs in rhs }
           )
           _tagColors = tagColors
@@ -322,15 +322,5 @@ extension Event.ConsoleOutputRecorder {
   static func warning(_ message: String, options: Event.ConsoleOutputRecorder.Options) -> String {
     let symbol = Event.Symbol.warning.stringValue(options: options)
     return "\(symbol) \(message)\n"
-  }
-}
-
-// MARK: - Deprecated
-
-extension Event.ConsoleOutputRecorder.Options {
-  @available(*, deprecated, message: "Set Configuration.verbosity instead.")
-  public var verbosity: Int {
-    get { 0 }
-    set {}
   }
 }

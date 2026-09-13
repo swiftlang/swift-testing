@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !hasFeature(Embedded)
 /// Get the current source location.
 ///
 /// - Returns: This expression's location in the current Swift source file.
@@ -35,6 +36,7 @@
 /// }
 @available(swift, deprecated: 100000.0, message: "Use '#Testing::sourceLocation' instead.")
 @freestanding(expression) public macro _sourceLocation() -> SourceLocation = #externalMacro(module: "TestingMacros", type: "SourceLocationMacro")
+#endif
 
 /// Get the current source location.
 ///

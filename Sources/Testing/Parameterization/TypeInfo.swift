@@ -18,11 +18,13 @@ private import Synchronization
 public struct TypeInfo: Sendable {
   /// An enumeration defining backing storage for an instance of ``TypeInfo``.
   private enum _Kind: Sendable {
+#if !hasFeature(Embedded)
     /// The type info represents a concrete metatype.
     ///
     /// - Parameters:
     ///   - type: The concrete metatype.
     case type(_ type: any (~Copyable & ~Escapable).Type)
+#endif
 
     /// The type info represents a metatype, but a reference to that metatype is
     /// not available at runtime.
@@ -38,6 +40,7 @@ public struct TypeInfo: Sendable {
   /// The kind of type info.
   private var _kind: _Kind
 
+#if !hasFeature(Embedded)
   /// The described type, if available.
   ///
   /// If this instance was created from a type name, or if it was previously
@@ -48,6 +51,7 @@ public struct TypeInfo: Sendable {
     }
     return nil
   }
+#endif
 
   /// Initialize an instance of this type with the specified names.
   ///
@@ -84,6 +88,7 @@ public struct TypeInfo: Sendable {
     )
   }
 
+#if !hasFeature(Embedded)
   /// Initialize an instance of this type describing the specified type.
   ///
   /// - Parameters:
@@ -98,10 +103,7 @@ public struct TypeInfo: Sendable {
   /// - Parameters:
   ///   - value: The value whose type this instance should describe.
   init(describingTypeOf value: some Any) {
-#if !hasFeature(Embedded)
-    let value = value as Any
-#endif
-    let type = Swift.type(of: value)
+    let type = Swift.type(of: value as Any)
     self.init(describing: type)
   }
 
@@ -113,6 +115,7 @@ public struct TypeInfo: Sendable {
   init<T>(describingTypeOf value: borrowing T) where T: ~Copyable & ~Escapable {
     self.init(describing: T.self)
   }
+#endif
 }
 
 // MARK: - Name
@@ -285,6 +288,7 @@ extension TypeInfo {
   /// `["Example", "A", "B"]`.
   public var fullyQualifiedNameComponents: [String] {
     switch _kind {
+#if !hasFeature(Embedded)
     case let .type(type):
       let cachedResult = Self._fullyQualifiedNameComponentsCache.withLock { cache in
         return cache[.type(ObjectIdentifier(type))]
@@ -300,6 +304,7 @@ extension TypeInfo {
       }
 
       return result
+#endif
     case let .nameOnly(fullyQualifiedNameComponents, _, _):
       return fullyQualifiedNameComponents
     }
@@ -338,6 +343,7 @@ extension TypeInfo {
   /// The value of this property for the type `A.B` would simply be `"B"`.
   public var unqualifiedName: String {
     switch _kind {
+#if !hasFeature(Embedded)
     case let .type(type):
       // Replace non-breaking spaces with spaces. See the helper function's
       // documentation for more information.
@@ -345,6 +351,7 @@ extension TypeInfo {
       result = Self._rewriteNonBreakingSpacesAsASCIISpaces(in: result) ?? result
 
       return result
+#endif
     case let .nameOnly(_, unqualifiedName, _):
       return unqualifiedName
     }
@@ -363,14 +370,17 @@ extension TypeInfo {
   /// this property is `nil`.
   var mangledName: String? {
     switch _kind {
+#if !hasFeature(Embedded)
     case let .type(type):
       return _mangledTypeName(type).map { "$s\($0)" }
+#endif
     case let .nameOnly(_, _, mangledName):
       return mangledName
     }
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Properties
 
 extension TypeInfo {
@@ -447,6 +457,7 @@ func isClass(_ subclass: AnyClass, subclassOf superclass: AnyClass) -> Bool {
   }
   return open(subclass, superclass)
 }
+#endif
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible, CustomTestStringConvertible
 
@@ -463,6 +474,7 @@ extension TypeInfo: CustomStringConvertible, CustomDebugStringConvertible {
 // MARK: - Equatable, Hashable
 
 extension TypeInfo: Hashable {
+#if !hasFeature(Embedded)
   /// Check if this instance describes a given type.
   ///
   /// - Parameters:
@@ -472,11 +484,14 @@ extension TypeInfo: Hashable {
   public func describes(_ type: Any.Type) -> Bool {
     self == TypeInfo(describing: type)
   }
+#endif
 
   public static func ==(lhs: Self, rhs: Self) -> Bool {
     switch (lhs._kind, rhs._kind) {
+#if !hasFeature(Embedded)
     case let (.type(lhs), .type(rhs)):
       return ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
+#endif
     default:
       return lhs.fullyQualifiedNameComponents == rhs.fullyQualifiedNameComponents
     }
@@ -535,7 +550,7 @@ extension TypeInfo.EncodedForm: Codable {}
 /// self-documenting. In debug builds, it checks that `type` is a C function
 /// type. In release builds, it behaves the same as `unsafeBitCast(_:to:)`.
 func castCFunction<T>(at address: UnsafeRawPointer, to type: T.Type) -> T {
-#if DEBUG
+#if DEBUG && !hasFeature(Embedded)
   if let mangledName = TypeInfo(describing: T.self).mangledName {
     precondition(mangledName.last == "C", "\(#function) should only be used to cast a pointer to a C function type.")
   }
@@ -554,7 +569,7 @@ func castCFunction<T>(at address: UnsafeRawPointer, to type: T.Type) -> T {
 /// self-documenting. In debug builds, it checks that `function` is a C function
 /// pointer. In release builds, it behaves the same as `unsafeBitCast(_:to:)`.
 func castCFunction<T>(_ function: T, to _: UnsafeRawPointer.Type) -> UnsafeRawPointer {
-#if DEBUG
+#if DEBUG && !hasFeature(Embedded)
   if let mangledName = TypeInfo(describing: T.self).mangledName {
     precondition(mangledName.last == "C", "\(#function) should only be used to cast a C function.")
   }

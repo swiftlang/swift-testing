@@ -80,6 +80,7 @@ public func __checkValue(
     condition = !condition
   }
 
+#if !hasFeature(Embedded)
   // Capture the correct expression in the expectation.
   if !condition, let expressionWithCapturedRuntimeValues = expressionWithCapturedRuntimeValues() {
     expression = expressionWithCapturedRuntimeValues
@@ -87,6 +88,7 @@ public func __checkValue(
       expression = expression.capturingRuntimeValues(condition)
     }
   }
+#endif
 
   // Post an event for the expectation regardless of whether or not it passed.
   // If the current event handler is not configured to handle events of this
@@ -120,6 +122,7 @@ public func __checkValue(
   return .failure(ExpectationFailedError(expectation: expectation))
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Binary operators
 
 /// Call a binary operator, passing the left-hand and right-hand arguments.
@@ -869,6 +872,7 @@ public func __checkCast<V, T>(
     optionalValue.unsafelyUnwrapped
   }
 }
+#endif
 
 // MARK: - Matching errors by type
 
@@ -1112,7 +1116,9 @@ public func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     caughtError = error
+#if !hasFeature(Embedded)
     expression = { [expression] in expression().capturingRuntimeValues(error) }
+#endif
     let secondError = Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try errorMatcher(error)
     }
@@ -1163,7 +1169,9 @@ public func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     caughtError = error
+#if !hasFeature(Embedded)
     expression = { [expression] in expression().capturingRuntimeValues(error) }
+#endif
     let secondError = await Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try await errorMatcher(error)
     }
@@ -1262,10 +1270,18 @@ public func __checkClosureCall<each T>(
 /// - Returns: A string equivalent to `String(describingForTest: error)` with
 ///   information about its type added if not already present.
 private func _description(of error: any Error) -> String {
+#if !hasFeature(Embedded)
   let errorDescription = "\"\(String(describingForTest: error))\""
   let errorType = type(of: error as Any)
   if errorDescription.contains(String(describingForTest: errorType)) {
     return errorDescription
   }
   return "\(errorDescription) of type \(errorType)"
+#else
+  let domain = error._domain
+  if domain == "(unknown domain in Embedded Swift)" {
+    return "unknown error \(error._code)"
+  }
+  return "error \(error._code) in domain '\(domain)'"
+#endif
 }

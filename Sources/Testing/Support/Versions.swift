@@ -11,6 +11,7 @@
 private import _TestingInternals
 private import SwiftShims
 
+#if !hasFeature(Embedded)
 /// A human-readable string describing the current operating system's version.
 ///
 /// This value's format is platform-specific and is not meant to be
@@ -119,6 +120,24 @@ let simulatorVersion: String = {
     return "\(productVersion) (\(buildNumber))"
   }
 }()
+#endif
+#else
+/// A human-readable C string describing the current Embedded Swift target.
+///
+/// We keep a reference directly to the C string in order to avoid an apparent
+/// memory leak if the implementation heap-allocates it.
+///
+/// For more information, see ``embeddedTargetInfo``.
+private let _embeddedTargetInfoCString = _swift_testing_getEmbeddedTargetInfo()
+
+/// A human-readable string describing the current Embedded Swift target.
+///
+/// This value's format is platform-specific and is not meant to be
+/// machine-readable. It is added to the output of a test run when using
+/// an event writer.
+///
+/// This value is not part of the public interface of the testing library.
+let embeddedTargetInfo = _embeddedTargetInfoCString.flatMap(String.init(validatingCString:))
 #endif
 
 #if os(Android)
@@ -233,7 +252,7 @@ let glibcVersion: VersionNumber = {
 
 // MARK: - sysctlbyname() Wrapper
 
-#if !SWT_NO_SYSCTL && SWT_TARGET_OS_APPLE
+#if !hasFeature(Embedded) && !SWT_NO_SYSCTL && SWT_TARGET_OS_APPLE
 /// Get a string value by calling `sysctlbyname()`.
 ///
 /// - Parameters:

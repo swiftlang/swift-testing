@@ -22,6 +22,53 @@ SWT_ASSUME_NONNULL_BEGIN
 /// This header augments the set of declarations in the Swift runtime's Platform
 /// Abstraction Layer, which can be found [here](https://github.com/swiftlang/swift/blob/main/stdlib/public/EmbeddedPlatform/swift/EmbeddedPlatform.h).
 
+// MARK: - System metadata
+
+/// Get information about the embedded system on which (or for which) Swift
+/// Testing has been built and is running.
+///
+/// - Returns: A UTF-8-encoded C string representing some human-readable
+///   information identifying the current system. Whether this string represents
+///   the system's hardware, software, or other defining characteristics is
+///   implementation-defined. If no meaningful information is available, returns
+///   `NULL`. The string must remain valid for the lifetime of the process, and
+///   the caller is not responsible for deallocating it.
+///
+/// The testing library uses this function to describe the embedded system it
+/// is running on. This information is used for diagnostic purposes only.
+///
+/// An implementation may choose to return a constant string, a string stored in
+/// statically-allocated memory, or a string allocated at runtime. The return
+/// value is implementation-defined, but where possible should include useful
+/// information about the system. For example, an implementation on a
+/// 68040-based Macintosh might return something like `"Quadra 950 (System 7.5.5)"`.
+///
+/// ### Reference implementations
+///
+/// On POSIX-compliant targets, this function can be implemented as a call to
+/// `uname()`:
+///
+/// ```c
+/// const char *_swift_testing_getEmbeddedTargetInfo(void) {
+///   static const char *result = NULL;
+///
+///   if (!result) {
+///     struct utsname name {};
+///     if (0 == uname(&name)) {
+///       (void)asprintf(&result, "%s (%s)", name.release, name.version);
+///     }
+///   }
+///
+///   return result;
+/// }
+/// ```
+///
+/// ### Concurrency support
+///
+/// The testing library calls this function at most once during the lifetime of
+/// a test process.
+SWT_EXTERN const char *_Nullable _swift_testing_getEmbeddedTargetInfo(void);
+
 // MARK: - Console output
 
 /// A type describing the capabilities of the current system's console output.
@@ -157,6 +204,49 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getConsoleCapabilities(swift_testin
 /// platform-specific equivalents for `flockfile()` and `funlockfile()` if
 /// needed, or omit them entirely in single-threaded environments.
 SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count);
+
+// MARK: - JSON output
+
+/// Writes a JSON object.
+///
+/// - Parameters:
+///   - json: The JSON bytes to write. It is not `NULL`-terminated.
+///   - count: The number of bytes at `json`.
+///   - terminator: If not `NULL`, a pointer to a single byte to write
+///     immediately after writing `json`. This byte is not included in `json` to
+///     avoid creating unnecessary copies of `json` in memory.
+///
+/// The testing library uses this function to write the JSON event stream on
+/// targets that do not support file I/O. The destination is
+/// implementation-defined. When built for non-Embedded Swift, or when built
+/// with support for file I/O, the testing library writes JSON to files and
+/// pipes specified by its caller in e.g. the command line arguments to
+/// `swift test`.
+///
+/// ### Reference implementations
+///
+/// This function can be implemented with the following algorithm:
+///
+/// ```c
+/// FILE *f = ...;
+/// flockfile(f); {
+///   fwrite(json, 1, count, f);
+///   if (terminator) {
+///     fputc(*terminator, f);
+///   }
+/// } funlockfile(f);
+/// ```
+///
+/// If your platform does not support writing JSON or consuming it later, you
+/// can implement this function as a no-op.
+///
+/// ### Concurrency support
+///
+/// This function's implementation must be concurrency-safe unless the system is
+/// single-threaded. In the reference example above, you can substitute
+/// platform-specific equivalents for `flockfile()` and `funlockfile()` if
+/// needed, or omit them entirely in single-threaded environments.
+SWT_EXTERN void _swift_testing_writeJSON(const uint8_t *json, size_t count, const uint8_t terminator[_Nullable 1]);
 
 // MARK: - Test timing
 
