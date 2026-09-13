@@ -12,6 +12,7 @@
 @_spi(ForToolsIntegrationOnly) public import Testing
 private import Foundation
 
+#if !hasFeature(Embedded)
 // Implement the protocol requirements generically for any encodable value by
 // encoding to JSON. This lets developers provide trivial conformance to the
 // protocol for types that already support Codable.
@@ -63,4 +64,5 @@ extension Attachable where Self: Encodable {
     return try attachment.withUnsafeBytes(body)
   }
 }
+#endif
 #endif

@@ -12,6 +12,7 @@
 @_spi(ForToolsIntegrationOnly) public import Testing
 public import Foundation
 
+#if !hasFeature(Embedded)
 // This implementation is necessary to let the compiler disambiguate when a type
 // conforms to both Encodable and NSSecureCoding. It is hidden from the DocC
 // compiler because it appears redundant next to the other two implementations
@@ -30,4 +31,5 @@ extension Attachable where Self: Encodable & NSSecureCoding {
     return try attachment.withUnsafeBytes(body)
   }
 }
+#endif
 #endif
