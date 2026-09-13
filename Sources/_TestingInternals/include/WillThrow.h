@@ -15,6 +15,7 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
+#if !SWT_EMBEDDED
 /// The type of handler that is called by `swift_willThrow()`.
 ///
 /// - Parameters:
@@ -87,6 +88,7 @@ typedef struct SWTErrorValueResult {
 /// This function is provided by the Swift runtime. For more information, see
 /// this function's declaration [in the Swift repository](https://github.com/swiftlang/swift/blob/main/include/swift/Runtime/Error.h).
 SWT_IMPORT_FROM_STDLIB void swift_getErrorValue(void *error, void *_Nullable *_Nonnull scratch, SWTErrorValueResult *out);
+#endif
 #endif
 
 SWT_ASSUME_NONNULL_END
