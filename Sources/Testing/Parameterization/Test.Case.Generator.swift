@@ -104,7 +104,6 @@ extension Test.Case {
         return
       }
 #endif
-
       self.init(sequence: collection) { element in
         Test.Case(values: [element], parameters: parameters) {
           try await testFunction(element)
@@ -260,16 +259,21 @@ extension Test.Case {
 
 extension Test.Case.Generator: Sequence {
   func makeIterator() -> some IteratorProtocol<Test.Case> {
+#if !hasFeature(Embedded)
     let state = (
       iterator: _sequence.makeIterator(),
       testCaseIDs: [Test.Case.ID: Int](minimumCapacity: underestimatedCount)
     )
+#else
+    let state = (iterator: _sequence.makeIterator(), ())
+#endif
 
     return sequence(state: state) { state in
       guard let element = state.iterator.next() else {
         return nil
       }
 
+#if !hasFeature(Embedded)
       var testCase = _mapElement(element)
 
       if testCase.isParameterized {
@@ -285,6 +289,9 @@ extension Test.Case.Generator: Sequence {
       }
 
       return testCase
+#else
+      return _mapElement(element)
+#endif
     }
   }
 
