@@ -573,7 +573,6 @@ public macro require<E, R>(
   performing expression: () async throws -> R
 ) -> E = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro") where E: Error & Equatable
 
-#if !hasFeature(Embedded)
 // MARK: - Arbitrary error matching
 
 /// Check that an expression always throws an error matching some condition.
@@ -629,6 +628,7 @@ public macro require<E, R>(
 ///   #expect(error?.napkinCount == 0)
 ///   ```
 /// }
+@_unavailableInEmbedded
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#expect(throws:)' instead.")
 @discardableResult
 @freestanding(expression)
@@ -693,6 +693,7 @@ public macro expect<R>(
 ///   #expect(error?.napkinCount == 0)
 ///   ```
 /// }
+@_unavailableInEmbedded
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#expect(throws:)' instead.")
 @discardableResult
 @freestanding(expression) public macro expect<R>(
@@ -762,6 +763,7 @@ public macro expect<R>(
 ///   #expect(error.napkinCount == 0)
 ///   ```
 /// }
+@_unavailableInEmbedded
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#require(throws:)' instead.")
 @discardableResult
 @freestanding(expression)
@@ -833,6 +835,7 @@ public macro require<R>(
 ///   #expect(error.napkinCount == 0)
 ///   ```
 /// }
+@_unavailableInEmbedded
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#require(throws:)' instead.")
 @discardableResult
 @freestanding(expression) public macro require<R>(
@@ -841,7 +844,6 @@ public macro require<R>(
   performing expression: () async throws -> R,
   throws errorMatcher: (any Error) async throws -> Bool
 ) -> any Error = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro")
-#endif
 
 // MARK: - Exit tests
 
