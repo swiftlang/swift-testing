@@ -32,7 +32,8 @@ protocol CustomIssueRepresentable: Error {
   func customize(_ issue: consuming Issue) -> Issue
 }
 
-/// Customize the given issue if its type conforms to ``CustomIssueRepresentable``.
+/// Customize the given issue if it has an underlying error and that error's
+/// type conforms to ``CustomIssueRepresentable``.
 ///
 /// - Parameters:
 ///   - issue: The issue to customize. The function consumes this value.
