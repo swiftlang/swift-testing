@@ -12,7 +12,7 @@
 
 import PackageDescription
 import CompilerPluginSupport
-#if !SWT_NO_FOUNDATION
+#if !canImport(Foundation)
 import Foundation
 #endif
 
@@ -572,7 +572,7 @@ extension Array where Element: _LanguageBuildSetting {
     let environmentVariables = Context.environment
       .filter { $0.key.starts(with: "SWT_NO_") }
       .compactMapValues { value in
-#if !SWT_NO_FOUNDATION
+#if !canImport(Foundation)
         (value as NSString).boolValue
 #else
         Bool(value) ?? UInt64(value).map { $0 != 0 }
