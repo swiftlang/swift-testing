@@ -30,6 +30,7 @@ extension ABI.Version {
     }
   }
 
+#if !SWT_NO_CODABLE
   public static func eventHandler(
     encodeAsJSONLines: Bool,
     forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
@@ -46,6 +47,7 @@ extension ABI.Version {
       }
     }
   }
+#endif
 }
 
 #if !SWT_NO_SNAPSHOT_TYPES
@@ -58,6 +60,7 @@ extension ABI.Xcode16 {
     preconditionFailure("Attempted to create an ABI.Record-generating event handler for the Xcode 16 compatibility path.")
   }
 
+#if !SWT_NO_CODABLE
   static func eventHandler(
     encodeAsJSONLines: Bool,
     forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
@@ -86,6 +89,7 @@ extension ABI.Xcode16 {
       }
     }
   }
+#endif
 }
 #endif
 #endif

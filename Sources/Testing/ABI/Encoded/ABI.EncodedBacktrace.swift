@@ -40,6 +40,7 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedBacktrace: Codable {
@@ -61,4 +62,5 @@ extension ABI.EncodedBacktrace: Codable {
 #endif
   }
 }
+#endif
 #endif

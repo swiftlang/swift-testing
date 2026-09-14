@@ -628,7 +628,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   }
 #endif
 
-#if !SWT_NO_ABI_JSON_SCHEMA
+#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
   // Event stream output
   do {
     var eventHandler: Event.Handler?
@@ -803,7 +803,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   return configuration
 }
 
-#if !SWT_NO_ABI_JSON_SCHEMA
+#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
 /// Create an event handler that streams events to the given file using the
 /// specified ABI version.
 ///

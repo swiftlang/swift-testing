@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if !SWT_NO_FOUNDATION && !SWT_NO_CODABLE
+#if !SWT_NO_FOUNDATION
 public import Testing
 public import Foundation
 
