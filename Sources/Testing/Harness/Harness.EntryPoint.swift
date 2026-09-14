@@ -252,10 +252,16 @@ extension Harness {
     }
 
     let terminalWidth: Int = {
-#if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
       var windowSize = winsize()
       if 0 == swt_ioctl_TIOCGWINSZ(STDERR_FILENO, &windowSize) {
         return Int(clamping: windowSize.ws_col)
+      }
+#elseif os(Windows)
+      let handle = GetStdHandle(STD_ERROR_HANDLE)
+      var consoleInfo = CONSOLE_SCREEN_BUFFER_INFO()
+      if GetConsoleScreenBufferInfo(handle, &consoleInfo) {
+        return Int(clamping: consoleInfo.dwSize.X)
       }
 #endif
       return 40
