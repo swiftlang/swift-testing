@@ -12,7 +12,7 @@
 
 import PackageDescription
 import CompilerPluginSupport
-#if !SWT_NO_FOUNDATION
+#if !canImport(Foundation)
 import Foundation
 #endif
 
@@ -572,21 +572,27 @@ extension Array where Element: _LanguageBuildSetting {
     let environmentVariables = Context.environment
       .filter { $0.key.starts(with: "SWT_NO_") }
       .compactMapValues { value in
-#if !SWT_NO_FOUNDATION
+#if !canImport(Foundation)
         (value as NSString).boolValue
 #else
         Bool(value) ?? UInt64(value).map { $0 != 0 }
 #endif
       }
 
+    for (name, environmentVariable) in environmentVariables {
+      // The environment variable is set. If the value is `true`, that means
+      // the "NO" flag should be set unconditionally. If the value is `false`,
+      // that means the flag should _not_ be set.
+      if environmentVariable {
+        append(.define(name, nil))
+      }
+    }
+
     for (name, details) in defines {
-      if let environmentVariable = environmentVariables[name] {
-        // The environment variable is set. If the value is `true`, that means
-        // the "NO" flag should be set unconditionally. If the value is `false`,
-        // that means the flag should _not_ be set.
-        if environmentVariable {
-          append(.define(name, nil))
-        }
+      if environmentVariables[name] != nil {
+        // Handled in the loop above. We don't handle it here because it would
+        // limit us to only the environment variables that we've explicitly
+        // configured in the table above, but that table is not comprehensive.
       } else if !buildingForEmbedded {
         if let platforms = details.platforms {
           append(.define(name, .when(platforms: platforms)))
