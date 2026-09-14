@@ -14,7 +14,7 @@ private import _TestingInternals
 import AppKit
 import _Testing_AppKit
 #endif
-#if canImport(Foundation) && canImport(_Testing_Foundation)
+#if !SWT_NO_FOUNDATION && canImport(_Testing_Foundation)
 import Foundation
 @_spi(Experimental) import _Testing_Foundation
 #endif
@@ -299,7 +299,7 @@ struct AttachmentTests {
     }
   }
 
-#if canImport(Foundation) && canImport(_Testing_Foundation)
+#if !SWT_NO_FOUNDATION && canImport(_Testing_Foundation)
 #if !SWT_NO_FILE_IO
   @Test func attachContentsOfFileURL() async throws {
     let data = try #require("<!doctype html>".data(using: .utf8))
@@ -642,7 +642,7 @@ extension AttachmentTests {
       try test(value)
     }
 
-#if canImport(Foundation) && canImport(_Testing_Foundation)
+#if !SWT_NO_FOUNDATION && canImport(_Testing_Foundation)
     @Test func data() throws {
       let value = try #require("abc123".data(using: .utf8))
       try test(value)
@@ -1219,7 +1219,7 @@ struct MyBadTransferable: Transferable, Equatable {
 }
 #endif
 
-#if canImport(Foundation) && canImport(_Testing_Foundation)
+#if !SWT_NO_FOUNDATION && canImport(_Testing_Foundation)
 #if !SWT_NO_CODABLE
 struct MyCodableAttachable: Codable, Attachable, Sendable {
   var string: String

@@ -216,9 +216,6 @@ extension Event.Symbol {
 // MARK: - Color
 
 extension Event.Symbol {
-  /// A color to use when rendering a symbol.
-  public typealias Color = Testing.Color
-
   /// The color to use when rendering this instance, if any.
   public var color: Color? {
     switch self {

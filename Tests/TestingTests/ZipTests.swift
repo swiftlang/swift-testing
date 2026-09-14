@@ -26,7 +26,3 @@ struct ZipTests {
     #expect(i == j)
   }
 }
-
-@Test func `Check that arithmetic still works`() {
-  #expect(2 + 2 == 5)
-}

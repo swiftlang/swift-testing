@@ -125,7 +125,7 @@ import Foundation
     }
 
     if !_args.hasFlag(withLabel: "--disable-swift-testing") {
-      eventGenerators += try testProductPaths.map { testProductPath in
+      eventGenerators += try testProductPaths.map { testProductPath throws in
 #if SWT_TARGET_OS_APPLE
         let testProductBundle = Bundle(path: testProductPath)
         guard let testProductBinaryPath = testProductBundle?.executablePath else {

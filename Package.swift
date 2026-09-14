@@ -12,7 +12,7 @@
 
 import PackageDescription
 import CompilerPluginSupport
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 import Foundation
 #endif
 
@@ -375,7 +375,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       result.append(.treatWarning("ExplicitSendable", as: .warning))
     }
 
-    if buildingForEmbedded {
+    if buildingForEmbedded && target.type != .macro {
       result.append(.enableExperimentalFeature("Embedded"))
 
       // Swift's concurrency module is not implicitly imported when building for
@@ -402,6 +402,10 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       // Enabled to allow tests to be added to ~Escapable suites.
       .enableExperimentalFeature("Lifetimes"),
+
+      // Enabled to allow us to forward-declare functions in the Platform
+      // Abstraction Layer.
+      .enableExperimentalFeature("Extern"),
 
       .enableUpcomingFeature("InferIsolatedConformances"),
 
@@ -551,15 +555,17 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_GLOBAL_ACTORS": (platforms: .none, embedded: true),
       "SWT_NO_SUSPENDING_CLOCK": (platforms: .none, embedded: true),
       "SWT_NO_SIGINFO": (platforms: [.wasi], embedded: true),
+      "SWT_NO_BACKTRACE_SYMBOLICATION": (platforms: .none, embedded: true),
 
       "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),
+      "SWT_NO_FOUNDATION": (platforms: .none, embedded: true),
     ]
 
     // Let the environment block override our settings above.
     let environmentVariables = Context.environment
       .filter { $0.key.starts(with: "SWT_NO_") }
       .compactMapValues { value in
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
         (value as NSString).boolValue
 #else
         Bool(value) ?? UInt64(value).map { $0 != 0 }

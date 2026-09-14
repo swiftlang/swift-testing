@@ -36,4 +36,7 @@
 /// An attribute that renames a C symbol in Swift.
 #define SWT_SWIFT_NAME(name) __attribute__((swift_name(#name)))
 
+/// An attribute that marks a function's result as non-discardable.
+#define SWT_NODISCARD __attribute__((warn_unused_result))
+
 #endif // SWT_DEFINES_H

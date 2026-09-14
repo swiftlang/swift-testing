@@ -60,7 +60,7 @@ extension Harness {
 
     // Enable console output (if appropriate).
     let consoleOutputEnabled = Allocated(Atomic(true))
-    configuration.enableConsoleOutput(to: .stderr, togglingWith: consoleOutputEnabled)
+    configuration.enableConsoleOutput(togglingWith: consoleOutputEnabled)
 
     // Track the overall exit code for the run.
     let exitCode = Atomic(EXIT_SUCCESS)

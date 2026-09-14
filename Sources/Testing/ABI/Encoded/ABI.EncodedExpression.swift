@@ -52,7 +52,7 @@ extension ABI.EncodedExpression {
   public init(encoding expression: borrowing Expression) {
     sourceCode = expression.sourceCode
     runtimeValue = expression.runtimeValue.map(String.init(describingForTest:))
-    runtimeTypeName = expression.runtimeValue.map(\.typeInfo.fullyQualifiedName)
+    runtimeTypeName = expression.runtimeValue.map { $0.typeInfo.fullyQualifiedName }
     let subexpressions = expression.subexpressions
     if !subexpressions.isEmpty {
       children = subexpressions.map(Self.init(encoding:))

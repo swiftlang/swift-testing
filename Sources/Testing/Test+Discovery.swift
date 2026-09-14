@@ -44,11 +44,9 @@ extension Test {
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer
   ) -> CBool {
-#if !hasFeature(Embedded)
     guard typeAddress.load(as: Any.Type.self) == Generator.self else {
       return false
     }
-#endif
     outValue.initializeMemory(as: Generator.self, to: .init(rawValue: generator))
     return true
   }

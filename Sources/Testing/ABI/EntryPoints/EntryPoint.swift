@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 private import Foundation
 #endif
 internal import _TestingInternals
@@ -57,21 +57,23 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       oldEventHandler(event, context)
     }
 
-#if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
     let consoleOutputEnabled = Allocated(Atomic(true))
     if configuration.verbosity > .min {
-      configuration.enableConsoleOutput(to: .stderr, togglingWith: consoleOutputEnabled)
+      configuration.enableConsoleOutput(togglingWith: consoleOutputEnabled)
     }
 
+#if !SWT_NO_FILE_IO
     // The presence of a harness event stream implies suppression of the normal
     // stderr output.
 #if os(Windows)
-    let hasHarnessEventStream = args.harnessEventStreamHANDLE
+    let hasHarnessEventStream = args.harnessEventStreamHANDLE != nil
 #else
-    let hasHarnessEventStream = args.harnessEventStreamFileDescriptor
+    let hasHarnessEventStream = args.harnessEventStreamFileDescriptor != nil
 #endif
-    consoleOutputEnabled.value.store(false, ordering: .sequentiallyConsistent)
+    if hasHarnessEventStream {
+      consoleOutputEnabled.value.store(false, ordering: .sequentiallyConsistent)
+    }
 #endif
 
     // If the caller specified an alternate event handler, hook it up too.
@@ -94,7 +96,6 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       // Run the tests.
       let runner = await Runner(configuration: configuration)
       tests = runner.tests
-#if !SWT_NO_FILE_IO
       if forSwiftPackageManager && tests.isEmpty, args.filter != nil || args.skip != nil {
         // Swift Package Manager handles "no tests found/run" console output
         // when the user applies any filtering. Don't bother logging to the
@@ -103,7 +104,6 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
         // runner.run() for that purpose.
         consoleOutputEnabled.value.store(false, ordering: .sequentiallyConsistent)
       }
-#endif
       await runner.run()
     }
 
@@ -118,10 +118,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       )
     }
   } catch {
-#if !SWT_NO_FILE_IO
-    try? FileHandle.stderr.write("\(String(describingForTest: error))\n")
-#endif
-
+    writeToConsole("\(String(describingForTest: error))\n")
     exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
   }
 
@@ -135,25 +132,20 @@ extension Configuration {
   /// process' output console.
   ///
   /// - Parameters:
-  ///   - fileHandle: The file handle to which console output should be written.
   ///   - consoleOutputEnabled: An atomic boolean value that the caller can set
   ///     to `true` or `false` to asynchronously enable or disable further
   ///     console output.
-  mutating func enableConsoleOutput(to fileHandle: consuming FileHandle, togglingWith consoleOutputEnabled: Allocated<Atomic<Bool>>) {
-    // We need to consume the file handle, but we also need to reference it from
-    // multiple closures, so move it to the heap.
-    let fileHandle = Allocated(fileHandle)
-
+  mutating func enableConsoleOutput(togglingWith consoleOutputEnabled: Allocated<Atomic<Bool>>) {
     // Check for experimental console output flag
     let useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
 #if !SWT_NO_ABI_JSON_SCHEMA
     if useExperimentalConsoleOutput {
       // Use experimental AdvancedConsoleOutputRecorder
       var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>.Options()
-      advancedOptions.base = .for(fileHandle.value)
+      advancedOptions.base = .forCurrentSystemConsole
 
       let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>(options: advancedOptions) { string in
-        try? fileHandle.value.write(string)
+        writeToConsole(string)
       }
 
       eventHandler = { [oldEventHandler = eventHandler] event, context in
@@ -167,24 +159,14 @@ extension Configuration {
 
     if !useExperimentalConsoleOutput {
       // Use the standard console output recorder (default behavior)
-      let eventRecorder = Event.ConsoleOutputRecorder(options: .for(fileHandle.value)) { string in
-        try? fileHandle.value.write(string)
+      let eventRecorder = Event.ConsoleOutputRecorder(options: .forCurrentSystemConsole) { string in
+        writeToConsole(string)
       }
       eventHandler = { [oldEventHandler = eventHandler] event, context in
         if consoleOutputEnabled.value.load(ordering: .sequentiallyConsistent) {
           eventRecorder.record(event, in: context)
         }
         oldEventHandler(event, context)
-      }
-      informationRequestHandler = {
-        if consoleOutputEnabled.value.load(ordering: .sequentiallyConsistent) {
-          let lines = eventRecorder.summarize()
-          _ = try? fileHandle.value.withLock {
-            for line in lines {
-              try fileHandle.value.write(line)
-            }
-          }
-        }
       }
     }
   }
@@ -212,7 +194,7 @@ func testIDsToListForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) ->
   // Early exit for verbose output (no need to check for ambiguity.)
   if verbosity > 0 {
     return tests.lazy
-      .map(\.id)
+      .map { $0.id }
       .map(String.init(describing:))
       .sorted(by: <)
   }
@@ -221,7 +203,7 @@ func testIDsToListForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) ->
   // components of two tests' IDs are ambiguous, present their source locations
   // to disambiguate.
   let initialGroups = Dictionary(
-    grouping: tests.lazy.map(\.id),
+    grouping: tests.lazy.map { $0.id },
     by: \.nameComponents
   ).values.lazy
     .map { ($0, isAmbiguous: $0.count > 1) }
@@ -249,11 +231,7 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>, configuration: Configu
   if configuration.verbosity > .min {
     for testID in testIDsToListForEntryPoint(tests, verbosity: configuration.verbosity) {
       // Print the test ID to stdout (classical CLI behavior.)
-#if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
-      try? FileHandle.stdout.write("\(testID)\n")
-#else
-      print(testID)
-#endif
+      writeToConsole("\(testID)\n", useStandardOutputIfAvailable: true)
     }
   }
 
@@ -504,6 +482,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     // respected (it should be the least "surprising" outcome of passing both.)
   }
 #endif
+#endif
 
   // Event stream output
   if let path = args.option(withLabel: "--event-stream-output-path") ?? args.option(withLabel: "--experimental-event-stream-output") {
@@ -541,6 +520,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   }
 
   // Harness event stream file descriptor (file handle on Windows)
+#if !SWT_NO_FILE_IO
 #if os(Windows)
   if let handleString = args.option(withLabel: "--__harness-event-stream-handle") {
     guard let handle = UInt(handleString).flatMap(HANDLE.init(bitPattern:)),
@@ -657,6 +637,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
     configuration.maximumParallelizationWidth = maximumParallelizationWidth
   }
 
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
   // Whether or not to symbolicate backtraces in the event stream.
   if let symbolicateBacktraces = args.symbolicateBacktraces {
     switch symbolicateBacktraces.lowercased() {
@@ -669,6 +650,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
 
     }
   }
+#endif
 
 #if !SWT_NO_FILE_IO
   // XML output
@@ -689,30 +671,46 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
 
   // Attachment output.
   if let attachmentsPath = args.attachmentsPath {
-
-    #if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
       try FileManager().createDirectory(atPath: attachmentsPath, withIntermediateDirectories: true)
-    #else
+#else
       guard fileExists(atPath: attachmentsPath) else {
         throw _EntryPointError.invalidArgument("---attachments-path", value: attachmentsPath)
       }
-    #endif
+#endif
     configuration.attachmentsPath = attachmentsPath
   }
+#endif
 
 #if !SWT_NO_ABI_JSON_SCHEMA
   // Event stream output
-  if let eventStreamOutputPath = args.eventStreamOutputPath {
-    let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
-    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
-      _ = try? file.withLock {
-        try file.write(json)
-        try file.write("\n")
+  do {
+    var eventHandler: Event.Handler?
+#if !hasFeature(Embedded)
+    if let eventStreamOutputPath = args.eventStreamOutputPath {
+#if !SWT_NO_FILE_IO
+      let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
+      eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
+        _ = try? file.withLock {
+          try file.write(json)
+          try file.write(.asciiNewlineCharacter)
+        }
       }
+#else
+      throw _EntryPointError.featureUnavailable("--event-stream-output-path requires support for file I/O, but Swift Testing has been built without it.")
+#endif
     }
-    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-      eventHandler(event, context)
-      oldEventHandler(event, context)
+#else
+    eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
+      var newline = UInt8.asciiNewlineCharacter
+      _swift_testing_writeJSON(json.baseAddress!, json.count, &newline)
+    }
+#endif
+    if let eventHandler {
+      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+        eventHandler(event, context)
+        oldEventHandler(event, context)
+      }
     }
   }
 
@@ -734,7 +732,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
       oldEventHandler(event, context)
     }
   }
-#endif
 #endif
 
 #if canImport(_StringProcessing)
@@ -761,15 +758,13 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
       if string.contains(backtickRegex) {
         let originalString = string
         string = String(string.dropFirst().dropLast())
-#if !SWT_NO_FILE_IO
         if emitWarnings {
           let warning = Event.ConsoleOutputRecorder.warning(
             "Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.",
-            options: .for(.stderr)
+            options: .forCurrentSystemConsole
           )
-          try? FileHandle.stderr.write("\(warning)\n")
+          writeToConsole("\(warning)\n")
         }
-#endif
       }
     }
 
@@ -912,8 +907,40 @@ func eventHandlerForStreamingEvents(
 // MARK: - Command-line interface options
 
 extension Event.ConsoleOutputRecorder.Options {
+  /// The set of options to use when writing to the current system's console.
+  ///
+  /// On non-Embedded Swift targets that support file I/O, the testing library
+  /// uses the standard error stream as the console, and this property's value
+  /// is equivalent to the result of calling `.for(.stderr)`.
+  static var forCurrentSystemConsole: Self {
+#if !hasFeature(Embedded)
 #if !SWT_NO_FILE_IO
-  /// The set of options to use when writing to the standard error stream.
+    .for(.stderr)
+#else
+    Self()
+#endif
+#else
+    var result = Self()
+
+    var consoleCapabilities = swift_testing_console_capabilities_t()
+    if _swift_testing_getConsoleCapabilities(&consoleCapabilities) {
+      result.useANSIEscapeCodes = consoleCapabilities.useANSIEscapeCodes != 0
+      result.ansiColorBitDepth = Int8(clamping: consoleCapabilities.ansiColorBitDepth)
+    }
+
+    return result
+#endif
+  }
+
+#if !SWT_NO_FILE_IO
+  /// The set of options to use when writing to the given file handle.
+  ///
+  /// - Parameters:
+  ///   - fileHandle: The file handle for which options are needed.
+  ///     Platform-specific API is used to derive options from this file handle.
+  ///
+  /// - Returns: An instance of this type representing the appropriate options
+  ///   to use when writing to `fileHandle`.
   static func `for`(_ fileHandle: borrowing FileHandle) -> Self {
     var result = Self()
 
@@ -1095,7 +1122,7 @@ extension __CommandLineArguments_v0 {
   @available(*, deprecated, message: "Use eventStreamSchemaVersion instead.")
   public var eventStreamVersion: Int? {
     get {
-      eventStreamVersionNumber.map(\.majorComponent).map(Int.init)
+      eventStreamVersionNumber.map { $0.majorComponent }.map(Int.init)
     }
     set {
       eventStreamVersionNumber = newValue.map { VersionNumber(majorComponent: .init(clamping: $0), minorComponent: 0) }

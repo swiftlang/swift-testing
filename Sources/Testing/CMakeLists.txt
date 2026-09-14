@@ -94,6 +94,7 @@ add_library(Testing
   Support/Additions/MutexAdditions.swift
   Support/Additions/NumericAdditions.swift
   Support/Additions/ResultAdditions.swift
+  Support/Additions/SequenceAdditions.swift
   Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
   Support/Color/Color.swift
@@ -114,6 +115,7 @@ add_library(Testing
   Support/VersionNumber.swift
   Support/Versions.swift
   Discovery+Macro.swift
+  EmbeddedPlatform.swift
   Test.ID.Selection.swift
   Test.ID.swift
   Test.swift

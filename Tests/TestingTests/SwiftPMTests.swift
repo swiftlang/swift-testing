@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 private import Foundation
 #endif
 
@@ -91,6 +91,7 @@ struct SwiftPMTests {
     }
   }
 
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
   @Test("--symbolicate-backtraces argument",
     arguments: [
       (String?.none, Backtrace.SymbolicationMode?.none),
@@ -106,6 +107,7 @@ struct SwiftPMTests {
     }
     #expect(configuration.backtraceSymbolicationMode == expectedMode)
   }
+#endif
 
   @Test("No --filter or --skip argument")
   func defaultFiltering() async throws {
@@ -398,7 +400,7 @@ struct SwiftPMTests {
     #expect(fileContents.contains(UInt8(ascii: ">")))
   }
 
-  #if canImport(Foundation)
+  #if !SWT_NO_FOUNDATION
   @Test(
     "--attachments-path argument (creates missing directory)",
     arguments: ["--attachments-path", "--experimental-attachments-path"]
@@ -417,7 +419,7 @@ struct SwiftPMTests {
   }
   #endif
 
-  #if canImport(Foundation)
+  #if !SWT_NO_FOUNDATION
   @Test("--attachments-path argument (bad path)")
   func attachmentsPathWithBadPath() throws {
       let tempDirPath = try temporaryDirectory()

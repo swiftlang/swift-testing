@@ -122,24 +122,6 @@ public protocol Trait: Sendable {
   /// - Warning: This function is used to implement traits under Embedded Swift.
   ///   Do not use it or provide an implementation for it.
   func __as(_: (any SuiteTrait).Type) -> (any SuiteTrait)?
-
-  /// Get this value as an instance of ``Tag/List``.
-  ///
-  /// - Warning: This function is used to implement traits under Embedded Swift.
-  ///   Do not use it or provide an implementation for it.
-  func __as(_: Comment.Type) -> Comment?
-
-  /// Get this value as an instance of ``IssueHandlingTrait``.
-  ///
-  /// - Warning: This function is used to implement traits under Embedded Swift.
-  ///   Do not use it or provide an implementation for it.
-  func __as(_: IssueHandlingTrait.Type) -> IssueHandlingTrait?
-
-  /// Get this value as an instance of ``Tag/List``.
-  ///
-  /// - Warning: This function is used to implement traits under Embedded Swift.
-  ///   Do not use it or provide an implementation for it.
-  func __as(_: Tag.List.Type) -> Tag.List?
 #endif
 }
 
@@ -331,18 +313,6 @@ extension Trait {
   }
 
   public func __as(_: (any SuiteTrait).Type) -> (any SuiteTrait)? {
-    nil
-  }
-
-  public func __as(_: Comment.Type) -> Comment? {
-    nil
-  }
-
-  public func __as(_: IssueHandlingTrait.Type) -> IssueHandlingTrait? {
-    nil
-  }
-
-  public func __as(_: Tag.List.Type) -> Tag.List? {
     nil
   }
 }

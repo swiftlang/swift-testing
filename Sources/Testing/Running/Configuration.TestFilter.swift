@@ -355,9 +355,9 @@ extension Configuration.TestFilter.Operation {
       // containing matching tests, then translate it into a new instance of
       // TestFilter, then finally run that test filter to modify the graph.
       let testIDs = testGraph
-        .compactMap(\.value).lazy
+        .compactMap { $0.value }.lazy
         .filter(function)
-        .map(\.test.id)
+        .map { $0.test.id }
       let selection = Test.ID.Selection(testIDs: testIDs)
       return Self.precomputed(selection, membership: membership).apply(to: testGraph)
     case let .combination(lhs, rhs, op):

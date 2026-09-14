@@ -213,10 +213,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 ///
 /// - Returns: A structure describing the given section, or `nil` if the section
 ///   could not be found.
-private func _findSection(named sectionName: String, in hModule: HMODULE) -> SectionBounds? {
+private func _findSection(named sectionName: String, in hModule: HMODULE) -> [SectionBounds] {
   hModule.withNTHeader { ntHeader in
     guard let ntHeader else {
-      return nil
+      return []
     }
 
     let sectionHeaders = UnsafeBufferPointer(
@@ -255,7 +255,7 @@ private func _findSection(named sectionName: String, in hModule: HMODULE) -> Sec
         }
 
         return SectionBounds(imageAddress: hModule, buffer: buffer)
-      }.first
+      }
   }
 }
 
@@ -274,7 +274,9 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<Section
   case .testContent:
     ".sw5test"
   }
-  return HMODULE.all.lazy.compactMap { _findSection(named: sectionName, in: $0) }
+  return HMODULE.all.lazy
+    .compactMap { _findSection(named: sectionName, in: $0) }
+    .joined()
 }
 
 #elseif !SWT_NO_DYNAMIC_LINKING
