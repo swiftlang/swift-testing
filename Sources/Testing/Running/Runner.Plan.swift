@@ -351,12 +351,14 @@ extension Runner.Plan {
   ///
   /// - Returns: A graph of the steps corresponding to `tests`.
   private static func _constructStepGraph(from tests: some Sequence<Test>, configuration: Configuration) async -> Graph<String, Step?> {
+#if !hasFeature(Embedded)
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
     Backtrace.startCachingForThrownErrors()
     defer {
       Backtrace.flushThrownErrorCache()
     }
+#endif
 
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining
