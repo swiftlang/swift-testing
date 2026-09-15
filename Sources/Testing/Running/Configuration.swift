@@ -150,6 +150,7 @@ public struct Configuration: Sendable {
   ///
   /// If the value of this property is `nil`, synchronous test functions run in
   /// an unspecified isolation context.
+  @_unavailableInEmbedded
   public var defaultSynchronousIsolationContext: (any Actor)? = nil
 
   // MARK: - Time limits
