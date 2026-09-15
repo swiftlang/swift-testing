@@ -67,7 +67,26 @@ The parent process doesn't call the body of the exit test. Instead, the child
 process treats the body of the exit test as its `main()` function and calls it
 directly.
 
-<!-- TODO: discuss @MainActor isolation or lack thereof -->
+Exit test bodies can be isolated to a global actor. Annotate the enclosing test
+with `@MainActor`, or annotate the exit test body itself:
+
+```swift
+@Test @MainActor func `Customer won't eat food unless it's delicious`() async {
+  await #expect(processExitsWith: .failure) {
+    var food = ...
+    food.isDelicious = false
+    Customer.current.eat(food)
+  }
+}
+
+@Test func `Customer won't eat food unless it's nutritious`() async {
+  await #expect(processExitsWith: .failure) { @MainActor in
+    var food = ...
+    food.isNutritious = false
+    Customer.current.eat(food)
+  }
+}
+```
 
 If the body returns before the child process exits, the process exits as if
 `main()` returned normally. If the body throws an error, Swift handles it as if
