@@ -146,11 +146,22 @@ public struct Configuration: Sendable {
 
   // MARK: - Isolation context for synchronous tests
 
+  /// Storage for ``defaultSynchronousIsolationContext``.
+  private var _defaultSynchronousIsolationContext: (any Actor)? = nil
+
   /// The isolation context to use for synchronous test functions.
   ///
   /// If the value of this property is `nil`, synchronous test functions run in
   /// an unspecified isolation context.
-  public var defaultSynchronousIsolationContext: (any Actor)? = nil
+  @_unavailableInEmbedded
+  public var defaultSynchronousIsolationContext: (any Actor)? {
+    get {
+      _defaultSynchronousIsolationContext
+    }
+    set {
+      _defaultSynchronousIsolationContext = newValue
+    }
+  }
 
   // MARK: - Time limits
 
