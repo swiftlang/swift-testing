@@ -128,7 +128,7 @@ let simulatorVersion: String = {
 /// memory leak if the implementation heap-allocates it.
 ///
 /// For more information, see ``embeddedTargetInfo``.
-private let _embeddedTargetInfoCString = _swift_testing_getEmbeddedTargetInfo()
+private nonisolated(unsafe) let _embeddedTargetInfoCString = _swift_testing_getEmbeddedTargetInfo()
 
 /// A human-readable string describing the current Embedded Swift target.
 ///
@@ -137,7 +137,9 @@ private let _embeddedTargetInfoCString = _swift_testing_getEmbeddedTargetInfo()
 /// an event writer.
 ///
 /// This value is not part of the public interface of the testing library.
-let embeddedTargetInfo = _embeddedTargetInfoCString.flatMap(String.init(validatingCString:))
+var embeddedTargetInfo: String? {
+  _embeddedTargetInfoCString.flatMap(String.init(validatingCString:))
+}
 #endif
 
 #if os(Android)

@@ -561,14 +561,6 @@ extension Test {
   value
 }
 
-/// The current default isolation context.
-///
-/// - Warning: This property is used to implement the `@Test` macro. Do not call
-///   it directly.
-public var __defaultSynchronousIsolationContext: (any Actor)? {
-  Configuration.current?.defaultSynchronousIsolationContext ?? #isolation
-}
-
 /// Run a test function as an XCTest-compatible method.
 ///
 /// This overload is used for types that are not classes. It always returns
