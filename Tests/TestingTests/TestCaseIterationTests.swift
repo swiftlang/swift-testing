@@ -121,7 +121,7 @@ struct TestCaseIterationTests {
   private func assertEncodedEventKinds(
     _ test: Test,
     equals expected: [ABI.EncodedEvent<ABI.CurrentVersion>.Kind],
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) async {
     let events = Mutex<[ABI.EncodedEvent<ABI.CurrentVersion>]>([])
     var configuration = Configuration()

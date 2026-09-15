@@ -9,7 +9,7 @@
 //
 
 #if !SWT_NO_ABI_JSON_SCHEMA
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 private import struct Foundation.Data
 private import struct Foundation.URL
 #endif
@@ -51,6 +51,7 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedAttachment: Codable {
@@ -65,7 +66,7 @@ extension ABI.EncodedAttachment: Codable {
     var container = encoder.container(keyedBy: CodingKeys.self)
 
     func encodeBytes(_ bytes: UnsafeRawBufferPointer) throws {
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
       // If possible, encode this structure as Base64 data.
       let data = Data(bytesNoCopy: .init(mutating: bytes.baseAddress!), count: bytes.count, deallocator: .none)
       try container.encode(data.base64EncodedString(), forKey: .bytes)
@@ -126,7 +127,7 @@ extension ABI.EncodedAttachment: Codable {
       }
 
       if V.includesExperimentalFields {
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
         // If possible, decode a whole Foundation Data object.
         if let data = try? container.decodeIfPresent(Data.self, forKey: .bytes) {
           return .inMemory([UInt8](data))
@@ -159,6 +160,7 @@ extension ABI.EncodedAttachment: Codable {
     }
   }
 }
+#endif
 
 // MARK: - Attachable
 
@@ -182,7 +184,7 @@ extension ABI.EncodedAttachment: Attachable {
     switch kind {
     case let .savedAtPath(path):
 #if !SWT_NO_FILE_IO
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
       // Leverage Foundation's file-mapping logic since we're using Data anyway.
       let url = URL(fileURLWithPath: path, isDirectory: false)
       let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])

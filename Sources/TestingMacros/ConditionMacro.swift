@@ -180,7 +180,7 @@ extension ConditionMacro {
         // the resulting comment array.
         checkArguments.append(Argument(
           label: "comments",
-          expression: #"(\#(commentsArrayExpr) as [Testing.Comment?]).compactMap(\.self)"#
+          expression: #"(\#(commentsArrayExpr) as [Testing.Comment?]).compactMap { $0 }"#
         ))
       } else {
         checkArguments.append(Argument(label: "comments", expression: commentsArrayExpr))
@@ -510,7 +510,7 @@ extension ExitTestConditionMacro {
     }
     decls.append(
       """
-      @Sendable func \(bodyThunkName)(\(bodyThunkParameterList)) async throws {
+      @Sendable nonisolated(nonsending) func \(bodyThunkName)(\(bodyThunkParameterList)) async throws {
         _ = \(applyEffectfulKeywords([.try, .await, .unsafe], to: bodyArgumentExpr))()
       }
       """

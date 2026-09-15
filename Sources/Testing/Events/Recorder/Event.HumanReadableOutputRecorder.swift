@@ -142,7 +142,7 @@ extension Event.HumanReadableOutputRecorder {
   /// - Returns: A formatted string representing the comments attached to `test`,
   ///   or `nil` if there are none.
   private func _formattedComments(for test: Test) -> [Message] {
-    _formattedComments(test.traits.compactMap { $0.__as(Comment.self) })
+    _formattedComments(test.traits.compactMap { $0 as? Comment })
   }
 
   /// Get the total number of issues recorded in a graph of test data
@@ -160,7 +160,7 @@ extension Event.HumanReadableOutputRecorder {
     }
     let errorIssueCount = graph.compactMap { $0.value?.issueCount[.error] }.reduce(into: 0, +=)
     let warningIssueCount = graph.compactMap { $0.value?.issueCount[.warning] }.reduce(into: 0, +=)
-    let knownIssueCount = graph.compactMap(\.value?.knownIssueCount).reduce(into: 0, +=)
+    let knownIssueCount = graph.compactMap { $0.value?.knownIssueCount }.reduce(into: 0, +=)
     let totalIssueCount = errorIssueCount + warningIssueCount + knownIssueCount
 
     // Construct a string describing the issue counts.
@@ -703,9 +703,3 @@ extension Event.Context {
     return keyPath
   }
 }
-
-#if !SWT_NO_CODABLE
-// MARK: - Codable
-
-extension Event.HumanReadableOutputRecorder.Message: Codable {}
-#endif

@@ -10,16 +10,14 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 private import Foundation
 #endif
 
-private func configurationForEntryPoint(withArguments args: [String]) throws -> Configuration {
+private func configurationForEntryPoint(withArguments args: [String], emitWarnings: Bool = true) throws -> Configuration {
   let args = try parseCommandLineArguments(from: args)
-  return try configurationForEntryPoint(from: args)
+  return try configurationForEntryPoint(from: args, emitWarnings: emitWarnings)
 }
-
-#if !SWT_NO_ABI_JSON_SCHEMA
 
 private extension Tag {
   @Tag static var testTag: Self
@@ -27,6 +25,7 @@ private extension Tag {
   @Tag static var unrelatedTag: Self
 }
 
+#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
 /// Reads event stream output from the provided file matching event stream
 /// version `V`.
 private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String) throws -> [ABI.Record<V>] {
@@ -91,6 +90,7 @@ struct SwiftPMTests {
     }
   }
 
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
   @Test("--symbolicate-backtraces argument",
     arguments: [
       (String?.none, Backtrace.SymbolicationMode?.none),
@@ -106,6 +106,7 @@ struct SwiftPMTests {
     }
     #expect(configuration.backtraceSymbolicationMode == expectedMode)
   }
+#endif
 
   @Test("No --filter or --skip argument")
   func defaultFiltering() async throws {
@@ -212,7 +213,7 @@ struct SwiftPMTests {
 
   @Test("--filter tag: argument strips backticks around tag names")
   func filterByTagStripsBackticks() async throws {
-    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:`testTag`"])
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:`testTag`"], emitWarnings: false)
     let test1 = Test(.tags(.testTag), name: "hello") {}
     let test2 = Test(name: "goodbye") {}
     let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
@@ -398,7 +399,7 @@ struct SwiftPMTests {
     #expect(fileContents.contains(UInt8(ascii: ">")))
   }
 
-  #if canImport(Foundation)
+  #if !SWT_NO_FOUNDATION
   @Test(
     "--attachments-path argument (creates missing directory)",
     arguments: ["--attachments-path", "--experimental-attachments-path"]
@@ -417,7 +418,7 @@ struct SwiftPMTests {
   }
   #endif
 
-  #if canImport(Foundation)
+  #if !SWT_NO_FOUNDATION
   @Test("--attachments-path argument (bad path)")
   func attachmentsPathWithBadPath() throws {
       let tempDirPath = try temporaryDirectory()
@@ -428,7 +429,6 @@ struct SwiftPMTests {
         Issue.record("Test setup failure.  Could not create file at \(attachmentPath).")
       }
       defer {
-        print("removing \(attachmentPath) ...")
         _ = remove(attachmentPath)
       }
       #expect(throws: (any Error).self, "Attachment path is: \(attachmentPath)") {
@@ -546,7 +546,7 @@ struct SwiftPMTests {
   }
 #endif
 
-#if !SWT_NO_ABI_JSON_SCHEMA
+#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
   @Test("Severity and isFailure fields included in version 6.3")
   func validateEventStreamContents() async throws {
     let tempDirPath = try temporaryDirectory()

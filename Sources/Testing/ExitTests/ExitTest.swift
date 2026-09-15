@@ -372,12 +372,10 @@ extension ExitTest {
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
   ) -> CBool where repeat each T: Codable & Sendable {
-#if !hasFeature(Embedded)
     // Check that the type matches.
     guard typeAddress.load(as: Any.Type.self) == Record.self else {
       return false
     }
-#endif
 
     // Check that the ID matches if provided.
     let id = ID(id)
@@ -766,7 +764,7 @@ extension ExitTest {
     let eventHandler = ABI.BackChannelVersion.eventHandler(encodeAsJSONLines: true) { json in
       _ = try? backChannel.withLock {
         try backChannel.write(json)
-        try backChannel.write("\n")
+        try backChannel.write(.asciiNewlineCharacter)
       }
     }
     configuration.eventHandler = { event, eventContext in
@@ -963,7 +961,7 @@ extension ExitTest {
         try capturedValuesWriteEnd.withLock {
           try exitTest._withEncodedCapturedValuesForEntryPoint { capturedValuesJSON in
             try capturedValuesWriteEnd.write(capturedValuesJSON)
-            try capturedValuesWriteEnd.write("\n")
+            try capturedValuesWriteEnd.write(.asciiNewlineCharacter)
           }
         }
         capturedValuesReadEnd.close()

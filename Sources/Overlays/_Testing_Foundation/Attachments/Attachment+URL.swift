@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && !SWT_NO_FILE_IO
+#if !SWT_NO_FOUNDATION && !SWT_NO_FILE_IO
 public import Testing
 public import Foundation
 
@@ -62,7 +62,7 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
   public init(
     contentsOf url: URL,
     named preferredName: String? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) async throws {
     guard url.isFileURL else {
       // TODO: network URLs?

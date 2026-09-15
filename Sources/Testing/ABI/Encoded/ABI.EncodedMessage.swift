@@ -35,7 +35,7 @@ extension ABI {
 
       init(encoding symbol: Event.Symbol) {
         self = switch symbol {
-        case .default:
+        case .default, .custom:
           .default
         case .skip:
           .skip
@@ -83,8 +83,10 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedMessage: Codable {}
 extension ABI.EncodedMessage.Symbol: Codable {}
+#endif
 #endif

@@ -323,7 +323,7 @@ struct MiscellaneousTests {
   @Test func `Suite type with raw identifier gets a display name`() throws {
     struct `Suite With De Facto Display Name` {}
     let typeInfo = TypeInfo(describing: `Suite With De Facto Display Name`.self)
-    let suite = Test(traits: [], sourceLocation: #_sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+    let suite = Test(traits: [], sourceLocation: #Testing::sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
     #expect(suite.name == "`Suite With De Facto Display Name`")
     let displayName = try #require(suite.displayName)
     #expect(displayName == "Suite With De Facto Display Name")
@@ -523,7 +523,7 @@ struct MiscellaneousTests {
   @Test("Properties related to parameterization")
   func parameterizationRelatedProperties() async throws {
     do {
-      let test = Test.__type(SendableTests.self, displayName: "", traits: [], sourceBounds: __SourceBounds(lowerBoundOnly: #_sourceLocation))
+      let test = Test.__type(SendableTests.self, displayName: "", traits: [], sourceBounds: __SourceBounds(lowerBoundOnly: #Testing::sourceLocation))
       #expect(!test.isParameterized)
       #expect(test.testCases == nil)
       #expect(test.parameters == nil)
@@ -566,7 +566,7 @@ struct MiscellaneousTests {
 
   @Test("Test.id property")
   func id() async throws {
-    let typeTest = Test.__type(SendableTests.self, displayName: "SendableTests", traits: [], sourceBounds: __SourceBounds(lowerBoundOnly: #_sourceLocation))
+    let typeTest = Test.__type(SendableTests.self, displayName: "SendableTests", traits: [], sourceBounds: __SourceBounds(lowerBoundOnly: #Testing::sourceLocation))
     #expect(String(describing: typeTest.id) == "TestingTests.SendableTests")
 
     let fileID = "Module/Y.swift"
@@ -584,7 +584,7 @@ struct MiscellaneousTests {
     #expect(idWithParent.parent != nil)
     #expect(idWithParent.parent?.parent == nil)
 
-    let functionIDWithParent = Test.ID(moduleName: "A", nameComponents: ["B"], sourceLocation: #_sourceLocation)
+    let functionIDWithParent = Test.ID(moduleName: "A", nameComponents: ["B"], sourceLocation: #Testing::sourceLocation)
     let parentOfFunctionID = try #require(functionIDWithParent.parent)
     #expect(parentOfFunctionID.moduleName == "A")
     #expect(parentOfFunctionID.nameComponents == ["B"])

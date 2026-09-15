@@ -38,9 +38,11 @@ extension ABI {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedExpression: Codable {}
+#endif
 
 // MARK: - Conversion to/from library types
 
@@ -52,7 +54,7 @@ extension ABI.EncodedExpression {
   public init(encoding expression: borrowing Expression) {
     sourceCode = expression.sourceCode
     runtimeValue = expression.runtimeValue.map(String.init(describingForTest:))
-    runtimeTypeName = expression.runtimeValue.map(\.typeInfo.fullyQualifiedName)
+    runtimeTypeName = expression.runtimeValue.map { $0.typeInfo.fullyQualifiedName }
     let subexpressions = expression.subexpressions
     if !subexpressions.isEmpty {
       children = subexpressions.map(Self.init(encoding:))

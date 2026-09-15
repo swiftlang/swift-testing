@@ -137,13 +137,14 @@ extension ABI {
       // TODO: define an encodable form of Test.Case.ID
       id = String(describing: testCase.id)
       displayName = arguments.lazy
-        .map(\.value)
+        .map { $0.value }
         .map(String.init(describingForTest:))
         .joined(separator: ", ")
     }
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension ABI.EncodedTest: Codable {}
@@ -160,6 +161,7 @@ extension ABI.EncodedTest.ID: Codable {
     stringValue = try String(from: decoder)
   }
 }
+#endif
 
 // MARK: - Conversion to/from library types
 

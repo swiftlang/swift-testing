@@ -31,6 +31,11 @@ extension Numeric {
 extension UInt8 {
   /// Whether or not this instance is an ASCII newline character (`\n` or `\r`).
   var isASCIINewline: Bool {
-    self == UInt8(ascii: "\r") || self == UInt8(ascii: "\n")
+    self == UInt8(ascii: "\r") || self == .asciiNewlineCharacter
+  }
+
+  /// The canonical ASCII newline character, `"\n"`.
+  @inline(always) static var asciiNewlineCharacter: Self {
+    UInt8(ascii: "\n")
   }
 }

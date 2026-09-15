@@ -12,6 +12,11 @@
 private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
+// Resolve ambiguity between C's exit() and our wrapper in the PAL annex. Code
+// in Swift Testing doesn't need to do this because it prefers symbols in the
+// same module, while code outside our package can't see our declaration.
+private let exit = Testing.exit
+
 @Suite("Exit test tests") struct ExitTestTests {
   @Test("Exit code names are reported (where supported)") func exitCodeName() {
     #expect(String(describing: ExitStatus.exitCode(EXIT_SUCCESS)) == ".exitCode(EXIT_SUCCESS)")
@@ -490,7 +495,7 @@ private import _TestingInternals
 
   @Test("Arguments to the macro are not captured during expansion (do not need to be literals/const)")
   func argumentsAreNotCapturedDuringMacroExpansion() async throws {
-    let unrelatedSourceLocation = #_sourceLocation
+    let unrelatedSourceLocation = #Testing::sourceLocation
     func nonConstExitCondition() async throws -> ExitTest.Condition {
       .failure
     }
@@ -698,9 +703,9 @@ private import _TestingInternals
     }
   }
 
-  @Test("Capturing #_sourceLocation")
+  @Test("Capturing #Testing::sourceLocation")
   func captureListPreservesSourceLocationMacro() async {
-    func sl(_ sl: SourceLocation = #_sourceLocation) -> SourceLocation {
+    func sl(_ sl: SourceLocation = #Testing::sourceLocation) -> SourceLocation {
       sl
     }
     await #expect(processExitsWith: .success) { [sl = sl() as SourceLocation] in

@@ -90,7 +90,9 @@ extension Runner {
 
     /// The steps of the runner plan.
     public var steps: [Step] {
-      stepGraph.compactMap(\.value).sorted { $0.test.sourceLocation < $1.test.sourceLocation }
+      stepGraph
+        .compactMap { $0.value }
+        .sorted { $0.test.sourceLocation < $1.test.sourceLocation }
     }
 
     /// Initialize an instance of this type with the specified graph of test
@@ -137,7 +139,7 @@ extension Runner.Plan {
   private static func _recursivelyApplyTraits(_ parentTraits: [any SuiteTrait] = [], to testGraph: inout Graph<String, Test?>) {
     let traits: [any SuiteTrait] = parentTraits + (testGraph.value?.traits ?? []).lazy
       .compactMap { $0.__as((any SuiteTrait).self) }
-      .filter(\.isRecursive)
+      .filter { $0.isRecursive }
 
     testGraph.children = testGraph.children.mapValues { child in
       var child = child
@@ -182,7 +184,7 @@ extension Runner.Plan {
         }
         open(&trait)
       }
-      test.traits = traits.compactMap(\.self)
+      test.traits = traits.compactMap { $0 }
 
       return test
     }
@@ -349,12 +351,14 @@ extension Runner.Plan {
   ///
   /// - Returns: A graph of the steps corresponding to `tests`.
   private static func _constructStepGraph(from tests: some Sequence<Test>, configuration: Configuration) async -> Graph<String, Step?> {
+#if !hasFeature(Embedded)
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
     Backtrace.startCachingForThrownErrors()
     defer {
       Backtrace.flushThrownErrorCache()
     }
+#endif
 
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining
@@ -516,7 +520,7 @@ extension Runner.Plan {
 
     /// The steps of this runner plan.
     public var steps: some Collection<Step.Snapshot> {
-      _stepGraph.compactMap(\.value)
+      _stepGraph.compactMap { $0.value }
     }
   }
 }
@@ -622,12 +626,3 @@ extension Runner.Plan.Action {
   }
 }
 #endif
-
-// MARK: - Deprecated
-
-extension Runner.Plan.Action {
-  @available(*, deprecated, message: "Use .skip(_:) and pass a SkipInfo explicitly.")
-  public static func skip() -> Self {
-    .skip(SkipInfo())
-  }
-}

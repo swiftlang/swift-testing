@@ -55,7 +55,7 @@ struct EventTests {
   func codable(kind: Event.Kind) async throws {
     let testID = Test.ID(moduleName: "ModuleName",
                          nameComponents: ["NameComponent1", "NameComponent2"],
-                         sourceLocation: #_sourceLocation)
+                         sourceLocation: #Testing::sourceLocation)
     let testCaseID = Test.Case.ID(argumentIDs: nil, discriminator: nil, isStable: true)
     let event = Event(kind, testID: testID, testCaseID: testCaseID, instant: .now)
     let eventSnapshot = Event.Snapshot(snapshotting: event)

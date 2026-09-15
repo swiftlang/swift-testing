@@ -168,10 +168,10 @@ extension Test {
   /// the `@Test` macro.
   init(
     _ traits: any TestTrait...,
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     name: String = #function,
-    testFunction: @escaping @Sendable () async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
   ) {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(testFunction: testFunction)
@@ -199,11 +199,11 @@ extension Test {
     parameters: [Parameter] = [
       Parameter(index: 0, firstName: "x", type: C.Element.self),
     ],
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     column: Int = #column,
     name: String = #function,
-    testFunction: @escaping @Sendable (C.Element) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
   ) where C: Collection & Sendable, C.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
@@ -216,11 +216,11 @@ extension Test {
     parameters: [Parameter] = [
       Parameter(index: 0, firstName: "x", type: C.Element.self),
     ],
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     column: Int = #column,
     name: String = #function,
-    testFunction: @escaping @Sendable (C.Element) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
   ) where C: Collection & Sendable, C.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = { @Sendable in
@@ -252,10 +252,10 @@ extension Test {
       Parameter(index: 0, firstName: "x", type: C1.Element.self),
       Parameter(index: 1, firstName: "y", type: C2.Element.self),
     ],
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     name: String = #function,
-    testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: collection1, collection2, parameters: parameters, testFunction: testFunction)
@@ -280,10 +280,10 @@ extension Test {
       Parameter(index: 0, firstName: "x", type: C1.Element.self),
       Parameter(index: 1, firstName: "y", type: C2.Element.self),
     ],
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     name: String = #function,
-    testFunction: @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: zippedCollections, parameters: parameters, testFunction: testFunction)

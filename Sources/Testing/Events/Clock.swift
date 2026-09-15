@@ -20,6 +20,7 @@ extension Test {
   public struct Clock: Sendable {
     /// An instant on the testing clock.
     public struct Instant: Sendable {
+#if !hasFeature(Embedded)
 #if !SWT_NO_SUSPENDING_CLOCK
       /// The suspending-clock time corresponding to this instant.
       var suspending = TimeValue(rawValue: SuspendingClock().systemEpoch.duration(to: .now))
@@ -44,16 +45,35 @@ extension Test {
 #endif
       }()
 #endif
+#else
+      /// The time since the system's epoch.
+      ///
+      /// Because Embedded Swift targets vary widely in the set of clocks and
+      /// time APIs they support, the clock used to compute this value is
+      /// implementation-defined.
+      var sinceSystemEpoch: TimeValue = {
+        var seconds = UInt32(0)
+        var nanoseconds = UInt32(0)
+        guard _swift_testing_getTimeSinceSystemEpoch(&seconds, &nanoseconds) else {
+          return TimeValue(rawValue: .zero)
+        }
+        return TimeValue(rawValue: .seconds(seconds) + .nanoseconds(nanoseconds))
+      }()
+#endif
 
       /// The time value to use for comparison with other instances of this
       /// type.
       private var _timeValueForComparison: TimeValue {
+#if !hasFeature(Embedded)
 #if !SWT_NO_SUSPENDING_CLOCK
         suspending
 #elseif !SWT_NO_UTC_CLOCK
         wall
 #else
         TimeValue(rawValue: .zero)
+#endif
+#else
+        sinceSystemEpoch
 #endif
       }
 
@@ -95,6 +115,7 @@ extension Test {
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: -
 
 #if !SWT_NO_SUSPENDING_CLOCK
@@ -166,9 +187,7 @@ extension Test.Clock: _Concurrency.Clock {
     var ts = timespec(tv_sec: .init(duration.components.seconds), tv_nsec: .init(duration.components.attoseconds / 1_000_000_000))
     var tsRemaining = ts
     while 0 != nanosleep(&ts, &tsRemaining) {
-#if !hasFeature(Embedded)
       try Task.checkCancellation()
-#endif
       ts = tsRemaining
     }
 #else
@@ -185,6 +204,7 @@ extension Test.Clock: _Concurrency.Clock {
 #endif
   }
 }
+#endif
 
 // MARK: - Equatable, Hashable, Comparable
 
@@ -208,11 +228,15 @@ extension Test.Clock.Instant: InstantProtocol {
   public func advanced(by duration: Duration) -> Self {
     var result = self
 
+#if !hasFeature(Embedded)
 #if !SWT_NO_SUSPENDING_CLOCK
     result.suspending = TimeValue(rawValue: result.suspending.rawValue + duration)
 #endif
 #if !SWT_NO_UTC_CLOCK
     result.wall = TimeValue(rawValue: result.wall.rawValue + duration)
+#endif
+#else
+    result.sinceSystemEpoch = TimeValue(rawValue: result.sinceSystemEpoch.rawValue + duration)
 #endif
 
     return result

@@ -218,6 +218,29 @@ SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
   bool (* body)(const void *sections, void *context),
   void *context
 );
+
+/// A value whose address is the base address of the image into which this
+/// header is included.
+///
+/// This declaration is needed on ELF-based platforms because `__ehdr_start` is
+/// not always emitted by the linker and cannot be correctly referenced from
+/// Swift code.
+///
+/// - Important: Do not use this variable directly. Instead, use
+///   `swt_ehdr_start()` to get its address.
+SWT_IMPORT_FROM_STDLIB const char __ehdr_start[] __attribute__((__weak__));
+
+/// The base address of the image into which this header is included.
+///
+/// This function is needed on ELF-based platforms because `__ehdr_start` is
+/// not always emitted by the linker and cannot be correctly referenced from
+/// Swift code.
+static inline const void *_Nullable swt_ehdr_start(void) {
+  if (&__ehdr_start != 0) {
+    return __ehdr_start;
+  }
+  return 0;
+}
 #endif
 
 #if defined(__linux__)
@@ -273,6 +296,7 @@ static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
 #endif
 #endif
 
+#if defined(EEXIST)
 /// Get the value of `EEXIST`.
 ///
 /// This function is provided because `EEXIST` is a complex macro in wasi-libc
@@ -280,6 +304,7 @@ static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
 static int swt_EEXIST(void) {
   return EEXIST;
 }
+#endif
 
 #if defined(F_GETFD)
 /// Call `fcntl(F_GETFD)`.

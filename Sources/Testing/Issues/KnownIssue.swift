@@ -166,7 +166,7 @@ public typealias KnownIssueMatcher = @Sendable (_ issue: Issue) -> Bool
 public func withKnownIssue(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: () throws -> Void
 ) {
   try? withKnownIssue(comment, isIntermittent: isIntermittent, sourceLocation: sourceLocation, body, matching: { _ in true })
@@ -223,7 +223,7 @@ public func withKnownIssue(
 public func withKnownIssue(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: () throws -> Void,
   when precondition: () -> Bool = { true },
   matching issueMatcher: @escaping KnownIssueMatcher = { _ in true }
@@ -283,7 +283,7 @@ public func withKnownIssue(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
   isolation: isolated (any Actor)? = #isolation,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: () async throws -> Void
 ) async {
   try? await withKnownIssue(comment, isIntermittent: isIntermittent, isolation: isolation, sourceLocation: sourceLocation, body, matching: { _ in true })
@@ -342,7 +342,7 @@ public func withKnownIssue(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
   isolation: isolated (any Actor)? = #isolation,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: () async throws -> Void,
   when precondition: () async -> Bool = { true },
   matching issueMatcher: @escaping KnownIssueMatcher = { _ in true }

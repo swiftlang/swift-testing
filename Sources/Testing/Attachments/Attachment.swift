@@ -107,7 +107,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
-  public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
+  public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #Testing::sourceLocation) {
     self._storage = Allocated(attachableValue)
     self._preferredName = preferredName
     self.sourceLocation = sourceLocation
@@ -207,11 +207,15 @@ extension Attachment: CustomStringConvertible where AttachableValue: ~Copyable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public var description: String {
+#if !hasFeature(Embedded)
     if #available(_castingWithNonCopyableGenerics, *), let attachableValue = makeExistential(attachableValue) {
       return #""\#(preferredName)": \#(String(describingForTest: attachableValue))"#
     }
     let typeInfo = TypeInfo(describing: AttachableValue.self)
     return #""\#(preferredName)": instance of '\#(typeInfo.unqualifiedName)'"#
+#else
+    return #""\#(preferredName)""#
+#endif
   }
 }
 
@@ -276,7 +280,7 @@ extension Attachment where AttachableValue: Sendable & ~Copyable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   @_documentation(visibility: private)
-  public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
+  public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #Testing::sourceLocation) {
     let attachmentCopy = Attachment<AnyAttachable>(attachment)
     Event.post(.valueAttached(attachmentCopy))
   }
@@ -306,7 +310,7 @@ extension Attachment where AttachableValue: Sendable & ~Copyable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   @_documentation(visibility: private)
-  public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
+  public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #Testing::sourceLocation) {
     record(Self(attachableValue, named: preferredName, sourceLocation: sourceLocation), sourceLocation: sourceLocation)
   }
 }
@@ -330,7 +334,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
-  public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
+  public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #Testing::sourceLocation) {
     do {
       let bufferCopy = try attachment.withUnsafeBytes { Array($0) }
       Attachment<Array>.record(bufferCopy, sourceLocation: sourceLocation)
@@ -364,7 +368,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
-  public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
+  public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #Testing::sourceLocation) {
     record(Self(attachableValue, named: preferredName, sourceLocation: sourceLocation), sourceLocation: sourceLocation)
   }
 }

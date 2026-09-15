@@ -27,13 +27,6 @@ extension FunctionDeclSyntax {
       .contains(.keyword(.mutating))
   }
 
-  /// Whether or not this function is a `nonisolated` function.
-  var isNonisolated: Bool {
-    modifiers.lazy
-      .map(\.name.tokenKind)
-      .contains(.keyword(.nonisolated))
-  }
-
   /// Whether or not this function declares an operator.
   var isOperator: Bool {
     switch name.tokenKind {

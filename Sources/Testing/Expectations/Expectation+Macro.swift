@@ -23,7 +23,7 @@
 @freestanding(expression) public macro expect(
   _ condition: Bool,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation
+  sourceLocation: SourceLocation = #Testing::sourceLocation
 ) = #externalMacro(module: "TestingMacros", type: "ExpectMacro")
 
 /// Check that an expectation has passed after a condition has been evaluated
@@ -44,7 +44,7 @@
 @freestanding(expression) public macro require(
   _ condition: Bool,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation
+  sourceLocation: SourceLocation = #Testing::sourceLocation
 ) = #externalMacro(module: "TestingMacros", type: "RequireMacro")
 
 // MARK: - Optional checking
@@ -68,7 +68,7 @@
 @freestanding(expression) public macro require<T>(
   _ optionalValue: T?,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation
+  sourceLocation: SourceLocation = #Testing::sourceLocation
 ) -> T = #externalMacro(module: "TestingMacros", type: "RequireMacro")
 
 /// Unwrap an optional boolean value or, if it is `nil`, fail and throw an
@@ -98,7 +98,7 @@
 public macro require(
   _ optionalValue: Bool?,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation
+  sourceLocation: SourceLocation = #Testing::sourceLocation
 ) -> Bool = #externalMacro(module: "TestingMacros", type: "AmbiguousRequireMacro")
 
 /// Unwrap an optional value or, if it is `nil`, fail and throw an error.
@@ -126,7 +126,7 @@ public macro require(
 public macro require<T>(
   _ optionalValue: T,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation
+  sourceLocation: SourceLocation = #Testing::sourceLocation
 ) -> T = #externalMacro(module: "TestingMacros", type: "NonOptionalRequireMacro")
 
 // MARK: - Matching errors by type
@@ -193,7 +193,7 @@ public macro require<T>(
 public macro expect<E, R>(
   throws errorType: E.Type,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () throws -> R
 ) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectThrowsMacro") where E: Error
 
@@ -257,7 +257,7 @@ public macro expect<E, R>(
 @freestanding(expression) public macro expect<E, R>(
   throws errorType: E.Type,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () async throws -> R
 ) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectThrowsMacro") where E: Error
 
@@ -307,7 +307,7 @@ public macro expect<E, R>(
 public macro require<E, R>(
   throws errorType: E.Type,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () throws -> R
 ) -> E = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro") where E: Error
 
@@ -355,7 +355,7 @@ public macro require<E, R>(
 @freestanding(expression) public macro require<E, R>(
   throws errorType: E.Type,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () async throws -> R
 ) -> E = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro") where E: Error
 
@@ -375,7 +375,7 @@ public macro require<E, R>(
 public macro require<R>(
   throws _: Never.Type,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () throws -> R
 ) = #externalMacro(module: "TestingMacros", type: "RequireThrowsNeverMacro")
 
@@ -395,7 +395,7 @@ public macro require<R>(
 public macro require<R>(
   throws _: Never.Type,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () async throws -> R
 ) = #externalMacro(module: "TestingMacros", type: "RequireThrowsNeverMacro")
 
@@ -439,7 +439,7 @@ public macro require<R>(
 public macro expect<E, R>(
   throws error: E,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () throws -> R
 ) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectThrowsMacro") where E: Error & Equatable
 
@@ -479,7 +479,7 @@ public macro expect<E, R>(
 @freestanding(expression) public macro expect<E, R>(
   throws error: E,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () async throws -> R
 ) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectThrowsMacro") where E: Error & Equatable
 
@@ -525,7 +525,7 @@ public macro expect<E, R>(
 public macro require<E, R>(
   throws error: E,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () throws -> R
 ) -> E = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro") where E: Error & Equatable
 
@@ -569,7 +569,7 @@ public macro require<E, R>(
 @freestanding(expression) public macro require<E, R>(
   throws error: E,
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () async throws -> R
 ) -> E = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro") where E: Error & Equatable
 
@@ -628,13 +628,14 @@ public macro require<E, R>(
 ///   #expect(error?.napkinCount == 0)
 ///   ```
 /// }
+@_unavailableInEmbedded
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#expect(throws:)' instead.")
 @discardableResult
 @freestanding(expression)
 @_documentation(visibility: private)
 public macro expect<R>(
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () throws -> R,
   throws errorMatcher: (any Error) throws -> Bool
 ) -> (any Error)? = #externalMacro(module: "TestingMacros", type: "ExpectThrowsMacro")
@@ -692,11 +693,12 @@ public macro expect<R>(
 ///   #expect(error?.napkinCount == 0)
 ///   ```
 /// }
+@_unavailableInEmbedded
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#expect(throws:)' instead.")
 @discardableResult
 @freestanding(expression) public macro expect<R>(
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () async throws -> R,
   throws errorMatcher: (any Error) async throws -> Bool
 ) -> (any Error)? = #externalMacro(module: "TestingMacros", type: "ExpectThrowsMacro")
@@ -761,13 +763,14 @@ public macro expect<R>(
 ///   #expect(error.napkinCount == 0)
 ///   ```
 /// }
+@_unavailableInEmbedded
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#require(throws:)' instead.")
 @discardableResult
 @freestanding(expression)
 @_documentation(visibility: private)
 public macro require<R>(
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () throws -> R,
   throws errorMatcher: (any Error) throws -> Bool
 ) -> any Error = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro")
@@ -832,11 +835,12 @@ public macro require<R>(
 ///   #expect(error.napkinCount == 0)
 ///   ```
 /// }
+@_unavailableInEmbedded
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#require(throws:)' instead.")
 @discardableResult
 @freestanding(expression) public macro require<R>(
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: () async throws -> R,
   throws errorMatcher: (any Error) async throws -> Bool
 ) -> any Error = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro")
@@ -884,7 +888,7 @@ public macro expect(
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: @escaping @Sendable () async throws -> Void
 ) -> ExitTest.Result? = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
 
@@ -930,7 +934,7 @@ public macro expect(
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: @escaping @Sendable () throws -> Void
 ) -> ExitTest.Result? = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
 
@@ -978,7 +982,7 @@ public macro require(
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: @escaping @Sendable () async throws -> Void
 ) -> ExitTest.Result = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
 
@@ -1027,7 +1031,7 @@ public macro require(
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   performing expression: @escaping @Sendable () throws -> Void
 ) -> ExitTest.Result = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
 
