@@ -296,7 +296,7 @@ func wait(for processHandle: consuming HANDLE) async throws -> ExitStatus {
 
     // We only want the callback to fire once (and not be rescheduled.) Waiting
     // may take an arbitrarily long time, so let the thread pool know that too.
-    let flags = ULONG(WT_EXECUTEONLYONCE | WT_EXECUTELONGFUNCTION)
+    let flags = WT_EXECUTEONLYONCE | WT_EXECUTELONGFUNCTION
     guard RegisterWaitForSingleObject(&waitHandle, processHandle, callback, context, INFINITE, flags) else {
       continuation.resume(throwing: Win32Error(rawValue: GetLastError()))
       return

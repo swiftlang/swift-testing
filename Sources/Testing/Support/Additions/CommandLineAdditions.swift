@@ -108,15 +108,15 @@ extension CommandLine {
 #endif
       while result == nil {
         try withUnsafeTemporaryAllocation(of: CWideChar.self, capacity: bufferCount) { buffer in
-          SetLastError(DWORD(ERROR_SUCCESS))
+          SetLastError(ERROR_SUCCESS)
           _ = GetModuleFileNameW(nil, buffer.baseAddress!, DWORD(buffer.count))
           switch GetLastError() {
-          case DWORD(ERROR_SUCCESS):
+          case ERROR_SUCCESS:
             result = String.decodeCString(buffer.baseAddress!, as: UTF16.self)?.result
             if result == nil {
-              throw Win32Error(rawValue: DWORD(ERROR_ILLEGAL_CHARACTER))
+              throw Win32Error(rawValue: ERROR_ILLEGAL_CHARACTER)
             }
-          case DWORD(ERROR_INSUFFICIENT_BUFFER):
+          case ERROR_INSUFFICIENT_BUFFER:
             bufferCount += Int(MAX_PATH)
           case let errorCode:
             throw Win32Error(rawValue: errorCode)

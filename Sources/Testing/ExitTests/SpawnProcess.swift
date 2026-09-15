@@ -258,7 +258,7 @@ func spawnExecutable(
         }
 
         // Ensure the file handle can be inherited by the child process.
-        guard SetHandleInformation(windowsHANDLE, DWORD(HANDLE_FLAG_INHERIT), DWORD(HANDLE_FLAG_INHERIT)) else {
+        guard SetHandleInformation(windowsHANDLE, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT) else {
           throw Win32Error(rawValue: GetLastError())
         }
 
@@ -326,13 +326,13 @@ func spawnExecutable(
       // SEE: https://devblogs.microsoft.com/oldnewthing/20101109-00/?p=12323
       let workingDirectoryPath = rootDirectoryPath
 
-      var flags = DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT)
+      var flags = CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT
 
       // Start the process suspended so we can attach a debugger if needed. We
       // always start the child process in a suspended state even if the
       // "SWT_START_CHILD_PROCESSES_SUSPENDED" environment variable isn't set so that
       // the debugger has a chance to attach to the child.
-      flags |= DWORD(CREATE_SUSPENDED)
+      flags |= CREATE_SUSPENDED
 
       return try environ.withCString(encodedAs: UTF16.self) { environ in
         try workingDirectoryPath.withCString(encodedAs: UTF16.self) { workingDirectoryPath in
