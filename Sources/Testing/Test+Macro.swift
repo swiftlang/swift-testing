@@ -590,7 +590,6 @@ public var __defaultSynchronousIsolationContext: (any Actor)? {
   Configuration.current?.defaultSynchronousIsolationContext ?? #isolation
 }
 
-#if !hasFeature(Embedded)
 /// Run a test function as an XCTest-compatible method.
 ///
 /// This overload is used for types that are not classes. It always returns
@@ -606,6 +605,7 @@ public var __defaultSynchronousIsolationContext: (any Actor)? {
   false
 }
 
+#if !hasFeature(Embedded)
 /// The `XCTest.XCTest` Objective-C class.
 let xcTestClass: AnyClass? = {
 #if _runtime(_ObjC)
