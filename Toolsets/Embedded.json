@@ -6,15 +6,16 @@
       "-wmo"
     ]
   },
-"linker": {
-  "extraCLIOptions": [
-"-lm",
-"-L/swift/usr/lib/swift/embedded/x86_64-unknown-linux-gnu/",
-"-lswift_Concurrency",
-"-lswift_ConcurrencyDefaultExecutor",
-"-lswiftUnicodeDataTables",
-"-lswiftEmbeddedPlatformPOSIX",
-"-lswiftEmbeddedPlatformMultiThreadedPOSIX",
-]
-}
+  "linker": {
+    "extraCLIOptions": [
+      "-lm",
+      "-lstdc++",
+      "-L/swift/usr/lib/swift/embedded/x86_64-unknown-linux-gnu/",
+      "/swift/usr/lib/swift/embedded/x86_64-unknown-linux-gnu/libswift_Concurrency.a",
+      "/swift/usr/lib/swift/embedded/x86_64-unknown-linux-gnu/libswift_ConcurrencyDefaultExecutor.a",
+      "-lswiftUnicodeDataTables",
+      "-lswiftEmbeddedPlatformPOSIX",
+      "-lswiftEmbeddedPlatformMultiThreadedPOSIX"
+    ]
+  }
 }
