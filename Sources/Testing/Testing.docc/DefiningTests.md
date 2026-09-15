@@ -75,6 +75,38 @@ the process), it can be annotated `@MainActor`:
 @Test @MainActor func foodTruckExists() async throws { ... }
 ```
 
+### Include resource files with your tests
+
+Some tests need fixture files such as sample images, JSON, or other data. How
+you add those files depends on the tool that builds and runs your tests.
+
+If your tests live in a Swift package, declare the files as resources of the
+test target and load them with `Bundle.module`. For details, see
+[Bundling resources with a Swift package](https://developer.apple.com/documentation/xcode/bundling-resources-with-a-swift-package).
+
+```swift
+// In Package.swift, on the test target:
+// resources: [
+//   .copy("Fixtures"),
+// ]
+
+@Test func menuLoadsFromFixture() throws {
+  let url = try #require(
+    Bundle.module.url(forResource: "sample-menu", withExtension: "json")
+  )
+  let data = try Data(contentsOf: url)
+  #expect(!data.isEmpty)
+}
+```
+
+- Note: Don't rely on the process working directory to find fixtures. That path
+  differs between `swift test` and Xcode, so the same relative path may work in
+  one environment and fail in another.
+
+If your tests live in an Xcode project (rather than a package), add the files
+to the test target's Copy Bundle Resources build phase and load them from that
+target's bundle.
+
 ### Limit the availability of a test
 
 If a test function can only run on newer versions of an operating system or of
