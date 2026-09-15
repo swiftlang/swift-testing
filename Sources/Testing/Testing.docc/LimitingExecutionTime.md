@@ -24,7 +24,7 @@ as failing if it runs for an excessive amount of time. Use the
 ``Trait/timeLimit(_:)-4kzjp`` trait as an upper bound:
 
 ```swift
-@Test(.timeLimit(.minutes(60))
+@Test(.timeLimit(.minutes(60)))
 func serve100CustomersInOneHour() async {
   for _ in 0 ..< 100 {
     let customer = await Customer.next()
