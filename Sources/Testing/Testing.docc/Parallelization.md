@@ -58,3 +58,49 @@ parameterized tests or test suites contained in that suite are also serialized
 This trait doesn't affect the execution of a test relative to its peers or to
 unrelated tests. This trait has no effect if test parallelization is globally
 disabled (by, for example, passing `--no-parallel` to the `swift test` command.)
+
+## Constraints on concurrent tests
+
+Parallel test execution is usually desirable, but some tests can't safely run
+at the same time as other tests. Common causes include:
+
+- Mutable global or static state, such as a shared `FoodTruck.shared` value that
+  more than one test reads and writes.
+- External resources that assume exclusive access, such as a temporary file at a
+  fixed path or a local server bound to a fixed port.
+- Code that must run on a specific actor or thread even when Swift's
+  concurrency checking reports no data races. Exclusive access can still be
+  required for correct behavior.
+
+When two tests interfere with each other only under parallel execution, the
+failure is often intermittent and hard to reproduce. Prefer fixing the shared
+state so that each test owns what it needs. If that isn't practical yet, use
+``Trait/serialized`` so the conflicting tests don't overlap.
+
+If tests only need to coordinate access to a particular actor rather than run
+one after another, isolating a test to a global actor can be enough without
+``Trait/serialized``. For example, annotate a test with `@MainActor` when it
+must run on the main actor:
+
+```swift
+@Test @MainActor func licenseIsValid() {
+  // Runs on the main actor, so it can safely call main-actor-isolated APIs.
+  #expect(FoodTruck.shared.isLicensed)
+}
+```
+
+You can also run a smaller region of a test on the main actor with
+[`MainActor.run(resultType:body:)`](https://developer.apple.com/documentation/swift/mainactor/run(resulttype:body:)).
+For more information about marking tests `async`, `throws`, or actor-isolated,
+see <doc:DefiningTests>.
+
+- Note: If your tests need ``Trait/serialized`` or global-actor isolation
+  because product code exposes unconstrained shared mutable state, that is
+  often a signal that non-test clients can hit the same interference. Consider
+  making the API safer—for example by encapsulating the state in an actor or by
+  letting callers supply an isolated dependency—so both tests and production
+  code are easier to reason about.
+
+If you are migrating from XCTest, see <doc:MigratingFromXCTest> for an example
+of annotating a suite with ``Trait/serialized`` when shared state previously
+relied on XCTest's sequential default.
