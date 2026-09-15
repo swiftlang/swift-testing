@@ -13,11 +13,7 @@ import Testing
 // A minimal set of tests used to confirm that a whole program which links Swift
 // Testing can be built for an Embedded Swift target.
 
-extension Tag {
-  @Tag static var foo: Self
-}
-
-@Test(.tags(.foo)) func addition() {
+@Test func addition() {
   #expect(1 + 1 == 2)
 }
 

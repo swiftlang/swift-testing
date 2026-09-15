@@ -260,15 +260,10 @@ extension Test {
         func runIsolated(to actor: isolated some Actor) async throws {
           try await _body()
         }
-#if !hasFeature(Embedded)
-        return try await runIsolated(to: actor)
-#else
-        if let actor = actor as? MainActor {
-          return try await runIsolated(to: actor)
-        }
-#endif
+        try await runIsolated(to: actor)
+      } else {
+        try await _body()
       }
-      try await _body()
     }
   }
 
