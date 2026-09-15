@@ -50,6 +50,7 @@ types that customize the behavior of your tests.
 
 ### Handling issues
 
+- <doc:handling-issues>
 - ``Trait/compactMapIssues(_:)``
 - ``Trait/filterIssues(_:)``
 

@@ -67,6 +67,7 @@ their problems.
 
 - <doc:Expectations>
 - <doc:known-issues>
+- <doc:handling-issues>
 
 ### Test customization
 
