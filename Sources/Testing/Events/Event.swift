@@ -305,6 +305,9 @@ extension Event {
     /// ``Configuration/eventHandler`` property of this instance is cleared.
     public var configuration: Configuration?
 
+    /// The event generator that produced the corresponding event, if any.
+    var eventGenerator: (any Harness.EventGenerator)?
+
     /// Initialize a new instance of this type.
     ///
     /// - Parameters:

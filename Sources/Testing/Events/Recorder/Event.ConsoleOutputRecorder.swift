@@ -190,11 +190,13 @@ extension Event.ConsoleOutputRecorder {
   ///
   /// - Parameters:
   ///   - tags: The tags for which colors are needed.
+  ///   - options: The options that should be used when formatting the resulting
+  ///     message.
   ///
   /// - Returns: A string describing the colors of `tags` as bullet characters
   ///   with ANSI escape codes used to colorize them. If ANSI escape codes are
   ///   not enabled or if no tag colors are set, returns the empty string.
-  fileprivate func colorDots(for tags: Set<Tag>) -> String {
+  fileprivate static func colorDots(for tags: Set<Tag>, options: Options) -> String {
     guard options.useColorANSIEscapeCodes else {
       return ""
     }
@@ -218,6 +220,67 @@ extension Event.ConsoleOutputRecorder {
 // MARK: -
 
 extension Event.ConsoleOutputRecorder {
+  /// Whether or not to show the names of event generators that generate output
+  /// through instances of this type.
+  ///
+  /// This environment variable is used by the harness only.
+  private static let _showEventGeneratorNames = Environment.flag(named: "SWT_SHOW_EVENT_GENERATOR_NAMES") ?? false
+
+  /// Generate representations of the given messages in this instance's output
+  /// format.
+  ///
+  /// - Parameters:
+  ///   - messages: The messages to record.
+  ///   - tags: Tags that may be colorized and which should be applied to
+  ///     `messages`.
+  ///   - options: The options that should be used when formatting the resulting
+  ///     message.
+  ///
+  /// - Returns: An array of appropriately console-formatted strings
+  ///   representing `messages`.
+  static func lines(for messages: [Event.HumanReadableOutputRecorder.Message], tags: Set<Tag>? = nil, options: Options) -> some Sequence<String> {
+    let symbolPlaceholder = Event.Symbol.placeholderStringValue(options: options)
+    let lines = messages.lazy.map { message in
+      let symbol = message.symbol?.stringValue(options: options) ?? symbolPlaceholder
+      let indentation = String(repeating: "  ", count: message.indentation)
+
+      // Any additional information or suffix that we want to include in the
+      // resulting lines.
+      var suffix = ""
+      if Self._showEventGeneratorNames,
+         let eventGeneratorName = message.eventGeneratorName,
+         options.useColorANSIEscapeCodes {
+        if let ansiEscapeCode = Color.harness.ansiEscapeCode(withBitDepth: options.ansiColorBitDepth) {
+          suffix = " \(ansiEscapeCode)[\(eventGeneratorName)]\(resetANSIEscapeCode)"
+        } else {
+          suffix = " [\(eventGeneratorName)]"
+        }
+      }
+
+      if case .details = message.symbol {
+        // Special-case the detail symbol to apply grey to the entire line of
+        // text instead of just the symbol. Details may be multi-line messages,
+        // so split the message on newlines and indent all lines to align them
+        // to the indentation provided by the symbol.
+        var lines = message.stringValue.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+        lines = CollectionOfOne(lines[0] + suffix) + lines.dropFirst().lazy
+          .map { "\(indentation)\(symbolPlaceholder) \($0)" }
+        let stringValue = lines.joined(separator: "\n")
+        if options.useColorANSIEscapeCodes {
+          let ansiEscapeCode = Color.darkGray.closest16ColorEscapeCode()
+          return "\(ansiEscapeCode)\(symbol) \(indentation)\(stringValue)\(resetANSIEscapeCode)\n"
+        } else {
+          return "\(symbol) \(indentation)\(stringValue)\n"
+        }
+      } else {
+        let colorDots = tags.map { self.colorDots(for: $0, options: options) } ?? ""
+        return "\(symbol) \(indentation)\(colorDots)\(message.stringValue)\(suffix)\n"
+      }
+    }
+
+    return lines
+  }
+
   /// Record the specified messages by generating representations of them in
   /// this instance's output format and writing them to this instance's
   /// destination.
@@ -230,33 +293,7 @@ extension Event.ConsoleOutputRecorder {
   /// - Returns: Whether any output was produced and written to this instance's
   ///   destination.
   private func _record(_ messages: [Event.HumanReadableOutputRecorder.Message], tags: Set<Tag>?) -> Bool {
-    let symbolPlaceholder = Event.Symbol.placeholderStringValue(options: options)
-    let lines = messages.lazy.map { message in
-      let symbol = message.symbol?.stringValue(options: options) ?? symbolPlaceholder
-      let indentation = String(repeating: "  ", count: message.indentation)
-
-      if case .details = message.symbol {
-        // Special-case the detail symbol to apply grey to the entire line of
-        // text instead of just the symbol. Details may be multi-line messages,
-        // so split the message on newlines and indent all lines to align them
-        // to the indentation provided by the symbol.
-        var lines = message.stringValue.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
-        lines = CollectionOfOne(lines[0]) + lines.dropFirst().map { line in
-          "\(indentation)\(symbolPlaceholder) \(line)"
-        }
-        let stringValue = lines.joined(separator: "\n")
-        if options.useColorANSIEscapeCodes {
-          let ansiEscapeCode = Color.darkGray.closest16ColorEscapeCode()
-          return "\(ansiEscapeCode)\(symbol) \(indentation)\(stringValue)\(resetANSIEscapeCode)\n"
-        } else {
-          return "\(symbol) \(indentation)\(stringValue)\n"
-        }
-      } else {
-        let colorDots = tags.map { self.colorDots(for: $0) } ?? ""
-        return "\(symbol) \(indentation)\(colorDots)\(message.stringValue)\n"
-      }
-    }
-
+    let lines = Self.lines(for: messages, tags: tags, options: options)
     write(lines.joined())
     return !messages.isEmpty
   }
@@ -280,7 +317,14 @@ extension Event.ConsoleOutputRecorder {
     in context: borrowing Event.Context,
     configuration: Configuration? = nil
   ) -> Bool {
-    let messages = _humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
+    var messages = _humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
+    if let eventGenerator = context.eventGenerator {
+      messages = messages.map { [eventGeneratorName = eventGenerator.humanReadableName] message in
+        var message = message
+        message.eventGeneratorName = eventGeneratorName
+        return message
+      }
+    }
     return _record(messages, tags: context.test?.tags)
   }
 
@@ -307,6 +351,12 @@ extension Event.ConsoleOutputRecorder {
     return _record(messages, tags: nil)
   }
 #endif
+
+  /// Summarize the current state of this recorder.
+  func summarize() -> [String] {
+    let messages = _humanReadableOutputRecorder.summarize()
+    return Array(Self.lines(for: messages, tags: nil, options: options))
+  }
 
   /// Get a message warning the user of some condition in the library that may
   /// affect test results.

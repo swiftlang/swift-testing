@@ -529,8 +529,8 @@ extension FileHandle {
   /// - Parameters:
   ///   - bytes: The bytes to write. This untyped buffer is interpreted as a
   ///     sequence of `UInt8` values.
-  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
-  ///     after writing. If `true`, `fflush()` is called even if an error
+  ///   - flushAfterward: Whether or not to flush the file (with ``flush()``)
+  ///     after writing. If `true`, ``flush()`` is called even if an error
   ///     occurred while writing.
   ///
   /// - Throws: Any error that occurred while writing `bytes`. If an error
@@ -539,7 +539,7 @@ extension FileHandle {
     try withUnsafeCFILEHandle { file in
       defer {
         if flushAfterward {
-          _ = fflush(file)
+          flush()
         }
       }
 
@@ -554,8 +554,8 @@ extension FileHandle {
   ///
   /// - Parameters:
   ///   - bytes: The bytes to write.
-  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
-  ///     after writing. If `true`, `fflush()` is called even if an error
+  ///   - flushAfterward: Whether or not to flush the file (with ``flush()``)
+  ///     after writing. If `true`, ``flush()`` is called even if an error
   ///     occurred while writing.
   ///
   /// - Throws: Any error that occurred while writing `bytes`. If an error
@@ -574,8 +574,8 @@ extension FileHandle {
   /// - Parameters:
   ///   - bytes: The bytes to write. This untyped buffer is interpreted as a
   ///     sequence of `UInt8` values.
-  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
-  ///     after writing. If `true`, `fflush()` is called even if an error
+  ///   - flushAfterward: Whether or not to flush the file (with ``flush()``)
+  ///     after writing. If `true`, ``flush()`` is called even if an error
   ///     occurred while writing.
   ///
   /// - Throws: Any error that occurred while writing `bytes`. If an error
@@ -614,8 +614,8 @@ extension FileHandle {
   ///
   /// - Parameters:
   ///   - string: The string to write.
-  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
-  ///     after writing. If `true`, `fflush()` is called even if an error
+  ///   - flushAfterward: Whether or not to flush the file (with ``flush()``)
+  ///     after writing. If `true`, ``flush()`` is called even if an error
   ///     occurred while writing.
   ///
   /// - Throws: Any error that occurred while writing `string`. If an error
@@ -626,7 +626,7 @@ extension FileHandle {
     try withUnsafeCFILEHandle { file in
       defer {
         if flushAfterward {
-          _ = fflush(file)
+          flush()
         }
       }
 
@@ -634,6 +634,13 @@ extension FileHandle {
       try string.withUTF8 { string in
         try write(string, flushAfterward: flushAfterward)
       }
+    }
+  }
+
+  /// Flush the file handle's internal write buffer.
+  func flush() {
+    withUnsafeCFILEHandle { file in
+      _ = fflush(file)
     }
   }
 }

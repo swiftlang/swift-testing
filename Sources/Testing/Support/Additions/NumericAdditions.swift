@@ -24,6 +24,20 @@ extension Numeric {
     }
     return "\(self) \(noun)s"
   }
+
+  /// Conjugate an English verb whose subject is this number.
+  ///
+  /// - Parameters:
+  ///   - singularVerb: The singular third-person form of the verb, e.g.
+  ///     `"eats"` or `"is"`.
+  ///   - pluralVerb: The plural third-person form of the verb, e.g. `"eat"` or
+  ///     `"are"`.
+  ///
+  /// - Returns: Either `singularVerb` or `pluralVerb` depending on the value of
+  ///   `self`.
+  func counting(_ singularVerb: String, or pluralVerb: String) -> String {
+    self == 1 ? singularVerb : pluralVerb
+  }
 }
 
 // MARK: -
