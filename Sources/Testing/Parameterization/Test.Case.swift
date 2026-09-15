@@ -100,6 +100,46 @@ extension Test {
       }
     }
 
+    /// The arguments passed to this test case, if any.
+    ///
+    /// The values in this array correspond to the arguments to the test
+    /// function of which this instance is a test case.
+    ///
+    /// ### Passing tuples to test functions
+    ///
+    /// If your test function takes a tuple (including a key-value pair from a
+    /// dictionary) as its input and maps it to more than one argument, the
+    /// value of this property represents each member of the tuple as a separate
+    /// argument. For example, given the following test function:
+    ///
+    /// ```swift
+    /// @Test(arguments: [(Food.burger, Temperature.hot), (.iceCream, .cold),
+    ///   (.burrito, .hot), (.popsicle, .cold)])
+    /// func `Serving temperature for food`(food: Food, temp: Temperature) {
+    ///   // ...
+    /// }
+    /// ```
+    ///
+    /// The value of this property will be an array with two elements. The first
+    /// element in the array will be an instance of `Food` and the second
+    /// element will be an instance of `Temperature`.
+    ///
+    /// ### Test functions with no arguments
+    ///
+    /// If your test function is not parameterized, the testing library assigns
+    /// it a single test case and the value of this property for that test case
+    /// is the empty array.
+    @_spi(Experimental)
+    @_unavailableInEmbedded
+    public var argumentValues: [any Sendable] {
+      switch _kind {
+      case .nonParameterized:
+        []
+      case let .parameterized(arguments, _, _):
+        arguments.map(\.value)
+      }
+    }
+
     /// A number used to distinguish this test case from others associated with
     /// the same parameterized test function whose arguments have the same ID.
     ///
