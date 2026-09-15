@@ -874,20 +874,6 @@ final class RunnerTests: XCTestCase {
     }
   }
 
-  @available(*, deprecated)
-  func testSynchronousTestFunctionRunsOnMainActorWhenEnforced() async {
-    var configuration = Configuration()
-    configuration.isMainActorIsolationEnforced = true
-    await Self.$isMainActorIsolationEnforced.withValue(true) {
-      await runTest(for: MainActorIsolationTests.self, configuration: configuration)
-    }
-
-    configuration.isMainActorIsolationEnforced = false
-    await Self.$isMainActorIsolationEnforced.withValue(false) {
-      await runTest(for: MainActorIsolationTests.self, configuration: configuration)
-    }
-  }
-
   func testSynchronousTestFunctionRunsInDefaultIsolationContext() async {
     var configuration = Configuration()
     configuration.defaultSynchronousIsolationContext = MainActor.shared

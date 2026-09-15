@@ -244,7 +244,7 @@ extension DiscoverableAsTestContent {
     }
   }
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
+#if !SWT_NO_LEGACY_TEST_DISCOVERY && !hasFeature(Embedded)
   @available(swift, deprecated: 6.5, obsoleted: 6.6, message: "Unimplemented")
   public static func allTypeMetadataBasedTestContentRecords(
     loadingWith loader: @escaping @Sendable (Any.Type, UnsafeMutableRawBufferPointer) -> Bool
