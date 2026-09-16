@@ -35,11 +35,11 @@ public func swift_testing_embeddedMain(_ argc: CInt, _ argv: UnsafeMutablePointe
     exit(EXIT_FAILURE)
   }
 
-  _ = Task.immediate {
-    let exitCode = await entryPoint(passing: args, eventHandler: nil)
+  // _ = Task.immediate {
+    let exitCode = entryPoint(passing: args, eventHandler: nil)
     exit(exitCode)
-  }
-  _asyncMainDrainQueue()
+  // }
+  // _asyncMainDrainQueue()
 }
 
 /// Begin running tests in Embedded Swift.

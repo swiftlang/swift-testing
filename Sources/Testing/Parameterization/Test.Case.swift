@@ -168,7 +168,7 @@ extension Test {
     var _id = ID()
 #endif
 
-    private init(kind: _Kind, body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) {
+    private init(kind: _Kind, body: @escaping @Sendable () throws -> Void) {
       _kind = kind
       _body = body
     }
@@ -179,7 +179,7 @@ extension Test {
     ///   - body: The body closure of this test case.
     ///
     /// The resulting test case will have zero arguments.
-    init(body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) {
+    init(body: @escaping @Sendable () throws -> Void) {
       self.init(kind: .nonParameterized, body: body)
     }
 
@@ -193,7 +193,7 @@ extension Test {
     init(
       values: [any Sendable],
       parameters: [Parameter],
-      body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
+      body: @escaping @Sendable () throws -> Void
     ) {
 #if !hasFeature(Embedded)
       var isStable = true
@@ -246,7 +246,7 @@ extension Test {
     }
 
     /// The body closure of this test case.
-    private var _body: nonisolated(nonsending) @Sendable () async throws -> Void
+    private var _body: @Sendable () throws -> Void
 
     /// Invoke the body closure of this test case.
     ///
@@ -255,16 +255,8 @@ extension Test {
     ///
     /// Do not call this function directly. Always use a ``Runner`` to invoke a
     /// test or test case.
-    nonisolated(nonsending) func run(configuration: borrowing Configuration) async throws {
-#if !hasFeature(Embedded)
-      if let actor = configuration.defaultSynchronousIsolationContext {
-        func runIsolated(to actor: isolated some Actor) async throws {
-          try await _body()
-        }
-        return try await runIsolated(to: actor)
-      }
-#endif
-      try await _body()
+    func run(configuration: borrowing Configuration) throws {
+      try _body()
     }
   }
 
