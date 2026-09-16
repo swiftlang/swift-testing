@@ -173,7 +173,7 @@ func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some Exp
   let originalExpr = expr
   var expr = ExprSyntax(expr.trimmed)
 
-  let needAwait = effectfulKeywords.contains(.await) && !expr.is(AwaitExprSyntax.self)
+  let needAwait = false//effectfulKeywords.contains(.await) && !expr.is(AwaitExprSyntax.self)
   let needTry = effectfulKeywords.contains(.try) && !expr.is(TryExprSyntax.self)
   let needUnsafe = effectfulKeywords.contains(.unsafe) && !expr.is(UnsafeExprSyntax.self)
 
