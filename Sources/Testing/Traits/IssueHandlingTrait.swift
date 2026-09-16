@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !hasFeature(Embedded)
 /// A type that allows transforming or filtering the issues recorded by a test.
 ///
 /// Use this type to observe or customize the issue(s) recorded by the test this
@@ -231,3 +232,5 @@ extension Trait where Self == IssueHandlingTrait {
     }
   }
 }
+#endif
+

@@ -180,7 +180,7 @@ extension Test {
     traits: __TraitArray<any TestTrait>,
     sourceBounds: __SourceBounds,
     parameters: [__Parameter] = [],
-    testFunction: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
+    testFunction: @escaping @Sendable () throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable {
 #if !hasFeature(Embedded)
     let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
@@ -265,10 +265,10 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments collection: @escaping @Sendable () async throws -> C,
+    arguments collection: @escaping @Sendable () throws -> C,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
+    testFunction:  @escaping @Sendable (C.Element) throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element: Sendable {
 #if !hasFeature(Embedded)
     let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
@@ -276,7 +276,7 @@ extension Test {
     let containingTypeInfo: TypeInfo? = nil
 #endif
     let parameters = paramTuples.parameters
-    let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
+    let caseGenerator = { @Sendable in Case.Generator(arguments: try collection(), parameters: parameters, testFunction: testFunction) }
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
@@ -412,10 +412,10 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments collection1: @escaping @Sendable () async throws -> C1, _ collection2: @escaping @Sendable () async throws -> C2,
+    arguments collection1: @escaping @Sendable () throws -> C1, _ collection2: @escaping @Sendable () throws -> C2,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
+    testFunction:  @escaping @Sendable (C1.Element, C2.Element) throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
 #if !hasFeature(Embedded)
     let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
@@ -423,7 +423,7 @@ extension Test {
     let containingTypeInfo: TypeInfo? = nil
 #endif
     let parameters = paramTuples.parameters
-    let caseGenerator = { @Sendable in try await Case.Generator(arguments: collection1(), collection2(), parameters: parameters, testFunction: testFunction) }
+    let caseGenerator = { @Sendable in try Case.Generator(arguments: collection1(), collection2(), parameters: parameters, testFunction: testFunction) }
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
@@ -440,10 +440,10 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments collection: @escaping @Sendable () async throws -> C,
+    arguments collection: @escaping @Sendable () throws -> C,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
+    testFunction:  @escaping @Sendable ((E1, E2)) throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
 #if !hasFeature(Embedded)
     let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
@@ -451,7 +451,7 @@ extension Test {
     let containingTypeInfo: TypeInfo? = nil
 #endif
     let parameters = paramTuples.parameters
-    let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
+    let caseGenerator = { @Sendable in Case.Generator(arguments: try collection(), parameters: parameters, testFunction: testFunction) }
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
@@ -471,10 +471,10 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments dictionary: @escaping @Sendable () async throws -> C,
+    arguments dictionary: @escaping @Sendable () throws -> C,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
+    testFunction:  @escaping @Sendable (C.Element) throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: ExpressibleByDictionaryLiteral & Collection & Sendable, C.Element == (key: C.Key, value: C.Value), C.Key: Sendable, C.Value: Sendable {
 #if !hasFeature(Embedded)
     let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
@@ -482,7 +482,7 @@ extension Test {
     let containingTypeInfo: TypeInfo? = nil
 #endif
     let parameters = paramTuples.parameters
-    let caseGenerator = { @Sendable in Case.Generator(arguments: try await dictionary(), parameters: parameters, testFunction: testFunction) }
+    let caseGenerator = { @Sendable in Case.Generator(arguments: try dictionary(), parameters: parameters, testFunction: testFunction) }
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
@@ -496,10 +496,10 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments zippedCollections: @escaping @Sendable () async throws -> Zip2Sequence<C1, C2>,
+    arguments zippedCollections: @escaping @Sendable () throws -> Zip2Sequence<C1, C2>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
+    testFunction:  @escaping @Sendable (C1.Element, C2.Element) throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
 #if !hasFeature(Embedded)
     let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
@@ -508,8 +508,8 @@ extension Test {
 #endif
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in
-      Case.Generator(arguments: try await zippedCollections(), parameters: parameters) {
-        try await testFunction($0, $1)
+      Case.Generator(arguments: try zippedCollections(), parameters: parameters) {
+        try testFunction($0, $1)
       }
     }
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
@@ -567,7 +567,7 @@ extension Test {
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @_lifetime(copy value)
-@inlinable public nonisolated(nonsending) func __requiringAwait<T>(_ value: consuming T) async -> T where T: ~Copyable & ~Escapable {
+@inlinable public func __requiringAwait<T>(_ value: consuming T) async -> T where T: ~Copyable & ~Escapable {
   value
 }
 

@@ -79,12 +79,12 @@ extension Runner {
   ///     the test run.
   static func _applyRepetitionPolicy(
     _ policy: Configuration.RepetitionPolicy,
-    perform body: () async -> Void,
+    perform body: () /*async*/ -> Void,
     didRecordIssue: () -> Bool
-  ) async {
+  ) /*async*/ {
     for iteration in 1...policy.maximumIterationCount {
-      await Test.withCurrentIteration(iteration) {
-        await body()
+      /*await*/ Test.withCurrentIteration(iteration) {
+        /*await*/ body()
       }
 
       let recordedIssue = didRecordIssue()
