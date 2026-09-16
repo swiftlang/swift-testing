@@ -12,10 +12,7 @@
 private import _TestingInternals
 
 public func listAllTests() {
-  let records = Test.Generator.allTestContentRecords()
-  for record in records {
-    writeToConsole("Found a test in metadata \(record)!\n")
-  }
+  entryPoint(passing: nil, eventHandler: nil)
 }
 
 extension Test {
@@ -31,7 +28,7 @@ extension Test {
       .testDeclaration
     }
 
-    var rawValue: @Sendable () async -> Test
+    var rawValue: @Sendable () -> Test
   }
 
   /// Store the test generator function into the given memory.
@@ -47,7 +44,7 @@ extension Test {
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   use it directly.
   @safe public static func __store(
-    _ generator: @escaping @Sendable () async -> Test,
+    _ generator: @escaping @Sendable () -> Test,
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer
   ) -> CBool {
@@ -62,7 +59,7 @@ extension Test {
   ///
   /// The order of values in this sequence is unspecified.
   static var all: some Sequence<Self> {
-    get async {
+    get {
       // The result is a set rather than an array to deduplicate tests that were
       // generated multiple times (e.g. from multiple discovery modes or from
       // defective test records.)
@@ -71,14 +68,14 @@ extension Test {
       // Walk all test content and gather generator functions, then call them in
       // a task group and collate their results.
       let generators = Generator.allTestContentRecords().lazy.compactMap { $0.load() }
-      await withTaskGroup(of: Self.self) { taskGroup in
+      //await withTaskGroup(of: Self.self) { taskGroup in
         for (i, generator) in generators.enumerated() {
-          taskGroup.addTask(name: decorateTaskName("test discovery", withAction: "loading test #\(i)")) {
-            await generator.rawValue()
-          }
+          //taskGroup.addTask(name: decorateTaskName("test discovery", withAction: "loading test #\(i)")) {
+            result.insert(generator.rawValue())
+          //}
         }
-        result = await taskGroup.reduce(into: result) { $0.insert($1) }
-      }
+        //result = await taskGroup.reduce(into: result) { $0.insert($1) }
+      //}
 
       return result
     }

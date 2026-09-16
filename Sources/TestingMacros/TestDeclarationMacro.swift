@@ -293,7 +293,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
           let sourceLocationExpr = createSourceLocationExpr(of: functionDecl.name, context: context)
 
           thunkBody = """
-          if try await Testing.__invokeXCTestMethod(\(selectorExpr), onInstanceOf: \(typeName).self, sourceLocation: \(sourceLocationExpr)) {
+          if try Testing.__invokeXCTestMethod(\(selectorExpr), onInstanceOf: \(typeName).self, sourceLocation: \(sourceLocationExpr)) {
             return
           }
           \(thunkBody)
@@ -303,14 +303,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     } else {
       thunkBody = "_ = \(forwardCall("\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))"
     }
-
-    // Forward the nonisolated keyword from the original function. If none is
-    // present, use `nonisolated(nonsending)` by default.
-    let existingNonisolatedKeyword = functionDecl.modifiers.first { $0.name.tokenKind == .keyword(.nonisolated) }
-    let nonisolatedKeyword = existingNonisolatedKeyword?.trimmed ?? DeclModifierSyntax(
-      name: .keyword(.nonisolated),
-      detail: DeclModifierDetailSyntax(detail: .keyword(.nonsending))
-    )
 
     // Add availability guards if needed.
     thunkBody = createSyntaxNode(
@@ -322,7 +314,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     let thunkName = context.makeUniqueName(thunking: functionDecl)
     let thunkDecl: DeclSyntax = """
     @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
-    @Sendable private \(nonisolatedKeyword) \(staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
+    @Sendable private \(staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) throws -> Void {
       \(thunkBody)
     }
     """
@@ -413,7 +405,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       result.append(
         """
         @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-        private nonisolated(nonsending) \(staticKeyword(for: typeName)) func \(unavailableTestName)() async -> Testing.Test {
+        private \(staticKeyword(for: typeName)) func \(unavailableTestName)() -> Testing.Test {
           .__function(
             named: \(literal: functionDecl.completeName.trimmedDescription),
             in: \(typeNameExpr),
@@ -430,7 +422,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       testsBody = createSyntaxNode(
         guardingForAvailabilityOf: functionDecl,
         beforePerforming: testsBody,
-        orExitingWith: "return await \(unavailableTestName)()",
+        orExitingWith: "return \(unavailableTestName)()",
         in: context
       )
     }
@@ -439,7 +431,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     result.append(
       """
       @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
-      @Sendable private nonisolated(nonsending) \(staticKeyword(for: typeName)) func \(generatorName)() async -> Testing.Test {
+      @Sendable private \(staticKeyword(for: typeName)) func \(generatorName)() -> Testing.Test {
         \(raw: testsBody)
       }
       """

@@ -18,7 +18,7 @@ extension Tag {
 }
 
 @Test(.tags(.foo)) func addition() {
-  #expect(1 + 1 == 2)
+  #expect(1 + 1 == 3)
 }
 
 @Test func subtraction() {

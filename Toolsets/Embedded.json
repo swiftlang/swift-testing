@@ -3,7 +3,8 @@
   "swiftCompiler": {
     "extraCLIOptions": [
       "-enable-experimental-feature", "Embedded",
-      "-wmo"
+      "-wmo",
+      "-Xfrontend", "-disable-stack-protector",
     ]
   },
   "linker": {
