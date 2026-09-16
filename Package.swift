@@ -284,6 +284,18 @@ let package = Package(
       exclude: ["CMakeLists.txt"]
     ),
 
+    // Platform Abstraction Layer: targets related to our Embedded Swift support
+    // and Platform Abstraction Layer annex.
+    .target(
+      name: "EmbeddedPlatformPOSIX+Testing",
+      dependencies: [
+        "Testing",
+        "_TestingInternals",
+      ],
+      path: "Sources/PlatformAbstractionLayer/EmbeddedPlatformPOSIX+Testing",
+      exclude: ["CMakeLists.txt"]
+    ),
+
     // Testing harness: a process that runs in between a host like SwiftPM and
     // the actual test process(es) and which manages interactions between them.
     .executableTarget(

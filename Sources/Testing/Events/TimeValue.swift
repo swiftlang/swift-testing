@@ -22,7 +22,7 @@ private import _TestingInternals
 /// values exposed to clients of the testing library should generally be
 /// represented as instances of ``Test/Clock/Instant`` or a type from the Swift
 /// standard library like ``Duration``.
-struct TimeValue: Sendable, RawRepresentable {
+package struct TimeValue: Sendable, RawRepresentable {
 #if !SWT_NO_SNAPSHOT_TYPES
   private var seconds: Int64
   private var attoseconds: Int64

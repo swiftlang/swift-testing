@@ -34,28 +34,8 @@ let operatingSystemVersion: String = {
     return "\(productVersion) (\(buildNumber))"
   }
 #elseif !SWT_NO_UNAME && (SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD))
-  var name = utsname()
-  if 0 == uname(&name) {
-    let release = withUnsafeBytes(of: name.release) { release in
-      release.withMemoryRebound(to: CChar.self) { release in
-        String(validatingCString: release.baseAddress!) ?? ""
-      }
-    }
-    let version = withUnsafeBytes(of: name.version) { version in
-      version.withMemoryRebound(to: CChar.self) { version in
-        String(validatingCString: version.baseAddress!) ?? ""
-      }
-    }
-    switch (release, version) {
-    case ("", ""):
-      break
-    case let (release, ""):
-      return release
-    case let ("", version):
-      return version
-    default:
-      return "\(release) (\(version))"
-    }
+  if let result = uname() {
+    return result
   }
 #elseif os(Android)
   if let version = systemProperty(named: "ro.build.version.release") {
@@ -278,6 +258,45 @@ func sysctlbyname(_ name: String, as _: String.Type) -> String? {
     }
     return nil
   }
+}
+#endif
+
+
+#if !SWT_NO_UNAME && (SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD))
+/// Get the result of `uname()` (more or less).
+///
+/// - Returns: A string containing most of the output from the POSIX `uname()`
+///   function on this system, or `nil` if `uname()` failed.
+///
+/// This function is used to implement ``operatingSystemVersion`` and
+/// `_swift_testing_getEmbeddedTargetInfo()` (in Embedded Swift) on
+/// POSIX-compliant systems.
+package func uname() -> String? {
+  var name = utsname()
+  if 0 == uname(&name) {
+    let release = withUnsafeBytes(of: name.release) { release in
+      release.withMemoryRebound(to: CChar.self) { release in
+        String(validatingCString: release.baseAddress!) ?? ""
+      }
+    }
+    let version = withUnsafeBytes(of: name.version) { version in
+      version.withMemoryRebound(to: CChar.self) { version in
+        String(validatingCString: version.baseAddress!) ?? ""
+      }
+    }
+    switch (release, version) {
+    case ("", ""):
+      break
+    case let (release, ""):
+      return release
+    case let ("", version):
+      return version
+    default:
+      return "\(release) (\(version))"
+    }
+  }
+
+  return nil
 }
 #endif
 
