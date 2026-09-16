@@ -12,15 +12,7 @@
 private import _TestingInternals
 
 public func listAllTests() {
-  var runner = Runner()
-  runner.configuration.verbosity = .max
-let consoleOutputRecorder = Event.ConsoleOutputRecorder(options: .forCurrentSystemConsole) { string in
-  writeToConsole(string)
-}
-  runner.configuration.eventHandler = { [configuration = runner.configuration] event, eventContext in
-    consoleOutputRecorder.record(event, in: eventContext, configuration: configuration)
-  }  
-runner.run()
+  entryPoint(passing: nil, eventHandler: nil)
 }
 
 extension Test {
