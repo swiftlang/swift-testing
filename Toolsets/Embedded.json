@@ -9,9 +9,8 @@
   "linker": {
     "extraCLIOptions": [
       "-lm",
-      "-lstdc++",
       "-L/swift/usr/lib/swift/embedded/x86_64-unknown-linux-gnu/",
-"/swift/usr/lib/swift/linux/libswift_Concurrency.so",
+      "/swift/usr/lib/swift/linux/libswift_Concurrency.so",
       "-lswiftUnicodeDataTables",
       "-lswiftEmbeddedPlatformPOSIX",
       "-lswiftEmbeddedPlatformMultiThreadedPOSIX"
