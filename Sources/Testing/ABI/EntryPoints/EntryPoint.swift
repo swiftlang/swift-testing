@@ -34,7 +34,7 @@ private import Synchronization
 /// External callers cannot call this function directly. The can use
 /// ``ABI/v0/entryPoint-swift.type.property`` to get a reference to an
 /// ABI-stable version of this function.
-func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager: Bool = false, eventHandler: Event.Handler?) async -> CInt {
+func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager: Bool = false, eventHandler: Event.Handler?) -> CInt {
   let exitCode = Atomic(EXIT_SUCCESS)
 
   do {
@@ -109,7 +109,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
     var tests: [Test]
 
     if args.listTests ?? false {
-      tests = await Array(Test.all)
+      tests = Array(Test.all)
 
       if args.verbosity > .min {
         for testID in listTestsForEntryPoint(tests, verbosity: args.verbosity) {
@@ -129,7 +129,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       }
     } else {
       // Run the tests.
-      let runner = await Runner(configuration: configuration)
+      let runner = Runner(configuration: configuration)
       tests = runner.tests
       if forSwiftPackageManager && tests.isEmpty, args.filter != nil || args.skip != nil {
         // Swift Package Manager handles "no tests found/run" console output
@@ -139,7 +139,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
         // runner.run() for that purpose.
         consoleOutputEnabled.store(false, ordering: .sequentiallyConsistent)
       }
-      await runner.run()
+      runner.run()
     }
 
     // If there were no matching tests, exit with a dedicated exit code so that
