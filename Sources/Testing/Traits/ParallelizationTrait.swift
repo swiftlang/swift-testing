@@ -210,6 +210,7 @@ extension ParallelizationTrait {
 }
 #endif
 
+@_unavailableInEmbedded
 extension Trait where Self == ParallelizationTrait {
   /// A trait that serializes the test to which it is applied.
   ///

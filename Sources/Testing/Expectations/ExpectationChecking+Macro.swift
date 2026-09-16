@@ -798,7 +798,13 @@ public func __checkValue<T>(
     optionalValue != nil,
     expression: expression(),
     negationCount: negationCount,
-    expressionWithCapturedRuntimeValues: (expressionWithCapturedRuntimeValues() ?? expression()).capturingRuntimeValues(optionalValue as T??),
+    expressionWithCapturedRuntimeValues: {
+#if !hasFeature(Embedded)
+      (expressionWithCapturedRuntimeValues() ?? expression()).capturingRuntimeValues(optionalValue as T??)
+#else
+      nil
+#endif
+    }(),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
