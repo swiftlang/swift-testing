@@ -330,7 +330,7 @@ public struct __Expression: Sendable {
           break
         }
         defer { i = subexpressions.index(after: i) }
-        subexpressions[i]._captureRuntimeValue(value)
+        //subexpressions[i]._captureRuntimeValue(value)
       }
     }
     _captureRuntimeValue(firstValue)
@@ -349,7 +349,6 @@ public struct __Expression: Sendable {
   ///
   /// If the ``kind`` of `self` is ``Kind/generic`` or ``Kind/stringLiteral``,
   /// this function is equivalent to ``capturingRuntimeValue(_:)``.
-  @_disfavoredOverload
   func capturingRuntimeValues<T, each U>(_ firstValue: T?, _ additionalValues: repeat (each U)?) -> Self {
     var result = self
     result._captureRuntimeValues(firstValue, repeat each additionalValues)
