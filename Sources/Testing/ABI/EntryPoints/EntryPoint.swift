@@ -806,7 +806,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   return configuration
 }
 
-#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
 /// Create an event handler that streams events to the given file using the
 /// specified ABI version.
 ///

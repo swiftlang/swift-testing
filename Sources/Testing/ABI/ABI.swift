@@ -37,7 +37,6 @@ extension ABI {
       forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
     ) -> Event.Handler
 
-#if !SWT_NO_CODABLE
     /// Create an event handler that encodes events as JSON and forwards them to
     /// an ABI-friendly event handler.
     ///
@@ -64,7 +63,6 @@ extension ABI {
       encodeAsJSONLines: Bool,
       forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
     ) -> Event.Handler
-#endif
 #endif
   }
 
