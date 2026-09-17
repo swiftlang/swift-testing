@@ -331,9 +331,7 @@ public struct __Expression: Sendable {
           break
         }
         defer { i = subexpressions.index(after: i) }
-#if !hasFeature(Embedded)
         subexpressions[i]._captureRuntimeValue(value)
-#endif
       }
     }
     _captureRuntimeValue(firstValue)
