@@ -103,11 +103,15 @@ typedef struct SWTContainer {
 ```
 
 > [!NOTE]
-> Types defined for the benefit of the Platform Abstraction Layer Annex in
-> `EmbeddedPlatform.h` should instead follow the pattern set by the core
-> Platform Abstraction Layer (with `swift_testing_` in place of the `swift_`
-> prefix). The above examples would then be `swift_testing_big_integer_t` and
-> `swift_testing_container_t` respectively.
+> Functions and types defined in the Platform Asbtraction Layer Annex in
+> `EmbeddedPlatform.h` follow the pattern set by the core Platform Abstraction
+> Layer (with `swift_testing_` in place of the `swift_` prefix used there). The
+> above examples would then be:
+>
+> - `_swift_testing_isDebugModeEnabled()`
+> - `_swift_testing_setDebugModeEnabled()`
+> - `swift_testing_big_integer_t`
+> - `swift_testing_container_t`
 
 #### Documenting symbols
 
