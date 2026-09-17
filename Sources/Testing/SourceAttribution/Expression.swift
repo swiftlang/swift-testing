@@ -336,6 +336,7 @@ public struct __Expression: Sendable {
     _captureRuntimeValue(firstValue)
   }
 
+#if !hasFeature(Embedded)
   /// Copy this instance and capture the runtime values corresponding to its
   /// subexpressions.
   ///
@@ -354,6 +355,33 @@ public struct __Expression: Sendable {
     result._captureRuntimeValues(firstValue, repeat each additionalValues)
     return result
   }
+#else
+  // BUG: compiler crashes in Embedded Swift when recursively calling variadic
+  // generic functions with error "cannot get metadata for type with archetype"
+  func capturingRuntimeValues<T>(_ firstValue: T?) -> Self {
+    var result = self
+    result._captureRuntimeValues(firstValue)
+    return result
+  }
+
+  func capturingRuntimeValues<T, U1>(_ firstValue: T?, _ additionalValue1: U1?) -> Self {
+    var result = self
+    result._captureRuntimeValues(firstValue, additionalValue1)
+    return result
+  }
+
+  func capturingRuntimeValues<T, U1, U2>(_ firstValue: T?, _ additionalValue1: U1?, _ additionalValue2: U2?) -> Self {
+    var result = self
+    result._captureRuntimeValues(firstValue, additionalValue1, additionalValue2)
+    return result
+  }
+
+  func capturingRuntimeValues<T, U1, U2, U3>(_ firstValue: T?, _ additionalValue1: U1?, _ additionalValue2: U2?, _ additionalValue3: U3?) -> Self {
+    var result = self
+    result._captureRuntimeValues(firstValue, additionalValue1, additionalValue2, additionalValue3)
+    return result
+  }
+#endif
 
   /// Get an expanded description of this instance that contains the source
   /// code and runtime value (or values) it represents.
