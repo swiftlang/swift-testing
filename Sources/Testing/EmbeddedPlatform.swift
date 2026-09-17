@@ -77,3 +77,9 @@ let exit: @Sendable (_ exitCode: CInt) -> Never = { exitCode in
   swt_unreachable()
 #endif
 }
+
+#if hasFeature(Embedded)
+/// Workaround `_swift_willThrow()` not being declared in the runtime when
+/// it is built for Embedded Swift.
+@_silgen_name("_swift_willThrow") private nonisolated(unsafe) var _swift_willThrow: UnsafeRawPointer? = nil
+#endif

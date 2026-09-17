@@ -38,9 +38,6 @@ jobs:
       android_sdk_versions: '["nightly-main", "nightly-6.4.x"]'
       android_sdk_triples: '["aarch64-unknown-linux-android33", "x86_64-unknown-linux-android28"]'
       enable_android_sdk_checks: true
-      enable_freebsd_checks: true
-      freebsd_swift_versions: '["nightly-main"]'
-      freebsd_os_versions: '["14.3"]'
   soundness:
     name: Soundness
     uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.15

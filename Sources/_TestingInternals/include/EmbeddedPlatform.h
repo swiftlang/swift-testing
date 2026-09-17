@@ -22,6 +22,53 @@ SWT_ASSUME_NONNULL_BEGIN
 /// This header augments the set of declarations in the Swift runtime's Platform
 /// Abstraction Layer, which can be found [here](https://github.com/swiftlang/swift/blob/main/stdlib/public/EmbeddedPlatform/swift/EmbeddedPlatform.h).
 
+// MARK: - System metadata
+
+/// Get information about the embedded system on which (or for which) Swift
+/// Testing has been built and is running.
+///
+/// - Returns: A UTF-8-encoded C string representing some human-readable
+///   information identifying the current system. Whether this string represents
+///   the system's hardware, software, or other defining characteristics is
+///   implementation-defined. If no meaningful information is available, returns
+///   `NULL`. The string must remain valid for the lifetime of the process, and
+///   the caller is not responsible for deallocating it.
+///
+/// The testing library uses this function to describe the embedded system it
+/// is running on. This information is used for diagnostic purposes only.
+///
+/// An implementation may choose to return a constant string, a string stored in
+/// statically-allocated memory, or a string allocated at runtime. The return
+/// value is implementation-defined, but where possible should include useful
+/// information about the system. For example, an implementation on a
+/// 68040-based Macintosh might return something like `"Quadra 950 (System 7.5.5)"`.
+///
+/// ### Reference implementations
+///
+/// On POSIX-compliant targets, this function can be implemented as a call to
+/// `uname()`:
+///
+/// ```c
+/// const char *_swift_testing_getEmbeddedTargetInfo(void) {
+///   static const char *result = NULL;
+///
+///   if (!result) {
+///     struct utsname name {};
+///     if (0 == uname(&name)) {
+///       (void)asprintf(&result, "%s (%s)", name.release, name.version);
+///     }
+///   }
+///
+///   return result;
+/// }
+/// ```
+///
+/// ### Concurrency support
+///
+/// The testing library calls this function at most once during the lifetime of
+/// a test process.
+SWT_EXTERN const char *_Nullable _swift_testing_getEmbeddedTargetInfo(void);
+
 // MARK: - Console output
 
 /// A type describing the capabilities of the current system's console output.
