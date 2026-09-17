@@ -106,9 +106,10 @@ extension String {
       return nil
     }
     if let result = watchMePullARabbit(outOf: _MagicHat(rawValue: value)) {
-      return result
+      self = result
+    } else {
+      self = "(description unavailable in Embedded Swift)"
     }
-    return "(description unavailable in Embedded Swift)"
 #endif
   }
 
