@@ -122,7 +122,6 @@ public func __checkValue(
   return .failure(ExpectationFailedError(expectation: expectation))
 }
 
-#if !hasFeature(Embedded)
 // MARK: - Binary operators
 
 /// Call a binary operator, passing the left-hand and right-hand arguments.
@@ -190,6 +189,37 @@ private func _callBinaryOperator<T, U, R>(
   )
 }
 
+#if hasFeature(Embedded)
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload is used by binary operators such as `>` when `T` and `U`
+/// conform to ``CustomTestStringConvertible``.
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+@_disfavoredOverload public func __checkBinaryOperation<T, U>(
+  _ lhs: T, _ op: (T, () -> U) -> Bool, _ rhs: @autoclosure () -> U,
+  expression: @autoclosure () -> __Expression,
+  negationCount: Int = 0,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<Void, any Error> where T: CustomTestStringConvertible, U: CustomTestStringConvertible {
+  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
+  return __checkValue(
+    condition,
+    expression: expression(),
+    negationCount: negationCount,
+    expressionWithCapturedRuntimeValues: expression().capturingRuntimeValues(condition, lhs, rhs),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+#endif
+
+#if !hasFeature(Embedded)
 // MARK: - Function calls
 
 /// Check that an expectation has passed after a condition has been evaluated
@@ -813,7 +843,6 @@ public func __checkValue<T>(
   }
 }
 
-#if !hasFeature(Embedded)
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
 ///
@@ -848,6 +877,37 @@ public func __checkValue<T>(
   )
 }
 
+#if hasFeature(Embedded)
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload is used to conditionally unwrap optional values using the `??`
+/// operator when `T` conforms to ``CustomTestStringConvertible``.
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+@_disfavoredOverload public func __checkBinaryOperation<T>(
+  _ lhs: T?, _ op: (T?, () -> T?) -> T?, _ rhs: @autoclosure () -> T?,
+  expression: @autoclosure () -> __Expression,
+  negationCount: Int = 0,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<T, any Error> where T: CustomTestStringConvertible {
+  let (optionalValue, rhs) = _callBinaryOperator(lhs, op, rhs)
+  return __checkValue(
+    optionalValue,
+    expression: expression(),
+    negationCount: negationCount,
+    expressionWithCapturedRuntimeValues: expression().capturingRuntimeValues(optionalValue, lhs as T??, rhs as T??),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+#endif
+
+#if !hasFeature(Embedded)
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
 ///

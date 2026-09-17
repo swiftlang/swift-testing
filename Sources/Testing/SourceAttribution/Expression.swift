@@ -82,7 +82,6 @@ public struct __Expression: Sendable {
     }
   }
 
-#if !hasFeature(Embedded)
   /// A type which represents an evaluated value, which may include textual
   /// descriptions, type information, substructure, and other information.
   @_spi(ForToolsIntegrationOnly)
@@ -91,13 +90,16 @@ public struct __Expression: Sendable {
     /// ``Swift/String/init(describingForTest:)``.
     public var description: String
 
+#if !hasFeature(Embedded)
     /// A debug description of this value, formatted using
     /// `String(reflecting:)`.
     public var debugDescription: String
+#endif
 
     /// Information about the type of this value.
     public var typeInfo: TypeInfo
 
+#if !hasFeature(Embedded)
     /// The label associated with this value, if any.
     ///
     /// For non-child instances, or for child instances of members who do not
@@ -277,6 +279,17 @@ public struct __Expression: Sendable {
         self.children = children
       }
     }
+#else
+    /// Initialize an instance of this type describing the specified subject and
+    /// its children (if any).
+    ///
+    /// - Parameters:
+    ///   - subject: The subject this instance should reflect.
+    init?(reflecting subject: some CustomTestStringConvertible) {
+      description = String(describingForTest: subject)
+      typeInfo = TypeInfo(fullyQualifiedNameComponents: ["Swift", "Any"])
+    }
+#endif
   }
 
   /// A representation of the runtime value of this expression.
@@ -286,11 +299,22 @@ public struct __Expression: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public var runtimeValue: Value?
 
+  /// The protocol constraint on values that can be captured.
+  ///
+  /// Normally, this constraint is just `Any`. In Embedded Swift, a value must
+  /// conform to ``CustomTestStringConvertible`` for the testing library to
+  /// capture it.
+#if !hasFeature(Embedded)
+  typealias CapturableValueConstraint = Any
+#else
+  typealias CapturableValueConstraint = CustomTestStringConvertible
+#endif
+
   /// Capture the runtime value corresponding to this instance.
   ///
   /// - Parameters:
   ///   - value: The captured runtime value.
-  private mutating func _captureRuntimeValue(_ value: (some Any)?) {
+  private mutating func _captureRuntimeValue<T>(_ value: T?) where T: CapturableValueConstraint {
     runtimeValue = value.flatMap(Value.init(reflecting:))
     if isNegated, let value = value as? Bool {
       subexpressions[0]._captureRuntimeValue(!value)
@@ -304,7 +328,7 @@ public struct __Expression: Sendable {
   ///   - firstValue: The first captured runtime value.
   ///   - additionalValues: Any additional captured runtime values after the
   ///     first.
-  private mutating func _captureRuntimeValues<each T>(_ firstValue: (some Any)?, _ additionalValues: repeat (each T)?) {
+  private mutating func _captureRuntimeValues<each T>(_ firstValue: (some Any)?, _ additionalValues: repeat (each T)?) where repeat each T: CapturableValueConstraint {
     if isNegated {
       // A negated expression has an additional level of indirection between it
       // and any additional values.
@@ -336,7 +360,32 @@ public struct __Expression: Sendable {
   ///
   /// If the ``kind`` of `self` is ``Kind/generic`` or ``Kind/stringLiteral``,
   /// this function is equivalent to ``capturingRuntimeValue(_:)``.
-  func capturingRuntimeValues<each T>(_ firstValue: (some Any)?, _ additionalValues: repeat (each T)?) -> Self {
+  @_disfavoredOverload
+  func capturingRuntimeValues<T, each U>(_ firstValue: T?, _ additionalValues: repeat (each U)?) -> Self {
+#if !hasFeature(Embedded)
+    var result = self
+    result._captureRuntimeValues(firstValue, repeat each additionalValues)
+    return result
+#else
+    self
+#endif
+  }
+
+#if hasFeature(Embedded)
+  /// Copy this instance and capture the runtime values corresponding to its
+  /// subexpressions.
+  ///
+  /// - Parameters:
+  ///   - firstValue: The first captured runtime value.
+  ///   - additionalValues: Any additional captured runtime values after the
+  ///     first.
+  ///
+  /// - Returns: A copy of `self` with information about the specified runtime
+  ///   values captured for future use.
+  ///
+  /// If the ``kind`` of `self` is ``Kind/generic`` or ``Kind/stringLiteral``,
+  /// this function is equivalent to ``capturingRuntimeValue(_:)``.
+  func capturingRuntimeValues<T, each U>(_ firstValue: T?, _ additionalValues: repeat (each U)?) -> Self where T: CustomTestStringConvertible, repeat each U: CustomTestStringConvertible {
     var result = self
     result._captureRuntimeValues(firstValue, repeat each additionalValues)
     return result
@@ -369,6 +418,7 @@ public struct __Expression: Sendable {
     if verbose, let qualifiedName = runtimeValue?.typeInfo.fullyQualifiedName {
       result = "\(result): \(qualifiedName)"
     }
+#endif
 
     if let runtimeValue {
       let runtimeValueDescription = String(describingForTest: runtimeValue)
@@ -377,9 +427,10 @@ public struct __Expression: Sendable {
         result = "\(result) → \(runtimeValueDescription)"
       }
     } else {
+#if !hasFeature(Embedded)
       result = "\(result) → <not evaluated>"
-    }
 #endif
+    }
 
     return result
   }
