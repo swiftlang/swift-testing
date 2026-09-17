@@ -80,7 +80,6 @@ public func __checkValue(
     condition = !condition
   }
 
-#if !hasFeature(Embedded)
   // Capture the correct expression in the expectation.
   if !condition, let expressionWithCapturedRuntimeValues = expressionWithCapturedRuntimeValues() {
     expression = expressionWithCapturedRuntimeValues
@@ -88,7 +87,6 @@ public func __checkValue(
       expression = expression.capturingRuntimeValues(condition)
     }
   }
-#endif
 
   // Post an event for the expectation regardless of whether or not it passed.
   // If the current event handler is not configured to handle events of this
@@ -828,13 +826,7 @@ public func __checkValue<T>(
     optionalValue != nil,
     expression: expression(),
     negationCount: negationCount,
-    expressionWithCapturedRuntimeValues: {
-#if !hasFeature(Embedded)
-      (expressionWithCapturedRuntimeValues() ?? expression()).capturingRuntimeValues(optionalValue as T??)
-#else
-      nil
-#endif
-    }(),
+    expressionWithCapturedRuntimeValues: (expressionWithCapturedRuntimeValues() ?? expression()).capturingRuntimeValues(optionalValue as T??),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
