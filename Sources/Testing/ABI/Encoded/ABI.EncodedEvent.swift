@@ -271,7 +271,12 @@ extension ABI.EncodedEvent: Codable {
     _sourceLocation = try container.decodeIfPresent(ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
   }
 }
-extension ABI.EncodedEvent.Kind: Codable {}
+
+extension ABI.EncodedEvent.Kind: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
 #endif
 
 extension ABI.EncodedEvent: JSON.Encodable {
@@ -294,6 +299,8 @@ extension ABI.EncodedEvent: JSON.Encodable {
     return .object(result)
   }
 }
+
+extension ABI.EncodedEvent.Kind: JSON.Encodable {}
 
 // MARK: - Conversion to/from library types
 

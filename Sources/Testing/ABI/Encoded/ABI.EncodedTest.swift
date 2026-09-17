@@ -147,10 +147,29 @@ extension ABI {
 // MARK: - Codable, JSON.Encodable
 
 #if !SWT_NO_CODABLE
-extension ABI.EncodedTest: Codable {}
-extension ABI.EncodedTest.Kind: Codable {}
-extension ABI.EncodedTest.Parameter: Codable {}
-extension ABI.EncodedTestCase: Codable {}
+extension ABI.EncodedTest: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
+
+extension ABI.EncodedTest.Kind: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
+
+extension ABI.EncodedTest.Parameter: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
+
+extension ABI.EncodedTestCase: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
 
 extension ABI.EncodedTest.ID: Codable {
   func encode(to encoder: any Encoder) throws {
@@ -183,6 +202,8 @@ extension ABI.EncodedTest: JSON.Encodable {
     return .object(result)
   }
 }
+
+extension ABI.EncodedTest.Kind: JSON.Encodable {}
 
 extension ABI.EncodedTest.Parameter: JSON.Encodable {
   func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {

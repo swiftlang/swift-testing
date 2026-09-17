@@ -145,7 +145,11 @@ extension SuspendingClock.Instant {
 // MARK: - Codable, JSON.Encodable
 
 #if !SWT_NO_CODABLE
-extension ABI.EncodedInstant: Codable {}
+extension ABI.EncodedInstant: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
 #endif
 
 extension ABI.EncodedInstant: JSON.Encodable {

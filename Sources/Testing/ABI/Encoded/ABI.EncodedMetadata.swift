@@ -31,7 +31,11 @@ extension ABI {
 // MARK: - Codable, JSON.Encodable
 
 #if !SWT_NO_CODABLE
-extension ABI.EncodedMetadata: Codable {}
+extension ABI.EncodedMetadata: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
 #endif
 
 extension ABI.EncodedMetadata: JSON.Encodable {

@@ -96,10 +96,10 @@ enum JSON {
       return encoder
     }()
 
-#if DEBUG && !SWT_NO_FILE_IO
+#if DEBUG
     // Advise us to use our own encoder where possible.
     if userInfo.isEmpty, value is any JSON.Encodable {
-      try? FileHandle.stderr.write("Using 'Codable' conformance to encode a value that also conforms to 'JSON.Encodable': \(value)\n")
+      writeToConsole("Using 'Codable' conformance to encode a value that also conforms to 'JSON.Encodable': \(value)\n")
     }
 #endif
 

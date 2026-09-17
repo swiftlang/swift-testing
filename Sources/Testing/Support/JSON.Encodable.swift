@@ -396,6 +396,12 @@ extension JSON.Value {
 
 // MARK: - Basic JSON.Encodable conformances
 
+extension JSON.Encodable where Self: RawRepresentable, RawValue: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) throws(RawValue.JSONEncodingError) -> JSON.Value {
+    try rawValue.jsonValue(in: context)
+  }
+}
+
 extension JSON.Value: JSON.Encodable {
   func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     self

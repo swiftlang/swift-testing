@@ -86,8 +86,17 @@ extension ABI {
 // MARK: - Codable, JSON.Encodable
 
 #if !SWT_NO_CODABLE
-extension ABI.EncodedMessage: Codable {}
-extension ABI.EncodedMessage.Symbol: Codable {}
+extension ABI.EncodedMessage: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
+
+extension ABI.EncodedMessage.Symbol: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
 #endif
 
 extension ABI.EncodedMessage: JSON.Encodable {
@@ -101,4 +110,6 @@ extension ABI.EncodedMessage: JSON.Encodable {
     return .object(result)
   }
 }
+
+extension ABI.EncodedMessage.Symbol: JSON.Encodable {}
 #endif

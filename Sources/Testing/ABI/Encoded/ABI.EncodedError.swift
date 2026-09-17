@@ -68,7 +68,11 @@ extension ABI.EncodedError: Error {
 // MARK: - Codable, JSON.Encodable
 
 #if !SWT_NO_CODABLE
-extension ABI.EncodedError: Codable {}
+extension ABI.EncodedError: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
 #endif
 
 extension ABI.EncodedError: JSON.Encodable {

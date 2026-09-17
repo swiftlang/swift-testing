@@ -116,8 +116,17 @@ extension ABI {
 // MARK: - Codable, JSON.Encodable
 
 #if !SWT_NO_CODABLE
-extension ABI.EncodedIssue: Codable {}
-extension ABI.EncodedIssue.Severity: Codable {}
+extension ABI.EncodedIssue: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
+
+extension ABI.EncodedIssue.Severity: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
 #endif
 
 extension ABI.EncodedIssue: JSON.Encodable {
@@ -136,6 +145,8 @@ extension ABI.EncodedIssue: JSON.Encodable {
     return .object(result)
   }
 }
+
+extension ABI.EncodedIssue.Severity: JSON.Encodable {}
 
 // MARK: - Conversion to/from library types
 
