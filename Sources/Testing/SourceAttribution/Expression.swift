@@ -285,7 +285,7 @@ public struct __Expression: Sendable {
     ///
     /// - Parameters:
     ///   - subject: The subject this instance should reflect.
-    init?(reflecting subject: some CustomTestStringConvertible) {
+    init?(reflecting subject: some Any) {
       description = String(describingForTest: subject)
       typeInfo = TypeInfo(fullyQualifiedNameComponents: ["Swift", "Any"])
     }
