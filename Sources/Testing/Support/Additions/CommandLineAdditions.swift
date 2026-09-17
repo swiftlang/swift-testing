@@ -64,6 +64,31 @@ extension CommandLine {
         }
       }
       return result!
+#elseif os(Windows) && compiler(>=6.5)
+      var result: String?
+#if DEBUG
+      var bufferCount = Int(1) // force looping
+#else
+      var bufferCount = Int(MAX_PATH)
+#endif
+      while result == nil {
+        try withUnsafeTemporaryAllocation(of: CWideChar.self, capacity: bufferCount) { buffer in
+          SetLastError(DWORD(ERROR_SUCCESS))
+          _ = GetModuleFileNameW(nil, buffer.baseAddress!, DWORD(buffer.count))
+          switch GetLastError() {
+          case DWORD(ERROR_SUCCESS):
+            result = String.decodeCString(buffer.baseAddress!, as: UTF16.self)?.result
+            if result == nil {
+              throw Win32Error(rawValue: DWORD(ERROR_ILLEGAL_CHARACTER))
+            }
+          case DWORD(ERROR_INSUFFICIENT_BUFFER):
+            bufferCount += Int(MAX_PATH)
+          case let errorCode:
+            throw Win32Error(rawValue: errorCode)
+          }
+        }
+      }
+      return result!
 #else
       guard let executablePathCString else {
 #if os(Windows)
