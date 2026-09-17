@@ -362,7 +362,7 @@ public struct __Expression: Sendable {
   // generic functions with error "cannot get metadata for type with archetype"
   func capturingRuntimeValues<T>(_ firstValue: T?) -> Self {
     var result = self
-    result._captureRuntimeValues(firstValue)
+    result._captureRuntimeValue(firstValue)
     return result
   }
 
