@@ -66,6 +66,7 @@ extension String {
   /// ## See Also
   ///
   /// - ``CustomTestStringConvertible``
+  @_unavailableInEmbedded
   public init(describingForTest value: some Any) {
 #if !hasFeature(Embedded)
     // The mangled type name SPI doesn't handle generic types very well, so we
@@ -97,19 +98,7 @@ extension String {
       self.init(describing: value)
     }
 #else
-    func watchMePullARabbit(outOf magicHat: some _MagicHatProtocol) -> String? {
-      if let value = magicHat.asCustomTestStringConvertible {
-        return value.testDescription
-      } else if let value = magicHat.asCustomStringConvertible {
-        return value.description
-      }
-      return nil
-    }
-    if let result = watchMePullARabbit(outOf: _MagicHat(rawValue: value)) {
-      self = result
-    } else {
-      self = "(description unavailable in Embedded Swift)"
-    }
+    swt_unreachable()
 #endif
   }
 
@@ -143,11 +132,22 @@ extension String {
   }
 
   @_disfavoredOverload
-  @available(*, deprecated, message: "String representations of arbitrary values are not supported in Embedded Swift")
   @usableFromInline
   init(describingForTest value: borrowing some ~Copyable & ~Escapable) {
-    // FIXME: need some sort of description functionality for arbitrary values
-    self = "<unknown value>"
+    func watchMePullARabbit(outOf magicHat: some _MagicHatProtocol) -> String? {
+      if let value = magicHat.asCustomTestStringConvertible {
+        return value.testDescription
+      } else if let value = magicHat.asCustomStringConvertible {
+        return value.description
+      }
+      return nil
+    }
+    if let result = watchMePullARabbit(outOf: _MagicHat(rawValue: value)) {
+      self = result
+    } else {
+      // FIXME: need some sort of description functionality for arbitrary values
+      self = "<unknown value>"
+    }
   }
 
   init(describingForTest value: (some ~Copyable & ~Escapable).Type) {
