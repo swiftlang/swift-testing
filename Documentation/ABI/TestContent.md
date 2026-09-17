@@ -32,9 +32,9 @@ section in built test products:
   toolchain ([swift-#87650](https://github.com/swiftlang/swift/issues/87650)).
 
 In Embedded Swift, or when statically linking the standard library and runtime,
-there is a single statically linked test content section. At
-this time, statically-linked test content is supported if you use the Mach-O,
-ELF, or Wasm image format.
+there is a single statically linked test content section. At this time,
+statically-linked test content is supported if you use the Mach-O, ELF, or Wasm
+image format.
 
 ### Record layout
 
