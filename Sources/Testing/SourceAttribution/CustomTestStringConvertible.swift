@@ -10,6 +10,38 @@
 
 private import _TestingInternals
 
+
+private protocol _MagicHatProtocol {
+  var asCustomTestStringConvertible: (any CustomTestStringConvertible)? { get }
+  var asCustomStringConvertible: (any CustomStringConvertible)? { get }
+}
+
+private struct _MagicHat<T>: RawRepresentable {
+  var rawValue: T
+}
+
+extension _MagicHat: _MagicHatProtocol {
+  var asCustomTestStringConvertible: (any CustomTestStringConvertible)? {
+    nil
+  }
+
+  var asCustomStringConvertible: (any CustomStringConvertible)? {
+    nil
+  }
+}
+
+extension _MagicHat where T: CustomTestStringConvertible {
+  var asCustomTestStringConvertible: (any CustomTestStringConvertible)? {
+    rawValue
+  }
+}
+
+extension _MagicHat where T: CustomStringConvertible {
+  var asCustomStringConvertible: (any CustomStringConvertible)? {
+    rawValue
+  }
+}
+
 /// A protocol describing types with a custom string representation when
 /// presented as part of a test's output.
 ///
@@ -34,7 +66,6 @@ extension String {
   /// ## See Also
   ///
   /// - ``CustomTestStringConvertible``
-  @_unavailableInEmbedded
   public init(describingForTest value: some Any) {
 #if !hasFeature(Embedded)
     // The mangled type name SPI doesn't handle generic types very well, so we
@@ -66,7 +97,18 @@ extension String {
       self.init(describing: value)
     }
 #else
-    swt_unreachable()
+    func watchMePullARabbit(outOf magicHat: some _MagicHatProtocol) -> String? {
+      if let value = magicHat.asCustomTestStringConvertible {
+        return value.testDescription
+      } else if let value = magicHat.asCustomStringConvertible {
+        return value.description
+      }
+      return nil
+    }
+    if let result = watchMePullARabbit(outOf: _MagicHat(rawValue: value)) {
+      return result
+    }
+    return "(description unavailable in Embedded Swift)"
 #endif
   }
 

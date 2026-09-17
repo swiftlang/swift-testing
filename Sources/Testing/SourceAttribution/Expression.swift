@@ -519,8 +519,9 @@ extension __Expression: CustomStringConvertible, CustomDebugStringConvertible {
   }
 }
 
+extension __Expression.Value: CustomStringConvertible {}
 #if !hasFeature(Embedded)
-extension __Expression.Value: CustomStringConvertible, CustomDebugStringConvertible {}
+extension __Expression.Value: CustomDebugStringConvertible {}
 #endif
 
 /// A type representing a Swift expression captured at compile-time from source
