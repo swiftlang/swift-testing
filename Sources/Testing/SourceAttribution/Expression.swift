@@ -318,6 +318,7 @@ public struct __Expression: Sendable {
   ///   - additionalValues: Any additional captured runtime values after the
   ///     first.
   private mutating func _captureRuntimeValues<each T>(_ firstValue: (some Any)?, _ additionalValues: repeat (each T)?) {
+#if !hasFeature(Embedded)
     if isNegated {
       // A negated expression has an additional level of indirection between it
       // and any additional values.
@@ -330,9 +331,10 @@ public struct __Expression: Sendable {
           break
         }
         defer { i = subexpressions.index(after: i) }
-        //subexpressions[i]._captureRuntimeValue(value)
+        subexpressions[i]._captureRuntimeValue(value)
       }
     }
+#endif
     _captureRuntimeValue(firstValue)
   }
 
