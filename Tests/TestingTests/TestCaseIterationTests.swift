@@ -116,13 +116,14 @@ struct TestCaseIterationTests {
     }
   }
 
-  private enum NonFailureIssueKind {
+  private enum IssueKind {
+    case failure
     case known
     case warning
   }
 
   private func iterationCount(
-    for issueKind: NonFailureIssueKind,
+    for issueKind: IssueKind,
     continuingWhen: Configuration.RepetitionPolicy.ContinuationCondition
   ) async -> Int {
     let iterations = Atomic(0)
@@ -132,6 +133,8 @@ struct TestCaseIterationTests {
     await Test {
       iterations.add(1, ordering: .sequentiallyConsistent)
       switch issueKind {
+      case .failure:
+        Issue.record("Failure")
       case .known:
         withKnownIssue {
           Issue.record("Expected defect")
@@ -142,6 +145,12 @@ struct TestCaseIterationTests {
     }.run(configuration: configuration)
 
     return iterations.load(ordering: .sequentiallyConsistent)
+  }
+
+  @Test
+  func `Failures cause repetition while issue recorded`() async {
+    let iterations = await iterationCount(for: .failure, continuingWhen: .whileIssueRecorded)
+    #expect(iterations == 3)
   }
 
   @Test
