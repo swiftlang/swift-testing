@@ -19,7 +19,6 @@ struct Test_CaseTests {
     #expect(testCase.id.discriminator == nil)
   }
 
-#if !SWT_NO_CODABLE
   @Test func singleStableArgument() throws {
     let testCase = Test.Case(
       values: [1],

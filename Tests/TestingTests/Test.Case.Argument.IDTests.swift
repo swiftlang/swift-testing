@@ -10,9 +10,9 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if !SWT_NO_CODABLE
 @Suite("Test.Case.Argument.ID Tests")
 struct Test_Case_Argument_IDTests {
+#if !SWT_NO_CODABLE
   @Test("One Codable parameter")
   func oneCodableParameter() async throws {
     let test = Test(
@@ -71,8 +71,10 @@ struct Test_Case_Argument_IDTests {
     let argument = try #require(arguments.first)
     #expect(argument.id.bytes == SHA256.hash(#""abc""#.utf8))
   }
+#endif
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Fixture parameter types
 
 private struct MyCustomTestArgument: CustomTestArgumentEncodable, Equatable {
