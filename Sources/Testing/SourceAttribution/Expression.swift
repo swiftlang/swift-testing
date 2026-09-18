@@ -286,8 +286,20 @@ public struct __Expression: Sendable {
     /// - Parameters:
     ///   - subject: The subject this instance should reflect.
     init?(reflecting subject: some Any) {
-      description = String(describingForTest: subject)
-      typeInfo = TypeInfo(fullyQualifiedNameComponents: ["Swift", "Any"])
+      // Hard-code some common types until/unless we can get as? any CustomStringConvertible
+      if let subject = subject as? Int {
+        description = String(describingForTest: subject)
+        typeInfo = TypeInfo(fullyQualifiedNameComponents: ["Swift", "Int"])
+      } else if let subject = subject as? String {
+        description = String(describingForTest: subject)
+        typeInfo = TypeInfo(fullyQualifiedNameComponents: ["Swift", "String"])
+      } else if let subject = subject as? Bool {
+        description = String(describingForTest: subject)
+        typeInfo = TypeInfo(fullyQualifiedNameComponents: ["Swift", "Bool"])
+      } else {
+        description = String(describingForTest: subject)
+        typeInfo = TypeInfo(fullyQualifiedNameComponents: ["Swift", "Any"])
+      }
     }
 #endif
   }
