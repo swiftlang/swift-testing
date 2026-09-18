@@ -204,6 +204,7 @@ struct TestCaseSelectionTests {
       await fixtureTest.run(configuration: configuration)
     }
   }
+#endif
 }
 
 #if !SWT_NO_CODABLE
@@ -223,7 +224,6 @@ private struct MyCustomTestArgument: CustomTestArgumentEncodable, Equatable {
     try container.encode(y, forKey: .y)
   }
 }
-#endif
 
 private struct MyCustomIdentifiableArgument: Identifiable, CustomStringConvertible {
   var id: String
@@ -236,3 +236,4 @@ private struct MyCustomIdentifiableArgument: Identifiable, CustomStringConvertib
 private struct MyCustomRawRepresentableArgument: RawRepresentable {
   var rawValue: String
 }
+#endif

@@ -71,6 +71,7 @@ struct Test_Case_Argument_IDTests {
     let argument = try #require(arguments.first)
     #expect(argument.id.bytes == SHA256.hash(#""abc""#.utf8))
   }
+#endif
 }
 
 // MARK: - Fixture parameter types

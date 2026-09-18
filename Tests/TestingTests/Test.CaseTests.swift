@@ -12,6 +12,7 @@
 
 @Suite("Test.Case Tests")
 struct Test_CaseTests {
+#if !SWT_NO_CODABLE
   @Test func nonParameterized() throws {
     let testCase = Test.Case(body: {})
     #expect(testCase.id.argumentIDs == nil)

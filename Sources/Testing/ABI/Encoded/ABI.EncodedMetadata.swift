@@ -28,11 +28,26 @@ extension ABI {
   }
 }
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
-extension ABI.EncodedMetadata: Codable {}
+#if !SWT_NO_CODABLE
+extension ABI.EncodedMetadata: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
 #endif
+
+extension ABI.EncodedMetadata: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["name"] = name.jsonValue(in: context)
+    result["value"] = value.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
 
 // MARK: - Conversion to/from library types
 

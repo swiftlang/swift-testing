@@ -37,7 +37,6 @@ extension ABI {
       forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
     ) -> Event.Handler
 
-#if !SWT_NO_CODABLE
     /// Create an event handler that encodes events as JSON and forwards them to
     /// an ABI-friendly event handler.
     ///
@@ -64,7 +63,6 @@ extension ABI {
       encodeAsJSONLines: Bool,
       forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
     ) -> Event.Handler
-#endif
 #endif
   }
 
@@ -332,7 +330,6 @@ extension ABI {
   }
 }
 
-#if !SWT_NO_CODABLE
 // MARK: -
 
 /// The set of keys accepted by `_swift_testing_copyMetadataValue(_:_:)`.
@@ -359,7 +356,7 @@ private enum _MetadataKey: String, Sendable, CaseIterable {
 @c
 @usableFromInline
 func _swift_testing_copyMetadataValue(_ key: UnsafePointer<CChar>, _ reserved: UInt) -> UnsafeMutablePointer<CChar>? {
-  func copyJSON(for value: some Encodable) -> UnsafeMutablePointer<CChar>? {
+  func copyJSON(for value: some JSON.Encodable) -> UnsafeMutablePointer<CChar>? {
     try? JSON.withEncoding(of: value) { json in
       json.withMemoryRebound(to: CChar.self) { json in
         // The JSON produced by Foundation is not null-terminated, so to avoid
@@ -383,4 +380,3 @@ func _swift_testing_copyMetadataValue(_ key: UnsafePointer<CChar>, _ reserved: U
     return nil
   }
 }
-#endif
