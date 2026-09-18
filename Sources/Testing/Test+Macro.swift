@@ -157,7 +157,6 @@ public macro Test(
   _ traits: any TestTrait...
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro")
 
-// TODO: @Suite support in some form
 extension Test {
   /// Information about a parameter to a test function.
   ///
