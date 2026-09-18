@@ -178,8 +178,8 @@ extension Event.JUnitXMLRecorder {
     if let testData = testDataGraph.value {
       let id = testData.id
       let classNameComponents = CollectionOfOne(id.moduleName) + id.nameComponents.dropLast()
-      let className = classNameComponents.joined(separator: ".")
-      let name = id.nameComponents.last!
+      let className = Self._escapeForXML(classNameComponents.joined(separator: "."))
+      let name = Self._escapeForXML(id.nameComponents.last!)
 
       // Tests that are skipped or for some reason never completed will not have
       // an end instant; don't report timing for such tests.
