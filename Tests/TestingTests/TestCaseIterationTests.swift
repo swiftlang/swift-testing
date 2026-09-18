@@ -116,6 +116,58 @@ struct TestCaseIterationTests {
     }
   }
 
+  private enum NonFailureIssueKind {
+    case known
+    case warning
+  }
+
+  private func iterationCount(
+    for issueKind: NonFailureIssueKind,
+    continuingWhen: Configuration.RepetitionPolicy.ContinuationCondition
+  ) async -> Int {
+    let iterations = Atomic(0)
+    var configuration = Configuration()
+    configuration.repetitionPolicy = .repeating(continuingWhen, maximumIterationCount: 3)
+
+    await Test {
+      iterations.add(1, ordering: .sequentiallyConsistent)
+      switch issueKind {
+      case .known:
+        withKnownIssue {
+          Issue.record("Expected defect")
+        }
+      case .warning:
+        Issue.record("Warning", severity: .warning)
+      }
+    }.run(configuration: configuration)
+
+    return iterations.load(ordering: .sequentiallyConsistent)
+  }
+
+  @Test
+  func `Known issues do not cause repetition while issue recorded`() async {
+    let iterations = await iterationCount(for: .known, continuingWhen: .whileIssueRecorded)
+    #expect(iterations == 1)
+  }
+
+  @Test
+  func `Warnings do not cause repetition while issue recorded`() async {
+    let iterations = await iterationCount(for: .warning, continuingWhen: .whileIssueRecorded)
+    #expect(iterations == 1)
+  }
+
+  @Test
+  func `Known issues do not stop repetition until issue recorded`() async {
+    let iterations = await iterationCount(for: .known, continuingWhen: .untilIssueRecorded)
+    #expect(iterations == 3)
+  }
+
+  @Test
+  func `Warnings do not stop repetition until issue recorded`() async {
+    let iterations = await iterationCount(for: .warning, continuingWhen: .untilIssueRecorded)
+    #expect(iterations == 3)
+  }
+
   // MARK: Encoded event ordering
 
   private func assertEncodedEventKinds(
