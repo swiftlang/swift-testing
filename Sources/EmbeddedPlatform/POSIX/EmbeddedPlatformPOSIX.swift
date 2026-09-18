@@ -40,7 +40,7 @@ private nonisolated(unsafe) let _embeddedTargetInfo: UnsafeMutablePointer<CChar>
 }
 
 @c @implementation func _swift_testing_writeToConsole(_ chars: UnsafePointer<UInt8>, _ count: Int) {
-  fwrite(chars, 1, count, swt_stderr())
+  write(STDERR_FILENO, chars, count)
 }
 
 @c func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
