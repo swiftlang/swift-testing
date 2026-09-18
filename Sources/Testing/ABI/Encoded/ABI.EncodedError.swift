@@ -65,11 +65,27 @@ extension ABI.EncodedError: Error {
   }
 }
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
-extension ABI.EncodedError: Codable {}
+#if !SWT_NO_CODABLE
+extension ABI.EncodedError: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
 #endif
+
+extension ABI.EncodedError: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["description"] = description?.jsonValue(in: context)
+    result["domain"] = domain?.jsonValue(in: context)
+    result["code"] = code.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
 
 // MARK: - CustomTestStringConvertible
 

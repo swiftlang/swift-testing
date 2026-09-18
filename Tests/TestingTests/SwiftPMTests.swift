@@ -449,6 +449,7 @@ struct SwiftPMTests {
     )
   }
 
+#if !SWT_NO_CODABLE
   @Test("--configuration-path argument", arguments: [
     "--configuration-path", "--experimental-configuration-path",
   ])
@@ -478,6 +479,7 @@ struct SwiftPMTests {
     #expect(args.skip == nil)
     #expect(args.parallel == false)
   }
+#endif
 
   @available(*, deprecated)
   @Test("Deprecated eventStreamVersion property")
@@ -546,7 +548,8 @@ struct SwiftPMTests {
   }
 #endif
 
-#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
+#if !SWT_NO_CODABLE
   @Test("Severity and isFailure fields included in version 6.3")
   func validateEventStreamContents() async throws {
     let tempDirPath = try temporaryDirectory()
@@ -668,6 +671,7 @@ struct SwiftPMTests {
     }
     #expect(eventRecords.count == 4)
   }
+#endif
 
   @Test("Experimental ABI version requires --experimental-event-stream-version argument")
   func experimentalABIVersionNeedsExperimentalFlag() {
@@ -685,6 +689,7 @@ struct SwiftPMTests {
     }
   }
 
+#if !SWT_NO_CODABLE
   @Test("Can extract the ABI version from record JSON")
   func getVersionFromRecordJSON() throws {
     var json = #"{ "kind": "test", "version": "1.2.3", "payload": {} }"#
@@ -693,6 +698,7 @@ struct SwiftPMTests {
     }
     #expect(versionNumber == ABI.VersionNumber(1, 2, 3))
   }
+#endif
 #endif
 #endif
 

@@ -231,9 +231,9 @@ extension ABI {
   }
 }
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.EncodedEvent: Codable {
   /// The keys used to encode ``ABI/EncodedEvent``.
   private enum _CodingKeys: String, CodingKey {
@@ -250,19 +250,7 @@ extension ABI.EncodedEvent: Codable {
   }
 
   public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: _CodingKeys.self)
-    try container.encode(kind, forKey: .kind)
-    try container.encode(instant, forKey: .instant)
-    try container.encodeIfPresent(issue, forKey: .issue)
-    try container.encodeIfPresent(attachment, forKey: .attachment)
-    if V.alwaysEncodeMessagesField || !messages.isEmpty {
-      try container.encode(messages, forKey: .messages)
-    }
-    try container.encodeIfPresent(testID, forKey: .testID)
-    try container.encodeIfPresent(iteration, forKey: .iteration)
-    try container.encodeIfPresent(_testCase, forKey: .testCase)
-    try container.encodeIfPresent(_comments, forKey: .comments)
-    try container.encodeIfPresent(_sourceLocation, forKey: .sourceLocation)
+    try encoder.encodeJSONEncodableValue(self)
   }
 
   public init(from decoder: any Decoder) throws {
@@ -283,8 +271,36 @@ extension ABI.EncodedEvent: Codable {
     _sourceLocation = try container.decodeIfPresent(ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
   }
 }
-extension ABI.EncodedEvent.Kind: Codable {}
+
+extension ABI.EncodedEvent.Kind: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
 #endif
+
+extension ABI.EncodedEvent: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["kind"] = kind.rawValue.jsonValue(in: context)
+    result["instant"] = instant.jsonValue(in: context)
+    result["issue"] = issue?.jsonValue(in: context)
+    result["attachment"] = attachment?.jsonValue(in: context)
+    if V.alwaysEncodeMessagesField || !messages.isEmpty {
+      result["messages"] = messages.jsonValue(in: context)
+    }
+    result["testID"] = testID?.stringValue.jsonValue(in: context)
+    result["iteration"] = iteration?.jsonValue(in: context)
+    result["_testCase"] = _testCase?.jsonValue(in: context)
+    result["_comments"] = _comments?.jsonValue(in: context)
+    result["_sourceLocation"] = _sourceLocation?.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
+
+extension ABI.EncodedEvent.Kind: JSON.Encodable {}
 
 // MARK: - Conversion to/from library types
 

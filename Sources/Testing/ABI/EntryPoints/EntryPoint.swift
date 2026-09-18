@@ -408,7 +408,6 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   )
 
 #if !SWT_NO_FILE_IO
-#if !SWT_NO_CODABLE
   // Configuration for the test run passed in as a JSON file (experimental)
   //
   // This argument should always be the first one we parse.
@@ -417,6 +416,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // open the configuration file early (here) in order to correctly construct
   // the resulting __CommandLineArguments_v0 instance.
   if let path = args.option(withLabel: "--configuration-path") ?? args.option(withLabel: "--experimental-configuration-path") {
+#if !SWT_NO_CODABLE
     let file = try FileHandle(forReadingAtPath: path)
     let configurationJSON = try file.readToEnd()
     result = try configurationJSON.withUnsafeBufferPointer { configurationJSON in
@@ -426,8 +426,11 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     // NOTE: We don't return early or block other arguments here: a caller is
     // allowed to pass a configuration AND e.g. "--verbose" and they'll both be
     // respected (it should be the least "surprising" outcome of passing both.)
-  }
+#else
+    _ = path
+    throw _EntryPointError.featureUnavailable("--configuration-path is not supported on this system.")
 #endif
+  }
 #endif
 
   // Event stream output
@@ -778,7 +781,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   return configuration
 }
 
-#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
 /// Create an event handler that streams events to the given file using the
 /// specified ABI version.
 ///
