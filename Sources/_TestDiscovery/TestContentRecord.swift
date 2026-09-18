@@ -74,10 +74,8 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   /// | macOS, iOS, watchOS, tvOS, visionOS | [`UnsafePointer<mach_header_64>`](https://developer.apple.com/documentation/kernel/mach_header_64) |
   /// | Linux, FreeBSD, Android | [`UnsafePointer<ElfW(Ehdr)>`](https://www.kernel.org/doc/man-pages/online/pages/man5/elf.5.html) |
   /// | OpenBSD | [`UnsafePointer<Elf_Ehdr>`](https://man.openbsd.org/elf.3) |
+  /// | Wasm | `nil` |
   /// | Windows | [`HMODULE`](https://learn.microsoft.com/en-us/windows/win32/winprog/windows-data-types) |
-  ///
-  /// On platforms such as WASI that statically link to the testing library, the
-  /// value of this property is always `nil`.
   ///
   /// The value of this property is distinct from the pointer returned by
   /// [`dlopen(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlopen.3.html)
@@ -246,7 +244,7 @@ extension DiscoverableAsTestContent {
     }
   }
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
+#if !SWT_NO_LEGACY_TEST_DISCOVERY && !hasFeature(Embedded)
   @available(swift, deprecated: 6.5, obsoleted: 6.6, message: "Unimplemented")
   public static func allTypeMetadataBasedTestContentRecords(
     loadingWith loader: @escaping @Sendable (Any.Type, UnsafeMutableRawBufferPointer) -> Bool

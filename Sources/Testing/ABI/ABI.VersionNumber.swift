@@ -252,9 +252,9 @@ extension ABI.VersionNumber: Equatable, Comparable {
 
 extension ABI.VersionNumber.Flags: Equatable, Hashable {}
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.VersionNumber: Codable {
   public init(from decoder: any Decoder) throws {
     let container = try decoder.singleValueContainer()
@@ -277,14 +277,7 @@ extension ABI.VersionNumber: Codable {
   }
 
   public func encode(to encoder: any Encoder) throws {
-    var container = encoder.singleValueContainer()
-    if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 && flags.isEmpty {
-      // Version 0 and earlier are encoded as integers for compatibility with
-      // Swift 6.2 and earlier.
-      try container.encode(majorComponent)
-    } else {
-      try container.encode("\(majorComponent).\(minorComponent).\(patchComponent)\(flags.prereleaseIDSuffix)")
-    }
+    try encoder.encodeJSONEncodableValue(self)
   }
 
 #if !SWT_NO_ABI_JSON_SCHEMA
@@ -296,12 +289,90 @@ extension ABI.VersionNumber: Codable {
   ///
   /// - Throws: Any error that prevented decoding an instance of this type.
   public init(fromRecordJSON recordJSON: UnsafeRawBufferPointer) throws {
+#if !os(Windows) // no memmem()
+    // This is sneaky: if we find the substring ""version": "" in the JSON, and
+    // we only find it once, we can assume that what follows up to a comma,
+    // whitespace, or brace must be the record's version. This is not a safe or
+    // general way to parse JSON of course, so if it fails we fall back to full
+    // JSON decoding.
+    //
+    // "What happens if we extract the string from the wrong place?" Then the
+    // caller will proceed to decode the entire record with an incorrect
+    // ABI.VersionNumber and/or ABI.Version specialization, and decoding will
+    // throw an error (as it would have if we just used `JSON.decode()` below).
+    if #available(_stringInitValidatingAPI, *) {
+      let versionKey = (
+        UInt8(ascii: #"""#), UInt8(ascii: "v"), UInt8(ascii: "e"), UInt8(ascii: "r"),
+        UInt8(ascii: "s"), UInt8(ascii: "i"), UInt8(ascii: "o"), UInt8(ascii: "n"),
+        UInt8(ascii: #"""#), UInt8(ascii: ":"), UInt8(ascii: " "), UInt8(ascii: #"""#)
+      )
+      let result: Self? = withUnsafeBytes(of: versionKey) { versionKey in
+        // NOTE: firstRange(of:) is very slow in DEBUG configuration because it
+        // is completely unspecialized, so drop to memmem() to find the range.
+        func find(_ needle: UnsafeRawBufferPointer, in haystack: UnsafeRawBufferPointer) -> Range<UnsafeRawBufferPointer.Index>? {
+          guard let address = memmem(haystack.baseAddress!, haystack.count, needle.baseAddress!, needle.count) else {
+            return nil
+          }
+          let offset = UnsafeRawPointer(address) - haystack.baseAddress!
+          let startIndex = haystack.index(haystack.startIndex, offsetBy: offset)
+          let endIndex = haystack.index(startIndex, offsetBy: needle.count)
+          return startIndex ..< endIndex
+        }
+
+        // Find the "version" key.
+        guard let range = find(versionKey, in: recordJSON),
+              range.upperBound < recordJSON.endIndex else {
+          return nil
+        }
+        let slicedJSON = UnsafeRawBufferPointer(rebasing: recordJSON[range.endIndex...])
+        guard find(versionKey, in: slicedJSON) == nil else {
+          // The key was present twice, so this JSON is likely invalid.
+          return nil
+        }
+
+        // Appears to be a string (`versionKey` ends with the opening quote).
+        // Find the next quote character; as long as there are no escape
+        // sequences, we can extract the string directly.
+        return withUnsafeBytes(of: UInt8(ascii: #"""#)) { quote in
+          guard let endQuoteRange = find(quote, in: slicedJSON) else {
+            return nil
+          }
+          let stringJSON = UnsafeRawBufferPointer(rebasing: slicedJSON[..<endQuoteRange.startIndex])
+          return withUnsafeBytes(of: UInt8(ascii: #"\"#)) { backslash in
+            guard find(backslash, in: stringJSON) == nil,
+                  let stringValue = String(validating: stringJSON, as: UTF8.self) else {
+              return nil
+            }
+            return Self(stringValue)
+          }
+        }
+      }
+      if let result {
+        self = result
+        return
+      }
+    }
+#endif
+
     struct MinimalRecord: Decodable {
       var version: ABI.VersionNumber
     }
     self = try JSON.decode(MinimalRecord.self, from: recordJSON).version
   }
 #endif
+}
+#endif
+
+extension ABI.VersionNumber: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 && flags.isEmpty {
+      // Version 0 and earlier are encoded as integers for compatibility with
+      // Swift 6.2 and earlier.
+      return majorComponent.jsonValue(in: context)
+    } else {
+      return "\(majorComponent).\(minorComponent).\(patchComponent)\(flags.prereleaseIDSuffix)".jsonValue(in: context)
+    }
+  }
 }
 
 // MARK: - Converting flags to/from semver prerelease IDs
@@ -372,4 +443,3 @@ extension ABI.VersionNumber.Flags {
     self = flag
   }
 }
-#endif

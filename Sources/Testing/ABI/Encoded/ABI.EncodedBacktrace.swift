@@ -40,16 +40,12 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.EncodedBacktrace: Codable {
   func encode(to encoder: any Encoder) throws {
-    var container = encoder.singleValueContainer()
-#if !SWT_NO_BACKTRACE_SYMBOLICATION
-    try container.encode(symbolicatedAddresses)
-#else
-    try container.encode(addresses)
-#endif
+    try encoder.encodeJSONEncodableValue(self)
   }
 
   init(from decoder: any Decoder) throws {
@@ -59,6 +55,18 @@ extension ABI.EncodedBacktrace: Codable {
 #else
     addresses = try container.decode([Backtrace.Address].self)
 #endif
+  }
+}
+#endif
+
+extension ABI.EncodedBacktrace: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
+    symbolicatedAddresses.jsonValue(in: context)
+#else
+    addresses.jsonValue(in: context)
+#endif
+
   }
 }
 #endif

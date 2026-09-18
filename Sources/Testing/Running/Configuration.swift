@@ -146,11 +146,22 @@ public struct Configuration: Sendable {
 
   // MARK: - Isolation context for synchronous tests
 
+  /// Storage for ``defaultSynchronousIsolationContext``.
+  private var _defaultSynchronousIsolationContext: (any Actor)? = nil
+
   /// The isolation context to use for synchronous test functions.
   ///
   /// If the value of this property is `nil`, synchronous test functions run in
   /// an unspecified isolation context.
-  public var defaultSynchronousIsolationContext: (any Actor)? = nil
+  @_unavailableInEmbedded
+  public var defaultSynchronousIsolationContext: (any Actor)? {
+    get {
+      _defaultSynchronousIsolationContext
+    }
+    set {
+      _defaultSynchronousIsolationContext = newValue
+    }
+  }
 
   // MARK: - Time limits
 
@@ -351,35 +362,5 @@ public struct Configuration: Sendable {
     ///   somewhat larger than it otherwise would be in an attempt to make the
     ///   defaults useful for real-world tests.
     public var maximumChildDepth: Int = 10
-  }
-}
-
-// MARK: - Deprecated
-
-extension Configuration {
-#if !SWT_NO_GLOBAL_ACTORS
-  @available(*, deprecated, message: "Set defaultSynchronousIsolationContext instead.")
-  public var isMainActorIsolationEnforced: Bool {
-    get {
-      defaultSynchronousIsolationContext === MainActor.shared
-    }
-    set {
-      if newValue {
-        defaultSynchronousIsolationContext = MainActor.shared
-      } else {
-        defaultSynchronousIsolationContext = nil
-      }
-    }
-  }
-#endif
-
-  @available(*, deprecated, message: "Set eventHandlingOptions.isExpectationCheckedEventEnabled instead.")
-  public var deliverExpectationCheckedEvents: Bool {
-    get {
-      eventHandlingOptions.isExpectationCheckedEventEnabled
-    }
-    set {
-      eventHandlingOptions.isExpectationCheckedEventEnabled = newValue
-    }
   }
 }

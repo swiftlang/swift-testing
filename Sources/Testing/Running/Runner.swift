@@ -121,8 +121,13 @@ extension Runner {
     // trait is the first one to be invoked.
     let executeAllTraits = test.traits.lazy
       .reversed()
-      .compactMap { $0.scopeProvider(for: test, testCase: testCase) }
-      .map { $0.provideScope(for:testCase:performing:) }
+      .compactMap { trait in
+#if !hasFeature(Embedded)
+        trait.scopeProvider(for: test, testCase: testCase)
+#else
+        trait.__scopeProvider(for: test, testCase: testCase)
+#endif
+      }.map { $0.provideScope(for:testCase:performing:) }
       .reduce(body) { executeAllTraits, provideScope in
         {
           try await provideScope(test, testCase, executeAllTraits)

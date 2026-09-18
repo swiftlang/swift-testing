@@ -60,6 +60,16 @@ static int swt_errno(void) {
   return errno;
 }
 
+#if defined(__linux__) || defined(__ANDROID__)
+/// Find a subsequence of bytes in a larger sequence of bytes.
+///
+/// On Linux, this function declaration is provided because `memmem()` is only
+/// declared if `_GNU_SOURCE` is set, but setting it causes build errors due
+/// to conflicts with Swift's Glibc module. The function is available in all
+/// supported versions of the GNU C Library.
+SWT_IMPORT_FROM_STDLIB void *_Nullable memmem(const void *haystack, size_t hsize, const void *needle, size_t nsize);
+#endif
+
 #if !SWT_NO_FILE_IO
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)
@@ -218,6 +228,29 @@ SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
   bool (* body)(const void *sections, void *context),
   void *context
 );
+
+/// A value whose address is the base address of the image into which this
+/// header is included.
+///
+/// This declaration is needed on ELF-based platforms because `__ehdr_start` is
+/// not always emitted by the linker and cannot be correctly referenced from
+/// Swift code.
+///
+/// - Important: Do not use this variable directly. Instead, use
+///   `swt_ehdr_start()` to get its address.
+SWT_IMPORT_FROM_STDLIB const char __ehdr_start[] __attribute__((__weak__));
+
+/// The base address of the image into which this header is included.
+///
+/// This function is needed on ELF-based platforms because `__ehdr_start` is
+/// not always emitted by the linker and cannot be correctly referenced from
+/// Swift code.
+static inline const void *_Nullable swt_ehdr_start(void) {
+  if (&__ehdr_start != 0) {
+    return __ehdr_start;
+  }
+  return 0;
+}
 #endif
 
 #if defined(__linux__)

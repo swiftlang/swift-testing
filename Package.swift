@@ -12,7 +12,7 @@
 
 import PackageDescription
 import CompilerPluginSupport
-#if !SWT_NO_FOUNDATION
+#if !canImport(Foundation)
 import Foundation
 #endif
 
@@ -450,6 +450,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
     [
       .enableExperimentalFeature("AvailabilityMacro=_uttypesAPI:macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0"),
       .enableExperimentalFeature("AvailabilityMacro=_clockAPI:macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_stringInitValidatingAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
       .enableExperimentalFeature("AvailabilityMacro=_typedThrowsAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
       .enableExperimentalFeature("AvailabilityMacro=_transferableAPI:macOS 15.2, iOS 18.2, watchOS 11.2, tvOS 18.2, visionOS 2.2"),
       .enableExperimentalFeature("AvailabilityMacro=_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
@@ -555,7 +556,6 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
       "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
       "SWT_NO_ABI_ENTRY_POINT": (platforms: .none, embedded: true),
-      "SWT_NO_ABI_JSON_SCHEMA": (platforms: .none, embedded: true),
       "SWT_NO_CODABLE": (platforms: .none, embedded: true),
       "SWT_NO_INTEROP": (platforms: .none, embedded: true),
       "SWT_NO_HARNESS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
@@ -572,21 +572,27 @@ extension Array where Element: _LanguageBuildSetting {
     let environmentVariables = Context.environment
       .filter { $0.key.starts(with: "SWT_NO_") }
       .compactMapValues { value in
-#if !SWT_NO_FOUNDATION
+#if !canImport(Foundation)
         (value as NSString).boolValue
 #else
         Bool(value) ?? UInt64(value).map { $0 != 0 }
 #endif
       }
 
+    for (name, environmentVariable) in environmentVariables {
+      // The environment variable is set. If the value is `true`, that means
+      // the "NO" flag should be set unconditionally. If the value is `false`,
+      // that means the flag should _not_ be set.
+      if environmentVariable {
+        append(.define(name, nil))
+      }
+    }
+
     for (name, details) in defines {
-      if let environmentVariable = environmentVariables[name] {
-        // The environment variable is set. If the value is `true`, that means
-        // the "NO" flag should be set unconditionally. If the value is `false`,
-        // that means the flag should _not_ be set.
-        if environmentVariable {
-          append(.define(name, nil))
-        }
+      if environmentVariables[name] != nil {
+        // Handled in the loop above. We don't handle it here because it would
+        // limit us to only the environment variables that we've explicitly
+        // configured in the table above, but that table is not comprehensive.
       } else if !buildingForEmbedded {
         if let platforms = details.platforms {
           append(.define(name, .when(platforms: platforms)))
