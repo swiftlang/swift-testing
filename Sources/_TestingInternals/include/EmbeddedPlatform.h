@@ -50,7 +50,7 @@ SWT_ASSUME_NONNULL_BEGIN
 ///
 /// ```c
 /// const char *_swift_testing_getEmbeddedTargetInfo(void) {
-///   static const char *result = NULL;
+///   static char *result = NULL;
 ///
 ///   if (!result) {
 ///     struct utsname name {};
