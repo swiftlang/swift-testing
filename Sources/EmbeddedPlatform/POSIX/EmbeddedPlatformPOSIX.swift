@@ -10,6 +10,8 @@
 
 private import _TestingInternals
 
+#if hasFeature(Embedded)
+/// Storage for `_swift_testing_getEmbeddedTargetInfo()`.
 private nonisolated(unsafe) let _embeddedTargetInfo: UnsafeMutablePointer<CChar>? = {
   var name = utsname()
   guard 0 == uname(&name) else {
@@ -55,3 +57,4 @@ private nonisolated(unsafe) let _embeddedTargetInfo: UnsafeMutablePointer<CChar>
   outNanoseconds.pointee = UInt32(clamping: ts.tv_nsec)
   return true
 }
+#endif
