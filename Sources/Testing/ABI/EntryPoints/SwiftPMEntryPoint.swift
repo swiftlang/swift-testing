@@ -29,7 +29,9 @@ var EXIT_NO_TESTS_FOUND: CInt {
 #elseif os(Windows)
   CInt(ERROR_NOT_FOUND)
 #else
+#if !hasFeature(Embedded)
 #warning("Platform-specific implementation missing: value for EXIT_NO_TESTS_FOUND unavailable")
+#endif
   return 2 // We're assuming that EXIT_SUCCESS = 0 and EXIT_FAILURE = 1.
 #endif
 }

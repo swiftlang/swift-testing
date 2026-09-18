@@ -8,9 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if _runtime(_ObjC)
-private import ObjectiveC
-#endif
+private import _TestingInternals
 
 #if canImport(Synchronization)
 private import Synchronization
@@ -36,7 +34,9 @@ private import Synchronization
 /// `swift test` command.)
 ///
 /// To add this trait to a test, use ``Trait/serialized``.
+@_unavailableInEmbedded
 public struct ParallelizationTrait: TestTrait, SuiteTrait {
+#if !hasFeature(Embedded)
   /// A type that describes a data-based dependency that a test may have.
   ///
   /// When a test has a dependency, the testing library assumes it cannot run at
@@ -74,8 +74,10 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
 
   /// A mapping of dependencies to serializers.
   private static let _serializers = Mutex<[Dependency.Kind: Serializer<Void>]>()
+#endif
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Parallelization over a dependency
 
 extension ParallelizationTrait {
@@ -104,7 +106,6 @@ extension ParallelizationTrait {
   }
 }
 
-#if !hasFeature(Embedded)
 // MARK: -
 
 @_spi(Experimental)
@@ -134,7 +135,6 @@ extension ParallelizationTrait: ReducibleTrait {
     }
   }
 }
-#endif
 
 // MARK: - TestScoping
 
@@ -208,22 +208,30 @@ extension ParallelizationTrait {
   /// (i.e. is equivalent to ``Trait/serialized(for:)-(Self.Dependency.Unbounded)``).
   static let isSerializedWithoutArgumentsAppliedGlobally = Environment.flag(named: "SWT_EXPERIMENTAL_SERIALIZED_TRAIT_APPLIES_GLOBALLY") ?? false
 }
+#endif
 
+@_unavailableInEmbedded
 extension Trait where Self == ParallelizationTrait {
   /// A trait that serializes the test to which it is applied.
   ///
   /// ## See Also
   ///
   /// - ``ParallelizationTrait``
+  @_unavailableInEmbedded
   public static var serialized: Self {
+#if !hasFeature(Embedded)
     if ParallelizationTrait.isSerializedWithoutArgumentsAppliedGlobally {
       .serialized(for: *)
     } else {
       Self()
     }
+#else
+    swt_unreachable()
+#endif
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: - CustomStringConvertible
 
 extension ParallelizationTrait: CustomStringConvertible {
@@ -370,3 +378,4 @@ extension Trait where Self == ParallelizationTrait {
     return Self(dependency: dependency)
   }
 }
+#endif

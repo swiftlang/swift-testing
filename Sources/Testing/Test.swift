@@ -207,7 +207,11 @@ public struct Test: Sendable {
         // error (because the test cannot be run.) If an error was thrown, a
         // `Runner.Plan` is expected to record issue for the test, rather than
         // attempt to run it, and thus never access this property.
+#if !hasFeature(Embedded)
         preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage(context: String(reflecting: testCasesState)))")
+#else
+        preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage)")
+#endif
       }
       return testCases
     }

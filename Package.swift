@@ -144,8 +144,12 @@ let package = Package(
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       linkerSettings: [
         .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd])),
-        .linkedLibrary("_TestingInterop"),
-      ]
+      ] + {
+        if !buildingForEmbedded {
+          return [.linkedLibrary("_TestingInterop"),]
+        }
+        return []
+      }()
     ),
     .testTarget(
       name: "TestingTests",
@@ -510,6 +514,10 @@ extension Array where Element: _CLanguageBuildSetting {
   static func packageSettings(for target: PackageDescription.Target) -> Self {
     var result = Self()
 
+    if buildingForEmbedded && target.type != .macro {
+      result += [.define("SWT_EMBEDDED"),]
+    }
+
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
     if !target.isTest {
@@ -554,6 +562,8 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_PIPES": (platforms: [.wasi], embedded: true),
       "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .nonApplePlatforms, embedded: true),
       "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
+      "SWT_NO_ENVIRONMENT_VARIABLES": (platforms: .none, embedded: true),
+      "SWT_NO_FILE_IO": (platforms: .none, embedded: true),
       "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
       "SWT_NO_ABI_ENTRY_POINT": (platforms: .none, embedded: true),
       "SWT_NO_CODABLE": (platforms: .none, embedded: true),
