@@ -224,6 +224,14 @@ let package = Package(
       exclude: ["CMakeLists.txt"]
     ),
 
+    // Embedded Swift platform abstraction layer implementations.
+    .target(
+      name: "EmbeddedPlatformPOSIX+Testing",
+      dependencies: ["_TestingInternals",],
+      path: "Sources/EmbeddedPlatform/POSIX",
+      exclude: ["CMakeLists.txt"]
+    ),
+
     // Cross-import overlays (not supported by Swift Package Manager)
     .target(
       name: "_Testing_AppKit",
