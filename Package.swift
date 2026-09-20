@@ -137,8 +137,10 @@ let package = Package(
       dependencies: [
         "_TestDiscovery",
         "_TestingInternals",
-        "TestingMacros",
-      ],
+      ] + {
+        // TODO: get macro target building for host when the target is embedded
+        buildingForEmbedded ? [] : ["TestingMacros"]
+      }(),
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       linkerSettings: [
         .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd])),
@@ -313,13 +315,6 @@ let package = Package(
         "Testing",
       ]
     ),
-    .executableTarget(
-      name: "EmbeddedShowcase",
-      dependencies: [
-        "Testing",
-        "EmbeddedPlatformPOSIX+Testing",
-      ]
-    ),
   ],
 
   cxxLanguageStandard: .cxx20
@@ -411,7 +406,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !target.isTest && !target.name.hasSuffix("Showcase") {
+    if !target.isTest {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]
@@ -533,7 +528,7 @@ extension Array where Element: _CLanguageBuildSetting {
 
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !target.isTest && !target.name.hasSuffix("Showcase") {
+    if !target.isTest {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]
