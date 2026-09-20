@@ -70,6 +70,18 @@ static int swt_errno(void) {
 SWT_IMPORT_FROM_STDLIB void *_Nullable memmem(const void *haystack, size_t hsize, const void *needle, size_t nsize);
 #endif
 
+/// Check whether or not the target platform uses the GNU C Library.
+///
+/// This function is provided because Swift cannot check if a C macro is defined
+/// at compile time.
+static bool swt_isGNUCLibrary(void) {
+#if defined(__GLIBC__)
+  return true;
+#else
+  return false;
+#endif
+}
+
 #if !SWT_NO_FILE_IO
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)

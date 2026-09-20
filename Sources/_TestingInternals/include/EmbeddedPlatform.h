@@ -22,6 +22,108 @@ SWT_ASSUME_NONNULL_BEGIN
 /// This header augments the set of declarations in the Swift runtime's Platform
 /// Abstraction Layer, which can be found [here](https://github.com/swiftlang/swift/blob/main/stdlib/public/EmbeddedPlatform/swift/EmbeddedPlatform.h).
 
+// MARK: - Process configuration
+
+/// Get the command-line arguments passed to the current process.
+///
+/// - Parameters:
+///   - outArgc: A pointer to memory large enough to hold a C integer. On
+///     return, initialized to the number of command line arguments available in
+///     `*outArgv`.
+///   - outArgv: A pointer to memory large enough to hold a C array of C
+///     strings. On return, initialized to the command-line arguments passed to
+///     the process. The array and the strings in it must remain valid for the
+///     lifetime of the process, and the caller is not responsible for
+///     deallocating them.
+///
+/// - Returns: Whether or not `*outArgc` and `*outArgv` were successfully
+///   initialized. If they were not, the testing library assumes no command-line
+///   arguments were passed to the current process. If the function returns
+///   `true`, but `*outArgc` is less than or equal to `0` or `*outArgv` is
+///   `NULL`, the testing library acts as if this function returned `false`.
+///
+/// The testing library uses this function to configure the current process
+/// before running any tests. For more information about valid command-line
+/// arguments, review the documentation for the `swift test` command.
+///
+/// An implementation that has access to the command-line arguments of the
+/// current process can provide them via this function:
+///
+/// ```c
+/// extern int __argc;
+/// extern char *__argv[];
+///
+/// bool _swift_testing_getArgcArgv(int *outArgc, char ***outArgv) {
+///   *outArgc = __argc;
+///   *outArgv = __argv;
+///   return true;
+/// }
+/// ```
+///
+/// If your platform does not support command-line arguments, or you cannot get
+/// them at runtime, your implementation can return `false`:
+///
+/// ```c
+/// bool _swift_testing_getArgcArgv(int *outArgc, char ***outArgv) {
+///   return false;
+/// }
+/// ```
+///
+/// ### Concurrency support
+///
+/// This function's implementation must be concurrency-safe unless the system is
+/// single-threaded. General thread safety issues with the POSIX `environ`
+/// variable are [well-documented](https://www.austingroupbugs.net/view.php?id=188)
+/// and are beyond the Platform Abstraction Layer's purview.
+SWT_EXTERN SWT_NODISCARD bool _swift_testing_getArgcArgv(int *outArgc, char *_Nonnull *_Nullable *_Nonnull outArgv);
+
+/// Get the current process' environment block.
+///
+/// - Parameters:
+///   - outArgv: A pointer to memory large enough to hold a C array of C
+///     strings. On return, initialized to the environment block of the current
+///     process, including a trailing `NULL` pointer as in the specification for
+///     the POSIX `environ` variable. The array and the strings in it must
+///     remain valid for the lifetime of the process, and the caller is not
+///     responsible for deallocating them.
+///
+/// - Returns: Whether or not `*outEnvironment` was successfully initialized. If
+///   it was not, the testing library assumes no environment variables exist in
+///   the current process. If the function returns `true`, but `*outEnvironment`
+///   is `NULL`, the testing library acts as if this function returned `false`.
+///
+/// The testing library uses this function to configure the current process
+/// before running any tests. For more information about environment variables
+/// that the testing library uses, review `EnvironmentVariables.md` in this
+/// repository's `Documentation` folder.
+///
+/// An implementation that has access to the environment variables set in the
+/// current process can provide them via this function:
+///
+/// ```c
+/// extern char **environ;
+///
+/// bool _swift_testing_getEnvironment(char ***outEnvironment) {
+///   *outEnvironment = environ;
+///   return true;
+/// }
+/// ```
+///
+/// If your platform does not support environment variables, or you cannot get
+/// them at runtime, your implementation can return `false`:
+///
+/// ```c
+/// bool _swift_testing_getEnvironment(char ***outEnvironment) {
+///   return false;
+/// }
+/// ```
+///
+/// ### Concurrency support
+///
+/// This function's implementation must be concurrency-safe unless the system is
+/// single-threaded.
+SWT_EXTERN SWT_NODISCARD bool _swift_testing_getEnvironment(char *_Nullable *_Nullable *_Nonnull outEnvironment);
+
 // MARK: - System metadata
 
 /// Get information about the embedded system on which (or for which) Swift
@@ -102,7 +204,7 @@ typedef struct swift_testing_console_capabilities_t {
 ///     return, initialized to an instance of that type that describes the
 ///     capabilities of the console `_swift_testing_writeToConsole()` writes to.
 ///
-/// - Returns: Whether or not `outConsoleCapabilities` was successfully
+/// - Returns: Whether or not `*outConsoleCapabilities` was successfully
 ///   initialized. If it was not, the testing library assumes the system console
 ///   has none of the supported capabilities.
 ///

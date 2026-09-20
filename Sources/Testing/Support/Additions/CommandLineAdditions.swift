@@ -10,18 +10,44 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 #if hasFeature(Embedded)
 /// A minimal interface-compatible implementation of the `CommandLine` type from
 /// the Swift standard library.
 ///
 /// This type is declared for Embedded Swift targets to simplify calling code.
 enum CommandLine {
+  /// Storage for ``defaultProgramName``.
+  private static let _defaultProgramName = Mutex("swift-test")
+
+  /// The default program name to use in ``arguments``.
+  static var defaultProgramName: String {
+    get {
+      _defaultProgramName.withLock { $0 }
+    }
+    set {
+      _defaultProgramName.withLock { $0 = newValue }
+    }
+  }
+
   /// An array that provides access to this program's command line arguments.
   ///
-  /// In Embedded Swift, this array contains one string standing in for the name
-  /// of the current program (as required by the C language standard).
+  /// If `_swift_testing_getArgcArgv()` does not produce an array of C strings
+  /// of sufficient length, this function returns an array containing one string
+  /// representing an arbitrary program name.
   static var arguments: [String] {
-    ["swift-test"]
+    var argc = CInt(0)
+    var argv: UnsafeMutablePointer<UnsafeMutablePointer<CChar>>?
+    if _swift_testing_getArgcArgv(&argc, &argv), argc > 0, let argv {
+      let argv = (0 ..< argc).compactMap { String(validatingCString: argv[Int($0)]) }
+      if !argv.isEmpty {
+        return argv
+      }
+    }
+    return [defaultProgramName]
   }
 }
 #endif
