@@ -21,15 +21,15 @@ private func _asyncMainDrainQueue() -> Never
 /// Begin running tests in Embedded Swift.
 ///
 /// - Parameters:
-///   - argv: The command-line arguments passed to the process, as per C's
-///     specification of `main()`.
 ///   - argc: The number of command-line arguments at `argv`, as per C's
+///     specification of `main()`.
+///   - argv: The command-line arguments passed to the process, as per C's
 ///     specification of `main()`.
 ///
 /// - Warning: This function's signature is subject to change. This function may
 ///   be removed in a future update.
 @export(interface) @c
-public func swift_testing_embeddedMain(_ argv: UnsafeMutablePointer<UnsafeMutablePointer<CChar>>, _ argc: CInt) -> Never {
+public func swift_testing_embeddedMain(_ argc: CInt, _ argv: UnsafeMutablePointer<UnsafeMutablePointer<CChar>>) -> Never {
   let argv = (0 ..< argc).compactMap { String(validatingCString: argv[Int($0)]) }
   guard let args = try? parseCommandLineArguments(from: argv) else {
     exit(EXIT_FAILURE)
@@ -55,7 +55,7 @@ public func swift_testing_embeddedMain(sourceLocation: SourceLocation = #Testing
       argv[0] = UnsafeMutablePointer(mutating: programName)
       argv[1] = nil // The C standard requires a NULL pointer after `argv`.
       argv.withMemoryRebound(to: UnsafeMutablePointer<CChar>.self) { argv in
-        swift_testing_embeddedMain(argv.baseAddress!, CInt(argv.count - 1))
+        swift_testing_embeddedMain(CInt(argv.count - 1), argv.baseAddress!)
       }
     }
   }
