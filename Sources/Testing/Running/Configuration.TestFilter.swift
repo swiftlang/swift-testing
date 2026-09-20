@@ -161,6 +161,9 @@ extension Configuration.TestFilter {
   /// - Parameters:
   ///   - tagPatterns: The patterns, expressed as a `Regex`-compatible regular
   ///     expressions, to match test tags against.
+  ///
+  /// In Embedded Swift, `tagPatterns` are not treated as regular expressions
+  /// due to the lack of the `_StringProcessing` module.
   public init(includingTagsMatching tagPatterns: [String]) throws {
 #if canImport(_StringProcessing)
     // See the comment above in init(membership:matchingAnyOf:) to understand why we construct regexes here.
@@ -293,8 +296,7 @@ extension Configuration.TestFilter.Kind {
       return .function(predicate, membership: membership)
     case let .idPatterns(idPatterns, membership):
 #if canImport(_StringProcessing)
-      // nonisolated(unsafe) let regexes = try idPatterns.map(Regex.init)
-      let regexes = idPatterns
+      nonisolated(unsafe) let regexes = try idPatterns.map(Regex.init)
 #else
       let regexes = idPatterns
 #endif
@@ -304,8 +306,7 @@ extension Configuration.TestFilter.Kind {
       }, membership: membership)
     case let .tagPatterns(tagPatterns, membership):
 #if canImport(_StringProcessing)
-      // nonisolated(unsafe) let regexes = try tagPatterns.map(Regex.init)
-      let regexes = tagPatterns
+      nonisolated(unsafe) let regexes = try tagPatterns.map(Regex.init)
 #else
       let regexes = tagPatterns
 #endif
