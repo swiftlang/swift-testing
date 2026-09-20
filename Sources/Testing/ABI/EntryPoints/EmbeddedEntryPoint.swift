@@ -18,6 +18,18 @@ private import _TestingInternals
 @_silgen_name("swift_task_asyncMainDrainQueue")
 private func _asyncMainDrainQueue() -> Never
 
+/// The common implementation of `swift_testing_embeddedMain()`.
+///
+/// - Parameters:
+///   - args: The command-line arguments passed to the process.
+private func _swift_testing_embeddedMain(_ args: __CommandLineArguments_v0?) -> Never {
+  _ = Task.immediate {
+    let exitCode = await entryPoint(passing: args, eventHandler: nil)
+    exit(exitCode)
+  }
+  _asyncMainDrainQueue()
+}
+
 /// Begin running tests in Embedded Swift.
 ///
 /// - Parameters:
@@ -34,12 +46,7 @@ public func swift_testing_embeddedMain(_ argc: CInt, _ argv: UnsafeMutablePointe
   guard let args = try? parseCommandLineArguments(from: argv) else {
     exit(EXIT_FAILURE)
   }
-
-  _ = Task.immediate {
-    let exitCode = await entryPoint(passing: args, eventHandler: nil)
-    exit(exitCode)
-  }
-  _asyncMainDrainQueue()
+  _swift_testing_embeddedMain(args)
 }
 
 /// Begin running tests in Embedded Swift.
@@ -50,14 +57,6 @@ public func swift_testing_embeddedMain(_ argc: CInt, _ argv: UnsafeMutablePointe
 /// - Warning: This function's signature is subject to change. This function may
 ///   be removed in a future update.
 public func swift_testing_embeddedMain(sourceLocation: SourceLocation = #Testing::sourceLocation) -> Never {
-  sourceLocation.moduleName.withCString { programName in
-    withUnsafeTemporaryAllocation(of: UnsafeMutablePointer<CChar>?.self, capacity: 2) { argv in
-      argv[0] = UnsafeMutablePointer(mutating: programName)
-      argv[1] = nil // The C standard requires a NULL pointer after `argv`.
-      argv.withMemoryRebound(to: UnsafeMutablePointer<CChar>.self) { argv in
-        swift_testing_embeddedMain(CInt(argv.count - 1), argv.baseAddress!)
-      }
-    }
-  }
+  _swift_testing_embeddedMain(nil)
 }
 #endif

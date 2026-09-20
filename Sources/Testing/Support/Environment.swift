@@ -46,7 +46,7 @@ package enum Environment {
     }
   }
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI) || hasFeature(Embedded)
   /// Get all environment variables from a POSIX environment block.
   ///
   /// - Parameters:
@@ -100,7 +100,8 @@ package enum Environment {
   static var unsafeAddress: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>? {
 #if SWT_NO_ENVIRONMENT_VARIABLES
     nil
-#elseif SWT_TARGET_OS_APPLE
+#elseif !hasFeature(Embedded)
+#if SWT_TARGET_OS_APPLE
     _NSGetEnviron()?.pointee
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     swt_environ()
@@ -112,6 +113,13 @@ package enum Environment {
 #warning("Platform-specific implementation missing: environment variables unavailable")
     nil
 #endif
+#else
+    var result: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+    guard _swift_testing_getEnvironment(&result) else {
+      return nil
+    }
+    return result
+#endif
   }
 
   /// Get all environment variables in the current process.
@@ -120,7 +128,7 @@ package enum Environment {
   package static func get() -> [String: String] {
 #if SWT_NO_ENVIRONMENT_VARIABLES
     simulatedEnvironment.rawValue
-#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI) || hasFeature(Embedded)
 #if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
     _environ_lock_np?()
     defer {
@@ -193,7 +201,7 @@ package enum Environment {
       }
       return nil
     }
-#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI) || hasFeature(Embedded)
     getenv(name).flatMap { String(validatingCString: $0) }
 #elseif os(Windows)
     name.withCString(encodedAs: UTF16.self) { name in
@@ -292,7 +300,9 @@ extension Environment {
       return SetEnvironmentVariableW(name, nil)
     }
 #else
+#if !hasFeature(Embedded)
 #warning("Platform-specific implementation missing: environment variables unavailable")
+#endif
     return false
 #endif
   }

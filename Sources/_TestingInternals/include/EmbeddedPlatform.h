@@ -22,26 +22,136 @@ SWT_ASSUME_NONNULL_BEGIN
 /// This header augments the set of declarations in the Swift runtime's Platform
 /// Abstraction Layer, which can be found [here](https://github.com/swiftlang/swift/blob/main/stdlib/public/EmbeddedPlatform/swift/EmbeddedPlatform.h).
 
+// MARK: - Process configuration
+
+/// Get the command-line arguments passed to the current process.
+///
+/// - Parameters:
+///   - outArgc: A pointer to memory large enough to hold a C integer. On
+///     return, initialized to the number of command line arguments available in
+///     `*outArgv`.
+///   - outArgv: A pointer to memory large enough to hold a C array of C
+///     strings. On return, initialized to the command-line arguments passed to
+///     the process. The array and the strings in it must remain valid for the
+///     lifetime of the process, and the caller is not responsible for
+///     deallocating them.
+///
+/// - Returns: Whether or not `*outArgc` and `*outArgv` were successfully
+///   initialized. If they were not, the testing library assumes no command-line
+///   arguments were passed to the current process. If the function returns
+///   `true`, but `*outArgc` is less than or equal to `0` or `*outArgv` is
+///   `NULL`, the testing library acts as if this function returned `false`.
+///
+/// The testing library uses this function to configure the current process
+/// before running any tests. For more information about valid command-line
+/// arguments, review the documentation for the `swift test` command.
+///
+/// ### Reference implementations
+///
+/// An implementation that has access to the command-line arguments of the
+/// current process can provide them via this function:
+///
+/// ```c
+/// extern int __argc;
+/// extern char *__argv[];
+///
+/// bool _swift_testing_getArgcArgv(int *outArgc, char ***outArgv) {
+///   *outArgc = __argc;
+///   *outArgv = __argv;
+///   return true;
+/// }
+/// ```
+///
+/// If your platform does not support command-line arguments, or you cannot get
+/// them at runtime, your implementation can return `false`:
+///
+/// ```c
+/// bool _swift_testing_getArgcArgv(int *outArgc, char ***outArgv) {
+///   return false;
+/// }
+/// ```
+///
+/// ### Concurrency support
+///
+/// This function's implementation must be concurrency-safe unless the system is
+/// single-threaded. General thread safety issues with the POSIX `environ`
+/// variable are [well-documented](https://www.austingroupbugs.net/view.php?id=188)
+/// and are beyond the Platform Abstraction Layer's purview.
+SWT_EXTERN SWT_NODISCARD bool _swift_testing_getArgcArgv(int *outArgc, char *_Nonnull *_Nullable *_Nonnull outArgv);
+
+/// Get the current process' environment block.
+///
+/// - Parameters:
+///   - outArgv: A pointer to memory large enough to hold a C array of C
+///     strings. On return, initialized to the environment block of the current
+///     process, including a trailing `NULL` pointer as in the specification for
+///     the POSIX `environ` variable. The array and the strings in it must
+///     remain valid for the lifetime of the process, and the caller is not
+///     responsible for deallocating them.
+///
+/// - Returns: Whether or not `*outEnvironment` was successfully initialized. If
+///   it was not, the testing library assumes no environment variables exist in
+///   the current process. If the function returns `true`, but `*outEnvironment`
+///   is `NULL`, the testing library acts as if this function returned `false`.
+///
+/// The testing library uses this function to configure the current process
+/// before running any tests. For more information about environment variables
+/// that the testing library uses, review `EnvironmentVariables.md` in this
+/// repository's `Documentation` folder.
+///
+/// ### Reference implementations
+///
+/// An implementation that has access to the environment variables set in the
+/// current process can provide them via this function:
+///
+/// ```c
+/// extern char **environ;
+///
+/// bool _swift_testing_getEnvironment(char ***outEnvironment) {
+///   *outEnvironment = environ;
+///   return true;
+/// }
+/// ```
+///
+/// If your platform does not support environment variables, or you cannot get
+/// them at runtime, your implementation can return `false`:
+///
+/// ```c
+/// bool _swift_testing_getEnvironment(char ***outEnvironment) {
+///   return false;
+/// }
+/// ```
+///
+/// ### Concurrency support
+///
+/// This function's implementation must be concurrency-safe unless the system is
+/// single-threaded.
+SWT_EXTERN SWT_NODISCARD bool _swift_testing_getEnvironment(char *_Nullable *_Nullable *_Nonnull outEnvironment);
+
 // MARK: - System metadata
 
 /// Get information about the embedded system on which (or for which) Swift
 /// Testing has been built and is running.
 ///
-/// - Returns: A UTF-8-encoded C string representing some human-readable
-///   information identifying the current system. Whether this string represents
-///   the system's hardware, software, or other defining characteristics is
-///   implementation-defined. If no meaningful information is available, returns
-///   `NULL`. The string must remain valid for the lifetime of the process, and
-///   the caller is not responsible for deallocating it.
+/// - Parameters:
+///   - outEmbeddedTargetInfo: A pointer to memory large enough to hold a C
+///     string. On return, initialized to a UTF-8-encoded C string representing
+///     some human-readable information identifying the current system. The
+///     string must remain valid for the lifetime of the process, and the caller
+///     is not responsible for deallocating it.
+///
+/// - Returns: Whether or not `*outEmbeddedTargetInfo` was successfully
+///   initialized. If the function returns `true`, but `*outEmbeddedTargetInfo`
+///   is `NULL`, the testing library acts as if this function returned `false`.
 ///
 /// The testing library uses this function to describe the embedded system it
 /// is running on. This information is used for diagnostic purposes only.
 ///
 /// An implementation may choose to return a constant string, a string stored in
-/// statically-allocated memory, or a string allocated at runtime. The return
-/// value is implementation-defined, but where possible should include useful
-/// information about the system. For example, an implementation on a
-/// 68040-based Macintosh might return something like `"Quadra 950 (System 7.5.5)"`.
+/// statically-allocated memory, or a string allocated at runtime. The resulting
+/// string's meaning is implementation-defined, but where possible should
+/// include useful information about the system's hardware, software, or other
+/// defining characteristics.
 ///
 /// ### Reference implementations
 ///
@@ -49,7 +159,7 @@ SWT_ASSUME_NONNULL_BEGIN
 /// `uname()`:
 ///
 /// ```c
-/// const char *_swift_testing_getEmbeddedTargetInfo(void) {
+/// bool _swift_testing_getEmbeddedTargetInfo(const char **outEmbeddedTargetInfo) {
 ///   static char *result = NULL;
 ///
 ///   if (!result) {
@@ -59,7 +169,17 @@ SWT_ASSUME_NONNULL_BEGIN
 ///     }
 ///   }
 ///
-///   return result;
+///   *outEmbeddedTargetInfo = result;
+///   return (result != NULL);
+/// }
+/// ```
+///
+/// If no meaningful information about the system is available, your
+/// implementation can return `false`:
+///
+/// ```c
+/// bool _swift_testing_getEmbeddedTargetInfo(const char **outEmbeddedTargetInfo) {
+///   return false;
 /// }
 /// ```
 ///
@@ -67,7 +187,7 @@ SWT_ASSUME_NONNULL_BEGIN
 ///
 /// The testing library calls this function at most once during the lifetime of
 /// a test process.
-SWT_EXTERN const char *_Nullable _swift_testing_getEmbeddedTargetInfo(void);
+SWT_EXTERN bool _swift_testing_getEmbeddedTargetInfo(const char *_Nullable *_Nonnull outEmbeddedTargetInfo);
 
 // MARK: - Console output
 
@@ -102,7 +222,7 @@ typedef struct swift_testing_console_capabilities_t {
 ///     return, initialized to an instance of that type that describes the
 ///     capabilities of the console `_swift_testing_writeToConsole()` writes to.
 ///
-/// - Returns: Whether or not `outConsoleCapabilities` was successfully
+/// - Returns: Whether or not `*outConsoleCapabilities` was successfully
 ///   initialized. If it was not, the testing library assumes the system console
 ///   has none of the supported capabilities.
 ///

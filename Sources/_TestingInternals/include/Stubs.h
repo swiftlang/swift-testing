@@ -70,6 +70,18 @@ static int swt_errno(void) {
 SWT_IMPORT_FROM_STDLIB void *_Nullable memmem(const void *haystack, size_t hsize, const void *needle, size_t nsize);
 #endif
 
+/// Check whether or not the target platform uses the GNU C Library.
+///
+/// This function is provided because Swift cannot check if a C macro is defined
+/// at compile time.
+static bool swt_isGNUCLibrary(void) {
+#if defined(__GLIBC__)
+  return true;
+#else
+  return false;
+#endif
+}
+
 #if !SWT_NO_FILE_IO
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)
@@ -333,6 +345,16 @@ static int swt_getfdflags(int fd) {
 /// cannot be imported directly into Swift.
 static int swt_setfdflags(int fd, int flags) {
   return fcntl(fd, F_SETFD, flags);
+}
+#endif
+
+#if defined(CLOCK_MONOTONIC)
+/// Get the value of `CLOCK_MONOTONIC`.
+///
+/// This function is provided because `CLOCK_MONOTONIC` is a complex macro in
+/// wasi-libc and cannot be imported directly into Swift.
+static clockid_t swt_CLOCK_MONOTONIC(void) {
+  return CLOCK_MONOTONIC;
 }
 #endif
 

@@ -176,12 +176,12 @@
 #endif
 
 #if defined(__wasi__)
-#if __has_include(<wasi/libc-environ.h>)
-#include <wasi/libc-environ.h>
+#if __has_include(<wasi/api.h>)
+#include <wasi/api.h>
 #endif
 
-#if __has_include(<wasi/version.h>)
-#include <wasi/version.h>
+#if __has_include(<wasi/libc-environ.h>)
+#include <wasi/libc-environ.h>
 #endif
 #endif
 
