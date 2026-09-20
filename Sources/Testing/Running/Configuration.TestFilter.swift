@@ -51,7 +51,6 @@ extension Configuration {
       ///   - membership: How to interpret the result when predicating tests.
       case tags(_ tags: Set<Tag>, anyOf: Bool, membership: Membership)
 
-#if canImport(_StringProcessing)
       /// The test filter contains a pattern to predicate test IDs against.
       ///
       /// - Parameters:
@@ -65,7 +64,6 @@ extension Configuration {
       ///   - tagPatterns: The patterns to predicate test tags against
       ///   - membership: How to interpret the result when predicating tests.
       case tagPatterns(_ tagPatterns: [String], membership: Membership)
-#endif
 
       /// The test filter is a combination of other test filter kinds.
       ///
@@ -130,7 +128,6 @@ extension Configuration.TestFilter {
     self.init(_kind: .testIDs(Set(testIDs), membership: .excluding))
   }
 
-#if canImport(_StringProcessing)
   /// Initialize this instance to represent a pattern expression matched against
   /// a test's ID.
   ///
@@ -138,7 +135,11 @@ extension Configuration.TestFilter {
   ///   - membership: How to interpret the result when predicating tests.
   ///   - idPatterns: The patterns, expressed as a `Regex`-compatible regular
   ///     expressions, to match test IDs against.
+  ///
+  /// In Embedded Swift, `idPatterns` are not treated as regular expressions due
+  /// to the lack of the `_StringProcessing` module.
   init(membership: Membership, matchingAnyOf idPatterns: some Sequence<String>) throws {
+#if canImport(_StringProcessing)
     // Validate each regular expression by attempting to initialize a `Regex`
     // representing it, but do not preserve it. This type only represents
     // the pattern in the abstract, and is not responsible for actually
@@ -150,6 +151,7 @@ extension Configuration.TestFilter {
     for pattern in idPatterns {
       _ = try Regex(pattern)
     }
+#endif
 
     self.init(_kind: .idPatterns(Array(idPatterns), membership: membership))
   }
@@ -160,10 +162,13 @@ extension Configuration.TestFilter {
   ///   - tagPatterns: The patterns, expressed as a `Regex`-compatible regular
   ///     expressions, to match test tags against.
   public init(includingTagsMatching tagPatterns: [String]) throws {
+#if canImport(_StringProcessing)
     // See the comment above in init(membership:matchingAnyOf:) to understand why we construct regexes here.
     for pattern in tagPatterns {
       _ = try Regex(pattern)
     }
+#endif
+
     self.init(_kind: .tagPatterns(tagPatterns, membership: .including))
   }
 
@@ -173,13 +178,15 @@ extension Configuration.TestFilter {
   ///   - tagPatterns: The patterns, expressed as a `Regex`-compatible regular
   ///     expressions, to match test tags against.
   public init(excludingTagsMatching tagPatterns: [String]) throws {
+#if canImport(_StringProcessing)
     // See the comment above in init(membership:matchingAnyOf:) to understand why we construct regexes here.
     for pattern in tagPatterns {
       _ = try Regex(pattern)
     }
+#endif
+
     self.init(_kind: .tagPatterns(tagPatterns, membership: .excluding))
   }
-#endif
 
   /// Initialize this instance to include tests with a given set of tags.
   ///
@@ -284,28 +291,34 @@ extension Configuration.TestFilter.Kind {
         { $0.tags.isSuperset(of: tags) }
       }
       return .function(predicate, membership: membership)
-#if canImport(_StringProcessing)
     case let .idPatterns(idPatterns, membership):
-      nonisolated(unsafe) let regexes = try idPatterns.map(Regex.init)
+#if canImport(_StringProcessing)
+      // nonisolated(unsafe) let regexes = try idPatterns.map(Regex.init)
+      let regexes = idPatterns
+#else
+      let regexes = idPatterns
+#endif
       return .function({ item in
         let id = String(describing: item.test.id)
         return regexes.contains { id.contains($0) }
       }, membership: membership)
     case let .tagPatterns(tagPatterns, membership):
-      nonisolated(unsafe) let regexes = try tagPatterns.map(Regex.init)
+#if canImport(_StringProcessing)
+      // nonisolated(unsafe) let regexes = try tagPatterns.map(Regex.init)
+      let regexes = tagPatterns
+#else
+      let regexes = tagPatterns
+#endif
       return .function({ item in
         let tagNames = item.tags.map { tag in
           switch tag.kind {
           case let .staticMember(tagName): tagName
           }
         }
-        return tagNames.contains(where: { tagName in
-          regexes.contains(where: { regex in
-            tagName.contains(regex)
-          })
-        })
+        return tagNames.contains { tagName in
+          regexes.contains { tagName.contains($0) }
+        }
       }, membership: membership)
-#endif
     case let .combination(lhs, rhs, op):
       return try .combination(lhs.operation(), rhs.operation(), op)
     }
@@ -550,12 +563,10 @@ extension Configuration.TestFilter.Kind {
     switch self {
     case .unfiltered, .testIDs:
       false
-#if canImport(_StringProcessing)
     case .idPatterns:
       false
     case .tagPatterns:
       true
-#endif
     case .tags:
       true
     case let .combination(lhs, rhs, _):
