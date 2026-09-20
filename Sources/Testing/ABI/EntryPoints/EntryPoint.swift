@@ -639,7 +639,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   }
 #endif
 
-#if canImport(_StringProcessing)
   // Filtering
 
   // Filters currently come in two flavors: those with a prefix and those
@@ -659,8 +658,8 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
     // case, we should alert the user that it's not going to match what the
     // user expects and strip the backticks for them.
     func stripBackticksAndReportIfEncountered(string: inout String) {
-      let backtickRegex = /^`[^`]*`$/
-      if string.contains(backtickRegex) {
+      let backtickASCIICharacter = UInt8(ascii: "`")
+      if string.utf8.first == backtickASCIICharacter && string.utf8.last == backtickASCIICharacter {
         let originalString = string
         string = String(string.dropFirst().dropLast())
         if emitWarnings {
@@ -730,7 +729,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   if args.includeHiddenTests == true {
     configuration.testFilter.includeHiddenTests = true
   }
-#endif
 
   // Set up the iteration policy for the test run.
   var repetitionPolicy: Configuration.RepetitionPolicy = .once
