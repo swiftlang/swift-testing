@@ -90,7 +90,7 @@ $> swift build
 $> swift test
 ```
 
-<!-- FIXME: Uncomment this once the the `swift test` command support running
+<!-- FIXME: Uncomment this once the `swift test` command supports running
   specific Swift Testing tests.
 
 To learn how to run only specific tests or other testing options, run `swift
