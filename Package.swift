@@ -119,7 +119,6 @@ let package = Package(
         name: "SymbolShowcase",
         targets: ["SymbolShowcase"]
       ),
-
     ]
 #endif
 
