@@ -55,8 +55,10 @@ extension ABI.EncodedExpression: JSON.Encodable {
     var result = [String: JSON.Value]()
 
     result["sourceCode"] = sourceCode.jsonValue(in: context)
+#if !hasFeature(Embedded)
     result["runtimeValue"] = runtimeValue?.jsonValue(in: context)
     result["runtimeTypeName"] = runtimeTypeName?.jsonValue(in: context)
+#endif
     result["children"] = children?.jsonValue(in: context)
 
     return .object(result)

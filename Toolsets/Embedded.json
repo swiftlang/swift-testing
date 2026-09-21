@@ -3,7 +3,16 @@
   "swiftCompiler": {
     "extraCLIOptions": [
       "-enable-experimental-feature", "Embedded",
-      "-wmo"
+      "-wmo",
+      "-Xfrontend", "-disable-stack-protector"
+    ]
+  },
+  "linker": {
+    "extraCLIOptions": [
+      "-lswift_Concurrency",
+      "-lswiftUnicodeDataTables",
+      "-lswiftEmbeddedPlatformPOSIX",
+      "-lswiftEmbeddedPlatformMultiThreadedPOSIX"
     ]
   }
 }

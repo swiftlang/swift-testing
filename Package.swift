@@ -107,6 +107,21 @@ let package = Package(
     ]
 #endif
 
+#if DEBUG
+    // In debug mode, offer products for the showcase targets so they can be
+    // built and run from the command line.
+    result += [
+      .executable(
+        name: "EmbeddedShowcase",
+        targets: ["EmbeddedShowcase"]
+      ),
+      .executable(
+        name: "SymbolShowcase",
+        targets: ["SymbolShowcase"]
+      ),
+    ]
+#endif
+
     return result
   }(),
 
@@ -137,10 +152,8 @@ let package = Package(
       dependencies: [
         "_TestDiscovery",
         "_TestingInternals",
-      ] + {
-        // TODO: get macro target building for host when the target is embedded
-        buildingForEmbedded ? [] : ["TestingMacros"]
-      }(),
+        "TestingMacros",
+      ],
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       linkerSettings: [
         .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd])),
@@ -315,6 +328,13 @@ let package = Package(
         "Testing",
       ]
     ),
+    .executableTarget(
+      name: "EmbeddedShowcase",
+      dependencies: [
+        "Testing",
+        "EmbeddedPlatformPOSIX+Testing",
+      ]
+    ),
   ],
 
   cxxLanguageStandard: .cxx20
@@ -406,7 +426,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !target.isTest {
+    if !target.isTest && !target.name.hasSuffix("Showcase") {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]
@@ -528,7 +548,7 @@ extension Array where Element: _CLanguageBuildSetting {
 
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !target.isTest {
+    if !target.isTest && !target.name.hasSuffix("Showcase") {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]

@@ -10,6 +10,7 @@ include(ModuleABIName)
 add_library(Testing
   ABI/EntryPoints/ABIEntryPoint.swift
   ABI/EntryPoints/CommandLineArgumentList.swift
+  ABI/EntryPoints/EmbeddedEntryPoint.swift
   ABI/EntryPoints/EntryPoint.swift
   ABI/EntryPoints/SwiftPMEntryPoint.swift
   ABI/ABI.Context.swift

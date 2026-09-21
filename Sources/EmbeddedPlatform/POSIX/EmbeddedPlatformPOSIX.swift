@@ -23,8 +23,8 @@ private nonisolated(unsafe) let _embeddedTargetInfo: UnsafeMutablePointer<CChar>
       withUnsafeBytes(of: name.version) { version in
         version.withMemoryRebound(to: CChar.self) { version in
           withVaList([release.baseAddress!, version.baseAddress!]) { args in
-            withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(_SYS_NAMELEN) * 2 + 16) { buffer in
-              _ = vsnprintf(ptr: buffer.baseAddress!, buffer.count, "%s (%s)", args)
+            withUnsafeTemporaryAllocation(of: CChar.self, capacity: release.count + version.count + 16) { buffer in
+              _ = vsnprintf(buffer.baseAddress!, buffer.count, "%s (%s)", args)
               return strdup(buffer.baseAddress!)
             }
           }

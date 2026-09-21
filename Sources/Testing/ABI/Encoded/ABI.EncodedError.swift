@@ -103,7 +103,7 @@ extension ABI.EncodedError: CustomTestStringConvertible {
 // MARK: - Conversion to/from library types
 
 extension ABI.EncodedError {
-  public init(encoding error: some Error) {
+  public init(encoding error: any Error) {
     let description = String(describingForTest: error)
     if !description.isEmpty {
       self.description = description
