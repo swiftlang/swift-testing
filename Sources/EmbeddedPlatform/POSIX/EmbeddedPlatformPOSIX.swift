@@ -15,6 +15,7 @@ private import Synchronization
 #endif
 
 #if hasFeature(Embedded)
+#if objectFormat(ELF)
 /// A structure that stores the `argc` and `argv` values we capture when the
 /// process starts.
 private struct _ArgcArgv: Sendable, RawRepresentable {
@@ -49,8 +50,10 @@ private let _captureArgcArgv: @convention(c) (CInt, UnsafeMutablePointer<UnsafeM
     argcArgv.rawValue = argvCopy
   }
 }
+#endif
 
 @c @implementation func _swift_testing_getArgcArgv(_ outArgc: UnsafeMutablePointer<CInt>, _ outArgv: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeMutablePointer<CChar>>?>) -> CBool {
+#if objectFormat(ELF)
   guard swt_isGNUCLibrary() else {
     return false
   }
@@ -63,10 +66,17 @@ private let _captureArgcArgv: @convention(c) (CInt, UnsafeMutablePointer<UnsafeM
   outArgc.initialize(to: CInt(clamping: argcArgv.count))
   outArgv.initialize(to: argcArgv.baseAddress!)
   return true
+#else
+  return false
+#endif
 }
 
 @c @implementation func _swift_testing_getEnvironment(_ outEnvironment: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?>) -> CBool {
+#if !os(WASI)
   outEnvironment.initialize(to: swt_environ())
+#else
+  outEnvironment.initialize(to: __wasilibc_get_environ())
+#endif
   return true
 }
 
@@ -126,7 +136,7 @@ private nonisolated(unsafe) let _embeddedTargetInfo: UnsafeMutablePointer<CChar>
 
 @c @implementation func _swift_testing_getTimeSinceSystemEpoch(_ outSeconds: UnsafeMutablePointer<UInt32>, _ outNanoseconds: UnsafeMutablePointer<UInt32>) -> CBool {
   var ts = timespec()
-  clock_gettime(CLOCK_MONOTONIC, &ts)
+  clock_gettime(swt_CLOCK_MONOTONIC(), &ts)
   outSeconds.pointee = UInt32(clamping: ts.tv_sec)
   outNanoseconds.pointee = UInt32(clamping: ts.tv_nsec)
   return true

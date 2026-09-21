@@ -348,6 +348,16 @@ static int swt_setfdflags(int fd, int flags) {
 }
 #endif
 
+#if defined(CLOCK_MONOTONIC)
+/// Get the value of `CLOCK_MONOTONIC`.
+///
+/// This function is provided because `CLOCK_MONOTONIC` is a complex macro in
+/// wasi-libc and cannot be imported directly into Swift.
+static clockid_t swt_CLOCK_MONOTONIC(void) {
+  return CLOCK_MONOTONIC;
+}
+#endif
+
 /// Get the name of the given exit code if one is available.
 ///
 /// - Parameters:
