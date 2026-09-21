@@ -156,7 +156,7 @@
 #endif
 #endif
 
-#if defined(__linux__)
+#if defined(__linux__) && __has_include(<linux/fs.h>)
 #include <linux/fs.h>
 #endif
 

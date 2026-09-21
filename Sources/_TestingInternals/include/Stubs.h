@@ -265,7 +265,7 @@ static inline const void *_Nullable swt_ehdr_start(void) {
 }
 #endif
 
-#if defined(__linux__)
+#if defined(__linux__) && defined(FICLONE)
 /// Get the `FICLONE` `ioctl()` argument.
 ///
 /// This function is provided because `FICLONE` is a complex macro and cannot be
