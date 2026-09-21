@@ -9,6 +9,7 @@
   },
   "linker": {
     "extraCLIOptions": [
+      "-lswift_Concurrency",
       "-lswiftUnicodeDataTables",
       "-lswiftEmbeddedPlatformPOSIX",
       "-lswiftEmbeddedPlatformMultiThreadedPOSIX"
