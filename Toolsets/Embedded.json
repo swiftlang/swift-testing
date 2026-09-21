@@ -4,7 +4,7 @@
     "extraCLIOptions": [
       "-enable-experimental-feature", "Embedded",
       "-wmo",
-      "-Xfrontend", "-disable-stack-protector",
+      "-Xfrontend", "-disable-stack-protector"
     ]
   },
   "linker": {
