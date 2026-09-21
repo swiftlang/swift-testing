@@ -139,7 +139,10 @@ extension _AttachableURLWrapper: FileClonable {
       close(dstFD)
     }
 #if os(Linux)
-    let fileCloned = -1 != ioctl(dstFD, swt_FICLONE(), srcFD)
+    var fileCloned = false
+    if let FICLONE = swt_FICLONE()?.pointee {
+      fileCloned = -1 != ioctl(dstFD, FICLONE, srcFD)
+    }
 #elseif os(FreeBSD)
     var flags = CUnsignedInt(0)
     if Self._freeBSDVersion >= 1500000 {

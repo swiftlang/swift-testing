@@ -265,13 +265,20 @@ static inline const void *_Nullable swt_ehdr_start(void) {
 }
 #endif
 
-#if defined(__linux__) && defined(FICLONE)
+#if defined(__linux__)
 /// Get the `FICLONE` `ioctl()` argument.
 ///
 /// This function is provided because `FICLONE` is a complex macro and cannot be
-/// imported directly into Swift.
-static unsigned long swt_FICLONE(void) {
-  return FICLONE;
+/// imported directly into Swift. It returns a nullable pointer because Musl
+/// does not define it and the Swift caller cannot reliably and statically
+/// detect Musl.
+static const unsigned long *_Nullable swt_FICLONE(void) {
+#if defined(FICLONE)
+  static const result = FICLONE;
+  return &result;
+#else
+  return 0;
+#endif
 }
 #endif
 
