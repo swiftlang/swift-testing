@@ -83,8 +83,8 @@ typedef struct swift_testing_argc_argv_t {
 ///
 /// ### Concurrency support
 ///
-/// This function's implementation must be concurrency-safe unless the system is
-/// single-threaded.
+/// The testing library calls this function at most once during the lifetime of
+/// a test process.
 SWT_EXTERN SWT_NODISCARD bool _swift_testing_getArgcArgv(swift_testing_argc_argv_t *outArgcArgv);
 
 /// Get the current process' environment block.
@@ -132,8 +132,8 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getArgcArgv(swift_testing_argc_argv
 ///
 /// ### Concurrency support
 ///
-/// This function's implementation must be concurrency-safe unless the system is
-/// single-threaded. General thread safety issues with the POSIX `environ`
+/// The testing library calls this function at most once during the lifetime of
+/// a test process. General thread safety issues with the POSIX `environ`
 /// variable are [well-documented](https://www.austingroupbugs.net/view.php?id=188)
 /// and are beyond the Platform Abstraction Layer's purview.
 SWT_EXTERN SWT_NODISCARD bool _swift_testing_getEnvironment(char *_Nullable *_Nullable *_Nonnull outEnvironment);
