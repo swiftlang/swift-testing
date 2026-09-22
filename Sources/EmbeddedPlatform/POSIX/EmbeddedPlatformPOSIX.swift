@@ -158,7 +158,7 @@ private nonisolated(unsafe) let _embeddedTargetInfo: UnsafeMutablePointer<CChar>
   write(STDERR_FILENO, chars, count)
 }
 
-@c func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
+@c @implementation func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
   // TODO: allow POSIX-compliant configuration of the target for JSON (e.g. a file descriptor)
 }
 
