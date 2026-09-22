@@ -245,6 +245,12 @@ let package = Package(
       path: "Sources/EmbeddedPlatform/POSIX",
       exclude: ["CMakeLists.txt"]
     ),
+    .target(
+      name: "EmbeddedPlatformWASI+Testing",
+      dependencies: ["_TestingInternals",],
+      path: "Sources/EmbeddedPlatform/WASI",
+      exclude: ["CMakeLists.txt"]
+    ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
     .target(
@@ -333,7 +339,8 @@ let package = Package(
       dependencies: [
         "Testing",
         "EmbeddedShowcaseTests",
-        "EmbeddedPlatformPOSIX+Testing",
+        .target(name: "EmbeddedPlatformPOSIX+Testing", condition: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .android])),
+        .target(name: "EmbeddedPlatformWASI+Testing", condition: .when(platforms: [.wasi])),
       ],
       path: "Sources/EmbeddedShowcase/Main"
     ),
@@ -341,7 +348,8 @@ let package = Package(
       name: "EmbeddedShowcaseTests",
       dependencies: [
         "Testing",
-        "EmbeddedPlatformPOSIX+Testing",
+        .target(name: "EmbeddedPlatformPOSIX+Testing", condition: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .android])),
+        .target(name: "EmbeddedPlatformWASI+Testing", condition: .when(platforms: [.wasi])),
       ],
       path: "Sources/EmbeddedShowcase/Tests"
     )
