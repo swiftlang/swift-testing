@@ -117,6 +117,45 @@ struct TestCaseIterationTests {
     }
   }
 
+  private enum IssueKind: Sendable {
+    case failure
+    case known
+    case warning
+  }
+
+  @Test(arguments: [
+    (.failure, .whileIssueRecorded, 3),
+    (.known, .whileIssueRecorded, 1),
+    (.warning, .whileIssueRecorded, 1),
+    (.known, .untilIssueRecorded, 3),
+    (.warning, .untilIssueRecorded, 3),
+  ] as [(IssueKind, Configuration.RepetitionPolicy.ContinuationCondition, Int)])
+  private func `Only failures cause repetition`(
+    issueKind: IssueKind,
+    continuingWhen: Configuration.RepetitionPolicy.ContinuationCondition,
+    expectedIterationCount: Int
+  ) async {
+    let iterations = Atomic(0)
+    var configuration = Configuration()
+    configuration.repetitionPolicy = .repeating(continuingWhen, maximumIterationCount: 3)
+
+    await Test {
+      iterations.add(1, ordering: .sequentiallyConsistent)
+      switch issueKind {
+      case .failure:
+        Issue.record("Failure")
+      case .known:
+        withKnownIssue {
+          Issue.record("Expected defect")
+        }
+      case .warning:
+        Issue.record("Warning", severity: .warning)
+      }
+    }.run(configuration: configuration)
+
+    #expect(iterations.load(ordering: .sequentiallyConsistent) == expectedIterationCount)
+  }
+
   // MARK: Encoded event ordering
 
   private func assertEncodedEventKinds(
