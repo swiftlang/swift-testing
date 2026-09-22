@@ -89,12 +89,16 @@ private let _argcArgv: swift_testing_argc_argv_t = {
 }
 
 @c @implementation func _swift_testing_getEnvironment(_ outEnvironment: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?>) -> CBool {
+#if !SWT_NO_ENVIRONMENT_VARIABLES
 #if !os(WASI)
   outEnvironment.initialize(to: swt_environ())
 #else
   outEnvironment.initialize(to: __wasilibc_get_environ())
 #endif
   return true
+#else
+  return false
+#endif
 }
 
 #if !os(WASI)

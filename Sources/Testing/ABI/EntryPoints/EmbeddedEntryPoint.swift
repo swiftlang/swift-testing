@@ -69,6 +69,7 @@ public func swift_testing_embeddedMain(
     }
   }
 
+#if !SWT_NO_ENVIRONMENT_VARIABLES
   if let envp {
     _ = Environment._unsafeAddress.compareExchange(expected: nil, desired: envp, ordering: .sequentiallyConsistent)
   } else {
@@ -77,6 +78,7 @@ public func swift_testing_embeddedMain(
       _ = Environment._unsafeAddress.compareExchange(expected: nil, desired: envp, ordering: .sequentiallyConsistent)
     }
   }
+#endif
 
   _ = Task.immediate {
     let exitCode = await entryPoint(passing: nil, eventHandler: nil)
@@ -95,6 +97,7 @@ extension CommandLine {
   static let _argcArgv = Mutex(swift_testing_argc_argv_t())
 }
 
+#if !SWT_NO_ENVIRONMENT_VARIABLES
 extension Environment {
   /// Storage for ``unsafeAddress``.
   ///
@@ -103,4 +106,5 @@ extension Environment {
   /// ``flag(named:)``, or ``get()`` instead.
   static nonisolated(unsafe) let _unsafeAddress = Atomic<UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?>(nil)
 }
+#endif
 #endif

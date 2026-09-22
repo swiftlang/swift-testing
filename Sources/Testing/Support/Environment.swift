@@ -20,16 +20,7 @@ internal import Synchronization
 ///
 /// This type is not part of the public interface of the testing library.
 package enum Environment {
-#if SWT_NO_ENVIRONMENT_VARIABLES
-  /// Storage for the simulated environment.
-  ///
-  /// The mechanism by which this dictionary is initially populated depends on
-  /// platform-specific implementation details. Callers should not read from
-  /// this dictionary directly; use ``variable(named:)`` or ``flag(named:)``
-  /// instead.
-  static let simulatedEnvironment = Mutex<[String: String]>()
-#endif
-
+#if !SWT_NO_ENVIRONMENT_VARIABLES
   /// Split a string containing an environment variable's name and value into
   /// two strings.
   ///
@@ -46,14 +37,17 @@ package enum Environment {
     }
   }
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI) || hasFeature(Embedded)
   /// Get all environment variables from a POSIX environment block.
   ///
   /// - Parameters:
-  ///   - environ: The environment block, i.e. the global `environ` variable.
+  ///   - environ: The environment block, i.e. the global `environ` variable. If
+  ///     `nil`, the function immediately returns the empty dictionary.
   ///
   /// - Returns: A dictionary of environment variables.
-  private static func _get(fromEnviron environ: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>) -> [String: String] {
+  private static func _get(fromEnviron environ: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?) -> [String: String] {
+    guard let environ else {
+      return [:]
+    }
     var result = [String: String]()
 
     for i in 0... {
@@ -69,9 +63,48 @@ package enum Environment {
 
     return result
   }
+
+  /// Get a single environment variable from a POSIX environment block.
+  ///
+  /// - Parameters:
+  ///   - name: The name of the environment variable.
+  ///   - environ: The environment block, i.e. the global `environ` variable. If
+  ///     `nil`, the function immediately returns `nil`.
+  ///
+  /// - Returns: The value of the given environment variable, or `nil` if it was
+  ///   not found in `environ`.
+  private static func _get(_ name: String, fromEnviron environ: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?) -> String? {
+    guard let environ = Self.unsafeAddress else {
+      return nil
+    }
+
+    return name.withCString { name in
+      for i in 0... {
+        guard let rowp = environ[i] else {
+          break
+        }
+
+        if let equals = strchr(rowp, CInt(UInt8(ascii: "="))) {
+          let keyLength = UnsafeRawPointer(equals) - UnsafeRawPointer(rowp)
+          if 0 == strncmp(rowp, name, keyLength) {
+            return String(validatingCString: equals + 1)
+          }
+        }
+      }
+      return nil
+    }
+  }
+#else
+  /// Storage for the simulated environment.
+  ///
+  /// The mechanism by which this dictionary is initially populated depends on
+  /// platform-specific implementation details. Callers should not read from
+  /// this dictionary directly; use ``variable(named:)`` or ``flag(named:)``
+  /// instead.
+  static let simulatedEnvironment = Mutex<[String: String]>()
 #endif
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_ENVIRONMENT_VARIABLES && !SWT_NO_DYNAMIC_LINKING
+#if !hasFeature(Embedded) && SWT_TARGET_OS_APPLE && !SWT_NO_ENVIRONMENT_VARIABLES && !SWT_NO_DYNAMIC_LINKING
   /// A non-POSIX/non-portable function that locks for access to `environ`.
   ///
   /// If the `environ_lock_np()` function is not available on the current
@@ -102,10 +135,9 @@ package enum Environment {
   /// `swift_testing_embeddedMain()` is called. If that function has not been
   /// called, the value of this property is `nil`.
   static var unsafeAddress: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>? {
+#if !SWT_NO_ENVIRONMENT_VARIABLES
 #if !hasFeature(Embedded)
-#if SWT_NO_ENVIRONMENT_VARIABLES
-    nil
-#elseif SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE
     _NSGetEnviron()?.pointee
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     swt_environ()
@@ -120,22 +152,25 @@ package enum Environment {
 #else
     _unsafeAddress.load(ordering: .sequentiallyConsistent)
 #endif
+#else
+    nil
+#endif
   }
 
   /// Get all environment variables in the current process.
   ///
   /// - Returns: A copy of the current process' environment dictionary.
   package static func get() -> [String: String] {
-#if SWT_NO_ENVIRONMENT_VARIABLES
-    simulatedEnvironment.rawValue
-#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI) || hasFeature(Embedded)
+#if !SWT_NO_ENVIRONMENT_VARIABLES
+#if !hasFeature(Embedded)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
 #if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
     _environ_lock_np?()
     defer {
       _environ_unlock_np?()
     }
 #endif
-    return _get(fromEnviron: Self.unsafeAddress!)
+    return _get(fromEnviron: Self.unsafeAddress)
 #elseif os(Windows)
     guard let environ = GetEnvironmentStringsW() else {
       return [:]
@@ -160,6 +195,12 @@ package enum Environment {
 #warning("Platform-specific implementation missing: environment variables unavailable")
     return [:]
 #endif
+#else
+    return _get(fromEnviron: Self.unsafeAddress)
+#endif
+#else
+    simulatedEnvironment.rawValue
+#endif
   }
 
   /// Get the environment variable with the specified name.
@@ -170,9 +211,10 @@ package enum Environment {
   /// - Returns: The value of the specified environment variable, or `nil` if it
   ///   is not set for the current process.
   package static func variable(named name: String) -> String? {
-#if SWT_NO_ENVIRONMENT_VARIABLES
-    simulatedEnvironment.rawValue[name]
-#elseif SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+#if !SWT_NO_ENVIRONMENT_VARIABLES
+#if !hasFeature(Embedded)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
     // Acquire the `environ` lock if possible, then look for the right variable
     // in the block. This ensures we still hold the lock when we convert the
     // found C string to a Swift string, which we can't do with getenv(). If the
@@ -182,27 +224,8 @@ package enum Environment {
     defer {
       _environ_unlock_np?()
     }
-    guard let environ = Self.unsafeAddress else {
-      return nil
-    }
-
-    return name.withCString { name in
-      for i in 0... {
-        guard let rowp = environ[i] else {
-          break
-        }
-
-        if let equals = strchr(rowp, CInt(UInt8(ascii: "="))) {
-          let keyLength = UnsafeRawPointer(equals) - UnsafeRawPointer(rowp)
-          if 0 == strncmp(rowp, name, keyLength) {
-            return String(validatingCString: equals + 1)
-          }
-        }
-      }
-      return nil
-    }
-#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI) || hasFeature(Embedded)
-    getenv(name).flatMap { String(validatingCString: $0) }
+#endif
+    return _get(name, fromEnviron: Self.unsafeAddress)
 #elseif os(Windows)
     name.withCString(encodedAs: UTF16.self) { name in
       func getVariable(maxCount: Int) -> String? {
@@ -233,6 +256,12 @@ package enum Environment {
 #else
 #warning("Platform-specific implementation missing: environment variables unavailable")
     return nil
+#endif
+#else
+    return _get(name, fromEnviron: Self.unsafeAddress)
+#endif
+#else
+    return simulatedEnvironment.rawValue[name]
 #endif
   }
 
@@ -278,20 +307,18 @@ extension Environment {
   ///   - name: The name of the environment variable.
   ///
   /// - Returns: Whether or not the environment variable was successfully set.
+  @_unavailableInEmbedded
   @discardableResult
   package static func setVariable(_ value: String?, named name: String) -> Bool {
-#if SWT_NO_ENVIRONMENT_VARIABLES
-    simulatedEnvironment.withLock { environment in
-      environment[name] = value
-    }
-    return true
-#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if !SWT_NO_ENVIRONMENT_VARIABLES
+#if !hasFeature(Embedded)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
     if let value {
       return 0 == setenv(name, value, 1)
     }
     return 0 == unsetenv(name)
 #elseif os(Windows)
-    name.withCString(encodedAs: UTF16.self) { name in
+    return name.withCString(encodedAs: UTF16.self) { name in
       if let value {
         return value.withCString(encodedAs: UTF16.self) { value in
           SetEnvironmentVariableW(name, value)
@@ -300,10 +327,17 @@ extension Environment {
       return SetEnvironmentVariableW(name, nil)
     }
 #else
-#if !hasFeature(Embedded)
 #warning("Platform-specific implementation missing: environment variables unavailable")
-#endif
     return false
+#endif
+#else
+    swt_unreachable()
+#endif
+#else
+    simulatedEnvironment.withLock { environment in
+      environment[name] = value
+    }
+    return true
 #endif
   }
 }
