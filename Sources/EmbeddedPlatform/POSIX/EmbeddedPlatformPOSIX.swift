@@ -21,7 +21,7 @@ private let _argcArgv = Mutex(swift_testing_argc_argv_t())
 /// A constructor function that is called automatically, which we use to capture
 /// the early values of `argc` and `argv` where available.
 @section(".init_array.65535") @used
-private let _captureArgcArgv: @convention(c) (CInt, UnsafeMutablePointer<UnsafeMutablePointer<CChar>>?, UnsafeRawPointer) -> Void = { argc, argv, _ in
+private let _captureArgcArgv: @convention(c) (CInt, UnsafeMutablePointer<UnsafeMutablePointer<CChar>>?, UnsafeRawPointer?) -> Void = { argc, argv, _ in
   guard swt_isGNUCLibrary() else {
     // The arguments to this function are non-standard and provided when using
     // the GNU C Library only.
