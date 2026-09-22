@@ -45,13 +45,8 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       }
 #endif
 
-#if !hasFeature(Embedded)
-    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
-#else
-    let args = args ?? .init()
-#endif
-
     // Configure the test runner.
+    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
     var configuration = try configurationForEntryPoint(from: args)
 
     // Set up the event handler.

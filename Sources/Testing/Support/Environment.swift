@@ -97,11 +97,15 @@ package enum Environment {
   ///
   /// The value of this property is always `nil` on Windows and on platforms
   /// that do not support environment variables.
+  ///
+  /// In Embedded Swift, the value of this property is initially set when
+  /// `swift_testing_embeddedMain()` is called. If that function has not been
+  /// called, the value of this property is `nil`.
   static var unsafeAddress: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>? {
+#if !hasFeature(Embedded)
 #if SWT_NO_ENVIRONMENT_VARIABLES
     nil
-#elseif !hasFeature(Embedded)
-#if SWT_TARGET_OS_APPLE
+#elseif SWT_TARGET_OS_APPLE
     _NSGetEnviron()?.pointee
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     swt_environ()
@@ -114,11 +118,7 @@ package enum Environment {
     nil
 #endif
 #else
-    var result: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
-    guard _swift_testing_getEnvironment(&result) else {
-      return nil
-    }
-    return result
+    _unsafeAddress.load(ordering: .sequentiallyConsistent)
 #endif
   }
 

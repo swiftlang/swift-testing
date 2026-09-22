@@ -8,22 +8,16 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
+internal import _TestingInternals
 
 #if canImport(Synchronization)
 private import Synchronization
 #endif
 
 #if hasFeature(Embedded)
-/// A structure that stores the `argc` and `argv` values we capture when the
-/// process starts.
-private struct _ArgcArgv: Sendable, RawRepresentable {
-  nonisolated(unsafe) var rawValue = UnsafeMutableBufferPointer<UnsafeMutablePointer<CChar>>(start: nil, count: 0)
-}
-
 #if objectFormat(ELF)
 /// Storage for `_swift_testing_getArgcArgv()`.
-private let _argcArgv = Mutex(_ArgcArgv())
+private let _argcArgv = Mutex(swift_testing_argc_argv_t())
 
 /// A constructor function that is called automatically, which we use to capture
 /// the early values of `argc` and `argv` where available.
@@ -42,38 +36,41 @@ private let _captureArgcArgv: @convention(c) (CInt, UnsafeMutablePointer<UnsafeM
 
   // Do a deep copy of `argv` as the original pointer may be mutated, freed, or
   // otherwise unpreserved by the time we need it.
-  let argvCopy = UnsafeMutableBufferPointer<UnsafeMutablePointer<CChar>>.allocate(capacity: Int(clamping: argc))
-  for i in 0 ..< argvCopy.count {
-    argvCopy[i] = strdup(argv[i])!
+  var argcArgv = swift_testing_argc_argv_t(
+    argc: argc,
+    argv: .allocate(capacity: Int(clamping: argc))
+  )
+  for i in 0 ..< Int(clamping: argc) {
+    argcArgv.argv?[i] = strdup(argv[i])!
   }
-  _argcArgv.withLock { argcArgv in
-    argcArgv.rawValue = argvCopy
-  }
+  _argcArgv.withLock { $0 = argcArgv }
 }
 #elseif os(WASI)
 /// Storage for `_swift_testing_getArgcArgv()`.
-private let _argcArgv: _ArgcArgv = {
+private let _argcArgv: swift_testing_argc_argv_t = {
   var argc = 0
   var argvByteCount = 0
   guard 0 == __wasi_args_sizes_get(&argc, &argvByteCount), argc > 0, argvByteCount > 0 else {
-    return _ArgcArgv()
+    return swift_testing_argc_argv_t()
   }
 
   let argv = UnsafeMutableBufferPointer<UnsafeMutablePointer<UInt8>?>.allocate(capacity: argc)
   let argvBuffer = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: argvByteCount)
   guard 0 == __wasi_args_get(argv.baseAddress!, argvBuffer.baseAddress!) else {
-    return _ArgcArgv()
+    return swift_testing_argc_argv_t()
   }
 
-  return _ArgcArgv(
-    rawValue: UnsafeMutableRawBufferPointer(argv)
+  return swift_testing_argc_argv_t(
+    argc: CInt(clamping: argc),
+    argv: UnsafeMutableRawBufferPointer(argv)
       .assumingMemoryBound(to: UnsafeMutablePointer<CChar>.self)
+      .baseAddress!
   )
 }()
 #endif
 
-@c @implementation func _swift_testing_getArgcArgv(_ outArgc: UnsafeMutablePointer<CInt>, _ outArgv: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeMutablePointer<CChar>>?>) -> CBool {
-  var argcArgv: _ArgcArgv?
+@c @implementation func _swift_testing_getArgcArgv(_ outArgcArgv: UnsafeMutablePointer<swift_testing_argc_argv_t>) -> CBool {
+  var argcArgv: swift_testing_argc_argv_t?
 
 #if objectFormat(ELF)
   guard swt_isGNUCLibrary() else {
@@ -84,11 +81,10 @@ private let _argcArgv: _ArgcArgv = {
   argcArgv = _argcArgv
 #endif
 
-  guard let argcArgv = argcArgv?.rawValue, !argcArgv.isEmpty else {
+  guard let argcArgv else {
     return false
   }
-  outArgc.initialize(to: CInt(clamping: argcArgv.count))
-  outArgv.initialize(to: argcArgv.baseAddress!)
+  outArgcArgv.initialize(to: argcArgv)
   return true
 }
 

@@ -12,14 +12,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #else
-_Noreturn extern void swift_testing_embeddedMain(int argc, char *argv[]);
+_Noreturn extern void swift_testing_embeddedMain(int argc, char *argv[], char *envp[]);
 #endif
 
-int main(int argc, char *argv[]) {
+int main(
+  int argc, char *argv[]
+#if !defined(__wasi__)
+  , char *envp[]
+#endif
+) {
 #if !SWT_EMBEDDED
   fputs("This target is intended for Embedded Swift only.\n", stderr);
   return EXIT_FAILURE;
+#elif !defined(__wasi__)
+  swift_testing_embeddedMain(argc, argv, envp);
 #else
-  swift_testing_embeddedMain(argc, argv);
+  swift_testing_embeddedMain(argc, argv, 0);
 #endif
 }

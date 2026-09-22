@@ -24,23 +24,33 @@ SWT_ASSUME_NONNULL_BEGIN
 
 // MARK: - Process configuration
 
+/// A structure that stores the `argc` and `argv` values returned from
+/// `_swift_testing_getArgcArgv()`.
+typedef struct swift_testing_argc_argv_t {
+  /// The number of arguments passed to the program.
+  int argc;
+
+  /// The arguments passed to the program.
+  ///
+  /// If the value of the ``argc`` field is less than or equal to `0`, the value
+  /// of this field is ignored.
+  char *_Nonnull *_Nullable argv SWT_NONISOLATED_UNSAFE;
+} swift_testing_argc_argv_t SWT_SENDABLE;
+
 /// Get the command-line arguments passed to the current process.
 ///
 /// - Parameters:
-///   - outArgc: A pointer to memory large enough to hold a C integer. On
-///     return, initialized to the number of command line arguments available in
-///     `*outArgv`.
-///   - outArgv: A pointer to memory large enough to hold a C array of C
-///     strings. On return, initialized to the command-line arguments passed to
-///     the process. The array and the strings in it must remain valid for the
-///     lifetime of the process, and the caller is not responsible for
-///     deallocating them.
+///   - outArgcArgv: A pointer to memory large enough to hold an instance of the
+///     ``swift_testing_argc_argv_t`` structure. On return, initialized to an
+///     instance of that type. The array at `outArgcArgv->argv` and the strings
+///     in it must remain valid for the lifetime of the process, and the caller
+///     is not responsible for deallocating them.
 ///
-/// - Returns: Whether or not `*outArgc` and `*outArgv` were successfully
-///   initialized. If they were not, the testing library assumes no command-line
-///   arguments were passed to the current process. If the function returns
-///   `true`, but `*outArgc` is less than or equal to `0` or `*outArgv` is
-///   `NULL`, the testing library acts as if this function returned `false`.
+/// - Returns: Whether or not `*outArgcArgv` was successfully initialized. If
+///   it was not, the testing library assumes no command-line arguments were
+///   passed to the current process. If the function returns `true`, but
+///   `outArgcArgv->argc` is less than or equal to `0`, the testing library acts
+///   as if this function returned `false`.
 ///
 /// The testing library uses this function to configure the current process
 /// before running any tests. For more information about valid command-line
@@ -55,9 +65,9 @@ SWT_ASSUME_NONNULL_BEGIN
 /// extern int __argc;
 /// extern char *__argv[];
 ///
-/// bool _swift_testing_getArgcArgv(int *outArgc, char ***outArgv) {
-///   *outArgc = __argc;
-///   *outArgv = __argv;
+/// bool _swift_testing_getArgcArgv(swift_testing_argc_argv_t *outArgcArgv) {
+///   outArgcArgv->argc = __argc;
+///   outArgcArgv->argv = __argv;
 ///   return true;
 /// }
 /// ```
@@ -66,7 +76,7 @@ SWT_ASSUME_NONNULL_BEGIN
 /// them at runtime, your implementation can return `false`:
 ///
 /// ```c
-/// bool _swift_testing_getArgcArgv(int *outArgc, char ***outArgv) {
+/// bool _swift_testing_getArgcArgv(swift_testing_argc_argv_t *outArgcArgv) {
 ///   return false;
 /// }
 /// ```
@@ -74,10 +84,8 @@ SWT_ASSUME_NONNULL_BEGIN
 /// ### Concurrency support
 ///
 /// This function's implementation must be concurrency-safe unless the system is
-/// single-threaded. General thread safety issues with the POSIX `environ`
-/// variable are [well-documented](https://www.austingroupbugs.net/view.php?id=188)
-/// and are beyond the Platform Abstraction Layer's purview.
-SWT_EXTERN SWT_NODISCARD bool _swift_testing_getArgcArgv(int *outArgc, char *_Nonnull *_Nullable *_Nonnull outArgv);
+/// single-threaded.
+SWT_EXTERN SWT_NODISCARD bool _swift_testing_getArgcArgv(swift_testing_argc_argv_t *outArgcArgv);
 
 /// Get the current process' environment block.
 ///
@@ -125,7 +133,9 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getArgcArgv(int *outArgc, char *_No
 /// ### Concurrency support
 ///
 /// This function's implementation must be concurrency-safe unless the system is
-/// single-threaded.
+/// single-threaded. General thread safety issues with the POSIX `environ`
+/// variable are [well-documented](https://www.austingroupbugs.net/view.php?id=188)
+/// and are beyond the Platform Abstraction Layer's purview.
 SWT_EXTERN SWT_NODISCARD bool _swift_testing_getEnvironment(char *_Nullable *_Nullable *_Nonnull outEnvironment);
 
 // MARK: - System metadata
