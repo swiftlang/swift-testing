@@ -46,21 +46,10 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
 #endif
 
 #if !hasFeature(Embedded)
-    lazy var argv = CommandLine.arguments
+    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
 #else
-    lazy var argv: [String] = {
-      var argc = CInt(0)
-      var argv: UnsafeMutablePointer<UnsafeMutablePointer<CChar>>?
-      if _swift_testing_getArgcArgv(&argc, &argv), argc > 0, let argv {
-        let argv = (0 ..< argc).compactMap { String(validatingCString: argv[Int($0)]) }
-        if !argv.isEmpty {
-          return argv
-        }
-      }
-      return ["swift-test"]
-    }()
+    let args = args ?? .init()
 #endif
-    let args = try args ?? parseCommandLineArguments(from: argv)
 
     // Configure the test runner.
     var configuration = try configurationForEntryPoint(from: args)

@@ -41,4 +41,25 @@ public func swift_testing_embeddedMain(_ argc: CInt, _ argv: UnsafeMutablePointe
   }
   _asyncMainDrainQueue()
 }
+
+/// Begin running tests in Embedded Swift.
+///
+/// This overload of `swift_testing_embeddedMain()` derives its arguments from
+/// the function `_swift_testing_getArgcArgv()` declared in the testing
+/// library's Platform Abstraction Layer annex. If you already have values for
+/// `argc` and `argv`, you can pass them directly to the other overload of this
+/// function.
+///
+/// - Warning: This function's signature is subject to change. This function may
+///   be removed in a future update.
+public func swift_testing_embeddedMain() -> Never {
+  var argc = CInt(0)
+  var argv: UnsafeMutablePointer<UnsafeMutablePointer<CChar>>?
+  guard _swift_testing_getArgcArgv(&argc, &argv), argc > 0, let argv else {
+    return withUnsafeTemporaryAllocation(of: UnsafeMutablePointer<CChar>.self, capacity: 1) { argv in
+      swift_testing_embeddedMain(0, argv.baseAddress!)
+    }
+  }
+  return swift_testing_embeddedMain(argc, argv)
+}
 #endif
