@@ -8,15 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-import Testing
+_Noreturn extern void swift_testing_embeddedMain(int argc, char *argv[]);
 
-@main struct Main {
-  static func main() {
-#if !hasFeature(Embedded)
-    fatalError("This target is intended for Embedded Swift only.")
-#else
-    // TODO: capture raw argv/argc?
-    swift_testing_embeddedMain()
-#endif
-  }
+int main(int argc, char *argv[]) {
+  swift_testing_embeddedMain(argc, argv);
 }

@@ -18,18 +18,6 @@ private import _TestingInternals
 @_silgen_name("swift_task_asyncMainDrainQueue")
 private func _asyncMainDrainQueue() -> Never
 
-/// The common implementation of `swift_testing_embeddedMain()`.
-///
-/// - Parameters:
-///   - args: The command-line arguments passed to the process.
-private func _swift_testing_embeddedMain(_ args: __CommandLineArguments_v0?) -> Never {
-  _ = Task.immediate {
-    let exitCode = await entryPoint(passing: args, eventHandler: nil)
-    exit(exitCode)
-  }
-  _asyncMainDrainQueue()
-}
-
 /// Begin running tests in Embedded Swift.
 ///
 /// - Parameters:
@@ -46,17 +34,11 @@ public func swift_testing_embeddedMain(_ argc: CInt, _ argv: UnsafeMutablePointe
   guard let args = try? parseCommandLineArguments(from: argv) else {
     exit(EXIT_FAILURE)
   }
-  _swift_testing_embeddedMain(args)
-}
 
-/// Begin running tests in Embedded Swift.
-///
-/// - Parameters:
-///   - sourceLocation: The source location of the call to this function.
-///
-/// - Warning: This function's signature is subject to change. This function may
-///   be removed in a future update.
-public func swift_testing_embeddedMain(sourceLocation: SourceLocation = #Testing::sourceLocation) -> Never {
-  _swift_testing_embeddedMain(nil)
+  _ = Task.immediate {
+    let exitCode = await entryPoint(passing: args, eventHandler: nil)
+    exit(exitCode)
+  }
+  _asyncMainDrainQueue()
 }
 #endif
