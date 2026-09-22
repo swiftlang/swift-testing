@@ -33,3 +33,12 @@ func isSmall(_ i: Int) {
 @Test func multiplication() {
   #expect(6 * 7 == 42)
 }
+
+@Test func willFail() {
+  #expect(123 == 456)
+
+  struct MyError: Error {}
+  #expect(throws: Never.self) {
+    throw MyError()
+  }
+}

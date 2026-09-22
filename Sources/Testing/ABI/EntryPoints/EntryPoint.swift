@@ -11,7 +11,7 @@
 #if !SWT_NO_FOUNDATION
 private import Foundation
 #endif
-private import _TestingInternals
+internal import _TestingInternals
 
 #if canImport(Synchronization)
 private import Synchronization
@@ -45,8 +45,8 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       }
 #endif
 
-    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
     // Configure the test runner.
+    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
     var configuration = try configurationForEntryPoint(from: args)
 
     // Set up the event handler.
@@ -972,6 +972,33 @@ extension Event.ConsoleOutputRecorder.Options {
   }
 #endif
 }
+
+#if hasFeature(Embedded) && !SWT_NO_FILE_IO
+/// Get the console capabilities for the given file handle.
+///
+/// - Parameters:
+///   - fileHandle: The C file handle for which capabilities are needed.
+///   - outConsoleCapabilities: On return, the capabilities for `fileHandle`.
+///
+/// - Returns: Whether or not `outConsoleCapabilities` was initialized.
+///
+/// This function is provided for our reference implementations of the Platform
+/// Abstraction Layer annex.
+@export(interface) @c func _swift_testing_getConsoleCapabilitiesForFILE(
+  _ fileHandle: SWT_FILEHandle,
+  _ outConsoleCapabilities: UnsafeMutablePointer<swift_testing_console_capabilities_t>
+) -> CBool {
+  let fileHandle = FileHandle(unsafeCFILEHandle: fileHandle, closeWhenDone: false)
+  let options = Event.ConsoleOutputRecorder.Options.for(fileHandle)
+  outConsoleCapabilities.initialize(
+    to: swift_testing_console_capabilities_t(
+      useANSIEscapeCodes: options.useANSIEscapeCodes ? 1 : 0,
+      ansiColorBitDepth: CUnsignedInt(options.ansiColorBitDepth)
+    )
+  )
+  return true
+}
+#endif
 
 // MARK: - Error reporting
 

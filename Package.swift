@@ -332,9 +332,19 @@ let package = Package(
       name: "EmbeddedShowcase",
       dependencies: [
         "Testing",
+        "EmbeddedShowcaseTests",
         "EmbeddedPlatformPOSIX+Testing",
-      ]
+      ],
+      path: "Sources/EmbeddedShowcase/Main"
     ),
+    .target(
+      name: "EmbeddedShowcaseTests",
+      dependencies: [
+        "Testing",
+        "EmbeddedPlatformPOSIX+Testing",
+      ],
+      path: "Sources/EmbeddedShowcase/Tests"
+    )
   ],
 
   cxxLanguageStandard: .cxx20

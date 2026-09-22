@@ -128,7 +128,13 @@ let simulatorVersion: String = {
 /// memory leak if the implementation heap-allocates it.
 ///
 /// For more information, see ``embeddedTargetInfo``.
-private nonisolated(unsafe) let _embeddedTargetInfoCString = _swift_testing_getEmbeddedTargetInfo()
+private nonisolated(unsafe) let _embeddedTargetInfoCString: UnsafePointer<CChar>? = {
+  var result: UnsafePointer<CChar>?
+  guard _swift_testing_getEmbeddedTargetInfo(&result) else {
+    return nil
+  }
+  return result
+}()
 
 /// A human-readable string describing the current Embedded Swift target.
 ///
