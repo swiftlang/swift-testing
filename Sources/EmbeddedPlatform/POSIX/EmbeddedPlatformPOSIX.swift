@@ -33,16 +33,10 @@ private let _captureArgcArgv: @convention(c) (CInt, UnsafeMutablePointer<UnsafeM
     return
   }
 
-  // Do a deep copy of `argv` as the original pointer may be mutated, freed, or
-  // otherwise unpreserved by the time we need it.
-  var argcArgv = swift_testing_argc_argv_t(
-    argc: argc,
-    argv: .allocate(capacity: Int(clamping: argc))
-  )
-  for i in 0 ..< Int(clamping: argc) {
-    argcArgv.argv?[i] = strdup(argv[i])!
+  if argc > 0, let argv {
+    let argcArgv = swift_testing_argc_argv_t(argc: argc, argv: argv)
+    _argcArgv.withLock { $0 = argcArgv }
   }
-  _argcArgv.withLock { $0 = argcArgv }
 }
 
 @c @implementation func _swift_testing_getArgcArgv(_ outArgcArgv: UnsafeMutablePointer<swift_testing_argc_argv_t>) -> CBool {
