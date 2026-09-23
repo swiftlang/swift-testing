@@ -387,7 +387,7 @@ SWT_EXTERN void _swift_testing_writeJSON(const uint8_t *json, size_t count, cons
 // MARK: - Test timing
 
 /// A type representing a duration since some epoch.
-struct swift_testing_duration_t {
+typedef struct swift_testing_duration_t {
   /// The number of whole seconds since the epoch.
   uint32_t seconds;
 
