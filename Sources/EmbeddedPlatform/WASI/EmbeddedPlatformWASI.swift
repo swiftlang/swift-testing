@@ -67,11 +67,15 @@ private let _argcArgv: swift_testing_argc_argv_t = {
   // TODO: allow POSIX-compliant configuration of the target for JSON (e.g. a file descriptor)
 }
 
-@c @implementation func _swift_testing_getTimeSinceSystemEpoch(_ outSeconds: UnsafeMutablePointer<UInt32>, _ outNanoseconds: UnsafeMutablePointer<UInt32>) -> CBool {
+@c @implementation func _swift_testing_getDurationSinceSystemEpoch(_ outDuration: UnsafeMutablePointer<swift_testing_duration_t>) -> CBool {
   var ts = timespec()
   clock_gettime(swt_CLOCK_MONOTONIC(), &ts)
-  outSeconds.pointee = UInt32(clamping: ts.tv_sec)
-  outNanoseconds.pointee = UInt32(clamping: ts.tv_nsec)
+  outDuration.initialize(
+    to: swift_testing_duration_t(
+      seconds: UInt32(clamping: ts.tv_sec),
+      nanoseconds: UInt32(clamping: ts.tv_nsec)
+    )
+  )
   return true
 }
 #endif
