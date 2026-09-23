@@ -469,5 +469,86 @@ SWT_EXTERN void _swift_testing_writeJSON(const uint8_t *json, size_t count, cons
 /// single-threaded.
 SWT_EXTERN SWT_NODISCARD bool _swift_testing_getTimeSinceSystemEpoch(uint32_t *outSeconds, uint32_t *outNanoseconds);
 
+/// Get the amount of time that has passed since the UNIX epoch.
+///
+/// - Parameters:
+///   - outSeconds: On successful return, set to the number of whole seconds
+///     since the UNIX epoch.
+///   - outNanoseconds: On successful return, set to the number of nanoseconds
+///     since the UNIX epoch (less the number of seconds returned in
+///     `outSeconds`). The value should be less than `1000000000`.
+///
+/// - Returns: Whether or not `*outSeconds` and `*outNanoseconds` were
+///   successfully initialized. If they were not, their values are undefined and
+///   the testing library assumes a time of `0`.
+///
+/// The testing library uses this function to present information about test
+/// timing to the user in a human-readable format.
+///
+/// The UNIX epoch is defined as 1970-01-01 00:00:00 UT, and is commonly used as
+/// the wall-clock epoch on UNIX-derived and UNIX-like systems. Since the wall
+/// clock is subject to adjustments at runtime (by both the system and the
+/// user), the testing library does not use it for fine-grained test timing,
+/// only for display purposes.
+///
+/// ### Reference implementations
+///
+/// On systems with the C standard [`timespec_get()`](https://en.cppreference.com/c/chrono/timespec_get)
+/// function and `TIME_UTC` constant, this function can be implemented with the
+/// following algorithm:
+///
+/// ```c
+/// bool _swift_testing_getTimeSince1970(uint32_t *outSeconds, uint32_t *outNanoseconds) {
+///   struct timespec ts = {};
+///   if (0 != timespec_get(&ts, TIME_UTC)) {
+///     return false;
+///   }
+///   *outSeconds = (uint32_t)ts.tv_sec; // assumes time_t is an integral type
+///   *outNanoseconds = (uint32_t)ts.tv_nsec;
+///   return true;
+/// }
+/// ```
+///
+/// You can also implement the function in terms of the C standard [`time()`](https://en.cppreference.com/c/chrono/time)
+/// function if your platform's wall clock only supports one-second resolution
+/// or coarser:
+///
+/// ```c
+/// bool _swift_testing_getTimeSince1970(uint32_t *outSeconds, uint32_t *outNanoseconds) {
+///   time_t seconds = time(NULL);
+///   *outSeconds = (uint32_t)seconds;
+///   *outNanoseconds = 0;
+///   return true;
+/// }
+/// ```
+///
+/// - Note: The C standard does not require that the epoch used by
+///   `timespec_get()` and `time()` be equal to the UNIX epoch. Most systems, in
+///   practice, do define them as equal. If yours does not, you must adjust the
+///   value before returning.
+///
+///   As well, the C standard does not require that [`time_t`](https://en.cppreference.com/c/chrono/time_t)
+///   be an integral type (though most modern systems define it as either a
+///   32-bit or 64-bit signed integer). If your system defines [`time_t`](https://en.cppreference.com/c/chrono/time_t)
+///   as a non-integral type, you can convert it to a value of type `double`
+///   using the C standard [`gmtime()`](https://en.cppreference.com/c/chrono/gmtime)
+///   and [`difftime()`](https://en.cppreference.com/c/chrono/difftime)
+///   functions.
+///
+/// This function can be implemented to simply return `false` if the platform
+/// does not implement a wall clock:
+///
+/// ```c
+/// bool _swift_testing_getTimeSince1970(uint32_t *outSeconds, uint32_t *outNanoseconds) {
+///   return false;
+/// }
+/// ```
+///
+/// ### Concurrency support
+///
+/// This function's implementation must be concurrency-safe unless the system is
+/// single-threaded.
+SWT_EXTERN SWT_NODISCARD bool _swift_testing_getTimeSince1970(uint32_t *outSeconds, uint32_t *outNanoseconds);
+
 SWT_ASSUME_NONNULL_END
 #endif
