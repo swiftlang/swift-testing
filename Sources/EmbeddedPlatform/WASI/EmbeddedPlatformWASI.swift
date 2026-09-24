@@ -73,7 +73,7 @@ private enum JSON {
   }
 }
 
-@c func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
+@c @implementation func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
   guard let fd = JSON.embeddedFileDescriptor else {
     return
   }
