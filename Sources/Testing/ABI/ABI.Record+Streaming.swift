@@ -52,6 +52,8 @@ extension ABI.Version {
 // MARK: - Xcode 16 compatibility
 
 extension ABI.Xcode16 {
+  typealias Dev = Self
+
   static func eventHandler(
     forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
   ) -> Event.Handler {
