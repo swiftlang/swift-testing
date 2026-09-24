@@ -80,7 +80,6 @@ public func __checkValue(
     condition = !condition
   }
 
-#if !hasFeature(Embedded)
   // Capture the correct expression in the expectation.
   if !condition, let expressionWithCapturedRuntimeValues = expressionWithCapturedRuntimeValues() {
     expression = expressionWithCapturedRuntimeValues
@@ -88,7 +87,6 @@ public func __checkValue(
       expression = expression.capturingRuntimeValues(condition)
     }
   }
-#endif
 
   // Post an event for the expectation regardless of whether or not it passed.
   // If the current event handler is not configured to handle events of this
@@ -122,7 +120,6 @@ public func __checkValue(
   return .failure(ExpectationFailedError(expectation: expectation))
 }
 
-#if !hasFeature(Embedded)
 // MARK: - Binary operators
 
 /// Call a binary operator, passing the left-hand and right-hand arguments.
@@ -183,13 +180,50 @@ private func _callBinaryOperator<T, U, R>(
     condition,
     expression: expression(),
     negationCount: negationCount,
-    expressionWithCapturedRuntimeValues: expression().capturingRuntimeValues(condition, lhs, rhs),
+    expressionWithCapturedRuntimeValues: {
+      expression().capturingRuntimeValues(condition, lhs, rhs)
+    }(),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
   )
 }
 
+#if hasFeature(Embedded)
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload is used by binary operators such as `>` when the operands
+/// conform to ``CustomTestStringConvertible`` in Embedded Swift.
+///
+/// ```swift
+/// #expect(2 > 1)
+/// ```
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkBinaryOperation<T, U>(
+  _ lhs: T, _ op: (T, () -> U) -> Bool, _ rhs: @autoclosure () -> U,
+  expression: @autoclosure () -> __Expression,
+  negationCount: Int = 0,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<Void, any Error> where T: CustomTestStringConvertible, U: CustomTestStringConvertible {
+  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
+  return __checkValue(
+    condition,
+    expression: expression(),
+    negationCount: negationCount,
+    expressionWithCapturedRuntimeValues: expression().capturingRuntimeValues(condition, lhs, rhs),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+#endif
+
+#if !hasFeature(Embedded)
 // MARK: - Function calls
 
 /// Check that an expectation has passed after a condition has been evaluated
@@ -799,11 +833,7 @@ public func __checkValue<T>(
     expression: expression(),
     negationCount: negationCount,
     expressionWithCapturedRuntimeValues: {
-#if !hasFeature(Embedded)
       (expressionWithCapturedRuntimeValues() ?? expression()).capturingRuntimeValues(optionalValue as T??)
-#else
-      nil
-#endif
     }(),
     comments: comments(),
     isRequired: isRequired,
@@ -813,7 +843,6 @@ public func __checkValue<T>(
   }
 }
 
-#if !hasFeature(Embedded)
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
 ///
@@ -841,13 +870,53 @@ public func __checkValue<T>(
     optionalValue,
     expression: expression(),
     negationCount: negationCount,
-    expressionWithCapturedRuntimeValues: expression().capturingRuntimeValues(optionalValue, lhs as T??, rhs as T??),
+    expressionWithCapturedRuntimeValues: {
+      expression().capturingRuntimeValues(optionalValue, lhs as T??, rhs as T??)
+    }(),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
   )
 }
 
+#if hasFeature(Embedded)
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload is used to conditionally unwrap optional values using the `??`
+/// operator when the value's type conforms to ``CustomTestStringConvertible``
+/// in Embedded Swift:
+///
+/// ```swift
+/// let x: Int? = ...
+/// let y: Int? = ...
+/// let z = try #require(x ?? y)
+/// ```
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkBinaryOperation<T>(
+  _ lhs: T?, _ op: (T?, () -> T?) -> T?, _ rhs: @autoclosure () -> T?,
+  expression: @autoclosure () -> __Expression,
+  negationCount: Int = 0,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<T, any Error> where T: CustomTestStringConvertible {
+  let (optionalValue, rhs) = _callBinaryOperator(lhs, op, rhs)
+  return __checkValue(
+    optionalValue,
+    expression: expression(),
+    negationCount: negationCount,
+    expressionWithCapturedRuntimeValues: expression().capturingRuntimeValues(optionalValue, lhs as T??, rhs as T??),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+#endif
+
+#if !hasFeature(Embedded)
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
 ///
@@ -982,11 +1051,13 @@ public func __checkClosureCall(
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
   var success = true
+  var expression = expression
   var mismatchExplanationValue: String? = nil
   do {
     _ = try body()
   } catch {
     success = false
+    expression = { [expression] in expression().capturingRuntimeValues(error) }
     mismatchExplanationValue = "an error was thrown when none was expected: \(_description(of: error))"
   }
 
@@ -1019,11 +1090,13 @@ public func __checkClosureCall(
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> {
   var success = true
+  var expression = expression
   var mismatchExplanationValue: String? = nil
   do {
     _ = try await body()
   } catch {
     success = false
+    expression = { [expression] in expression().capturingRuntimeValues(error) }
     mismatchExplanationValue = "an error was thrown when none was expected: \(_description(of: error))"
   }
 
@@ -1124,9 +1197,7 @@ public func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     caughtError = error
-#if !hasFeature(Embedded)
     expression = { [expression] in expression().capturingRuntimeValues(error) }
-#endif
     let secondError = Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try errorMatcher(error)
     }
@@ -1177,9 +1248,7 @@ public func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     caughtError = error
-#if !hasFeature(Embedded)
     expression = { [expression] in expression().capturingRuntimeValues(error) }
-#endif
     let secondError = await Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try await errorMatcher(error)
     }

@@ -157,6 +157,39 @@ extension _OptionalNilComparisonType: CustomTestStringConvertible {
   }
 }
 
+#if hasFeature(Embedded)
+// MARK: - Arithmetic types (Embedded Swift only)
+
+extension Numeric where Self: CustomStringConvertible & CustomTestStringConvertible {
+  public var testDescription: String {
+    String(describing: self)
+  }
+}
+
+extension Int: CustomTestStringConvertible {}
+extension Int8: CustomTestStringConvertible {}
+extension Int16: CustomTestStringConvertible {}
+extension Int32: CustomTestStringConvertible {}
+extension Int64: CustomTestStringConvertible {}
+extension Int128: CustomTestStringConvertible {}
+
+extension UInt: CustomTestStringConvertible {}
+extension UInt8: CustomTestStringConvertible {}
+extension UInt16: CustomTestStringConvertible {}
+extension UInt32: CustomTestStringConvertible {}
+extension UInt64: CustomTestStringConvertible {}
+extension UInt128: CustomTestStringConvertible {}
+
+extension Float: CustomTestStringConvertible {}
+extension Double: CustomTestStringConvertible {}
+
+extension Bool: CustomTestStringConvertible {
+  public var testDescription: String {
+    self ? "true" : "false"
+  }
+}
+#endif
+
 // MARK: - Strings
 
 extension CustomTestStringConvertible where Self: StringProtocol {
