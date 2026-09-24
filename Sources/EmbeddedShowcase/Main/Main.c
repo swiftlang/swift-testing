@@ -17,7 +17,7 @@ _Noreturn extern void swift_testing_embeddedMain(int argc, char *argv[], char *e
 
 int main(
   int argc, char *argv[]
-#if !defined(__wasi__)
+#if !defined(__wasi__) && !defined(__PICOLIBC__)
   , char *envp[]
 #endif
 ) {

@@ -43,6 +43,13 @@ let buildingForEmbedded: Bool = {
   return Bool(envvar) ?? ((Int(envvar) ?? 0) != 0)
 }()
 
+let buildingForGBA: Bool = {
+  guard let envvar = Context.environment["SWT_BUILD_GBA"] else {
+    return false
+  }
+  return Bool(envvar) ?? ((Int(envvar) ?? 0) != 0)
+}()
+
 let package = Package(
   name: "swift-testing",
 
@@ -251,6 +258,18 @@ let package = Package(
       path: "Sources/EmbeddedPlatform/WASI",
       exclude: ["CMakeLists.txt"]
     ),
+    .target(
+      name: "EmbeddedPlatformGBACShims+Testing",
+      dependencies: ["_TestingInternals",],
+      path: "Sources/EmbeddedPlatform/GBA/Shims",
+      exclude: ["CMakeLists.txt"]
+    ),
+    .target(
+      name: "EmbeddedPlatformGBA+Testing",
+      dependencies: ["_TestingInternals", "EmbeddedPlatformGBACShims+Testing"],
+      path: "Sources/EmbeddedPlatform/GBA/PAL",
+      exclude: ["CMakeLists.txt"]
+    ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
     .target(
@@ -340,8 +359,10 @@ let package = Package(
         "Testing",
         "EmbeddedShowcaseTests",
         .target(name: "EmbeddedPlatformPOSIX+Testing", condition: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .android])),
-        .target(name: "EmbeddedPlatformWASI+Testing", condition: .when(platforms: [.wasi])),
-      ],
+        .target(name: "EmbeddedPlatformWASI+Testing", condition: .when(platforms: [.wasi]))
+      ] + (buildingForGBA ? [
+        .target(name: "EmbeddedPlatformGBA+Testing", condition: .when(platforms: [.custom("none")]))
+      ] : []),
       path: "Sources/EmbeddedShowcase/Main"
     ),
     .target(

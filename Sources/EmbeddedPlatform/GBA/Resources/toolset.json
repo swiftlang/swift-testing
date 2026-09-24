@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0",
+  "cCompiler": {
+    "extraCLIOptions": [
+      "--sysroot", "Tools/lib/clang-runtimes/arm-none-eabi/armv4t",
+      "-D_LIBCPP_AVAILABILITY_HAS_NO_VERBOSE_ABORT=1",
+      "-D_POSIX_TIMERS=1", "-D_POSIX_MONOTONIC_CLOCK=200809L",
+      "-ftls-model=local-exec"
+    ]
+  },
+  "swiftCompiler": {
+    "extraCLIOptions": [
+      "-sysroot", "Tools/lib/clang-runtimes/arm-none-eabi/armv4t",
+      "-enable-experimental-feature", "Embedded",
+      "-enable-experimental-feature", "Volatile",
+      "-Ounchecked",
+      "-Xfrontend", "-function-sections",
+      "-Xfrontend", "-experimental-hermetic-seal-at-link",
+      "-Xclang-linker", "-nostartfiles",
+      "-Xclang-linker", "-fuse-ld=lld",
+      "-I", ".build/concurrency",
+      "-Xcc", "-D_POSIX_TIMERS=1", "-Xcc", "-D_POSIX_MONOTONIC_CLOCK=200809L",
+    ]
+  },
+  "linker": {
+    "extraCLIOptions": [
+      "-ltonc", "-lcrt0-gba",
+      "-T", "Tools/lib/clang-runtimes/arm-none-eabi/armv4t/lib/gba_cart.ld",
+      "-z", "norelro",
+      "-z", "muldefs",
+      "-L", ".build/concurrency", "-lswift_Concurrency",
+      "-lswiftUnicodeDataTables"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+module tonc {
+    header "tonc.h"
+    export *
+}
+
+module libc {
+    header "stdlib.h"
+    header "stdio.h"
+    header "string.h"
+    header "time.h"
+    export *
+}
