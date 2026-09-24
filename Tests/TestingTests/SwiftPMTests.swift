@@ -54,6 +54,11 @@ struct SwiftPMTests {
     #expect(EXIT_NO_TESTS_FOUND != EXIT_FAILURE)
   }
 
+  @Test("Unrecognized arguments are ignored")
+  func ignoreUnrecognized() throws {
+    _ = try configurationForEntryPoint(withArguments: ["PATH", "--unrecognized", "123", "foo", "bar", "--foo=bar"])
+  }
+
   @Test("--parallel/--no-parallel argument")
   func parallel() throws {
     var configuration = try configurationForEntryPoint(withArguments: ["PATH"])
@@ -298,8 +303,12 @@ struct SwiftPMTests {
 
   @Test("--filter or --skip argument as last argument")
   func filterOrSkipAsLast() async throws {
-    _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter"])
-    _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
+    #expect(throws: CommandLineArgumentList.ParseError.missingValue(label: "--filter")) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter"])
+    }
+    #expect(throws: CommandLineArgumentList.ParseError.missingValue(label: "--skip")) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
+    }
   }
 
 #if !SWT_NO_EXIT_TESTS
@@ -362,8 +371,9 @@ struct SwiftPMTests {
   @Test("--xunit-output argument (missing path)")
   func xunitOutputWithMissingPath() throws {
     // Test that a missing path doesn't read off the end of the argument array.
-    let args = try parseCommandLineArguments(from: ["PATH", "--xunit-output"])
-    #expect(args.xunitOutput == nil)
+    #expect(throws: CommandLineArgumentList.ParseError.missingValue(label: "--xunit-output").self) {
+      _ = try parseCommandLineArguments(from: ["PATH", "--xunit-output"])
+    }
   }
 
   @Test("--xunit-output argument (writes to file)")
@@ -439,6 +449,7 @@ struct SwiftPMTests {
     )
   }
 
+#if !SWT_NO_CODABLE
   @Test("--configuration-path argument", arguments: [
     "--configuration-path", "--experimental-configuration-path",
   ])
@@ -468,6 +479,7 @@ struct SwiftPMTests {
     #expect(args.skip == nil)
     #expect(args.parallel == false)
   }
+#endif
 
   @available(*, deprecated)
   @Test("Deprecated eventStreamVersion property")
@@ -536,7 +548,8 @@ struct SwiftPMTests {
   }
 #endif
 
-#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
+#if !SWT_NO_CODABLE
   @Test("Severity and isFailure fields included in version 6.3")
   func validateEventStreamContents() async throws {
     let tempDirPath = try temporaryDirectory()
@@ -658,6 +671,7 @@ struct SwiftPMTests {
     }
     #expect(eventRecords.count == 4)
   }
+#endif
 
   @Test("Experimental ABI version requires --experimental-event-stream-version argument")
   func experimentalABIVersionNeedsExperimentalFlag() {
@@ -675,6 +689,7 @@ struct SwiftPMTests {
     }
   }
 
+#if !SWT_NO_CODABLE
   @Test("Can extract the ABI version from record JSON")
   func getVersionFromRecordJSON() throws {
     var json = #"{ "kind": "test", "version": "1.2.3", "payload": {} }"#
@@ -683,6 +698,7 @@ struct SwiftPMTests {
     }
     #expect(versionNumber == ABI.VersionNumber(1, 2, 3))
   }
+#endif
 #endif
 #endif
 

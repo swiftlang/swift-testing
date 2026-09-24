@@ -87,9 +87,9 @@ extension ABI.Record {
   }
 }
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.Record: Codable {
   private enum CodingKeys: String, CodingKey {
     case version
@@ -98,27 +98,7 @@ extension ABI.Record: Codable {
   }
 
   public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(V.versionNumber, forKey: .version)
-    switch kind {
-    case let .test(test):
-      try container.encode("test", forKey: .kind)
-      try container.encode(test, forKey: .payload)
-    case let .event(event):
-      try container.encode("event", forKey: .kind)
-      try container.encode(event, forKey: .payload)
-    case let .metadata(metadata) where V.includesExperimentalFields:
-      try container.encode("_metadata", forKey: .kind)
-      try container.encode(metadata, forKey: .payload)
-    default:
-      throw EncodingError.invalidValue(
-        kind,
-        EncodingError.Context(
-          codingPath: encoder.codingPath + CollectionOfOne(CodingKeys.payload as any CodingKey),
-          debugDescription: "Record version \(V.versionNumber) does not support encoding records of kind \(kind)."
-        )
-      )
-    }
+    try encoder.encodeJSONEncodableValue(self)
   }
 
   public init(from decoder: any Decoder) throws {
@@ -164,4 +144,27 @@ extension ABI.Record: Codable {
   }
 }
 #endif
+
+extension ABI.Record: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) throws(JSON.EncodingError) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["version"] = V.versionNumber.jsonValue(in: context)
+    switch kind {
+    case let .test(test):
+      result["kind"] = .string("test")
+      result["payload"] = test.jsonValue(in: context)
+    case let .event(event):
+      result["kind"] = .string("event")
+      result["payload"] = event.jsonValue(in: context)
+    case let .metadata(metadata) where V.includesExperimentalFields:
+      result["kind"] = .string("_metadata")
+      result["payload"] = metadata.jsonValue(in: context)
+    default:
+      throw JSON.EncodingError(description: "Record version \(V.versionNumber) does not support encoding records of kind \(kind).")
+    }
+
+    return .object(result)
+  }
+}
 #endif

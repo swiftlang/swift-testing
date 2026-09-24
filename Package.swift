@@ -107,6 +107,21 @@ let package = Package(
     ]
 #endif
 
+#if DEBUG
+    // In debug mode, offer products for the showcase targets so they can be
+    // built and run from the command line.
+    result += [
+      .executable(
+        name: "EmbeddedShowcase",
+        targets: ["EmbeddedShowcase"]
+      ),
+      .executable(
+        name: "SymbolShowcase",
+        targets: ["SymbolShowcase"]
+      ),
+    ]
+#endif
+
     return result
   }(),
 
@@ -137,15 +152,17 @@ let package = Package(
       dependencies: [
         "_TestDiscovery",
         "_TestingInternals",
-      ] + {
-        // TODO: get macro target building for host when the target is embedded
-        buildingForEmbedded ? [] : ["TestingMacros"]
-      }(),
+        "TestingMacros",
+      ],
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       linkerSettings: [
         .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd])),
-        .linkedLibrary("_TestingInterop"),
-      ]
+      ] + {
+        if !buildingForEmbedded {
+          return [.linkedLibrary("_TestingInterop"),]
+        }
+        return []
+      }()
     ),
     .testTarget(
       name: "TestingTests",
@@ -218,6 +235,20 @@ let package = Package(
       name: "_TestingInterop_DO_NOT_USE",
       dependencies: ["_TestingInternals",],
       path: "Sources/_TestingInterop",
+      exclude: ["CMakeLists.txt"]
+    ),
+
+    // Embedded Swift platform abstraction layer implementations.
+    .target(
+      name: "EmbeddedPlatformPOSIX+Testing",
+      dependencies: ["_TestingInternals",],
+      path: "Sources/EmbeddedPlatform/POSIX",
+      exclude: ["CMakeLists.txt"]
+    ),
+    .target(
+      name: "EmbeddedPlatformWASI+Testing",
+      dependencies: ["_TestingInternals",],
+      path: "Sources/EmbeddedPlatform/WASI",
       exclude: ["CMakeLists.txt"]
     ),
 
@@ -303,6 +334,25 @@ let package = Package(
         "Testing",
       ]
     ),
+    .executableTarget(
+      name: "EmbeddedShowcase",
+      dependencies: [
+        "Testing",
+        "EmbeddedShowcaseTests",
+        .target(name: "EmbeddedPlatformPOSIX+Testing", condition: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .android])),
+        .target(name: "EmbeddedPlatformWASI+Testing", condition: .when(platforms: [.wasi])),
+      ],
+      path: "Sources/EmbeddedShowcase/Main"
+    ),
+    .target(
+      name: "EmbeddedShowcaseTests",
+      dependencies: [
+        "Testing",
+        .target(name: "EmbeddedPlatformPOSIX+Testing", condition: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .android])),
+        .target(name: "EmbeddedPlatformWASI+Testing", condition: .when(platforms: [.wasi])),
+      ],
+      path: "Sources/EmbeddedShowcase/Tests"
+    )
   ],
 
   cxxLanguageStandard: .cxx20
@@ -394,7 +444,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !target.isTest {
+    if !target.isTest && !target.name.hasSuffix("Showcase") {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]
@@ -510,9 +560,13 @@ extension Array where Element: _CLanguageBuildSetting {
   static func packageSettings(for target: PackageDescription.Target) -> Self {
     var result = Self()
 
+    if buildingForEmbedded && target.type != .macro {
+      result += [.define("SWT_EMBEDDED"),]
+    }
+
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !target.isTest {
+    if !target.isTest && !target.name.hasSuffix("Showcase") {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]
@@ -554,6 +608,7 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_PIPES": (platforms: [.wasi], embedded: true),
       "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .nonApplePlatforms, embedded: true),
       "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
+      "SWT_NO_FILE_IO": (platforms: .none, embedded: true),
       "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
       "SWT_NO_ABI_ENTRY_POINT": (platforms: .none, embedded: true),
       "SWT_NO_CODABLE": (platforms: .none, embedded: true),

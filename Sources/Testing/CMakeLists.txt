@@ -9,6 +9,8 @@
 include(ModuleABIName)
 add_library(Testing
   ABI/EntryPoints/ABIEntryPoint.swift
+  ABI/EntryPoints/CommandLineArgumentList.swift
+  ABI/EntryPoints/EmbeddedEntryPoint.swift
   ABI/EntryPoints/EntryPoint.swift
   ABI/EntryPoints/SwiftPMEntryPoint.swift
   ABI/ABI.Context.swift
@@ -109,6 +111,7 @@ add_library(Testing
   Support/GetSymbol.swift
   Support/Graph.swift
   Support/JSON.swift
+  Support/JSON.Encodable.swift
   Support/Serializer.swift
   Support/SHA256.swift
   Support/VersionNumber.swift

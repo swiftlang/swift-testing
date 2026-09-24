@@ -33,6 +33,9 @@
 /// An attribute that marks some value as being `Sendable` in Swift.
 #define SWT_SENDABLE __attribute__((swift_attr("@Sendable")))
 
+/// An attribute that marks some value as being `nonisolated(unsafe)` in Swift.
+#define SWT_NONISOLATED_UNSAFE __attribute__((swift_attr("nonisolated(unsafe)")))
+
 /// An attribute that renames a C symbol in Swift.
 #define SWT_SWIFT_NAME(name) __attribute__((swift_name(#name)))
 

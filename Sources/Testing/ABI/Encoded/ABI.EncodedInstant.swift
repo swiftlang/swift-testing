@@ -142,9 +142,24 @@ extension SuspendingClock.Instant {
 // Date.init(decoding:) is in the Foundation overlay.
 #endif
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
-extension ABI.EncodedInstant: Codable {}
+#if !SWT_NO_CODABLE
+extension ABI.EncodedInstant: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
 #endif
+
+extension ABI.EncodedInstant: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["absolute"] = absolute?.jsonValue(in: context)
+    result["since1970"] = since1970?.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
 #endif
