@@ -71,36 +71,46 @@ extension ABI {
         if let test = eventContext.test, !test.isSuite {
           isNonParameterizedTestFunction = !test.isParameterized
         }
+        let iteration = eventContext.iteration
+        func swapTestCaseKind(_ testCaseKind: Self, forTestKind testKind: Self) -> Self? {
+          if isNonParameterizedTestFunction {
+            if let iteration, iteration > 1 {
+              return .testEnded
+            }
+            return nil
+          }
+          return .testCaseEnded
+        }
 
         switch kind {
         case .runStarted:
           self = .runStarted
         case .testStarted:
-          if isNonParameterizedTestFunction {
-            return nil
-          }
           self = .testStarted
         case .testCaseStarted:
-          self = isNonParameterizedTestFunction ? .testStarted : .testCaseStarted
+          guard let result = swapTestCaseKind(.testCaseStarted, forTestKind: .testStarted) else {
+            return nil
+          }
+          self = result
         case .issueRecorded:
           self = .issueRecorded
         case .valueAttached:
           self = .valueAttached
         case .testCaseEnded:
-          self = isNonParameterizedTestFunction ? .testEnded : .testCaseEnded
-        case .testCaseCancelled:
-          self = isNonParameterizedTestFunction ? .testCancelled : .testCaseCancelled
-        case .testEnded:
-          if isNonParameterizedTestFunction {
+          guard let result = swapTestCaseKind(.testCaseEnded, forTestKind: .testEnded) else {
             return nil
           }
+          self = result
+        case .testCaseCancelled:
+          guard let result = swapTestCaseKind(.testCaseCancelled, forTestKind: .testCancelled) else {
+            return nil
+          }
+          self = result
+        case .testEnded:
           self = .testEnded
         case .testSkipped:
           self = .testSkipped
         case .testCancelled:
-          if isNonParameterizedTestFunction {
-            return nil
-          }
           self = .testCancelled
         case .runEnded:
           self = .runEnded
