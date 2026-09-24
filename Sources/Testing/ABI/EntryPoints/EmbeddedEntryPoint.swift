@@ -22,38 +22,7 @@ internal import Synchronization
 @_silgen_name("swift_task_asyncMainDrainQueue")
 private func _asyncMainDrainQueue() -> Never
 
-/// Begin running tests in Embedded Swift.
-///
-/// - Parameters:
-///   - argc: The number of command-line arguments at `argv`, as per C's
-///     specification of `main()`.
-///   - argv: The command-line arguments passed to the process, as per C's
-///     specification of `main()`.
-///   - envp: The environment variables set in the process, laid out as per the
-///     POSIX standard for the `environ` global variable.
-///
-/// ### Passing command-line arguments and environment variables
-///
-/// You can directly pass the `argc` and `argv` arguments from your C `main()`
-/// function to this function. On many platforms, `main()` can be declared with
-/// an additional `envp` argument representing the environment block, which you
-/// can also pass.
-///
-/// Alternatively, the testing library can get the program's command-line
-/// arguments or environment variables by calling functions from its Platform
-/// Abstraction Layer annex instead:
-///
-/// - If `argc` is `0` or `argv` is `nil`, the testing library calls the
-///   function `_swift_testing_getArgcArgv()` to get values for them.
-/// - If `envp` is `nil`, the testing library calls the function
-/// `_swift_testing_getEnvironment()` to get a value for it.
-///
-/// - Important: If not `nil`, `argv` and `envp` must remain valid for the
-///   lifetime of the program.
-///
-/// - Warning: This function's signature is subject to change. This function may
-///   be removed in a future update.
-@export(interface) @c
+@c @implementation
 public func swift_testing_embeddedMain(
   _ argc: CInt = 0,
   _ argv: UnsafeMutablePointer<UnsafeMutablePointer<CChar>>? = nil,
@@ -78,6 +47,10 @@ public func swift_testing_embeddedMain(
       _ = Environment._unsafeAddress.compareExchange(expected: nil, desired: envp, ordering: .sequentiallyConsistent)
     }
   }
+
+#if !SWT_NO_ABI_JSON_SCHEMA
+  JSON.embeddedFileDescriptor = Environment.variable(named: "SWT_EXPERIMENTAL_EMBEDDED_JSON_FD").flatMap(CInt.init(_:))
+#endif
 #endif
 
   _ = Task.immediate {

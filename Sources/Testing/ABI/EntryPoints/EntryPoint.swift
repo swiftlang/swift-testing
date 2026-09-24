@@ -606,7 +606,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   }
 #endif
 
-#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
   // Event stream output
   do {
     var eventHandler: Event.Handler?
@@ -625,9 +625,11 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
 #endif
     }
 #else
-    eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
-      var newline = UInt8.asciiNewlineCharacter
-      _swift_testing_writeJSON(json.baseAddress!, json.count, &newline)
+    if let jsonFD = JSON.embeddedFileDescriptor {
+      eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
+        var newline = UInt8.asciiNewlineCharacter
+        _swift_testing_writeJSON(json.baseAddress!, json.count, &newline)
+      }
     }
 #endif
     if let eventHandler {

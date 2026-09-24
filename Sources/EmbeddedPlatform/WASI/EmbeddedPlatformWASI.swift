@@ -42,14 +42,12 @@ private let _argcArgv: swift_testing_argc_argv_t = {
   return true
 }
 
-@c @implementation func _swift_testing_getEnvironment(_ outEnvironment: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?>) -> CBool {
 #if !SWT_NO_ENVIRONMENT_VARIABLES
+@c @implementation func _swift_testing_getEnvironment(_ outEnvironment: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?>) -> CBool {
   outEnvironment.initialize(to: __wasilibc_get_environ())
   return true
-#else
-  return false
-#endif
 }
+#endif
 
 @c @implementation func _swift_testing_getEmbeddedTargetInfo(_ outEmbeddedTargetInfo: UnsafeMutablePointer<UnsafePointer<CChar>?>) -> CBool {
   false
@@ -63,9 +61,33 @@ private let _argcArgv: swift_testing_argc_argv_t = {
   write(STDERR_FILENO, chars, count)
 }
 
-@c func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
-  // TODO: allow POSIX-compliant configuration of the target for JSON (e.g. a file descriptor)
+#if !SWT_NO_ABI_JSON_SCHEMA
+private enum JSON {
+  /// The file descriptor to which JSON should be written.
+  ///
+  /// This declaration is provided because this module does not directly link to
+  /// the testing library. For more information, see the declaration of this
+  /// symbol in the main testing library target.
+  static var embeddedFileDescriptor: CInt? {
+    @_silgen_name("_swift_testing_getEmbeddedJSONFileDescriptor") get
+  }
 }
+
+@c func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
+  guard let fd = JSON.embeddedFileDescriptor else {
+    return
+  }
+  if let terminator {
+    withUnsafeTemporaryAllocation(of: iovec.self, capacity: 2) { vecs in
+      vecs[0] = iovec(iov_base: UnsafeMutableRawPointer(mutating: json), iov_len: count)
+      vecs[1] = iovec(iov_base: UnsafeMutableRawPointer(mutating: terminator), iov_len: 1)
+      writev(fd, vecs.baseAddress!, 2)
+    }
+  } else {
+    write(fd, json, count)
+  }
+}
+#endif
 
 @c @implementation func _swift_testing_getDurationSinceSystemEpoch(_ outDuration: UnsafeMutablePointer<swift_testing_duration_t>) -> CBool {
   var ts = timespec()

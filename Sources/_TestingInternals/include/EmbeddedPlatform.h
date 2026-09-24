@@ -22,6 +22,49 @@ SWT_ASSUME_NONNULL_BEGIN
 /// This header augments the set of declarations in the Swift runtime's Platform
 /// Abstraction Layer, which can be found [here](https://github.com/swiftlang/swift/blob/main/stdlib/public/EmbeddedPlatform/swift/EmbeddedPlatform.h).
 
+/// Run tests in the current process according to the specified configuration.
+///
+/// - Parameters:
+///   - argc: The number of command-line arguments at `argv`, as per C's
+///     specification of `main()`.
+///   - argv: The command-line arguments passed to the process, as per C's
+///     specification of `main()`.
+///   - envp: The environment variables set in the process, laid out as per the
+///     POSIX standard for the `environ` global variable.
+///
+/// This function serves as the entry point to the testing library in Embedded
+/// Swift. Call this function in your `main()` function.
+///
+/// This function does not return. When the test run is finished, this function
+/// terminates the current process by calling `_swift_exit()`.
+///
+/// The testing library exports this function by default; you do not need to
+/// provide an implementation when you implement the testing library's Platform
+/// Abstraction Layer annex.
+///
+/// ### Passing command-line arguments and environment variables
+///
+/// You can directly pass the `argc` and `argv` arguments from your C `main()`
+/// function to this function. On many platforms, `main()` can be declared with
+/// an additional `envp` argument representing the environment block, which you
+/// can also pass.
+///
+/// Alternatively, the testing library can get the program's command-line
+/// arguments or environment variables by calling functions from its Platform
+/// Abstraction Layer annex instead:
+///
+/// - If `argc` is `0` or `argv` is `nil`, the testing library calls the
+///   function `_swift_testing_getArgcArgv()` to get values for them.
+/// - If `envp` is `nil`, the testing library calls the function
+/// `_swift_testing_getEnvironment()` to get a value for it.
+///
+/// - Important: If not `nil`, `argv` and `envp` must remain valid for the
+///   lifetime of the program.
+///
+/// - Warning: This function's signature is subject to change. This function may
+///   be removed in a future update.
+SWT_EXTERN _Noreturn void swift_testing_embeddedMain(int argc, char *_Nonnull argv[_Nullable], char *_Nullable envp[_Nullable]);
+
 // MARK: - Process configuration
 
 /// A structure that stores the `argc` and `argv` values returned from
