@@ -625,7 +625,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
 #endif
     }
 #else
-    if let jsonFD = JSON.embeddedFileDescriptor {
+    if JSON.embeddedFileDescriptor != nil {
       eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
         var newline = UInt8.asciiNewlineCharacter
         _swift_testing_writeJSON(json.baseAddress!, json.count, &newline)
