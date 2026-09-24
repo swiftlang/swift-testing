@@ -28,11 +28,14 @@ enum CommandLine {
   /// single string representing the program name.
   static var arguments: [String] {
     let argcArgv = _argcArgv.rawValue
-    guard argcArgv.argc > 0, let argv = argcArgv.argv else {
-      return ["swift-test"]
+    if argcArgv.argc > 0, let argv = argcArgv.argv {
+      let result = (0 ..< Int(clamping: argcArgv.argc))
+        .compactMap { String(validatingCString: argv[$0]) }
+      if !result.isEmpty {
+        return result
+      }
     }
-    return (0 ..< Int(clamping: argcArgv.argc))
-      .compactMap { String(validatingCString: argv[$0]) }
+    return ["swift-test"]
   }
 }
 #endif

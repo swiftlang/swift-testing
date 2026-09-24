@@ -47,10 +47,11 @@ typedef struct swift_testing_argc_argv_t {
 ///     is not responsible for deallocating them.
 ///
 /// - Returns: Whether or not `*outArgcArgv` was successfully initialized. If
-///   it was not, the testing library assumes no command-line arguments were
-///   passed to the current process. If the function returns `true`, but
-///   `outArgcArgv->argc` is less than or equal to `0`, the testing library acts
-///   as if this function returned `false`.
+///   the function returns `false`, the value of `*outArgcArgv` is undefined and
+///   the testing library assumes no command-line arguments were passed to the
+///   current process. If the function returns `true`, but `outArgcArgv->argc`
+///   is less than or equal to `0`, the testing library acts as if this function
+///   returned `false`.
 ///
 /// The testing library uses this function to configure the current process
 /// before running any tests. For more information about valid command-line
@@ -83,14 +84,14 @@ typedef struct swift_testing_argc_argv_t {
 ///
 /// ### Concurrency support
 ///
-/// This function's implementation must be concurrency-safe unless the system is
-/// single-threaded.
+/// The testing library calls this function at most once during the lifetime of
+/// a test process.
 SWT_EXTERN SWT_NODISCARD bool _swift_testing_getArgcArgv(swift_testing_argc_argv_t *outArgcArgv);
 
 /// Get the current process' environment block.
 ///
 /// - Parameters:
-///   - outArgv: A pointer to memory large enough to hold a C array of C
+///   - outEnvironment: A pointer to memory large enough to hold a C array of C
 ///     strings. On return, initialized to the environment block of the current
 ///     process, including a trailing `NULL` pointer as in the specification for
 ///     the POSIX `environ` variable. The array and the strings in it must
@@ -98,9 +99,10 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getArgcArgv(swift_testing_argc_argv
 ///     responsible for deallocating them.
 ///
 /// - Returns: Whether or not `*outEnvironment` was successfully initialized. If
-///   it was not, the testing library assumes no environment variables exist in
-///   the current process. If the function returns `true`, but `*outEnvironment`
-///   is `NULL`, the testing library acts as if this function returned `false`.
+///   the function returns `false`, the value of `*outEnvironment` is undefined
+///   and the testing library assumes no environment variables exist in the
+///   current process. If the function returns `true`, but `*outEnvironment` is
+///   `NULL`, the testing library acts as if this function returned `false`.
 ///
 /// The testing library uses this function to configure the current process
 /// before running any tests. For more information about environment variables
@@ -132,8 +134,8 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getArgcArgv(swift_testing_argc_argv
 ///
 /// ### Concurrency support
 ///
-/// This function's implementation must be concurrency-safe unless the system is
-/// single-threaded. General thread safety issues with the POSIX `environ`
+/// The testing library calls this function at most once during the lifetime of
+/// a test process. General thread safety issues with the POSIX `environ`
 /// variable are [well-documented](https://www.austingroupbugs.net/view.php?id=188)
 /// and are beyond the Platform Abstraction Layer's purview.
 SWT_EXTERN SWT_NODISCARD bool _swift_testing_getEnvironment(char *_Nullable *_Nullable *_Nonnull outEnvironment);
@@ -151,8 +153,11 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getEnvironment(char *_Nullable *_Nu
 ///     is not responsible for deallocating it.
 ///
 /// - Returns: Whether or not `*outEmbeddedTargetInfo` was successfully
-///   initialized. If the function returns `true`, but `*outEmbeddedTargetInfo`
-///   is `NULL`, the testing library acts as if this function returned `false`.
+///   initialized. If the function returns `false`, the value of
+///   `*outEmbeddedTargetInfo` is undefined and the testing library assumes
+///   there is no human-readable information available about the system. If the
+///   function returns `true`, but `*outEmbeddedTargetInfo` is `NULL`, the
+///   testing library acts as if this function returned `false`.
 ///
 /// The testing library uses this function to describe the embedded system it
 /// is running on. This information is used for diagnostic purposes only.
@@ -233,8 +238,9 @@ typedef struct swift_testing_console_capabilities_t {
 ///     capabilities of the console `_swift_testing_writeToConsole()` writes to.
 ///
 /// - Returns: Whether or not `*outConsoleCapabilities` was successfully
-///   initialized. If it was not, the testing library assumes the system console
-///   has none of the supported capabilities.
+///   initialized. If the function returns `false`, the value of
+///   `*outConsoleCapabilities` is undefined and the testing library assumes the
+///   system console has none of the supported capabilities.
 ///
 /// The testing library uses this function to determine what, if any,
 /// capabilities the system console has.
@@ -380,17 +386,25 @@ SWT_EXTERN void _swift_testing_writeJSON(const uint8_t *json, size_t count, cons
 
 // MARK: - Test timing
 
+/// A type representing a duration since some epoch.
+typedef struct swift_testing_duration_t {
+  /// The number of whole seconds since the epoch.
+  uint32_t seconds;
+
+  /// The number of nanoseconds, not counting whole seconds, since the epoch.
+  ///
+  /// The value of this field should be less than `1000000000`.
+  uint32_t nanoseconds : 30;
+} swift_testing_duration_t;
+
 /// Get the amount of time that has passed since the system's epoch.
 ///
 /// - Parameters:
-///   - outSeconds: On successful return, set to the number of whole seconds
-///     since the system's epoch.
-///   - outNanoseconds: On successful return, set to the number of nanoseconds
-///     since the system's epoch (less the number of seconds returned in
-///     `outSeconds`). The value should be less than `1000000000`.
+///   - outDuration: On successful return, set to the amount of time that has
+///     passed since the system's epoch.
 ///
-/// - Returns: Whether or not `*outSeconds` and `*outNanoseconds` were
-///   successfully initialized. If they were not, their values are undefined and
+/// - Returns: Whether or not `*outDuration` was successfully initialized. If
+///   the function returns `false`, the value of `*outDuration` is undefined and
 ///   the testing library assumes a time of `0`.
 ///
 /// The testing library uses this function to determine how long tests take to
@@ -406,7 +420,7 @@ SWT_EXTERN void _swift_testing_writeJSON(const uint8_t *json, size_t count, cons
 /// the platform does not support millisecond resolution or finer, the
 /// implementation should still be as precise as possible. If the platform only
 /// supports one-second resolution or coarser, the implementation must set
-/// `*outNanoseconds` to `0` before successfully returning.
+/// `outDuration->nanoseconds` to `0` before successfully returning.
 ///
 /// - Note: Where possible, the implementation should use a suspending clock
 ///   rather than a continuous clock (that is, time the system spends asleep
@@ -418,13 +432,13 @@ SWT_EXTERN void _swift_testing_writeJSON(const uint8_t *json, size_t count, cons
 /// implemented with the following algorithm:
 ///
 /// ```c
-/// bool _swift_testing_getTimeSinceSystemEpoch(uint32_t *outSeconds, uint32_t *outNanoseconds) {
+/// bool _swift_testing_getDurationSinceSystemEpoch(swift_testing_duration_t *outDuration) {
 ///   struct timespec ts = {};
 ///   if (0 != clock_gettime(CLOCK_MONOTONIC, &ts)) {
 ///     return false;
 ///   }
-///   *outSeconds = (uint32_t)ts.tv_sec;
-///   *outNanoseconds = (uint32_t)ts.tv_nsec;
+///   outDuration->seconds = (uint32_t)ts.tv_sec;
+///   outDuration->nanoseconds = (uint32_t)ts.tv_nsec;
 ///   return true;
 /// }
 /// ```
@@ -440,25 +454,25 @@ SWT_EXTERN void _swift_testing_writeJSON(const uint8_t *json, size_t count, cons
 /// function:
 ///
 /// ```c
-/// bool _swift_testing_getTimeSinceSystemEpoch(uint32_t *outSeconds, uint32_t *outNanoseconds) {
+/// bool _swift_testing_getDurationSinceSystemEpoch(swift_testing_duration_t *outDuration) {
 ///   unsigned long ms = millis();
-///   *outSeconds = ms / 1000;
-///   *outNanoseconds = (ms % 1000) * 1000000; // ns per ms
+///   outDuration->seconds = ms / 1000;
+///   outDuration->nanoseconds = (ms % 1000) * 1000000; // ns per ms
 ///   return true;
 /// }
 /// ```
 ///
 /// If the platform does not provide any high-level interfaces for computing the
 /// current time, it may still provide lower-level interfaces for querying the
-/// system counter, which can then be divided by the CPU's frequency to get a
-/// time value. The implementation of this logic is left as an exercise for the
-/// reader.
+/// system counter, which can then be divided by the CPU's frequency to get an
+/// approximate time value. The implementation of this logic is left as an
+/// exercise for the reader.
 ///
 /// This function can be implemented to simply return `false` if the platform
 /// has no way to get the current time:
 ///
 /// ```c
-/// bool _swift_testing_getTimeSinceSystemEpoch(uint32_t *outSeconds, uint32_t *outNanoseconds) {
+/// bool _swift_testing_getDurationSinceSystemEpoch(swift_testing_duration_t *outDuration) {
 ///   return false;
 /// }
 /// ```
@@ -467,7 +481,7 @@ SWT_EXTERN void _swift_testing_writeJSON(const uint8_t *json, size_t count, cons
 ///
 /// This function's implementation must be concurrency-safe unless the system is
 /// single-threaded.
-SWT_EXTERN SWT_NODISCARD bool _swift_testing_getTimeSinceSystemEpoch(uint32_t *outSeconds, uint32_t *outNanoseconds);
+SWT_EXTERN SWT_NODISCARD bool _swift_testing_getDurationSinceSystemEpoch(swift_testing_duration_t *outDuration);
 
 SWT_ASSUME_NONNULL_END
 #endif
