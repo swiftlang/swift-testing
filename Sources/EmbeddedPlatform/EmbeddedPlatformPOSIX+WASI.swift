@@ -18,20 +18,20 @@ internal import _TestingInternals
 #if !SWT_NO_ABI_JSON_SCHEMA
 @c @implementation func _swift_testing_writeJSON(_ destination: UnsafePointer<CChar>?, _ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
   // This implementation does not define a "default" JSON destination.
-  guard let path else {
+  guard let destination else {
     return
   }
 
   // To avoid maintaining a mapping of paths to files, this implementation only
   // supports writing to the /dev/fd/ virtual filesystem.
   var fd: CInt = -1
-  if 0 == strcmp(path, "/dev/stdout") {
+  if 0 == strcmp(destination, "/dev/stdout") {
     fd = STDOUT_FILENO
-  } else if 0 == strcmp(path, "/dev/stderr") {
+  } else if 0 == strcmp(destination, "/dev/stderr") {
     fd = STDERR_FILENO
   } else {
     let scannedFD = withUnsafeMutablePointer(to: &fd) { fd in
-      withVaList([fd]) { 1 == vsscanf(path, "/dev/fd/%d", $0) }
+      withVaList([fd]) { 1 == vsscanf(destination, "/dev/fd/%d", $0) }
     }
     guard scannedFD else {
       return
