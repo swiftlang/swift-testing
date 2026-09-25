@@ -16,7 +16,12 @@ internal import _TestingInternals
 }
 
 #if !SWT_NO_ABI_JSON_SCHEMA
-@c @implementation func _swift_testing_writeJSON(_ path: UnsafePointer<CChar>, _ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
+@c @implementation func _swift_testing_writeJSON(_ destination: UnsafePointer<CChar>?, _ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
+  // This implementation does not define a "default" JSON destination.
+  guard let path else {
+    return
+  }
+
   // To avoid maintaining a mapping of paths to files, this implementation only
   // supports writing to the /dev/fd/ virtual filesystem.
   var fd: CInt = -1

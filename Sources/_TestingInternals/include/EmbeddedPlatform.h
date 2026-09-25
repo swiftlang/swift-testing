@@ -378,12 +378,16 @@ SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count
 ///     avoid creating unnecessary copies of `json` in memory.
 ///
 /// The testing library uses this function to write the JSON event stream to the
-/// destination described by the `destination` argument. On systems with full
-/// file I/O support, `destination` could be a file system path where the
-/// implementation should open a file for writing. It may also be a string
-/// representation of some other destination (for example, the virtual address
-/// of a hardware register) if appropriate to the platform. Ultimately, the
-/// semantic meaning of this string is unspecified by the testing library.
+/// destination described by the `destination` argument.
+///
+/// On systems with full file I/O support, `destination` could be a file system
+/// path where the implementation should open a file for writing. It may also be
+/// a string representation of some other destination (for example, the virtual
+/// address of a hardware register) if appropriate to the platform. Ultimately,
+/// the semantic meaning of this string is unspecified by the testing library.
+///
+/// If `destination` is `NULL`, the implementation should write the JSON to the
+/// "default" destination, if the implementation opts to define one.
 ///
 /// ### Reference implementations
 ///
@@ -394,19 +398,38 @@ SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count
 /// static FILE *getOrCreateCachedFILE(const char *path) {
 ///   FILE *result = NULL;
 ///   lockCache(); {
-///     result = ...;
+///     result = /* ... */;
 ///   } unlockCache();
 ///   return result;
 /// }
 ///
-/// FILE *f = getOrCreateCachedFILE(path);
-/// if (f) {
-///   flockfile(f); {
-///     fwrite(json, 1, count, f);
-///     if (terminator) {
-///       fputc(*terminator, f);
-///     }
-///   } funlockfile(f);
+/// void _swift_testing_writeJSON(const char *destination, const uint8_t *json, size_t count, const uint8_t terminator[1]) {
+///   FILE *f = NULL;
+///   if (destination) {
+///     f = getOrCreateCachedFILE(destination);
+///   } else {
+///     f = getDefaultJSONDestination();
+///   }
+///   if (f) {
+///     flockfile(f); {
+///       fwrite(json, 1, count, f);
+///       if (terminator) {
+///         fputc(*terminator, f);
+///       }
+///     } funlockfile(f);
+///   }
+/// }
+/// ```
+///
+/// If your platform only supports writing JSON to the default destination, you
+/// can ignore calls to this function where `destination` is not `NULL`:
+///
+/// ```c
+/// void _swift_testing_writeJSON(const char *destination, const uint8_t *json, size_t count, const uint8_t terminator[1]) {
+///   if (destination) {
+///     return;
+///   }
+///   // ...
 /// }
 /// ```
 ///
@@ -420,7 +443,7 @@ SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count
 /// In the reference example above, you can substitute platform-specific
 /// equivalents for `flockfile()` and `funlockfile()` if needed, or omit them
 /// entirely in single-threaded environments.
-SWT_EXTERN void _swift_testing_writeJSON(const char *path, const uint8_t *json, size_t count, const uint8_t terminator[_Nullable 1]);
+SWT_EXTERN void _swift_testing_writeJSON(const char *_Nullable destination, const uint8_t *json, size_t count, const uint8_t terminator[_Nullable 1]);
 
 // MARK: - Test timing
 
