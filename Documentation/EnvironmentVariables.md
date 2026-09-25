@@ -42,7 +42,6 @@ names prefixed with `SWT_`.
 
 | Variable Name | Value Type | Notes |
 |-|:-:|-|
-| `SWT_EXPERIMENTAL_EMBEDDED_JSON_FD` | `CInt` | A file descriptor to which the JSON event stream is written in Embedded Swift. | 
 | `SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED` | `Bool` | Used to explicitly enable or disable experimental fields in the JSON event stream. |
 | `SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED` | `Bool` | Used to explicitly enable or disable including the `"messages"` field in the JSON event stream. |
 | `SWT_PRETTY_PRINT_JSON` | `Bool` | Used to enable pretty-printed JSON output to the event stream (for debugging purposes). |
