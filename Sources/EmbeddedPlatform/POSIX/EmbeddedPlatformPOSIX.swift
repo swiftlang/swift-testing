@@ -106,48 +106,4 @@ private nonisolated(unsafe) let _embeddedTargetInfo: UnsafeMutablePointer<CChar>
   false
 #endif
 }
-
-@c @implementation func _swift_testing_writeToConsole(_ chars: UnsafePointer<UInt8>, _ count: Int) {
-  write(STDERR_FILENO, chars, count)
-}
-
-#if !SWT_NO_ABI_JSON_SCHEMA
-private enum JSON {
-  /// The file descriptor to which JSON should be written.
-  ///
-  /// This declaration is provided because this module does not directly link to
-  /// the testing library. For more information, see the declaration of this
-  /// symbol in the main testing library target.
-  static var embeddedFileDescriptor: CInt? {
-    @_silgen_name("_swift_testing_getEmbeddedJSONFileDescriptor") get
-  }
-}
-
-@c @implementation func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
-  guard let fd = JSON.embeddedFileDescriptor else {
-    return
-  }
-  if let terminator {
-    withUnsafeTemporaryAllocation(of: iovec.self, capacity: 2) { vecs in
-      vecs[0] = iovec(iov_base: UnsafeMutableRawPointer(mutating: json), iov_len: count)
-      vecs[1] = iovec(iov_base: UnsafeMutableRawPointer(mutating: terminator), iov_len: 1)
-      writev(fd, vecs.baseAddress!, 2)
-    }
-  } else {
-    write(fd, json, count)
-  }
-}
-#endif
-
-@c @implementation func _swift_testing_getDurationSinceSystemEpoch(_ outDuration: UnsafeMutablePointer<swift_testing_duration_t>) -> CBool {
-  var ts = timespec()
-  clock_gettime(swt_CLOCK_MONOTONIC(), &ts)
-  outDuration.initialize(
-    to: swift_testing_duration_t(
-      seconds: UInt32(clamping: ts.tv_sec),
-      nanoseconds: UInt32(clamping: ts.tv_nsec)
-    )
-  )
-  return true
-}
 #endif

@@ -47,10 +47,6 @@ public func swift_testing_embeddedMain(
       _ = Environment._unsafeAddress.compareExchange(expected: nil, desired: envp, ordering: .sequentiallyConsistent)
     }
   }
-
-#if !SWT_NO_ABI_JSON_SCHEMA
-  JSON.embeddedFileDescriptor = Environment.variable(named: "SWT_EXPERIMENTAL_EMBEDDED_JSON_FD").flatMap(CInt.init(_:))
-#endif
 #endif
 
   _ = Task.immediate {

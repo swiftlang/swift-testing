@@ -609,9 +609,9 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
 #if !SWT_NO_ABI_JSON_SCHEMA
   // Event stream output
   do {
-    var eventHandler: Event.Handler?
-#if !hasFeature(Embedded)
     if let eventStreamOutputPath = args.eventStreamOutputPath {
+      var eventHandler: Event.Handler?
+#if !hasFeature(Embedded)
 #if !SWT_NO_FILE_IO
       let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
       eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
@@ -623,19 +623,17 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
 #else
       throw _EntryPointError.featureUnavailable("--event-stream-output-path requires support for file I/O, but Swift Testing has been built without it.")
 #endif
-    }
 #else
-    if JSON.embeddedFileDescriptor != nil {
       eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
         var newline = UInt8.asciiNewlineCharacter
-        _swift_testing_writeJSON(json.baseAddress!, json.count, &newline)
+        _swift_testing_writeJSON(eventStreamOutputPath, json.baseAddress!, json.count, &newline)
       }
-    }
 #endif
-    if let eventHandler {
-      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-        eventHandler(event, context)
-        oldEventHandler(event, context)
+      if let eventHandler {
+        configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+          eventHandler(event, context)
+          oldEventHandler(event, context)
+        }
       }
     }
   }
