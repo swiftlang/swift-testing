@@ -35,10 +35,17 @@ func isSmall(_ i: Int) {
 }
 
 @Test func willFail() {
-  #expect(123 == 456)
+  #expect(123 == 456, "Math, am I right?")
 
   struct MyError: Error {}
   #expect(throws: Never.self) {
     throw MyError()
   }
+
+  Issue.record("This is just a friendly warning.", severity: .warning)
+}
+
+@Test func recordAttachment() {
+  let loremIpsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+  Attachment.record(loremIpsum, named: "Lorem Ipsum.txt")
 }

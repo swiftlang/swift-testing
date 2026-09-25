@@ -52,14 +52,12 @@ private let _captureArgcArgv: @convention(c) (CInt, UnsafeMutablePointer<UnsafeM
   return true
 }
 
-@c @implementation func _swift_testing_getEnvironment(_ outEnvironment: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?>) -> CBool {
 #if !SWT_NO_ENVIRONMENT_VARIABLES
+@c @implementation func _swift_testing_getEnvironment(_ outEnvironment: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?>) -> CBool {
   outEnvironment.initialize(to: swt_environ())
   return true
-#else
-  return false
-#endif
 }
+#endif
 
 /// Storage for `_swift_testing_getEmbeddedTargetInfo()`.
 private nonisolated(unsafe) let _embeddedTargetInfo: UnsafeMutablePointer<CChar>? = {
@@ -93,7 +91,8 @@ private nonisolated(unsafe) let _embeddedTargetInfo: UnsafeMutablePointer<CChar>
 /// Get the console capabilities for the given file handle.
 ///
 /// This declaration is provided because this module does not directly link to
-/// the testing library.
+/// the testing library. For more information, see the declaration of this
+/// symbol in the main testing library target.
 @_extern(c) private func _swift_testing_getConsoleCapabilitiesForFILE(
   _ fileHandle: SWT_FILEHandle,
   _ outConsoleCapabilities: UnsafeMutablePointer<swift_testing_console_capabilities_t>
@@ -106,25 +105,5 @@ private nonisolated(unsafe) let _embeddedTargetInfo: UnsafeMutablePointer<CChar>
 #else
   false
 #endif
-}
-
-@c @implementation func _swift_testing_writeToConsole(_ chars: UnsafePointer<UInt8>, _ count: Int) {
-  write(STDERR_FILENO, chars, count)
-}
-
-@c @implementation func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
-  // TODO: allow POSIX-compliant configuration of the target for JSON (e.g. a file descriptor)
-}
-
-@c @implementation func _swift_testing_getDurationSinceSystemEpoch(_ outDuration: UnsafeMutablePointer<swift_testing_duration_t>) -> CBool {
-  var ts = timespec()
-  clock_gettime(swt_CLOCK_MONOTONIC(), &ts)
-  outDuration.initialize(
-    to: swift_testing_duration_t(
-      seconds: UInt32(clamping: ts.tv_sec),
-      nanoseconds: UInt32(clamping: ts.tv_nsec)
-    )
-  )
-  return true
 }
 #endif

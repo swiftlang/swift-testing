@@ -606,11 +606,15 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   }
 #endif
 
-#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
   // Event stream output
   do {
     var eventHandler: Event.Handler?
 #if !hasFeature(Embedded)
+    // In non-Embedded Swift, the caller must specify a destination path for
+    // event stream output in order to enable it, but the event stream schema
+    // version is optional and we'll default to something we consider sensible
+    // if it is not specified.
     if let eventStreamOutputPath = args.eventStreamOutputPath {
 #if !SWT_NO_FILE_IO
       let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
@@ -625,9 +629,19 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
 #endif
     }
 #else
-    eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
-      var newline = UInt8.asciiNewlineCharacter
-      _swift_testing_writeJSON(json.baseAddress!, json.count, &newline)
+    // In Embedded Swift, the target may or may not have a file system to write
+    // to, so the path is optional. If the caller specifies a schema version and
+    // no path, we write to the "default" path instead.
+    let eventStreamOutputPath = args.eventStreamOutputPath
+    let eventStreamVersionNumber = args.eventStreamVersionNumber
+    if eventStreamOutputPath != nil || eventStreamVersionNumber != nil {
+      let eventStreamOutputPath = args.eventStreamOutputPath
+      eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: eventStreamVersionNumber, encodeAsJSONLines: true) { json in
+        if let jsonBaseAddress = json.baseAddress {
+          var newline = UInt8.asciiNewlineCharacter
+          _swift_testing_writeJSON(eventStreamOutputPath, jsonBaseAddress, json.count, &newline)
+        }
+      }
     }
 #endif
     if let eventHandler {

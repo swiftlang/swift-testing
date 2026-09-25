@@ -42,14 +42,12 @@ private let _argcArgv: swift_testing_argc_argv_t = {
   return true
 }
 
-@c @implementation func _swift_testing_getEnvironment(_ outEnvironment: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?>) -> CBool {
 #if !SWT_NO_ENVIRONMENT_VARIABLES
+@c @implementation func _swift_testing_getEnvironment(_ outEnvironment: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?>) -> CBool {
   outEnvironment.initialize(to: __wasilibc_get_environ())
   return true
-#else
-  return false
-#endif
 }
+#endif
 
 @c @implementation func _swift_testing_getEmbeddedTargetInfo(_ outEmbeddedTargetInfo: UnsafeMutablePointer<UnsafePointer<CChar>?>) -> CBool {
   false
@@ -57,25 +55,5 @@ private let _argcArgv: swift_testing_argc_argv_t = {
 
 @c @implementation func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutablePointer<swift_testing_console_capabilities_t>) -> CBool {
   false
-}
-
-@c @implementation func _swift_testing_writeToConsole(_ chars: UnsafePointer<UInt8>, _ count: Int) {
-  write(STDERR_FILENO, chars, count)
-}
-
-@c func _swift_testing_writeJSON(_ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
-  // TODO: allow POSIX-compliant configuration of the target for JSON (e.g. a file descriptor)
-}
-
-@c @implementation func _swift_testing_getDurationSinceSystemEpoch(_ outDuration: UnsafeMutablePointer<swift_testing_duration_t>) -> CBool {
-  var ts = timespec()
-  clock_gettime(swt_CLOCK_MONOTONIC(), &ts)
-  outDuration.initialize(
-    to: swift_testing_duration_t(
-      seconds: UInt32(clamping: ts.tv_sec),
-      nanoseconds: UInt32(clamping: ts.tv_nsec)
-    )
-  )
-  return true
 }
 #endif

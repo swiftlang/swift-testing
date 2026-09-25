@@ -22,6 +22,49 @@ SWT_ASSUME_NONNULL_BEGIN
 /// This header augments the set of declarations in the Swift runtime's Platform
 /// Abstraction Layer, which can be found [here](https://github.com/swiftlang/swift/blob/main/stdlib/public/EmbeddedPlatform/swift/EmbeddedPlatform.h).
 
+/// Run tests in the current process according to the specified configuration.
+///
+/// - Parameters:
+///   - argc: The number of command-line arguments at `argv`, as per C's
+///     specification of `main()`.
+///   - argv: The command-line arguments passed to the process, as per C's
+///     specification of `main()`.
+///   - envp: The environment variables set in the process, laid out as per the
+///     POSIX standard for the `environ` global variable.
+///
+/// This function serves as the entry point to the testing library in Embedded
+/// Swift. Call this function in your `main()` function.
+///
+/// This function does not return. When the test run is finished, this function
+/// terminates the current process by calling `_swift_exit()`.
+///
+/// The testing library exports this function by default; you do not need to
+/// provide an implementation when you implement the testing library's Platform
+/// Abstraction Layer annex.
+///
+/// ### Passing command-line arguments and environment variables
+///
+/// You can directly pass the `argc` and `argv` arguments from your C `main()`
+/// function to this function. On many platforms, `main()` can be declared with
+/// an additional `envp` argument representing the environment block, which you
+/// can also pass.
+///
+/// Alternatively, the testing library can get the program's command-line
+/// arguments or environment variables by calling functions from its Platform
+/// Abstraction Layer annex instead:
+///
+/// - If `argc` is `0` or `argv` is `nil`, the testing library calls the
+///   function `_swift_testing_getArgcArgv()` to get values for them.
+/// - If `envp` is `nil`, the testing library calls the function
+/// `_swift_testing_getEnvironment()` to get a value for it.
+///
+/// - Important: If not `nil`, `argv` and `envp` must remain valid for the
+///   lifetime of the program.
+///
+/// - Warning: This function's signature is subject to change. This function may
+///   be removed in a future update.
+SWT_EXTERN _Noreturn void swift_testing_embeddedMain(int argc, char *_Nonnull argv[_Nullable], char *_Nullable envp[_Nullable]);
+
 // MARK: - Process configuration
 
 /// A structure that stores the `argc` and `argv` values returned from
@@ -311,34 +354,13 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getConsoleCapabilities(swift_testin
 /// }
 /// ```
 ///
-/// If the current system's console only supports ASCII output rather than
-/// UTF-8, the implementation must take care to filter out or transform
-/// non-ASCII code points:
-///
-/// ```c
-/// void _swift_testing_writeToConsole(const uint8_t *chars, size_t count) {
-///   flockfile(stderr); {
-///     for (size_t i = 0; i < count; i++) {
-///       char c = chars[i];
-///       if (isascii(c)) {
-///         fputc(c, stderr);
-///       } else {
-///         fputc('?', stderr);
-///       }
-///     }
-///   } funlockfile(stderr);
-/// }
-/// ```
-///
 /// If your platform does not support any form of human-readable console output,
 /// you can implement this function as a no-op.
 ///
 /// ### Concurrency support
 ///
 /// This function's implementation must be concurrency-safe unless the system is
-/// single-threaded. In the reference example above, you can substitute
-/// platform-specific equivalents for `flockfile()` and `funlockfile()` if
-/// needed, or omit them entirely in single-threaded environments.
+/// single-threaded.
 SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count);
 
 // MARK: - JSON output
@@ -346,31 +368,69 @@ SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count
 /// Writes a JSON object.
 ///
 /// - Parameters:
+///   - destination: A C string representing the destination to write JSON to.
+///     This string is user-supplied and is not validated by the testing
+///     library.
 ///   - json: The JSON bytes to write. It is not `NULL`-terminated.
 ///   - count: The number of bytes at `json`.
 ///   - terminator: If not `NULL`, a pointer to a single byte to write
 ///     immediately after writing `json`. This byte is not included in `json` to
 ///     avoid creating unnecessary copies of `json` in memory.
 ///
-/// The testing library uses this function to write the JSON event stream on
-/// targets that do not support file I/O. The destination is
-/// implementation-defined. When built for non-Embedded Swift, or when built
-/// with support for file I/O, the testing library writes JSON to files and
-/// pipes specified by its caller in e.g. the command line arguments to
-/// `swift test`.
+/// The testing library uses this function to write the JSON event stream to the
+/// destination described by the `destination` argument.
+///
+/// On systems with full file I/O support, `destination` could be a file system
+/// path where the implementation should open a file for writing. It may also be
+/// a string representation of some other destination (for example, the virtual
+/// address of a hardware register) if appropriate to the platform. Ultimately,
+/// the semantic meaning of this string is unspecified by the testing library.
+///
+/// If `destination` is `NULL`, the implementation should write the JSON to the
+/// "default" destination, if the implementation opts to define one.
 ///
 /// ### Reference implementations
 ///
-/// This function can be implemented with the following algorithm:
+/// If your system supports file I/O and the C file API, you could implement
+/// this function with the following algorithm in C:
+///
+/// ```c++
+/// static FILE *getOrCreateCachedFILE(const char *path) {
+///   FILE *result = NULL;
+///   lockCache(); {
+///     result = /* ... */;
+///   } unlockCache();
+///   return result;
+/// }
+///
+/// void _swift_testing_writeJSON(const char *destination, const uint8_t *json, size_t count, const uint8_t terminator[1]) {
+///   FILE *f = NULL;
+///   if (destination) {
+///     f = getOrCreateCachedFILE(destination);
+///   } else {
+///     f = getDefaultJSONDestination();
+///   }
+///   if (f) {
+///     flockfile(f); {
+///       fwrite(json, 1, count, f);
+///       if (terminator) {
+///         fputc(*terminator, f);
+///       }
+///     } funlockfile(f);
+///   }
+/// }
+/// ```
+///
+/// If your platform only supports writing JSON to the default destination, you
+/// can ignore calls to this function where `destination` is not `NULL`:
 ///
 /// ```c
-/// FILE *f = ...;
-/// flockfile(f); {
-///   fwrite(json, 1, count, f);
-///   if (terminator) {
-///     fputc(*terminator, f);
+/// void _swift_testing_writeJSON(const char *destination, const uint8_t *json, size_t count, const uint8_t terminator[1]) {
+///   if (destination) {
+///     return;
 ///   }
-/// } funlockfile(f);
+///   // ...
+/// }
 /// ```
 ///
 /// If your platform does not support writing JSON or consuming it later, you
@@ -379,10 +439,11 @@ SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count
 /// ### Concurrency support
 ///
 /// This function's implementation must be concurrency-safe unless the system is
-/// single-threaded. In the reference example above, you can substitute
-/// platform-specific equivalents for `flockfile()` and `funlockfile()` if
-/// needed, or omit them entirely in single-threaded environments.
-SWT_EXTERN void _swift_testing_writeJSON(const uint8_t *json, size_t count, const uint8_t terminator[_Nullable 1]);
+/// single-threaded. The testing library may pass more than one path over time.
+/// In the reference example above, you can substitute platform-specific
+/// equivalents for `flockfile()` and `funlockfile()` if needed, or omit them
+/// entirely in single-threaded environments.
+SWT_EXTERN void _swift_testing_writeJSON(const char *_Nullable destination, const uint8_t *json, size_t count, const uint8_t terminator[_Nullable 1]);
 
 // MARK: - Test timing
 
