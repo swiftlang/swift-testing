@@ -361,7 +361,7 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getConsoleCapabilities(swift_testin
 ///
 /// This function's implementation must be concurrency-safe unless the system is
 /// single-threaded.
-SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count);SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count);
+SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count);
 
 // MARK: - JSON output
 

@@ -10,10 +10,6 @@
 
 internal import _TestingInternals
 
-#if canImport(Synchronization)
-private import Synchronization
-#endif
-
 /// This file contains abstractions over functionality that, under Embedded
 /// Swift, is provided by Swift Testing's Platform Abstraction Layer annex.
 
