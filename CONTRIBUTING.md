@@ -90,12 +90,8 @@ $> swift build
 $> swift test
 ```
 
-<!-- FIXME: Uncomment this once the the `swift test` command support running
-  specific Swift Testing tests.
-
 To learn how to run only specific tests or other testing options, run `swift
 test --help` to view the usage documentation.
--->
 
 ## Using CMake to build the project for macOS
 
