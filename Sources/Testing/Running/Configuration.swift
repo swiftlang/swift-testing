@@ -197,7 +197,6 @@ public struct Configuration: Sendable {
   /// By default, test time limit granularity is limited to intervals of one
   /// minute (60 seconds.) If finer or coarser granularity is required, the
   /// value of this property can be adjusted.
-  @_unavailableInEmbedded
   public var testTimeLimitGranularity: Duration {
     get {
       _testTimeLimitGranularity ?? .seconds(60)
