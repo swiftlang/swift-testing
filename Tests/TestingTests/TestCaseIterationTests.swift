@@ -185,8 +185,10 @@ struct TestCaseIterationTests {
     await assertEncodedEventKinds(test, equals: [
       .runStarted,
       .testStarted,
-      .testEnded,
-      .testStarted,
+      .testCaseStarted,
+      .testCaseEnded,
+      .testCaseStarted,
+      .testCaseEnded,
       .testEnded,
       .runEnded
     ])
@@ -208,7 +210,7 @@ struct TestCaseIterationTests {
   }
 
   @Test
-  func `Non-parameterized test cancellation reports a testCancelled event`() async throws {
+  func `Non-parameterized test cancellation reports both testCancelled and testCaseCancelled events, stops iterating the whole test`() async throws {
     let test = Test(name: "Test Name") {
       try Test.cancel()
     }
@@ -216,17 +218,17 @@ struct TestCaseIterationTests {
     await assertEncodedEventKinds(test, equals: [
       .runStarted,
       .testStarted,
+      .testCaseStarted,
       .testCancelled,
-      .testEnded,
-      .testStarted,
-      .testCancelled,
+      .testCaseCancelled,
+      .testCaseEnded,
       .testEnded,
       .runEnded
     ])
   }
 
   @Test
-  func `Parameterized test cancellation reports a testCaseCancelled event`() async throws {
+  func `Parameterized test cancellation reports a testCaseCancelled event, stops iterating that test case`() async throws {
     let test = Test(arguments: [0], name: "Test Name") { _ in
       try Test.cancel()
     }
@@ -234,9 +236,6 @@ struct TestCaseIterationTests {
     await assertEncodedEventKinds(test, equals: [
       .runStarted,
       .testStarted,
-      .testCaseStarted,
-      .testCaseCancelled,
-      .testCaseEnded,
       .testCaseStarted,
       .testCaseCancelled,
       .testCaseEnded,

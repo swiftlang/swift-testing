@@ -77,12 +77,17 @@ extension Runner {
   ///   - body: The actual body of the function which must ultimately call into the test function.
   ///   - didRecordIssue: A closure passed by the caller to determine if an issue was recorded during
   ///     the test run.
-  static func _applyRepetitionPolicy(
+  static func applyRepetitionPolicy(
     _ policy: Configuration.RepetitionPolicy,
     perform body: () async -> Void,
     didRecordIssue: () -> Bool
   ) async {
     for iteration in 1...policy.maximumIterationCount {
+      if Task.isCancelled {
+        // If the task or current test was cancelled, stop iterating early.
+        break
+      }
+
       await Test.withCurrentIteration(iteration) {
         await body()
       }
