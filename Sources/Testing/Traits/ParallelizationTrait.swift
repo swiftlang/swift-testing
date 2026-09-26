@@ -36,7 +36,6 @@ private import Synchronization
 /// To add this trait to a test, use ``Trait/serialized``.
 @_unavailableInEmbedded
 public struct ParallelizationTrait: TestTrait, SuiteTrait {
-#if !hasFeature(Embedded)
   /// A type that describes a data-based dependency that a test may have.
   ///
   /// When a test has a dependency, the testing library assumes it cannot run at
@@ -47,6 +46,7 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
   /// - ``Trait/serialized(for:)-(ParallelizationTrait.Dependency)``
   @_spi(Experimental)
   public struct Dependency: Sendable {
+#if !hasFeature(Embedded)
     /// An enumeration describing the supported kinds of dependencies.
     enum Kind: Sendable, Equatable, Hashable {
       /// An unbounded dependency.
@@ -64,8 +64,10 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
 
     /// The key path used to construct this dependency, if any.
     nonisolated(unsafe) var originalKeyPath: AnyKeyPath?
+#endif
   }
 
+#if !hasFeature(Embedded)
   /// This instance's dependency, if any.
   ///
   /// If the value of this property is `nil`, it is the otherwise-unspecialized
@@ -217,7 +219,6 @@ extension Trait where Self == ParallelizationTrait {
   /// ## See Also
   ///
   /// - ``ParallelizationTrait``
-  @_unavailableInEmbedded
   public static var serialized: Self {
 #if !hasFeature(Embedded)
     if ParallelizationTrait.isSerializedWithoutArgumentsAppliedGlobally {
@@ -231,18 +232,21 @@ extension Trait where Self == ParallelizationTrait {
   }
 }
 
-#if !hasFeature(Embedded)
 // MARK: - CustomStringConvertible
 
+@_unavailableInEmbedded
 extension ParallelizationTrait: CustomStringConvertible {
   public var description: String {
+#if !hasFeature(Embedded)
     if let dependency {
       return ".serialized(for: \(dependency))"
     }
+#endif
     return ".serialized"
   }
 }
 
+#if !hasFeature(Embedded)
 extension ParallelizationTrait.Dependency: CustomStringConvertible {
   public var description: String {
     if let originalKeyPath {
@@ -256,9 +260,11 @@ extension ParallelizationTrait.Dependency: CustomStringConvertible {
     }
   }
 }
+#endif
 
 // MARK: - Dependencies
 
+@_unavailableInEmbedded
 @_spi(Experimental)
 extension Trait where Self == ParallelizationTrait {
   /// Constructs a trait that describes a test's dependency on shared state
@@ -297,14 +303,19 @@ extension Trait where Self == ParallelizationTrait {
   ///
   /// - ``ParallelizationTrait``
   public static func serialized<R, V>(for keyPath: KeyPath<R, V>) -> Self {
+#if !hasFeature(Embedded)
     let typeInfo = TypeInfo(describing: R.self)
     let dependency = ParallelizationTrait.Dependency(kind: .type(typeInfo), originalKeyPath: keyPath)
     return Self(dependency: dependency)
+#else
+    swt_unreachable()
+#endif
   }
 }
 
 // MARK: - Unbounded dependencies (*)
 
+@_unavailableInEmbedded
 @_spi(Experimental)
 extension ParallelizationTrait.Dependency {
   /// An unbounded dependency.
@@ -349,6 +360,7 @@ extension ParallelizationTrait.Dependency {
   public typealias Unbounded = (Self, Never) -> Void
 }
 
+@_unavailableInEmbedded
 @_spi(Experimental)
 extension Trait where Self == ParallelizationTrait {
   /// Constructs a trait that describes a dependency on the complete state of
@@ -374,8 +386,11 @@ extension Trait where Self == ParallelizationTrait {
   ///
   /// - ``ParallelizationTrait``
   public static func serialized(for _: Self.Dependency.Unbounded) -> Self {
+#if !hasFeature(Embedded)
     let dependency = ParallelizationTrait.Dependency(kind: .unbounded)
     return Self(dependency: dependency)
+#else
+    swt_unreachable()
+#endif
   }
 }
-#endif

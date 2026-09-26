@@ -13,6 +13,7 @@ private import _TestingInternals
 /// A type that defines a time limit to apply to a test.
 ///
 /// To add this trait to a test, use ``Trait/timeLimit(_:)-4kzjp``.
+@_unavailableInEmbedded
 @available(_clockAPI, *) // For DocC
 public struct TimeLimitTrait: TestTrait, SuiteTrait {
   /// A type representing the duration of a time limit applied to a test.
@@ -52,6 +53,7 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
 
 // MARK: -
 
+@_unavailableInEmbedded
 @available(_clockAPI, *) // For DocC
 extension Trait where Self == TimeLimitTrait {
   /// Construct a time limit trait that causes a test to time out if it runs for
@@ -135,6 +137,7 @@ extension Trait where Self == TimeLimitTrait {
   }
 }
 
+@_unavailableInEmbedded
 @available(_clockAPI, *) // For DocC
 extension TimeLimitTrait.Duration {
   /// Construct a time limit duration given a number of seconds.
@@ -196,6 +199,7 @@ extension TimeLimitTrait.Duration {
 
 // MARK: -
 
+@_unavailableInEmbedded
 @available(_clockAPI, *) // For DocC
 extension Test {
   /// The maximum amount of time this test's cases may run for.
@@ -222,6 +226,7 @@ extension Test {
   ///   or `nil` if the test may run indefinitely.
   @_spi(ForToolsIntegrationOnly)
   public func adjustedTimeLimit(configuration: Configuration) -> Duration? {
+#if !hasFeature(Embedded)
     // If this instance doesn't have a time limit configured, use the default
     // specified by the configuration.
     var timeLimit = timeLimit ?? configuration.defaultTestTimeLimit
@@ -240,11 +245,13 @@ extension Test {
         min(timeLimit, maximumTestTimeLimit)
       } ?? maximumTestTimeLimit
     }
+#endif
 
     return timeLimit
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: -
 
 #if !SWT_NO_UNSTRUCTURED_TASKS
@@ -311,7 +318,13 @@ func withTimeLimit(
   timeoutHandler: @escaping @Sendable (_ timeLimit: Duration) -> Void
 ) async throws {
   if let timeLimit = test.adjustedTimeLimit(configuration: configuration) {
-#if SWT_NO_UNSTRUCTURED_TASKS
+#if !SWT_NO_UNSTRUCTURED_TASKS
+    return try await withTimeLimit(timeLimit) {
+      try await body()
+    } timeoutHandler: {
+      timeoutHandler(timeLimit)
+    }
+#else
     // This environment may not support full concurrency, so check if the body
     // closure timed out after it returns. This won't help us catch hangs, but
     // it will at least report tests that run longer than expected.
@@ -322,14 +335,9 @@ func withTimeLimit(
       }
     }
     try await body()
-#else
-    return try await withTimeLimit(timeLimit) {
-      try await body()
-    } timeoutHandler: {
-      timeoutHandler(timeLimit)
-    }
 #endif
   }
 
   try await body()
 }
+#endif

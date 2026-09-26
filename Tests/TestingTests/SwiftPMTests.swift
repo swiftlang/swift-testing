@@ -59,6 +59,7 @@ struct SwiftPMTests {
     _ = try configurationForEntryPoint(withArguments: ["PATH", "--unrecognized", "123", "foo", "bar", "--foo=bar"])
   }
 
+#if !hasFeature(Embedded)
   @Test("--parallel/--no-parallel argument")
   func parallel() throws {
     var configuration = try configurationForEntryPoint(withArguments: ["PATH"])
@@ -89,6 +90,24 @@ struct SwiftPMTests {
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-maximum-parallelization-width", "0"])
     }
   }
+#else
+  @Test("--parallel/--no-parallel argument throws")
+  func parallelThrows() {
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--parallel"])
+    }
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--no-parallel"])
+    }
+  }
+
+  @Test("--experimental-maximum-parallelization-width argument throws")
+  func maximumParallelizationWidth() {
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-maximum-parallelization-width", "12345"])
+    }
+  }
+#endif
 
 #if !SWT_NO_BACKTRACE_SYMBOLICATION
   @Test("--symbolicate-backtraces argument",
