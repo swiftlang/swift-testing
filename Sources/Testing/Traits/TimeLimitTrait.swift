@@ -334,7 +334,7 @@ func withTimeLimit(
         timeoutHandler(timeLimit)
       }
     }
-    try await body()
+    return try await body()
 #endif
   }
 
