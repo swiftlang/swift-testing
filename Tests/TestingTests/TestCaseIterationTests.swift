@@ -307,7 +307,7 @@ struct TestCaseIterationTests {
       /Test ".*" started\./,
       /Test case passing .* to ".*" started\./,
       /Test ".*" with 1 test case passed after .* seconds\./,
-      /Teaaast run .* passed after .* seconds\./,
+      /Test run .* passed after .* seconds\./,
     ])
 #endif
   }

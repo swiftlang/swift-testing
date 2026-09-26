@@ -23,12 +23,6 @@ extension Configuration {
     var contextCopy = copy context
     contextCopy.configuration = self
     contextCopy.configuration?.eventHandler = { _, _ in }
-    if repetitionPolicy.maximumIterationCount == 1 {
-      // Iteration is disabled, so don't bother to report the iteration count.
-      // (This acts as a hint on the consuming side: if this property is set,
-      // then we know multiple iterations are expected.)
-      contextCopy.iteration = nil
-    }
     return eventHandler(event, contextCopy)
   }
 }

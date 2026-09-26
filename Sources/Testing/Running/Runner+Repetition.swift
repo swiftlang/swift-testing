@@ -82,10 +82,18 @@ extension Runner {
     perform body: () async -> Void,
     didRecordIssue: () -> Bool
   ) async {
-    for iteration in 1...policy.maximumIterationCount {
+    let maximumIterationCount = policy.maximumIterationCount
+    for var iteration: Int? in 1...maximumIterationCount {
+      // If the task or current test was cancelled, stop iterating early.
       if Task.isCancelled {
-        // If the task or current test was cancelled, stop iterating early.
         break
+      }
+
+      // If iteration is disabled, don't bother to report the iteration count.
+      // (This acts as a hint on the event-consuming side: if this property is
+      // set, then we know multiple iterations are expected.)
+      if maximumIterationCount == 1 {
+        iteration = nil
       }
 
       await Test.withCurrentIteration(iteration) {
