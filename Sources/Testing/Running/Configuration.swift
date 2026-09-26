@@ -17,6 +17,7 @@ public struct Configuration: Sendable {
   /// configuration.
   public init() {}
 
+#if !hasFeature(Embedded)
   // MARK: - Parallelization
 
   /// Whether or not to parallelize the execution of tests and test cases.
@@ -51,6 +52,7 @@ public struct Configuration: Sendable {
   ///   the ``isParallelizationEnabled`` property.
   @_spi(Experimental)
   public var maximumParallelizationWidth: Int = defaultParallelizationWidth
+#endif
 
 #if !SWT_NO_BACKTRACE_SYMBOLICATION
   /// How to symbolicate backtraces captured during a test run.
@@ -165,9 +167,7 @@ public struct Configuration: Sendable {
 
   // MARK: - Time limits
 
-  /// Storage for the ``defaultTestTimeLimit`` property.
-  private var _defaultTestTimeLimit: (any Sendable)?
-
+#if !hasFeature(Embedded)
   /// The default amount of time a test may run for before timing out if it does
   /// not have an instance of ``TimeLimitTrait`` applied to it.
   ///
@@ -176,17 +176,7 @@ public struct Configuration: Sendable {
   ///
   /// To determine the actual time limit that applies to an instance of
   /// ``Test`` at runtime, use ``Test/adjustedTimeLimit(configuration:)``.
-  public var defaultTestTimeLimit: Duration? {
-    get {
-      _defaultTestTimeLimit as? Duration
-    }
-    set {
-      _defaultTestTimeLimit = newValue
-    }
-  }
-
-  /// Storage for the ``maximumTestTimeLimit`` property.
-  private var _maximumTestTimeLimit: (any Sendable)?
+  public var defaultTestTimeLimit: Duration?
 
   /// The maximum amount of time a test may run for before timing out,
   /// regardless of the value of ``defaultTestTimeLimit`` or individual
@@ -197,17 +187,10 @@ public struct Configuration: Sendable {
   ///
   /// To determine the actual time limit that applies to an instance of
   /// ``Test`` at runtime, use ``Test/adjustedTimeLimit(configuration:)``.
-  public var maximumTestTimeLimit: Duration? {
-    get {
-      _maximumTestTimeLimit as? Duration
-    }
-    set {
-      _maximumTestTimeLimit = newValue
-    }
-  }
+  public var maximumTestTimeLimit: Duration?
 
   /// Storage for the ``testTimeLimitGranularity`` property.
-  private var _testTimeLimitGranularity: (any Sendable)?
+  private var _testTimeLimitGranularity: Duration?
 
   /// The granularity to enforce on test time limits.
   ///
@@ -216,12 +199,13 @@ public struct Configuration: Sendable {
   /// value of this property can be adjusted.
   public var testTimeLimitGranularity: Duration {
     get {
-      (_testTimeLimitGranularity as? Duration) ?? .seconds(60)
+      _testTimeLimitGranularity ?? .seconds(60)
     }
     set {
       _testTimeLimitGranularity = newValue
     }
   }
+#endif
 
   // MARK: - Event handling
 

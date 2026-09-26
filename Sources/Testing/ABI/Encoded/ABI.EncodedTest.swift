@@ -279,7 +279,9 @@ extension ABI.EncodedTest {
       if !bugs.isEmpty {
         self.bugs = bugs
       }
+#if !hasFeature(Embedded)
       self.timeLimit = test.timeLimit.map { $0 / .seconds(1) }
+#endif
     }
   }
 }
@@ -326,9 +328,11 @@ extension Test {
     if let bugs = test.bugs {
       traits += bugs
     }
+#if !hasFeature(Embedded)
     if let timeLimit = test.timeLimit {
       traits.append(TimeLimitTrait(timeLimit: .seconds(timeLimit)))
     }
+#endif
 
     switch test.kind {
     case .suite:
