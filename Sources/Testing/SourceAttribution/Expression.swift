@@ -82,7 +82,6 @@ public struct __Expression: Sendable {
     }
   }
 
-#if !hasFeature(Embedded)
   /// A type which represents an evaluated value, which may include textual
   /// descriptions, type information, substructure, and other information.
   @_spi(ForToolsIntegrationOnly)
@@ -91,13 +90,16 @@ public struct __Expression: Sendable {
     /// ``Swift/String/init(describingForTest:)``.
     public var description: String
 
+#if !hasFeature(Embedded)
     /// A debug description of this value, formatted using
     /// `String(reflecting:)`.
     public var debugDescription: String
+#endif
 
     /// Information about the type of this value.
     public var typeInfo: TypeInfo
 
+#if !hasFeature(Embedded)
     /// The label associated with this value, if any.
     ///
     /// For non-child instances, or for child instances of members who do not
@@ -277,6 +279,22 @@ public struct __Expression: Sendable {
         self.children = children
       }
     }
+#else
+    init(describing subject: any CustomTestStringConvertible) {
+      // BUG: we cannot use init(describingForTest:) here. The compiler won't
+      // accept the existential even if we add an overload that takes one.
+      description = subject.testDescription
+      typeInfo = .any
+    }
+
+    init?(reflecting subject: any CustomTestStringConvertible) {
+      let configuration = Configuration.current ?? .init()
+      if configuration.valueReflectionOptions == nil {
+        return nil
+      }
+      self.init(describing: subject)
+    }
+#endif
   }
 
   /// A representation of the runtime value of this expression.
@@ -286,15 +304,30 @@ public struct __Expression: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public var runtimeValue: Value?
 
+  /// A protocol constraint on types whose values can be captured at runtime.
+#if !hasFeature(Embedded)
+  typealias CapturableValue = Any
+#else
+  typealias CapturableValue = CustomTestStringConvertible
+#endif
+
   /// Capture the runtime value corresponding to this instance.
   ///
   /// - Parameters:
   ///   - value: The captured runtime value.
-  private mutating func _captureRuntimeValue(_ value: (some Any)?) {
-    runtimeValue = value.flatMap(Value.init(reflecting:))
-    if isNegated, let value = value as? Bool {
-      subexpressions[0]._captureRuntimeValue(!value)
+  private mutating func _captureRuntimeValue(_ value: (any CapturableValue)?) {
+    runtimeValue = value.flatMap { Value(reflecting: $0) }
+    if let value = value as? Bool {
+      runtimeValue?.typeInfo = .bool
+      if isNegated {
+        subexpressions[0]._captureRuntimeValue(!value)
+      }
     }
+#if hasFeature(Embedded)
+    if value is UnavailableInEmbeddedSwift {
+      runtimeValue?.typeInfo = .unavailableInEmbeddedSwift
+    }
+#endif
   }
 
   /// Capture the runtime values corresponding to this instance and its
@@ -304,19 +337,13 @@ public struct __Expression: Sendable {
   ///   - firstValue: The first captured runtime value.
   ///   - additionalValues: Any additional captured runtime values after the
   ///     first.
-  private mutating func _captureRuntimeValues<each T>(_ firstValue: (some Any)?, _ additionalValues: repeat (each T)?) {
+  private mutating func _captureRuntimeValues(_ firstValue: (any CapturableValue)?, _ additionalValues: [(any CapturableValue)?]) {
     if isNegated {
       // A negated expression has an additional level of indirection between it
       // and any additional values.
-      subexpressions[0]._captureRuntimeValues(nil as Any? /* discarded */, repeat each additionalValues)
+      subexpressions[0]._captureRuntimeValues(nil /* discarded */, additionalValues)
     } else {
-      var i = subexpressions.startIndex
-      let endIndex = subexpressions.endIndex
-      for value in repeat each additionalValues {
-        guard i < endIndex else {
-          break
-        }
-        defer { i = subexpressions.index(after: i) }
+      for (i, value) in zip(subexpressions.indices, additionalValues) {
         subexpressions[i]._captureRuntimeValue(value)
       }
     }
@@ -336,9 +363,29 @@ public struct __Expression: Sendable {
   ///
   /// If the ``kind`` of `self` is ``Kind/generic`` or ``Kind/stringLiteral``,
   /// this function is equivalent to ``capturingRuntimeValue(_:)``.
-  func capturingRuntimeValues<each T>(_ firstValue: (some Any)?, _ additionalValues: repeat (each T)?) -> Self {
+  ///
+  /// In Embedded Swift, variadic generic support is not yet complete, so we
+  /// instead fall back to a regular variadic function.
+#if !hasFeature(Embedded)
+  func capturingRuntimeValues<each T>(_ firstValue: (some CapturableValue)?, _ additionalValues: repeat (each T)?) -> Self where repeat each T: CapturableValue {
     var result = self
-    result._captureRuntimeValues(firstValue, repeat each additionalValues)
+    var additionalValuesCopy = [(any CapturableValue)?]()
+    repeat additionalValuesCopy.append(each additionalValues)
+    result._captureRuntimeValues(firstValue, additionalValuesCopy)
+    return result
+  }
+#else
+  func capturingRuntimeValues(_ firstValue: (some CapturableValue)?, _ additionalValues: (any CapturableValue)?...) -> Self {
+    var result = self
+    result._captureRuntimeValues(firstValue, additionalValues)
+    return result
+  }
+
+  @_disfavoredOverload
+  func capturingRuntimeValues(_ firstValue: (some Any)?, _ additionalValues: Any?...) -> Self {
+    var result = self
+    let unavailable = UnavailableInEmbeddedSwift()
+    result._captureRuntimeValues(unavailable, additionalValues.map { _ in unavailable })
     return result
   }
 #endif
@@ -365,21 +412,27 @@ public struct __Expression: Sendable {
   func expandedDescription(verbose: Bool) -> String {
     var result = sourceCode
 
-#if !hasFeature(Embedded)
     if verbose, let qualifiedName = runtimeValue?.typeInfo.fullyQualifiedName {
       result = "\(result): \(qualifiedName)"
     }
 
     if let runtimeValue {
-      let runtimeValueDescription = String(describingForTest: runtimeValue)
-      // Hack: don't print string representations of function calls.
-      if runtimeValueDescription != "(Function)" && runtimeValueDescription != result {
-        result = "\(result) → \(runtimeValueDescription)"
+      var addDescription = true
+#if hasFeature(Embedded)
+      if runtimeValue.typeInfo == .unavailableInEmbeddedSwift {
+        addDescription = false
+      }
+#endif
+      if addDescription {
+        let runtimeValueDescription = String(describingForTest: runtimeValue)
+        // Hack: don't print string representations of function calls.
+        if runtimeValueDescription != "(Function)" && runtimeValueDescription != result {
+          result = "\(result) → \(runtimeValueDescription)"
+        }
       }
     } else {
       result = "\(result) → <not evaluated>"
     }
-#endif
 
     return result
   }
@@ -470,7 +523,35 @@ extension __Expression: CustomStringConvertible, CustomDebugStringConvertible {
 
 #if !hasFeature(Embedded)
 extension __Expression.Value: CustomStringConvertible, CustomDebugStringConvertible {}
+#else
+extension __Expression.Value: CustomTestStringConvertible {
+  public var testDescription: String {
+    description
+  }
+}
 #endif
+
+#if hasFeature(Embedded)
+// MARK: - Unavailable value marker
+
+/// A type that acts as a placeholder for values that cannot be reflected or
+/// described in Embedded Swift.
+struct UnavailableInEmbeddedSwift: Sendable, CustomTestStringConvertible {
+  var testDescription: String {
+    "(unavailable in Embedded Swift)"
+  }
+}
+
+extension TypeInfo {
+  /// A type that acts as a placeholder for values that cannot be reflected or
+  /// described in Embedded Swift.
+  static var unavailableInEmbeddedSwift: Self {
+    Self(fullyQualifiedNameComponents: ["Testing", "UnavailableInEmbeddedSwift"])
+  }
+}
+#endif
+
+// MARK: -
 
 /// A type representing a Swift expression captured at compile-time from source
 /// code.
