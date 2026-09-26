@@ -75,11 +75,11 @@ extension ABI {
         func swapTestCaseKind(_ testCaseKind: Self, forTestKind testKind: Self) -> Self? {
           if isNonParameterizedTestFunction {
             if let iteration, iteration > 1 {
-              return .testEnded
+              return testKind
             }
             return nil
           }
-          return .testCaseEnded
+          return testCaseKind
         }
 
         switch kind {
