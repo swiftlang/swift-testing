@@ -424,6 +424,7 @@ let performanceTestsEnabled = Environment.flag(named: "SWT_ENABLE_PERFORMANCE_TE
 #if !SWT_NO_CODABLE
 extension JSON {
   /// Round-trip a value through JSON encoding/decoding.
+  /// Encoding prioritizes JSON.Encodable over Encodable.
   ///
   /// - Parameters:
   ///   - value: The value to round-trip.
@@ -432,8 +433,8 @@ extension JSON {
   ///
   /// - Throws: Any error encountered encoding or decoding `value`.
   static func encodeAndDecode<T>(_ value: T) throws -> T where T: Codable {
-    if let value = value as? any JSON.Encodable & Decodable {
-      try JSON.withEncoding(of: value, in: JSON.EncodingContext()) { data in
+    if let jsonEncodableValue = value as? any JSON.Encodable & Decodable {
+      try JSON.withEncoding(of: jsonEncodableValue) { data in
         try JSON.decode(T.self, from: data)
       }
     } else {
@@ -451,7 +452,7 @@ extension JSON {
   /// - Returns: The encoded JSON string.
   ///
   /// - Throws: Any error encountered encoding or decoding `value`.
-  static func encode<T>(_ value: T) throws -> String where T: Codable {
+  static func encode<T>(_ value: T) throws -> String where T: JSON.Encodable {
     try JSON.withEncoding(of: value) { data in
       return String(decoding: data, as: UTF8.self)
     }

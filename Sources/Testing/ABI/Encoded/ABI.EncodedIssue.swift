@@ -184,7 +184,7 @@ extension ABI.EncodedIssue: Codable {
     // >= 6.5: sourceLocation is provided in the parent Event
     if V.versionNumber < ABI.v6_5.versionNumber {
       sourceLocation = try container.decodeIfPresent(
-          ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
+        ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
     }
     _backtrace = try container.decodeIfPresent(ABI.EncodedBacktrace<V>.self, forKey: ._backtrace)
     error = try container.decodeIfPresent(ABI.EncodedError<V>.self, forKey: .error)
