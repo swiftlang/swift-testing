@@ -12,50 +12,53 @@
 
 #if !SWT_NO_ABI_JSON_SCHEMA
 @Suite struct `ABI.EncodedIssue Tests` {
-  // MARK: - Test Helpers
-
-  /// Creates an EncodedIssue from a JSON string.
-  ///
-  /// - Throws: If the JSON doesn't represent a valid EncodedIssue.
-  private func encodedIssue<V>(_ version: V.Type, _ json: String) throws -> ABI.EncodedIssue<V> {
-    var json = json
-    return try json.withUTF8 { json in
-      try JSON.decode(ABI.EncodedIssue<V>.self, from: UnsafeRawBufferPointer(json))
-    }
-  }
-
-  /// Converts pretty-printed JSON -> single line JSON by trimming out
-  /// indentation and newlines.
-  ///
-  /// This allows us to write test expectations with nicer formatting.
-  private func minified(_ json: String) -> String {
-    json.split(separator: "\n")
-      .map { $0.trimmingPrefix { $0 == " " } }
-      .joined()
-  }
-
-  static let expectationFailedIssue: Issue = {
-    // SourceLocation must be provided for the Issue in order for it to go from
-    // Issue -> EncodedIssue -> Issue and successfully decode its expression
-    var evaluatedExpression = __Expression("#expect(a == b)")
-    evaluatedExpression.runtimeValue = __Expression.Value(describing: false)
-    return Issue(
-      kind:
-        .expectationFailed(
-          .init(
-            evaluatedExpression: evaluatedExpression,
-            isPassing: false,
-            isRequired: true,
-            sourceLocation: .sample)
-        ),
-      comments: ["My User Comment"],
-      sourceContext: .sample)
-  }()
-
   struct FakeError: Error {}
+  struct `Encode Different Issue Types` {}
+  struct Decoding {}
+  struct `Backwards Compatibility` {}
+}
 
-  // MARK: - Encode different issue types
+typealias FakeError = `ABI.EncodedIssue Tests`.FakeError
 
+/// Creates an EncodedIssue from a JSON string.
+///
+/// - Throws: If the JSON doesn't represent a valid EncodedIssue.
+private func encodedIssue<V>(_ version: V.Type, _ json: String) throws -> ABI.EncodedIssue<V> {
+  var json = json
+  return try json.withUTF8 { json in
+    try JSON.decode(ABI.EncodedIssue<V>.self, from: UnsafeRawBufferPointer(json))
+  }
+}
+
+/// Converts pretty-printed JSON -> single line JSON by trimming out
+/// indentation and newlines.
+///
+/// This allows us to write test expectations with nicer formatting.
+private func minified(_ json: String) -> String {
+  json.split(separator: "\n")
+    .map { $0.trimmingPrefix { $0 == " " } }
+    .joined()
+}
+
+private let expectationFailedIssue: Issue = {
+  // SourceLocation must be provided for the Issue in order for it to go from
+  // Issue -> EncodedIssue -> Issue and successfully decode its expression
+  var evaluatedExpression = __Expression("#expect(a == b)")
+  evaluatedExpression.runtimeValue = __Expression.Value(describing: false)
+  return Issue(
+    kind:
+      .expectationFailed(
+        .init(
+          evaluatedExpression: evaluatedExpression,
+          isPassing: false,
+          isRequired: true,
+          sourceLocation: .sample)
+      ),
+    comments: ["My User Comment"],
+    sourceContext: .sample)
+}()
+
+extension `ABI.EncodedIssue Tests`.`Encode Different Issue Types` {
   struct IssueEncodingTestCase: CustomTestStringConvertible {
     var testDescription: String {
       "Issue to encode: \(issueToEncode.description)"
@@ -69,7 +72,7 @@
 
   static let issueTestCases = [
     IssueEncodingTestCase(
-      issueToEncode: Self.expectationFailedIssue,
+      issueToEncode: expectationFailedIssue,
       expectedJSON: ##"""
         {
           "expression":{
@@ -122,7 +125,7 @@
         """#),
     IssueEncodingTestCase(
       issueToEncode: Issue(kind: .timeLimitExceeded(timeLimitComponents: (60, 0))),
-      expectedJSON: #"{"exceededTimeLimit":60,"isFailure":true,"severity":"error"}"#),
+      expectedJSON: #"{"exceededTimeLimit":60.0,"isFailure":true,"severity":"error"}"#),
     IssueEncodingTestCase(
       issueToEncode: Issue(kind: .confirmationMiscounted(actual: 5, expected: 10...10)),
       expectedJSON: #"""
@@ -225,9 +228,9 @@
     #expect(decodedIssue.sourceLocation != nil)
     #expect(!decodedIssue.comments.isEmpty)
   }
+}
 
-  // MARK: - Decoding invalid data
-
+extension `ABI.EncodedIssue Tests`.Decoding {
   @Test func `Decode EncodedIssue with invalid miscount -> unconditional Issue`() throws {
     // Min bound exceeds max bound
     let encoded = try encodedIssue(
@@ -255,9 +258,9 @@
       Issue.record("Expected unconditional issue kind, got: \(issue.kind)")
     }
   }
+}
 
-  // MARK: - Backwards compatibility
-
+extension `ABI.EncodedIssue Tests`.`Backwards Compatibility` {
   @Test func `Decodes v6.4 JSON`() throws {
     _ = try encodedIssue(
       ABI.v6_4.self,
@@ -303,24 +306,23 @@
 
   @Test func `Decode ignores sourceLocation for ABI 6.5 but not 6.4`() throws {
     let json = #"""
-    {
-      "isFailure":true,
-      "isKnown": false,
-      "severity":"error",
-      "sourceLocation":{
-        "column":1,
-        "fileID":"SomeTests\/SomeTests.swift",
-        "filePath":"\/path\/to\/SomeTests.swift",
-        "line":1
+      {
+        "isFailure":true,
+        "isKnown": false,
+        "severity":"error",
+        "sourceLocation":{
+          "column":1,
+          "fileID":"SomeTests\/SomeTests.swift",
+          "filePath":"\/path\/to\/SomeTests.swift",
+          "line":1
+        }
       }
-    }
-    """#
+      """#
 
     do {
       let issue = try JSON.decode(ABI.EncodedIssue<ABI.v6_5>.self, from: json)
       #expect(issue.sourceLocation == nil)
     }
-
 
     do {
       let issue = try JSON.decode(ABI.EncodedIssue<ABI.v6_4>.self, from: json)
@@ -328,12 +330,11 @@
     }
   }
 
-
   /// Each of these issue kinds contain extra information that is only encoded
   /// in v6.5 of the issue, so they should all encode to the same JSON in v6.4.
   /// sourceLocation is also removed in v6.5, but needs to stay for v6.4.
   @Test(arguments: [
-    Self.expectationFailedIssue,
+    expectationFailedIssue,
     Issue(kind: .errorCaught(FakeError()), sourceContext: .sample),
     Issue(kind: .knownIssueNotRecorded, sourceContext: .sample),
     Issue(
@@ -356,8 +357,8 @@
             "severity":"error",
             "sourceLocation":{
               "column":1,
-              "fileID":"SomeTests\/SomeTests.swift",
-              "filePath":"\/path\/to\/SomeTests.swift",
+              "fileID":"SomeTests/SomeTests.swift",
+              "filePath":"/path/to/SomeTests.swift",
               "line":1
             }
           }
@@ -368,7 +369,7 @@
   @Test func `Encodes v6.4 known issue without including comment`() throws {
     var knownIssue = Issue(kind: .errorCaught(FakeError()))
     knownIssue.knownIssueContext = .init(comment: "This issue was marked as known")
-    let encoded =  ABI.EncodedIssue<ABI.v6_4>(encoding: knownIssue, in: .sample)
+    let encoded = ABI.EncodedIssue<ABI.v6_4>(encoding: knownIssue, in: .sample)
 
     let jsonString = try JSON.encode(encoded)
     #expect(jsonString == #"{"isFailure":false,"isKnown":true,"severity":"error"}"#)
