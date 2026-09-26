@@ -126,7 +126,6 @@ struct APIMisuseError: Error, CustomStringConvertible, CustomIssueRepresentable 
   }
 }
 
-
 /// A type representing a test issue due to a known issue being expected but not
 /// recorded.
 ///
