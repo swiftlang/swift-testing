@@ -157,27 +157,51 @@ struct TestCaseIterationTests {
 
   // MARK: Encoded event ordering
 
-  private func assertEncodedEventKinds(
-    _ test: Test,
-    equals expected: [ABI.EncodedEvent<ABI.CurrentVersion>.Kind],
-    sourceLocation: SourceLocation = #Testing::sourceLocation
-  ) async {
-    let events = Mutex<[ABI.EncodedEvent<ABI.CurrentVersion>]>([])
+  private func encodedEvents(for test: Test, encodeMessagesField: Bool = false) async -> [ABI.EncodedEvent<ABI.CurrentVersion>] {
+    let events = Mutex<[ABI.EncodedEvent<ABI.CurrentVersion>]>()
     var configuration = Configuration()
-    configuration.eventHandler = { event, context in
-      guard let encoded = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: context) else {
-        return
-      }
-      events.withLock {
-        $0.append(encoded)
+    configuration.eventHandler = ABI.CurrentVersion.eventHandler(
+      encodingMessagesField: encodeMessagesField
+    ) { record in
+      if case let .event(event) = record.kind {
+        events.withLock {
+          $0.append(event)
+        }
       }
     }
     configuration.repetitionPolicy = .repeating(maximumIterationCount: 2)
 
     await test.run(configuration: configuration)
-    let kinds = events.rawValue.map(\.kind)
+    return events.rawValue
+  }
+
+  private func assertEncodedEventKinds(
+    _ test: Test,
+    equals expected: [ABI.EncodedEvent<ABI.CurrentVersion>.Kind],
+    sourceLocation: SourceLocation = #Testing::sourceLocation
+  ) async {
+    let events = await encodedEvents(for: test)
+    let kinds = events.map(\.kind)
     #expect(kinds == expected, sourceLocation: sourceLocation)
   }
+
+#if canImport(_StringProcessing)
+  private func assertEncodedEventMessages<R>(
+    _ test: Test,
+    match expected: [Regex<R>],
+    sourceLocation: SourceLocation = #Testing::sourceLocation
+  ) async {
+    let events = await encodedEvents(for: test, encodeMessagesField: true)
+    let messages = events.flatMap(\.messages).map(\.text)
+
+    #expect(messages.count == expected.count, sourceLocation: sourceLocation)
+    for (actual, expected) in zip(messages, expected) {
+      #expect(throws: Never.self, sourceLocation: sourceLocation) {
+        try #expect(expected.wholeMatch(in: actual) != nil, sourceLocation: sourceLocation)
+      }
+    }
+}
+#endif
 
   @Test
   func `Non-parameterized test repetitions don't nest`() async throws {
@@ -192,6 +216,17 @@ struct TestCaseIterationTests {
       .testEnded,
       .runEnded
     ])
+
+#if canImport(_StringProcessing)
+    await assertEncodedEventMessages(test, match: [
+      /Test run started\./,
+      /Testing Library Version: .*/,
+      /Test ".*" started\./,
+      /Test ".*" started \(repetition 2\)\./,
+      /Test ".*" passed after .* seconds\./,
+      /Test run .* passed after .* seconds\./,
+    ])
+#endif
   }
 
   @Test
@@ -207,6 +242,18 @@ struct TestCaseIterationTests {
       .testEnded,
       .runEnded
     ])
+
+#if canImport(_StringProcessing)
+    await assertEncodedEventMessages(test, match: [
+      /Test run started\./,
+      /Testing Library Version: .*/,
+      /Test ".*" started\./,
+      /Test case passing .* to ".*" started\./,
+      /Test case passing .* to ".*" started \(repetition 2\)\./,
+      /Test ".*" with 1 test case passed after .* seconds\./,
+      /Test run .* passed after .* seconds\./,
+    ])
+#endif
   }
 
   @Test
@@ -225,6 +272,16 @@ struct TestCaseIterationTests {
       .testEnded,
       .runEnded
     ])
+
+#if canImport(_StringProcessing)
+    await assertEncodedEventMessages(test, match: [
+      /Test run started\./,
+      /Testing Library Version: .*/,
+      /Test ".*" started\./,
+      /Test ".*" was cancelled after .* seconds./,
+      /Test run .* passed after .* seconds\./,
+    ])
+#endif
   }
 
   @Test
@@ -242,5 +299,16 @@ struct TestCaseIterationTests {
       .testEnded,
       .runEnded
     ])
+
+#if canImport(_StringProcessing)
+    await assertEncodedEventMessages(test, match: [
+      /Test run started\./,
+      /Testing Library Version: .*/,
+      /Test ".*" started\./,
+      /Test case passing .* to ".*" started\./,
+      /Test ".*" with 1 test case passed after .* seconds\./,
+      /Teaaast run .* passed after .* seconds\./,
+    ])
+#endif
   }
 }

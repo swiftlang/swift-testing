@@ -13,8 +13,32 @@ extension ABI.Version {
   public static func eventHandler(
     forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
   ) -> Event.Handler {
+    eventHandler(
+      encodingMessagesField: false, // avoid computing twice (here and in callee)
+      forwardingTo: recordHandler
+    )
+  }
+
+  /// Create an event handler that encodes instances of ``Event`` as instances
+  /// of ``ABI/Record`` and forwards them to a handler function.
+  ///
+  /// - Parameters:
+  /// 	- encodingMessagesField: Whether or not to encode the `messages` field
+  ///     in ``ABI/EncodedEvent``. If you do not need these strings, you can
+  ///     reduce CPU and memory usage by passing `false`. This argument is
+  ///     ignored if `Self.alwaysEncodeMessagesField` is `true`.
+  ///   - recordHandler: The record handler to forward events to.
+  ///
+  /// - Returns: An event handler.
+  ///
+  /// You can use this event handler with ``Configuration/eventHandler`` to
+  /// automatically transform instances of ``Event`` to ``ABI/Record``.
+  static func eventHandler(
+    encodingMessagesField: Bool,
+    forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
+  ) -> Event.Handler {
     var humanReadableOutputRecorder: Event.HumanReadableOutputRecorder?
-    if alwaysEncodeMessagesField {
+    if encodingMessagesField || alwaysEncodeMessagesField {
       humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
     }
     return { [humanReadableOutputRecorder] event, context in
