@@ -301,6 +301,34 @@
     }
   }
 
+  @Test func `Decode ignores sourceLocation for ABI 6.5 but not 6.4`() throws {
+    let json = #"""
+    {
+      "isFailure":true,
+      "isKnown": false,
+      "severity":"error",
+      "sourceLocation":{
+        "column":1,
+        "fileID":"SomeTests\/SomeTests.swift",
+        "filePath":"\/path\/to\/SomeTests.swift",
+        "line":1
+      }
+    }
+    """#
+
+    do {
+      let issue = try JSON.decode(ABI.EncodedIssue<ABI.v6_5>.self, from: json)
+      #expect(issue.sourceLocation == nil)
+    }
+
+
+    do {
+      let issue = try JSON.decode(ABI.EncodedIssue<ABI.v6_4>.self, from: json)
+      #expect(issue.sourceLocation != nil)
+    }
+  }
+
+
   /// Each of these issue kinds contain extra information that is only encoded
   /// in v6.5 of the issue, so they should all encode to the same JSON in v6.4.
   /// sourceLocation is also removed in v6.5, but needs to stay for v6.4.
