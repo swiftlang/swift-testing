@@ -32,8 +32,9 @@ syntactically valid.
 
 ### Common data types
 
-`<string>` and `<number>` are defined as in JSON. `<array:T>` represents an
-array (also defined as in JSON) whose elements all follow rule `<T>`.
+`<string>`, `<number>`, and `<integer>` are defined as in JSON. `<array:T>`
+represents an array (also defined as in JSON) whose elements all follow rule
+`<T>`.
 
 ```
 <bool> ::= true | false ; as in JSON
@@ -53,6 +54,15 @@ array (also defined as in JSON) whose elements all follow rule `<T>`.
 
 <version> ::= "version": <version-number>
 <version-number> ::= 0 | "<version core>" ; as per https://semver.org
+
+<comment> ::= <string> ; human-readable, developer-supplied text
+
+<time> ::= <number> ; timestamp or duration expressed in (floating-point) seconds
+
+<numeric-range> ::= {
+  ["min": <integer>,] ; lower-bound, inclusive
+  ["max": <integer>] ; upper-bound, inclusive, must be ≥ min (if present)
+}
 ```
 
 <!--
@@ -206,7 +216,9 @@ sufficient information to display the event in a human-readable format.
   "instant": <instant>, ; when the event occurred
   ["issue": <issue>,] ; the recorded issue (if "kind" is "issueRecorded")
   ["attachment": <attachment>,] ; the attachment (if kind is "valueAttached")
-  "messages": <array:message>,
+  ["comments": <array:comment>,] ; comments provided by the test author
+  ["messages": <array:message>,]
+  ["sourceLocation": <source-location>,] ; where the event occurred, if known
   ["testID": <test-id>,]
   ["iteration": <number>,] ; the iteration number (if the event is recorded
                            ; during test execution)
@@ -218,10 +230,13 @@ sufficient information to display the event in a human-readable format.
   ; additional event kinds may be added in the future
 
 <issue> ::= {
-  "isKnown": <bool>, ; is this a known issue or not?
   "severity": <string>, ; the severity of the issue
   "isFailure": <bool>, ; if the issue is a failing issue
-  ["sourceLocation": <source-location>,] ; where the issue occurred, if known
+  ["expression": <expression>,] ; an expression associated with the issue
+  ["error": <error>,] ; the associated error, if any
+  ["confirmationMiscount": <miscount>,] ; an associated confirmation miscount (too high or too low)
+  ["exceededTimeLimit": <time>,] ; the time limit, in seconds, that was exceeded
+  ["isKnown": <bool> | <comment>] ; whether the issue is known (optionally, the comment associated with the known issue)
 }
 
 <attachment> ::= {
@@ -235,6 +250,34 @@ sufficient information to display the event in a human-readable format.
 
 <message-symbol> ::= "default" | "skip" | "pass" | "passWithKnownIssue" |
   "fail" | "difference" | "warning" | "details"
+
+<error> ::= {
+  ["code": <integer>,]
+  ["domain": <string>,]
+  ["description": <string>,]
+  ["type": <type-info>]
+}
+
+<miscount> ::= {
+  "actual": <integer>, ; actual confirmation count
+  "expected": <integer> ; when the confirmation specifies a single count
+            | <numeric-range> ; when the confirmation specifies a range
+}
+
+<expression> ::= {
+  "sourceCode": <string>, ; unmodified source code
+  ["value": <expression-value>,] ; the expression's value if available
+  ["type": <type-info>,] ; type for the runtime value
+  ["children": <array:expression>] ; subexpressions, if present
+}
+
+<expression-value> ::= <string> ; a description of the value
+
+<type-info> ::= {
+  ["fullyQualifiedName": <string>,]  ; e.g. "Swift.Bool", "std::string"
+  ["unqualifiedName": <string>,]   ; e.g. "Bool", "string"
+  ["mangledName": <string>,] ; e.g. "$sSb", "_ZNSt3__112basic_string..."
+}
 ```
 
 <!--

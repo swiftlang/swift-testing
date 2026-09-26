@@ -424,6 +424,7 @@ let performanceTestsEnabled = Environment.flag(named: "SWT_ENABLE_PERFORMANCE_TE
 #if !SWT_NO_CODABLE
 extension JSON {
   /// Round-trip a value through JSON encoding/decoding.
+  /// Encoding prioritizes JSON.Encodable over Encodable.
   ///
   /// - Parameters:
   ///   - value: The value to round-trip.
@@ -432,14 +433,49 @@ extension JSON {
   ///
   /// - Throws: Any error encountered encoding or decoding `value`.
   static func encodeAndDecode<T>(_ value: T) throws -> T where T: Codable {
-    if let value = value as? any JSON.Encodable & Decodable {
-      try JSON.withEncoding(of: value, in: JSON.EncodingContext()) { data in
+    if let jsonEncodableValue = value as? any JSON.Encodable & Decodable {
+      try JSON.withEncoding(of: jsonEncodableValue) { data in
         try JSON.decode(T.self, from: data)
       }
     } else {
       try JSON.withEncoding(of: value) { data in
         try JSON.decode(T.self, from: data)
       }
+    }
+  }
+
+  /// Encode a value to a JSON string.
+  ///
+  /// - Parameters:
+  ///   - value: The value to encode.
+  ///
+  /// - Returns: The encoded JSON string.
+  ///
+  /// - Throws: Any error encountered encoding or decoding `value`.
+  static func encode<T>(_ value: T) throws -> String where T: JSON.Encodable {
+    try JSON.withEncoding(of: value) { data in
+      return String(decoding: data, as: UTF8.self)
+    }
+  }
+
+  /// Decode a value of a given type from a JSON string.
+  ///
+  /// For example, decode an encoded event from a JSON string:
+  /// ```swift
+  /// let event = try JSON.decode(ABI.EncodedEvent<ABI.v6_5>.self, from: "...")
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - type: The type to decode.
+  ///   - json: The JSON string to decode.
+  ///
+  /// - Returns: An instance of `type` decoded from `json`.
+  ///
+  /// - Throws: Any error encountered while decoding `json`.
+  static func decode<T>(_ type: T.Type, from json: String) throws -> T where T: Decodable {
+    var json = json
+    return try json.withUTF8 { json in
+      try JSON.decode(T.self, from: UnsafeRawBufferPointer(json))
     }
   }
 }

@@ -50,10 +50,14 @@ extension ABI {
 
     /// A comment associated with the known issue, if any.
     ///
-    /// - Warning: This property is not yet part of the JSON schema.
-    var _knownIssueComment: String?
+    /// If not nil, this is encoded as the value for `isKnown` field in the
+    /// JSON schema.
+    var knownIssueComment: String?
 
     /// The location in source where this issue occurred, if available.
+    ///
+    /// After 6.5, this field is always nil. Instead, sourceLocation is recorded
+    /// in the parent Event structure.
     public var sourceLocation: EncodedSourceLocation<V>?
 
     /// The backtrace where this issue occurred, if available.
@@ -62,14 +66,17 @@ extension ABI {
     var _backtrace: EncodedBacktrace<V>?
 
     /// The error associated with this issue, if applicable.
-    ///
-    /// - Warning: Errors are not yet part of the JSON schema.
-    var _error: EncodedError<V>?
+    var error: EncodedError<V>?
 
     /// The expression associated with this issue, if applicable.
-    ///
-    /// - Warning: Expressions are not yet part of the JSON schema.
-    var _expression: EncodedExpression<V>?
+    var expression: EncodedExpression<V>?
+
+    /// The actual and expected confirmation counts associated with this issue,
+    /// if applicable.
+    var confirmationMiscount: EncodedConfirmationMiscount<V>?
+
+    /// The exceeded time limit associated with this issue, if applicable.
+    var exceededTimeLimit: Double?
 
     init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
       // >= v0
@@ -85,15 +92,26 @@ extension ABI {
         isFailure = issue.isFailure
       }
 
-      // Experimental fields
-      if V.includesExperimentalFields {
+      // >= v6.5
+      if V.versionNumber >= ABI.v6_5.versionNumber {
+        // SourceLocation is encoded in the parent Event structure instead
+        sourceLocation = nil
+        switch issue.kind {
+        case .expectationFailed(let expectation):
+          expression = EncodedExpression(encoding: expectation.evaluatedExpression)
+        case .timeLimitExceeded(let components):
+          exceededTimeLimit = Double(components.seconds)
+        case .confirmationMiscounted(let actual, let expected):
+          confirmationMiscount = EncodedConfirmationMiscount(encoding: (actual: actual, expected: expected))
+        default:
+          break
+        }
+
         if let knownIssueContext = issue.knownIssueContext {
-          _knownIssueComment = knownIssueContext.comment?.rawValue
+          knownIssueComment = knownIssueContext.comment?.rawValue
         }
-        if let backtrace = issue.sourceContext.backtrace {
-          _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
-        }
-        _error = if let error = issue.error {
+
+        error = if let error = issue.error {
 #if !hasFeature(Embedded)
           EncodedError(encoding: error)
 #else
@@ -105,12 +123,18 @@ extension ABI {
             EncodedError(encoding: APIMisuseError(description: ""))
           case .system:
             EncodedError(encoding: SystemError(description: ""))
+          case .knownIssueNotRecorded:
+            EncodedError(encoding: KnownIssueNotRecordedError(description: ""))
           default:
             nil
           }
         }
-        if case let .expectationFailed(expectation) = issue.kind {
-          _expression = EncodedExpression(encoding: expectation.evaluatedExpression)
+      }
+
+      // Experimental fields
+      if V.includesExperimentalFields {
+        if let backtrace = issue.sourceContext.backtrace {
+          _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
         }
       }
     }
@@ -121,30 +145,89 @@ extension ABI {
 
 #if !SWT_NO_CODABLE
 extension ABI.EncodedIssue: Codable {
-  public func encode(to encoder: any Encoder) throws {
+  private enum _CodingKeys: String, CodingKey {
+    case severity
+    case isFailure
+    case isKnown
+    case sourceLocation
+    case _backtrace
+    case error
+    case expression
+    case exceededTimeLimit
+    case confirmationMiscount
+  }
+
+  func encode(to encoder: any Encoder) throws {
     try encoder.encodeJSONEncodableValue(self)
+  }
+
+  init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: _CodingKeys.self)
+
+    severity = try container.decodeIfPresent(Severity.self, forKey: .severity)
+    isFailure = try container.decodeIfPresent(Bool.self, forKey: .isFailure)
+
+    // >= 6.5: isKnown is an optional field. Use knownIssueComment if present.
+    //         Omit the field if isKnown is false.
+    // <  6.5: isKnown is a required boolean field
+    if V.versionNumber >= ABI.v6_5.versionNumber {
+      if let knownIssueComment = try? container.decodeIfPresent(String.self, forKey: .isKnown) {
+        isKnown = true
+        self.knownIssueComment = knownIssueComment
+      } else {
+        isKnown = try container.decodeIfPresent(Bool.self, forKey: .isKnown) ?? false
+      }
+    } else {
+      isKnown = try container.decode(Bool.self, forKey: .isKnown)
+    }
+
+    // >= 6.5: sourceLocation is provided in the parent Event
+    if V.versionNumber < ABI.v6_5.versionNumber {
+      sourceLocation = try container.decodeIfPresent(
+        ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
+    }
+    _backtrace = try container.decodeIfPresent(ABI.EncodedBacktrace<V>.self, forKey: ._backtrace)
+    error = try container.decodeIfPresent(ABI.EncodedError<V>.self, forKey: .error)
+    expression = try container.decodeIfPresent(ABI.EncodedExpression<V>.self, forKey: .expression)
+    exceededTimeLimit = try container.decodeIfPresent(Double.self, forKey: .exceededTimeLimit)
+    confirmationMiscount = try container.decodeIfPresent(
+      ABI.EncodedConfirmationMiscount<V>.self, forKey: .confirmationMiscount)
   }
 }
 
 extension ABI.EncodedIssue.Severity: Codable {
-  public func encode(to encoder: any Encoder) throws {
+  func encode(to encoder: any Encoder) throws {
     try encoder.encodeJSONEncodableValue(self)
   }
 }
 #endif
 
 extension ABI.EncodedIssue: JSON.Encodable {
-  public func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     var result = [String: JSON.Value]()
 
     result["severity"] = severity?.rawValue.jsonValue(in: context)
     result["isFailure"] = isFailure?.jsonValue(in: context)
-    result["isKnown"] = isKnown.jsonValue(in: context)
-    result["_knownIssueComment"] = _knownIssueComment?.jsonValue(in: context)
+
+    // >= 6.5: isKnown is an optional field. Use knownIssueComment if present.
+    //         Omit the field if isKnown is false.
+    // <  6.5: isKnown is a required boolean field
+    if V.versionNumber >= ABI.v6_5.versionNumber {
+      if let knownIssueComment {
+        result["isKnown"] = knownIssueComment.jsonValue(in: context)
+      } else if isKnown {
+        result["isKnown"] = isKnown.jsonValue(in: context)
+      }
+    } else {
+      result["isKnown"] = isKnown.jsonValue(in: context)
+    }
+
     result["sourceLocation"] = sourceLocation?.jsonValue(in: context)
     result["_backtrace"] = _backtrace?.jsonValue(in: context)
-    result["_error"] = _error?.jsonValue(in: context)
-    result["_expression"] = _expression?.jsonValue(in: context)
+    result["error"] = error?.jsonValue(in: context)
+    result["expression"] = expression?.jsonValue(in: context)
+    result["exceededTimeLimit"] = exceededTimeLimit?.jsonValue(in: context)
+    result["confirmationMiscount"] = confirmationMiscount?.jsonValue(in: context)
 
     return .object(result)
   }
@@ -166,8 +249,8 @@ extension Issue {
     guard let issue = event.issue else {
       return nil
     }
-    self.init(decoding: issue)
-    if let comments = event._comments {
+    self.init(decoding: issue, sourceLocation: event.sourceLocation)
+    if let comments = event.comments {
       self.comments += comments.map(Comment.init(rawValue:))
     }
   }
@@ -176,22 +259,31 @@ extension Issue {
   ///
   /// - Parameters:
   ///   - issue: The encoded issue to initialize this instance from.
+  ///   - sourceLocation: The source location associated with the issue.
+  ///   This takes precedence over a non-nil encoded issue source location.
+  ///   Required for >=v6.5, where sourceLocation is no longer available as part
+  ///   of the encoded issue.
   ///
   /// - Note: For higher fidelity, initialize the issue with an encoded event
   ///   representing a recorded issue rather than just the encoded issue.
-  init?<V>(decoding issue: ABI.EncodedIssue<V>) {
+  init?<V>(decoding issue: ABI.EncodedIssue<V>, sourceLocation: ABI.EncodedSourceLocation<V>? = nil) {
+    let sourceLocation = (sourceLocation ?? issue.sourceLocation).flatMap(SourceLocation.init)
+
     let issueKind: Issue.Kind
-    if let error = issue._error {
+    if let error = issue.error {
       switch error.domain {
       case APIMisuseError.domain:
         issueKind = .apiMisused
       case SystemError.domain:
         issueKind = .system
+      case KnownIssueNotRecordedError.domain:
+        issueKind = .knownIssueNotRecorded
       default:
         issueKind = .errorCaught(error)
       }
-    } else if let expression = issue._expression.flatMap(__Expression.init(decoding:)),
-              let sourceLocation = issue.sourceLocation.flatMap(SourceLocation.init) {
+    } else if let expression = issue.expression.flatMap(__Expression.init(decoding:)),
+      let sourceLocation
+    {
       let expectation = Expectation(
         evaluatedExpression: expression,
         isPassing: false,
@@ -199,23 +291,29 @@ extension Issue {
         sourceLocation: sourceLocation
       )
       issueKind = .expectationFailed(expectation)
+    } else if let exceededTimeLimit = issue.exceededTimeLimit {
+      let duration = Duration.seconds(exceededTimeLimit)
+      issueKind = .timeLimitExceeded(timeLimitComponents: duration.components)
+    } else if let miscount = issue.confirmationMiscount,
+      let expectedRange = ClosedRange<Int>(decoding: miscount.expected)
+    {
+      issueKind = .confirmationMiscounted(actual: miscount.actual, expected: expectedRange)
     } else {
       // TODO: improve fidelity of issue kind reporting (especially those without associated values)
       issueKind = .unconditional
     }
     let severity: Issue.Severity = switch issue.severity {
     case .warning:
-        .warning
+      .warning
     case .error, nil:
       // Prior to 6.3, all Issues are errors
-        .error
+      .error
     }
 #if !SWT_NO_BACKTRACE_SYMBOLICATION
     let backtrace = issue._backtrace.map { Backtrace(addresses: $0.symbolicatedAddresses.map { $0.address }) }
 #else
     let backtrace = issue._backtrace.map { Backtrace(addresses: $0.addresses) }
 #endif
-    let sourceLocation = issue.sourceLocation.flatMap(SourceLocation.init)
     let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
     self.init(
       kind: issueKind,
@@ -224,7 +322,7 @@ extension Issue {
       sourceContext: sourceContext
     )
     if issue.isKnown {
-      let knownIssueComment = issue._knownIssueComment.map(Comment.init(rawValue:))
+      let knownIssueComment = issue.knownIssueComment.map(Comment.init(rawValue:))
       self.knownIssueContext = Issue.KnownIssueContext(comment: knownIssueComment)
     }
   }

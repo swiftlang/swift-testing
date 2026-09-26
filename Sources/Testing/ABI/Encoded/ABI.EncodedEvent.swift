@@ -160,9 +160,7 @@ extension ABI {
     /// issue matcher, and either can be `nil`. In such cases, the secondary
     /// comment(s) are represented via a distinct property depending on the kind
     /// of that event.
-    ///
-    /// - Warning: Comments at this level are not yet part of the JSON schema.
-    var _comments: [String]?
+    var comments: [String]?
 
     /// A source location associated with this event, if any.
     ///
@@ -176,11 +174,7 @@ extension ABI {
     /// the known issue matcher. In such cases, the secondary source location(s)
     /// are represented via a distinct property depending on the kind of that
     /// event.
-    ///
-    /// - Warning: Source locations at this level of the JSON schema are not yet
-    ///   part of said JSON schema.
-    @_spi(Experimental)
-    public var _sourceLocation: EncodedSourceLocation<V>?
+    public var sourceLocation: EncodedSourceLocation<V>?
 
     init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message] = []) {
       guard let encodedKind = Kind(encoding: event.kind, in: eventContext) else {
@@ -201,28 +195,30 @@ extension ABI {
       testID = event.testID.map(EncodedTest.ID.init)
 
       // Fields introduced in 6.4
-
       if V.versionNumber >= ABI.v6_4.versionNumber {
         iteration = eventContext.iteration
       }
 
-      // Experimental fields
-      if V.includesExperimentalFields {
+      // Fields introduced in 6.5
+      if V.versionNumber >= ABI.v6_5.versionNumber {
         switch event.kind {
         case let .issueRecorded(recordedIssue):
-          _comments = recordedIssue.comments.map { $0.rawValue }
-          _sourceLocation = recordedIssue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
+          comments = recordedIssue.comments.map(\.rawValue)
+          sourceLocation = recordedIssue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         case let .valueAttached(attachment):
-          _sourceLocation = EncodedSourceLocation<V>(encoding: attachment.sourceLocation)
+          sourceLocation = EncodedSourceLocation<V>(encoding: attachment.sourceLocation)
         case let .testCaseCancelled(skipInfo),
           let .testSkipped(skipInfo),
           let .testCancelled(skipInfo):
-          _comments = Array(skipInfo.comment).map { $0.rawValue }
-          _sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
+          comments = Array(skipInfo.comment).map(\.rawValue)
+          sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         default:
           break
         }
+      }
 
+      // Experimental fields
+      if V.includesExperimentalFields {
         if eventContext.test?.isParameterized == true {
           _testCase = eventContext.testCase.map(EncodedTestCase.init)
         }
@@ -245,8 +241,8 @@ extension ABI.EncodedEvent: Codable {
     case testID
     case iteration
     case testCase = "_testCase"
-    case comments = "_comments"
-    case sourceLocation = "_sourceLocation"
+    case comments
+    case sourceLocation
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -267,8 +263,8 @@ extension ABI.EncodedEvent: Codable {
     testID = try container.decodeIfPresent(ABI.EncodedTest<V>.ID.self, forKey: .testID)
     iteration = try container.decodeIfPresent(Int.self, forKey: .iteration)
     _testCase = try container.decodeIfPresent(ABI.EncodedTestCase<V>.self, forKey: .testCase)
-    _comments = try container.decodeIfPresent([String].self, forKey: .comments)
-    _sourceLocation = try container.decodeIfPresent(ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
+    comments = try container.decodeIfPresent([String].self, forKey: .comments)
+    sourceLocation = try container.decodeIfPresent(ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
   }
 }
 
@@ -293,8 +289,8 @@ extension ABI.EncodedEvent: JSON.Encodable {
     result["testID"] = testID?.stringValue.jsonValue(in: context)
     result["iteration"] = iteration?.jsonValue(in: context)
     result["_testCase"] = _testCase?.jsonValue(in: context)
-    result["_comments"] = _comments?.jsonValue(in: context)
-    result["_sourceLocation"] = _sourceLocation?.jsonValue(in: context)
+    result["comments"] = comments?.jsonValue(in: context)
+    result["sourceLocation"] = sourceLocation?.jsonValue(in: context)
 
     return .object(result)
   }
@@ -405,8 +401,7 @@ extension ABI.Version {
     // If the environment variable above is set to `true`, then even newer
     // schema versions should encode the "messages" field.
 
-    // TODO: fix speculative version number check
-    _alwaysIncludeMessagesField == true || versionNumber < ABI.ExperimentalVersion.versionNumber
+    _alwaysIncludeMessagesField == true || versionNumber < ABI.v6_5.versionNumber
   }
 
   /// Whether or not to require the presence of the `"messages"` field in
@@ -415,8 +410,7 @@ extension ABI.Version {
     // Whether or not the field is required during decoding is solely dependent
     // on the schema version, not on the environment variable.
 
-    // TODO: fix speculative version number check
-    versionNumber < ABI.ExperimentalVersion.versionNumber
+    versionNumber < ABI.v6_5.versionNumber
   }
 }
 #endif
