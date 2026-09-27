@@ -23,7 +23,6 @@ extension Test {
       /// non-parameterized test function.
       case nonParameterized
 
-#if !hasFeature(Embedded)
       /// A test case associated with a parameterized test function.
       ///
       /// - Parameters:
@@ -35,16 +34,11 @@ extension Test {
       ///   - isStable: Whether or not this test case is considered stable
       ///     across successive runs.
       case parameterized(arguments: [Argument], discriminator: Int, isStable: Bool)
-#else
-      /// A test case associated with a parameterized test function.
-      case parameterized
-#endif
     }
 
     /// The kind of this test case.
     private var _kind: _Kind
 
-#if !hasFeature(Embedded)
     /// A type representing an argument passed to a parameter of a parameterized
     /// test function.
     @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
@@ -64,6 +58,9 @@ extension Test {
       /// The value of this parameterized test argument.
       public var value: any Sendable
 
+      /// A string that describes this instance and the value it wraps.
+      private var _valueDescription: String
+
       /// The ID of this parameterized test argument.
       ///
       /// The uniqueness of this value is narrow: it is considered unique only
@@ -78,9 +75,10 @@ extension Test {
       /// The parameter of the test function to which this argument was passed.
       public var parameter: Parameter
 
-      init(id: ID, value: any Sendable, parameter: Parameter) {
+      init(id: ID, value: any Sendable, descriptionThereof valueDescription: String, parameter: Parameter) {
         self.id = id
         self.value = value
+        self._valueDescription = valueDescription
         self.parameter = parameter
       }
     }
@@ -160,13 +158,6 @@ extension Test {
         isStable
       }
     }
-#else
-    /// Storage for ``id`` under Embedded Swift.
-    ///
-    /// This property cannot be `private` because it is used in another file.
-    /// Code outside `Test.Case` should use ``id`` instead.
-    var _id = ID()
-#endif
 
     private init(kind: _Kind, body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) {
       _kind = kind
@@ -192,13 +183,17 @@ extension Test {
     ///   - body: The body closure of this test case.
     init(
       values: [any Sendable],
+      descriptionsThereof valueDescriptions: [String]? = nil,
       parameters: [Parameter],
       body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
     ) {
-#if !hasFeature(Embedded)
       var isStable = true
 
-      let arguments = zip(values, parameters).map { value, parameter in
+      let valueDescriptions = valueDescriptions ?? values.lazy
+        .map { String(describingForTest: $0) }
+      let arguments: Array = zip(zip(values, valueDescriptions), parameters).lazy
+        .map { ($0.0, $0.1, $1) }
+        .map { value, description, parameter in
         var stableArgumentID: Argument.ID?
 
         // Attempt to get a stable, encoded representation of this value if no
@@ -223,16 +218,13 @@ extension Test {
           // have a stable ID, there's no point encoding the values which _are_
           // encodable.
           isStable = false
-          argumentID = .init(bytes: String(describingForTest: value).utf8)
+          argumentID = .init(bytes: description.utf8)
         }
 
-        return Argument(id: argumentID, value: value, parameter: parameter)
+        return Argument(id: argumentID, value: value, descriptionThereof: description, parameter: parameter)
       }
 
       self.init(kind: .parameterized(arguments: arguments, discriminator: 0, isStable: isStable), body: body)
-#else
-      self.init(kind: .parameterized, body: body)
-#endif
     }
 
     /// Whether or not this test case is from a parameterized test.
@@ -323,10 +315,16 @@ extension Test.Case.Argument.ID: Codable {}
 
 // MARK: - Equatable, Hashable
 
-#if !hasFeature(Embedded)
 extension Test.Parameter: Hashable {}
 extension Test.Case.Argument.ID: Hashable {}
-#endif
+
+// MARK: - CustomTestStringConvertible
+
+extension Test.Case.Argument: CustomTestStringConvertible {
+  public var testDescription: String {
+    _valueDescription
+  }
+}
 
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
@@ -383,7 +381,7 @@ extension Test.Case.Argument {
     ///   - argument: The original test case argument to snapshot.
     public init(snapshotting argument: Test.Case.Argument) {
       id = argument.id
-      value = Expression.Value(reflecting: argument.value) ?? .init(describing: argument.value)
+      value = Expression.Value(reflecting: argument.value) ?? .init(describing: argument)
       parameter = argument.parameter
     }
   }

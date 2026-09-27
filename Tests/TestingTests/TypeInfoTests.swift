@@ -74,7 +74,7 @@ struct TypeInfoTests {
           ("Foo.`B.ar`.Quux.`Alpha", ["Foo", "`B.ar`", "Quux", "`Alpha"]),
           ("Foo.`B.ar`.Quux.`Alpha``", ["Foo", "`B.ar`", "Quux", "`Alpha``"]),
           ("Foo.`B.ar`.Quux.`Alpha...", ["Foo", "`B.ar`", "Quux", "`Alpha..."]),
-        ]
+        ] as [(String, [String])]
   )
   func rawIdentifiers(fqn: String, expectedComponents: [String]) throws {
     let actualComponents = TypeInfo.fullyQualifiedNameComponents(ofTypeWithName: fqn)

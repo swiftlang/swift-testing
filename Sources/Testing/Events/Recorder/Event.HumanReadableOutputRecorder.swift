@@ -233,14 +233,13 @@ extension Test.Case {
   ///   non-parameterized. If the string is not empty, it includes a leading
   ///   space character.
   fileprivate func labeledArguments(includingQualifiedTypeNames includeTypeNames: Bool = false) -> String {
-#if !hasFeature(Embedded)
     guard let arguments, !arguments.isEmpty else {
       return ""
     }
 
     let result: String = arguments.lazy
       .map { argument in
-        let valueDescription = String(describingForTest: argument.value)
+        let valueDescription = String(describingForTest: argument)
 
         let label = argument.parameter.secondName ?? argument.parameter.firstName
         let labeledArgument = if label == "_" {
@@ -257,9 +256,6 @@ extension Test.Case {
       }
       .joined(separator: ", ")
     return " \(result)"
-#else
-    return ""
-#endif
   }
 }
 
@@ -542,13 +538,8 @@ extension Event.HumanReadableOutputRecorder {
 
       var message: String
       if testCase.isParameterized {
-#if !hasFeature(Embedded)
         let arguments = testCase.arguments ?? []
         message = "Test case passing \(arguments.count.counting("argument"))\(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started"
-#else
-        let parameterCount = test.parameters?.count ?? 0
-        message = "Test case passing \(parameterCount.counting("argument")) to \(testName) started"
-#endif
       } else if iteration > 1 {
         message = testStartedMessage(for: test)
       } else {
@@ -569,11 +560,9 @@ extension Event.HumanReadableOutputRecorder {
       guard verbosity > 0, let test, let testCase, testCase.isParameterized else {
         break
       }
-#if !hasFeature(Embedded)
       guard let arguments = testCase.arguments else {
         break
       }
-#endif
 
       let testDataGraph = context.testData.subgraph(at: keyPath)
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
@@ -592,22 +581,12 @@ extension Event.HumanReadableOutputRecorder {
       } else {
         (symbol, verbed) = (.pass(knownIssueCount: issues.knownIssueCount), "passed")
       }
-#if !hasFeature(Embedded)
       return [
         Message(
           symbol: symbol,
           stringValue: "Test case passing \(arguments.count.counting("argument"))\(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) \(verbed) after \(duration)\(issues.description)\(cancellationComment)"
         )
       ]
-#else
-      let parameterCount = test.parameters?.count ?? 0
-      return [
-        Message(
-          symbol: symbol,
-          stringValue: "Test case passing \(parameterCount.counting("argument")) to \(testName) \(verbed) after \(duration)\(issues.description)\(cancellationComment)"
-        )
-      ]
-#endif
 
     case .testCancelled, .testCaseCancelled:
       // Handled in .testEnded and .testCaseEnded

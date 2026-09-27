@@ -30,7 +30,7 @@ struct Test_CaseTests {
 
   @Test func twoStableArguments() throws {
     let testCase = Test.Case(
-      values: [1, "a"],
+      values: [1, "a"] as [any Sendable],
       parameters: [
         Test.Parameter(index: 0, firstName: "x", type: Int.self),
         Test.Parameter(index: 1, firstName: "y", type: String.self),
@@ -43,7 +43,7 @@ struct Test_CaseTests {
   @Test("Two arguments: one non-stable, followed by one stable")
   func nonStableAndStableArgument() throws {
     let testCase = Test.Case(
-      values: [NonCodable(), IssueRecordingEncodable()],
+      values: [NonCodable(), IssueRecordingEncodable()] as [any Sendable],
       parameters: [
         Test.Parameter(index: 0, firstName: "x", type: NonCodable.self),
         Test.Parameter(index: 1, firstName: "y", type: IssueRecordingEncodable.self),
