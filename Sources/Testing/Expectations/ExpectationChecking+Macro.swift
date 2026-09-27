@@ -180,9 +180,7 @@ private func _callBinaryOperator<T, U, R>(
     condition,
     expression: expression(),
     negationCount: negationCount,
-    expressionWithCapturedRuntimeValues: {
-      expression().capturingRuntimeValues(condition, lhs, rhs)
-    }(),
+    expressionWithCapturedRuntimeValues: expression().capturingRuntimeValues(condition, lhs, rhs),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -832,9 +830,7 @@ public func __checkValue<T>(
     optionalValue != nil,
     expression: expression(),
     negationCount: negationCount,
-    expressionWithCapturedRuntimeValues: {
-      (expressionWithCapturedRuntimeValues() ?? expression()).capturingRuntimeValues(optionalValue as T??)
-    }(),
+    expressionWithCapturedRuntimeValues: (expressionWithCapturedRuntimeValues() ?? expression()).capturingRuntimeValues(optionalValue as T??),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -870,9 +866,7 @@ public func __checkValue<T>(
     optionalValue,
     expression: expression(),
     negationCount: negationCount,
-    expressionWithCapturedRuntimeValues: {
-      expression().capturingRuntimeValues(optionalValue, lhs as T??, rhs as T??)
-    }(),
+    expressionWithCapturedRuntimeValues: expression().capturingRuntimeValues(optionalValue, lhs as T??, rhs as T??),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
