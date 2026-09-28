@@ -1161,6 +1161,25 @@ extension AttachmentTests {
     let attachment = try #require(Attachment(decoding: event))
     #expect(attachment.sourceLocation.line == 12345)
   }
+
+  @Test("Encoding an attachment without the bytes field", .serialized(for: \Environment.self))
+  func encodingAnAttachmentWithoutBytes() throws {
+    let oldEnvvar = Environment.variable(named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+    Environment.setVariable(nil, named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+    defer {
+      Environment.setVariable(oldEnvvar, named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+    }
+
+    let attachment = Attachment([1, 2, 3])
+    let encodedAttachment = ABI.EncodedAttachment<ABI.v6_5>(encoding: attachment)
+    let decodedAttachment = try JSON.withEncoding(of: encodedAttachment) { json in
+      try JSON.decode(ABI.EncodedAttachment<ABI.v6_5>.self, from: json)
+    }
+    #expect(throws: ABI.EncodedAttachment<ABI.v6_5>.BytesUnavailableError.self) {
+      let attachment = Attachment(decodedAttachment)
+      try attachment.withUnsafeBytes { _ in }
+    }
+  }
 #endif
 }
 

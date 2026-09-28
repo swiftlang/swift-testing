@@ -103,6 +103,13 @@ extension ABI.EncodedAttachment: JSON.Encodable {
   func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     var result = [String: JSON.Value]()
 
+    // Do we include the bytes field? Default to true in the 6.5 schema onward,
+    // but allow for opt-out.
+    var includeBytesField = V.versionNumber >= ABI.v6_5.versionNumber
+    if includeBytesField, let _includeBytesField {
+      includeBytesField = _includeBytesField
+    }
+
     lazy var encodeBytes = { [context = copy context] (_ bytes: UnsafeRawBufferPointer) in
 #if !SWT_NO_FOUNDATION
       // If possible, encode this structure as Base64 data.
@@ -123,14 +130,14 @@ extension ABI.EncodedAttachment: JSON.Encodable {
       if let path {
         result["path"] = path.jsonValue(in: context)
       }
-      if V.versionNumber >= ABI.v6_5.versionNumber, let bytes {
+      if V.versionNumber >= ABI.v6_5.versionNumber, let bytes, includeBytesField {
         bytes.withUnsafeBytes(encodeBytes)
       }
     case let .unserialized(attachment):
       if let path = attachment.fileSystemPath {
         result["path"] = path.jsonValue(in: context)
       }
-      if V.versionNumber >= ABI.v6_5.versionNumber {
+      if V.versionNumber >= ABI.v6_5.versionNumber, includeBytesField {
         do {
           try attachment.withUnsafeBytes(encodeBytes)
         } catch {
@@ -169,7 +176,7 @@ extension ABI.EncodedAttachment: Attachable {
 
   /// An error type that is thrown when ``ABI/EncodedAttachment`` cannot satisfy
   /// a request for the underlying attachment's bytes.
-  fileprivate struct BytesUnavailableError: Error {}
+  struct BytesUnavailableError: Error {}
 
   public borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     switch kind {
@@ -284,4 +291,17 @@ extension Attachment where AttachableValue == AnyAttachable {
     }
   }
 }
+
+// MARK: Inclusion of an attachment's bytes
+
+/// Whether or not to always include the `"messages"` field in encoded events
+/// even when it is an empty array.
+#if DEBUG
+private var _includeBytesField: Bool? {
+  Environment.flag(named: "SWIFT_TESTING_EVENT_STREAM_ATTACHMENT_BYTES_FIELD_ENABLED")
+}
+#else
+private let _includeBytesField = Environment.flag(named: "SWIFT_TESTING_EVENT_STREAM_ATTACHMENT_BYTES_FIELD_ENABLED")
+#endif
+
 #endif
