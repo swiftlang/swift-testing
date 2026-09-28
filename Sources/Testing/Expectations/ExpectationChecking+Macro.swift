@@ -1051,7 +1051,7 @@ public func __checkClosureCall(
     _ = try body()
   } catch {
     success = false
-    expression = { [expression] in expression().capturingRuntimeValues(error) }
+    expression = { [expression] in expression().capturingRuntimeValues(error as any Error) }
     mismatchExplanationValue = "an error was thrown when none was expected: \(_description(of: error))"
   }
 
@@ -1090,7 +1090,7 @@ public func __checkClosureCall(
     _ = try await body()
   } catch {
     success = false
-    expression = { [expression] in expression().capturingRuntimeValues(error) }
+    expression = { [expression] in expression().capturingRuntimeValues(error as any Error) }
     mismatchExplanationValue = "an error was thrown when none was expected: \(_description(of: error))"
   }
 
@@ -1191,7 +1191,7 @@ public func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     caughtError = error
-    expression = { [expression] in expression().capturingRuntimeValues(error) }
+    expression = { [expression] in expression().capturingRuntimeValues(error as any Error) }
     let secondError = Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try errorMatcher(error)
     }
@@ -1242,7 +1242,7 @@ public func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     caughtError = error
-    expression = { [expression] in expression().capturingRuntimeValues(error) }
+    expression = { [expression] in expression().capturingRuntimeValues(error as any Error) }
     let secondError = await Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try await errorMatcher(error)
     }
@@ -1349,10 +1349,6 @@ private func _description(of error: any Error) -> String {
   }
   return "\(errorDescription) of type \(errorType)"
 #else
-  let domain = error._domain
-  if domain == "(unknown domain in Embedded Swift)" { // TODO: avoid hard-coding
-    return "unknown error \(error._code)"
-  }
-  return "error \(error._code) in domain '\(domain)'"
+  String(describingForTest: error)
 #endif
 }

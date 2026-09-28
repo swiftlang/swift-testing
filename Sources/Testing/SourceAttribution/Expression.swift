@@ -381,6 +381,12 @@ public struct __Expression: Sendable {
     return result
   }
 
+  func capturingRuntimeValues(_ error: (any Error)?) -> Self {
+    var result = self
+    result._captureRuntimeValue(String(describingForTest: error))
+    return result
+  }
+
   @_disfavoredOverload
   func capturingRuntimeValues(_ firstValue: (some Any)?, _ additionalValues: Any?...) -> Self {
     var result = self

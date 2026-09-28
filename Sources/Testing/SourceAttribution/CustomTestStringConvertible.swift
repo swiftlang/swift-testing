@@ -113,8 +113,11 @@ extension String {
   }
 
   init(describingForTest value: any Error) {
-    // FIXME: need some sort of description functionality for errors
-    self = "<unknown error>"
+    let domain = error._domain
+    if domain == "(unknown domain in Embedded Swift)" { // TODO: avoid hard-coding
+      return "unknown error \(error._code)"
+    }
+    return "error \(error._code) in domain '\(domain)'"
   }
 #endif
 }
