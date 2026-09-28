@@ -42,17 +42,3 @@ extension SourceContext: Equatable, Hashable {}
 
 extension SourceContext: Codable {}
 #endif
-
-// MARK: - Deprecated
-
-extension SourceContext {
-  @available(*, deprecated, message: "Use init(backtrace:sourceLocation:) and pass both arguments explicitly instead.")
-  public init(backtrace: Backtrace?) {
-    self.init(backtrace: backtrace, sourceLocation: nil)
-  }
-
-  @available(*, deprecated, message: "Use init(backtrace:sourceLocation:) and pass both arguments explicitly instead.")
-  public init(sourceLocation: SourceLocation? = nil) {
-    self.init(backtrace: nil, sourceLocation: sourceLocation)
-  }
-}

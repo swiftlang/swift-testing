@@ -536,7 +536,11 @@ extension ConditionMacro {
     }
 
     _diagnoseTrivialBooleanValue(from: expr, for: macro, in: context)
-    let result = _parseCondition(from: expr, for: macro, in: context)
-    return result
+
+    if context.isTargetEmbedded {
+      // Embedded Swift does not support full argument expansion.
+      return Condition(expression: expr)
+    }
+    return _parseCondition(from: expr, for: macro, in: context)
   }
 }

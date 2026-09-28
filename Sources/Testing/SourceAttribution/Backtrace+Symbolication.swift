@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
 private import _TestingInternals
 
 /// A type representing a backtrace or stack trace.
@@ -114,11 +115,23 @@ extension Backtrace {
   }
 }
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension Backtrace.SymbolicatedAddress: Codable {}
 #endif
+
+extension Backtrace.SymbolicatedAddress: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["address"] = address.jsonValue(in: context)
+    result["offset"] = offset?.jsonValue(in: context)
+    result["symbolName"] = symbolName?.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
 
 // MARK: - Swift runtime wrappers
 
@@ -164,4 +177,5 @@ private func _withDbgHelpLibrary(_ body: (HANDLE?) -> Void) {
     }
   }
 }
+#endif
 #endif

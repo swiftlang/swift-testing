@@ -213,10 +213,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 ///
 /// - Returns: A structure describing the given section, or `nil` if the section
 ///   could not be found.
-private func _findSection(named sectionName: String, in hModule: HMODULE) -> SectionBounds? {
+private func _findSection(named sectionName: String, in hModule: HMODULE) -> [SectionBounds] {
   hModule.withNTHeader { ntHeader in
     guard let ntHeader else {
-      return nil
+      return []
     }
 
     let sectionHeaders = UnsafeBufferPointer(
@@ -255,7 +255,7 @@ private func _findSection(named sectionName: String, in hModule: HMODULE) -> Sec
         }
 
         return SectionBounds(imageAddress: hModule, buffer: buffer)
-      }.first
+      }
   }
 }
 
@@ -274,7 +274,9 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<Section
   case .testContent:
     ".sw5test"
   }
-  return HMODULE.all.lazy.compactMap { _findSection(named: sectionName, in: $0) }
+  return HMODULE.all.lazy
+    .compactMap { _findSection(named: sectionName, in: $0) }
+    .joined()
 }
 
 #elseif !SWT_NO_DYNAMIC_LINKING
@@ -318,13 +320,20 @@ private struct _SectionBound: Sendable, ~Copyable {
 }
 
 #if objectFormat(MachO)
+private nonisolated(unsafe) let _imageAddress: UnsafeRawPointer? = #dsohandle
 @_silgen_name(raw: "section$start$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
 @_silgen_name(raw: "section$end$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
-#elseif objectFormat(ELF) || objectFormat(Wasm)
+#elseif objectFormat(ELF)
+private nonisolated(unsafe) let _imageAddress = swt_ehdr_start()
+@_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
+@_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
+#elseif objectFormat(Wasm)
+private nonisolated(unsafe) let _imageAddress: UnsafeRawPointer? = nil
 @_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
 @_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
 #else
 #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
+private nonisolated(unsafe) let _imageAddress: UnsafeRawPointer? = nil
 private nonisolated(unsafe) let _testContentSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
 private nonisolated(unsafe) let _testContentSectionEnd = _testContentSectionBegin
 #endif
@@ -343,7 +352,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> CollectionOfOne<Secti
     _testContentSectionBegin ..< _testContentSectionEnd
   }
   let buffer = UnsafeRawBufferPointer(start: range.lowerBound, count: range.count)
-  let sb = SectionBounds(imageAddress: nil, buffer: buffer)
+  let sb = SectionBounds(imageAddress: _imageAddress, buffer: buffer)
   return CollectionOfOne(sb)
 }
 #endif

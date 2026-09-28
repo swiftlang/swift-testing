@@ -35,11 +35,19 @@ extension ABI.EncodedInstant {
   /// - Parameters:
   ///   - instant: The instant to initialize this instance from.
   public init(encoding instant: borrowing Test.Clock.Instant) {
+#if !hasFeature(Embedded)
 #if !SWT_NO_SUSPENDING_CLOCK
     absolute = instant.suspending.rawValue / .seconds(1)
 #endif
 #if !SWT_NO_UTC_CLOCK
     since1970 = instant.wall.rawValue / .seconds(1)
+#endif
+#else
+    // The selection of the `absolute` field here is arbitrary, but based on the
+    // assumption that embedded targets are more likely to have monotonic clocks
+    // of some form (even just the CPU instruction counter times frequency) than
+    // they are to have accurate realtime wall clocks.
+    absolute = instant.sinceSystemEpoch.rawValue / .seconds(1)
 #endif
   }
 }
@@ -67,6 +75,7 @@ extension Test.Clock.Instant {
       return nil
     }
 
+#if !hasFeature(Embedded)
     switch (instant.absolute, instant.since1970) {
     case let (.some(absolute), .some(since1970)):
       let suspending = TimeValue(rawValue: .seconds(absolute))
@@ -98,10 +107,18 @@ extension Test.Clock.Instant {
       // clock (i.e. events are delivered, encoded, and decoded with zero latency).
       self = .now
     }
+#else
+    if let seconds = instant.absolute ?? instant.since1970 {
+      self.init(sinceSystemEpoch: TimeValue(rawValue: .seconds(seconds)))
+    } else {
+      self = .now
+    }
+#endif
   }
 }
 #endif
 
+#if !hasFeature(Embedded)
 #if !SWT_NO_SUSPENDING_CLOCK
 @_spi(ForToolsIntegrationOnly)
 extension SuspendingClock.Instant {
@@ -123,8 +140,26 @@ extension SuspendingClock.Instant {
 #endif
 
 // Date.init(decoding:) is in the Foundation overlay.
+#endif
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
-extension ABI.EncodedInstant: Codable {}
+#if !SWT_NO_CODABLE
+extension ABI.EncodedInstant: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
+#endif
+
+extension ABI.EncodedInstant: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["absolute"] = absolute?.jsonValue(in: context)
+    result["since1970"] = since1970?.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
 #endif

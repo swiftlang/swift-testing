@@ -288,7 +288,7 @@ func spawnExecutable(
     for i in 0 ..< additionalFileHandles.count {
       inheritedHandles[i + 3] = try inherit(additionalFileHandles[i].pointee)
     }
-    inheritedHandles = inheritedHandles.compactMap(\.self)
+    inheritedHandles = inheritedHandles.filter { $0 != nil }
 
     return try inheritedHandles.withUnsafeMutableBufferPointer { inheritedHandles in
       _ = UpdateProcThreadAttribute(

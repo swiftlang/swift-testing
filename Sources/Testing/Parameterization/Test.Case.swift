@@ -23,6 +23,7 @@ extension Test {
       /// non-parameterized test function.
       case nonParameterized
 
+#if !hasFeature(Embedded)
       /// A test case associated with a parameterized test function.
       ///
       /// - Parameters:
@@ -34,11 +35,16 @@ extension Test {
       ///   - isStable: Whether or not this test case is considered stable
       ///     across successive runs.
       case parameterized(arguments: [Argument], discriminator: Int, isStable: Bool)
+#else
+      /// A test case associated with a parameterized test function.
+      case parameterized
+#endif
     }
 
     /// The kind of this test case.
     private var _kind: _Kind
 
+#if !hasFeature(Embedded)
     /// A type representing an argument passed to a parameter of a parameterized
     /// test function.
     @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
@@ -154,10 +160,17 @@ extension Test {
         isStable
       }
     }
+#else
+    /// Storage for ``id`` under Embedded Swift.
+    ///
+    /// This property cannot be `private` because it is used in another file.
+    /// Code outside `Test.Case` should use ``id`` instead.
+    var _id = ID()
+#endif
 
-    private init(kind: _Kind, body: @escaping @Sendable () async throws -> Void) {
-      self._kind = kind
-      self.body = body
+    private init(kind: _Kind, body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) {
+      _kind = kind
+      _body = body
     }
 
     /// Initialize a test case for a non-parameterized test function.
@@ -166,7 +179,7 @@ extension Test {
     ///   - body: The body closure of this test case.
     ///
     /// The resulting test case will have zero arguments.
-    init(body: @escaping @Sendable () async throws -> Void) {
+    init(body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) {
       self.init(kind: .nonParameterized, body: body)
     }
 
@@ -180,8 +193,9 @@ extension Test {
     init(
       values: [any Sendable],
       parameters: [Parameter],
-      body: @escaping @Sendable () async throws -> Void
+      body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
     ) {
+#if !hasFeature(Embedded)
       var isStable = true
 
       let arguments = zip(values, parameters).map { value, parameter in
@@ -216,6 +230,9 @@ extension Test {
       }
 
       self.init(kind: .parameterized(arguments: arguments, discriminator: 0, isStable: isStable), body: body)
+#else
+      self.init(kind: .parameterized, body: body)
+#endif
     }
 
     /// Whether or not this test case is from a parameterized test.
@@ -229,10 +246,26 @@ extension Test {
     }
 
     /// The body closure of this test case.
+    private var _body: nonisolated(nonsending) @Sendable () async throws -> Void
+
+    /// Invoke the body closure of this test case.
     ///
-    /// Do not invoke this closure directly. Always use a ``Runner`` to invoke a
+    /// - Parameters:
+    ///   - configuration: The configuration to use for running.
+    ///
+    /// Do not call this function directly. Always use a ``Runner`` to invoke a
     /// test or test case.
-    var body: @Sendable () async throws -> Void
+    nonisolated(nonsending) func run(configuration: borrowing Configuration) async throws {
+#if !hasFeature(Embedded)
+      if let actor = configuration.defaultSynchronousIsolationContext {
+        func runIsolated(to actor: isolated some Actor) async throws {
+          try await _body()
+        }
+        return try await runIsolated(to: actor)
+      }
+#endif
+      try await _body()
+    }
   }
 
   /// A type representing a single parameter to a parameterized test function.
@@ -273,9 +306,11 @@ extension Test {
       self.typeInfo = typeInfo
     }
 
+#if !hasFeature(Embedded)
     init(index: Int, firstName: String, secondName: String? = nil, type: Any.Type) {
       self.init(index: index, firstName: firstName, secondName: secondName, typeInfo: TypeInfo(describing: type))
     }
+#endif
   }
 }
 
@@ -288,8 +323,10 @@ extension Test.Case.Argument.ID: Codable {}
 
 // MARK: - Equatable, Hashable
 
+#if !hasFeature(Embedded)
 extension Test.Parameter: Hashable {}
 extension Test.Case.Argument.ID: Hashable {}
+#endif
 
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting

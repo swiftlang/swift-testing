@@ -14,7 +14,7 @@ private import _TestingInternals
 import AppKit
 import _Testing_AppKit
 #endif
-#if canImport(Foundation) && canImport(_Testing_Foundation)
+#if !SWT_NO_FOUNDATION && canImport(_Testing_Foundation)
 import Foundation
 @_spi(Experimental) import _Testing_Foundation
 #endif
@@ -299,7 +299,7 @@ struct AttachmentTests {
     }
   }
 
-#if canImport(Foundation) && canImport(_Testing_Foundation)
+#if !SWT_NO_FOUNDATION && canImport(_Testing_Foundation)
 #if !SWT_NO_FILE_IO
   @Test func attachContentsOfFileURL() async throws {
     let data = try #require("<!doctype html>".data(using: .utf8))
@@ -642,7 +642,7 @@ extension AttachmentTests {
       try test(value)
     }
 
-#if canImport(Foundation) && canImport(_Testing_Foundation)
+#if !SWT_NO_FOUNDATION && canImport(_Testing_Foundation)
     @Test func data() throws {
       let value = try #require("abc123".data(using: .utf8))
       try test(value)
@@ -1065,7 +1065,7 @@ extension AttachmentTests {
 #endif
   }
 
-#if !SWT_NO_ABI_JSON_SCHEMA
+#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
 #if !SWT_NO_FILE_IO
   @Test("Decoding an encoded attachment with path")
   func decodingAnEncodedAttachmentWithPath() throws {
@@ -1151,7 +1151,7 @@ extension AttachmentTests {
       {
         "kind": "valueAttached",
         "instant": { "since1970": 0, "absolute": 0 },
-        "sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
+        "_sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
         "attachment": { "bytes": "YWJjMTIz" }
       }
       """#
@@ -1228,7 +1228,7 @@ struct MyBadTransferable: Transferable, Equatable {
 }
 #endif
 
-#if canImport(Foundation) && canImport(_Testing_Foundation)
+#if !SWT_NO_FOUNDATION && canImport(_Testing_Foundation)
 #if !SWT_NO_CODABLE
 struct MyCodableAttachable: Codable, Attachable, Sendable {
   var string: String

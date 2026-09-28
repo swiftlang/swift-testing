@@ -104,18 +104,9 @@ extension SkipInfo {
 
     // Typically only a single comment is expected for SkipInfo.
     let comment = event._comments?.first.map(Comment.init(rawValue:))
-    let sourceLocation = event.sourceLocation.flatMap(SourceLocation.init(decoding:))
+    let sourceLocation = event._sourceLocation.flatMap(SourceLocation.init(decoding:))
     let sourceContext = SourceContext(backtrace: nil, sourceLocation: sourceLocation)
     self.init(comment: comment, sourceContext: sourceContext)
   }
 }
 #endif
-
-// MARK: - Deprecated
-
-extension SkipInfo {
-  @available(*, deprecated, message: "Use init(comment:sourceContext:) and pass an explicit SourceContext.")
-  public init(comment: Comment? = nil) {
-    self.init(comment: comment, sourceContext: .init(backtrace: .current(), sourceLocation: nil))
-  }
-}

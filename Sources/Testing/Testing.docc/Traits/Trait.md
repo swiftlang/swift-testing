@@ -36,6 +36,11 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 - ``Trait/bug(_:id:_:)-10yf5``
 - ``Trait/bug(_:id:_:)-3vtpl``
 
+### Transforming and filtering issues
+
+- ``Trait/compactMapIssues(_:)``
+- ``Trait/filterIssues(_:)``
+
 ### Running code before and after a test or suite
 
 - ``TestScoping``

@@ -36,7 +36,11 @@ let defaultParallelizationWidth: Int = {
      environmentValue > 0 {
     return environmentValue
   }
+#if !hasFeature(Embedded)
   return .max
+#else
+  return 1
+#endif
 }()
 
 /// A type whose instances can run a series of work items in strict order.

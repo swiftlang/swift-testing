@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if !SWT_NO_ABI_JSON_SCHEMA
+#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
 @Suite struct `ABI.EncodedTest Tests` {
   let fixture = ABI.EncodedTest<ABI.CurrentVersion>(
     kind: .function,

@@ -244,7 +244,7 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
       ""
     } else {
       ": " + comments.lazy
-        .map(\.rawValue)
+        .map { $0.rawValue }
         .joined(separator: "\n")
     }
     return "\(kind) (\(severity))\(joinedComments)"
@@ -255,7 +255,7 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
       ""
     } else {
       ": " + comments.lazy
-        .map(\.rawValue)
+        .map { $0.rawValue }
         .joined(separator: "\n")
     }
     return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "") (\(severity))\(joinedComments)"
@@ -593,7 +593,7 @@ extension Issue.Snapshot: CustomStringConvertible, CustomDebugStringConvertible 
       ""
     } else {
       ": " + comments.lazy
-        .map(\.rawValue)
+        .map { $0.rawValue }
         .joined(separator: "\n")
     }
     return "\(kind) (\(severity))\(joinedComments)"
@@ -604,7 +604,7 @@ extension Issue.Snapshot: CustomStringConvertible, CustomDebugStringConvertible 
       ""
     } else {
       ": " + comments.lazy
-        .map(\.rawValue)
+        .map { $0.rawValue }
         .joined(separator: "\n")
     }
     return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "") (\(severity))\(joinedComments)"

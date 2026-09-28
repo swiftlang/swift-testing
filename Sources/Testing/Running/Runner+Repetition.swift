@@ -111,7 +111,8 @@ extension Runner {
   ///   - testIssueRecorder: The recorder to notify of any recorded issues.
   mutating func configureIssueRecordingEventHandling(testIssueRecorder: TestIssueRecorder<Void>) {
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-      if case .issueRecorded = event.kind, let testID = event.testID, let testCaseID = event.testCaseID {
+      if case let .issueRecorded(issue) = event.kind, issue.isFailure,
+         let testID = event.testID, let testCaseID = event.testCaseID {
         testIssueRecorder.recordIssue(for: testID, testCase: testCaseID)
       }
 

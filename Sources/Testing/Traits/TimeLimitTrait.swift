@@ -208,7 +208,7 @@ extension Test {
   public var timeLimit: Duration? {
     traits.lazy
       .compactMap { $0 as? TimeLimitTrait }
-      .map(\.timeLimit)
+      .map { $0.timeLimit }
       .min()
   }
 

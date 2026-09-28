@@ -52,6 +52,7 @@ public struct Configuration: Sendable {
   @_spi(Experimental)
   public var maximumParallelizationWidth: Int = defaultParallelizationWidth
 
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
   /// How to symbolicate backtraces captured during a test run.
   ///
   /// If the value of this property is not `nil`, symbolication will be
@@ -61,6 +62,7 @@ public struct Configuration: Sendable {
   /// Swift in-process. When handling a backtrace in Swift, use its
   /// ``Backtrace/symbolicate(_:)`` function to symbolicate it.
   public var backtraceSymbolicationMode: Backtrace.SymbolicationMode?
+#endif
 
   /// A type describing whether or not, and how, to iterate a test case
   /// repeatedly.
@@ -144,11 +146,22 @@ public struct Configuration: Sendable {
 
   // MARK: - Isolation context for synchronous tests
 
+  /// Storage for ``defaultSynchronousIsolationContext``.
+  private var _defaultSynchronousIsolationContext: (any Actor)? = nil
+
   /// The isolation context to use for synchronous test functions.
   ///
   /// If the value of this property is `nil`, synchronous test functions run in
   /// an unspecified isolation context.
-  public var defaultSynchronousIsolationContext: (any Actor)? = nil
+  @_unavailableInEmbedded
+  public var defaultSynchronousIsolationContext: (any Actor)? {
+    get {
+      _defaultSynchronousIsolationContext
+    }
+    set {
+      _defaultSynchronousIsolationContext = newValue
+    }
+  }
 
   // MARK: - Time limits
 
@@ -349,35 +362,5 @@ public struct Configuration: Sendable {
     ///   somewhat larger than it otherwise would be in an attempt to make the
     ///   defaults useful for real-world tests.
     public var maximumChildDepth: Int = 10
-  }
-}
-
-// MARK: - Deprecated
-
-extension Configuration {
-#if !SWT_NO_GLOBAL_ACTORS
-  @available(*, deprecated, message: "Set defaultSynchronousIsolationContext instead.")
-  public var isMainActorIsolationEnforced: Bool {
-    get {
-      defaultSynchronousIsolationContext === MainActor.shared
-    }
-    set {
-      if newValue {
-        defaultSynchronousIsolationContext = MainActor.shared
-      } else {
-        defaultSynchronousIsolationContext = nil
-      }
-    }
-  }
-#endif
-
-  @available(*, deprecated, message: "Set eventHandlingOptions.isExpectationCheckedEventEnabled instead.")
-  public var deliverExpectationCheckedEvents: Bool {
-    get {
-      eventHandlingOptions.isExpectationCheckedEventEnabled
-    }
-    set {
-      eventHandlingOptions.isExpectationCheckedEventEnabled = newValue
-    }
   }
 }

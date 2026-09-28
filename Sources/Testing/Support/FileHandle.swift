@@ -497,6 +497,13 @@ extension FileHandle {
 
     try withLock {
       try withUnsafeCFILEHandle { file in
+        // We're already holding the file's lock, so avoid locking for each
+        // byte we read if the platform supports it.
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+        let fgetc = getc_unlocked
+#elseif os(Windows)
+        let fgetc = _fgetc_nolock
+#endif
         while terminator == nil, let byteRead = UInt8(exactly: fgetc(file)) {
           if try isTerminator(byteRead) {
             terminator = byteRead
@@ -579,6 +586,30 @@ extension FileHandle {
     }
   }
 
+  /// Write a single byte to this file handle.
+  ///
+  /// - Parameters:
+  ///   - byte: The byte to write.
+  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
+  ///     after writing. If `true`, `fflush()` is called even if an error
+  ///     occurred while writing.
+  ///
+  /// - Throws: Any error that occurred while writing `bytes`. If an error
+  ///   occurs while flushing the file, it is not thrown.
+  func write(_ byte: UInt8, flushAfterward: Bool = true) throws {
+    try withUnsafeCFILEHandle { file in
+      defer {
+        if flushAfterward {
+          _ = fflush(file)
+        }
+      }
+
+      if EOF == fputc(CInt(byte), file) {
+        throw CError(rawValue: swt_errno())
+      }
+    }
+  }
+
   /// Write a string to this file handle.
   ///
   /// - Parameters:
@@ -590,8 +621,7 @@ extension FileHandle {
   /// - Throws: Any error that occurred while writing `string`. If an error
   ///   occurs while flushing the file, it is not thrown.
   ///
-  /// `string` is converted to a UTF-8 C string (UTF-16 on Windows) and written
-  /// to this file handle.
+  /// `string` is converted to a UTF-8 C string and written to this file handle.
   func write(_ string: String, flushAfterward: Bool = true) throws {
     try withUnsafeCFILEHandle { file in
       defer {
@@ -600,10 +630,9 @@ extension FileHandle {
         }
       }
 
-      try string.withCString { string in
-        if EOF == fputs(string, file) {
-          throw CError(rawValue: swt_errno())
-        }
+      var string = string
+      try string.withUTF8 { string in
+        try write(string, flushAfterward: flushAfterward)
       }
     }
   }

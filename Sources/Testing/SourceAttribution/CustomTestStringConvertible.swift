@@ -80,7 +80,7 @@ extension String {
   }
 
   public init(describingForTest value: borrowing some CustomStringConvertible) {
-    self.init(describing: value)
+    self = value.description
   }
 
   public init(describingForTest value: borrowing some CustomDebugStringConvertible & CustomTestStringConvertible) {
@@ -88,7 +88,7 @@ extension String {
   }
 
   public init(describingForTest value: borrowing some CustomDebugStringConvertible) {
-    self = value.debugDescription // FIXME: use init(reflecting:) in Embedded Swift
+    self = value.debugDescription
   }
 
   public init(describingForTest value: borrowing some CustomStringConvertible & CustomDebugStringConvertible & CustomTestStringConvertible) {
@@ -96,7 +96,7 @@ extension String {
   }
 
   public init(describingForTest value: borrowing some CustomStringConvertible & CustomDebugStringConvertible) {
-    self.init(describing: value)
+    self = value.description
   }
 
   @_disfavoredOverload

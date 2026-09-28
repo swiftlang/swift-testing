@@ -9,7 +9,7 @@
 //
 
 #if !SWT_NO_ABI_JSON_SCHEMA
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 private import struct Foundation.Data
 private import struct Foundation.URL
 #endif
@@ -46,8 +46,9 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.EncodedAttachment: Codable {
   private enum CodingKeys: String, CodingKey {
     case path
@@ -57,64 +58,7 @@ extension ABI.EncodedAttachment: Codable {
   }
 
   public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-
-    func encodeBytes(_ bytes: UnsafeRawBufferPointer) throws {
-#if canImport(Foundation)
-      // If possible, encode this structure as Base64 data.
-      let data = Data(bytesNoCopy: .init(mutating: bytes.baseAddress!), count: bytes.count, deallocator: .none)
-      try container.encode(data.base64EncodedString(), forKey: .bytes)
-#else
-      // Otherwise, it's an array of integers.
-      try container.encode(Array(bytes), forKey: .bytes)
-#endif
-    }
-
-    switch kind {
-    case let .serialized(path, bytes):
-      if let path {
-        try container.encode(path, forKey: .path)
-      }
-      if V.versionNumber >= ABI.v6_5.versionNumber, let bytes {
-        try bytes.withUnsafeBytes(encodeBytes)
-      }
-    case let .unserialized(attachment):
-      if let path = attachment.fileSystemPath {
-        // If the attachment has already been saved to disk, don't bother trying
-        // to serialize it a second time and just rely on the path. The
-        // assumption here is that, if the caller passed --attachments-path,
-        // they have access to that path and the files in it.
-        try container.encode(path, forKey: .path)
-      } else if V.versionNumber >= ABI.v6_5.versionNumber {
-        var errorWhileEncoding: (any Error)?
-        do {
-          try attachment.withUnsafeBytes { bytes in
-            do {
-              try encodeBytes(bytes)
-            } catch {
-              // An error occurred during encoding rather than coming from the
-              // attachment itself. Preserve it and throw it before returning.
-              errorWhileEncoding = error
-            }
-          }
-        } catch {
-          // An error occurred while serializing the attachment. Encode it
-          // separately for recovery on the calling side.
-          let error = ABI.EncodedError<V>(encoding: error)
-          try container.encode(error, forKey: .error)
-        }
-        if let errorWhileEncoding {
-          throw errorWhileEncoding
-        }
-      }
-    case let .error(error):
-      if V.versionNumber >= ABI.v6_5.versionNumber {
-        try container.encode(error, forKey: .error)
-      }
-    }
-    if V.versionNumber >= ABI.v6_5.versionNumber {
-      try container.encodeIfPresent(preferredName, forKey: .preferredName)
-    }
+    try encoder.encodeJSONEncodableValue(self)
   }
 
   public init(from decoder: any Decoder) throws {
@@ -125,10 +69,9 @@ extension ABI.EncodedAttachment: Codable {
 
       var bytes: [UInt8]?
       if V.versionNumber >= ABI.v6_5.versionNumber {
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
         // If possible, decode a whole Foundation Data object.
-        if bytes == nil,
-           let data = try? container.decodeIfPresent(Data.self, forKey: .bytes) {
+        if let data = try? container.decodeIfPresent(Data.self, forKey: .bytes) {
           bytes = [UInt8](data)
         }
 #endif
@@ -152,6 +95,68 @@ extension ABI.EncodedAttachment: Codable {
     if V.versionNumber >= ABI.v6_5.versionNumber {
       preferredName = try container.decodeIfPresent(String.self, forKey: .preferredName)
     }
+  }
+}
+#endif
+
+extension ABI.EncodedAttachment: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+#if false
+    switch kind {
+    }
+    if V.versionNumber >= ABI.v6_5.versionNumber {
+      try container.encodeIfPresent(preferredName, forKey: .preferredName)
+    }
+#endif
+    lazy var encodeBytes = { [context = copy context] (_ bytes: UnsafeRawBufferPointer) in
+#if !SWT_NO_FOUNDATION
+      // If possible, encode this structure as Base64 data.
+      let data = if let baseAddress = bytes.baseAddress {
+        Data(bytesNoCopy: .init(mutating: baseAddress), count: bytes.count, deallocator: .none)
+      } else {
+        Data()
+      }
+      result["bytes"] = data.base64EncodedString().jsonValue(in: context)
+#else
+      // Otherwise, it's an array of integers.
+      result["bytes"] = Array(bytes).jsonValue(in: context)
+#endif
+    }
+
+    switch kind {
+    case let .serialized(path, bytes):
+      if let path {
+        result["path"] = path.jsonValue(in: context)
+      }
+      if V.versionNumber >= ABI.v6_5.versionNumber, let bytes {
+        bytes.withUnsafeBytes(encodeBytes)
+      }
+    case let .unserialized(attachment):
+      if let path = attachment.fileSystemPath {
+        result["path"] = path.jsonValue(in: context)
+      }
+      if V.versionNumber >= ABI.v6_5.versionNumber {
+        do {
+          try attachment.withUnsafeBytes(encodeBytes)
+        } catch {
+          // An error occurred while serializing the attachment. Encode it
+          // separately for recovery on the calling side.
+          let error = ABI.EncodedError<V>(encoding: error)
+          result["error"] = error.jsonValue(in: context)
+        }
+      }
+    case let .error(error):
+      if V.versionNumber >= ABI.v6_5.versionNumber {
+        result["error"] = error.jsonValue(in: context)
+      }
+    }
+    if V.versionNumber >= ABI.v6_5.versionNumber, let preferredName {
+      result["preferredName"] = preferredName.jsonValue(in: context)
+    }
+
+    return .object(result)
   }
 }
 
@@ -182,7 +187,7 @@ extension ABI.EncodedAttachment: Attachable {
 
 #if !SWT_NO_FILE_IO
       if let path {
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
         // Leverage Foundation's file-mapping logic since we're using Data anyway.
         let url = URL(fileURLWithPath: path, isDirectory: false)
         let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])
@@ -264,7 +269,7 @@ extension Attachment where AttachableValue == AnyAttachable {
       return nil
     }
     self.init(decoding: attachment)
-    if let sourceLocation = event.sourceLocation.flatMap(SourceLocation.init(decoding:)) {
+    if let sourceLocation = event._sourceLocation.flatMap(SourceLocation.init(decoding:)) {
       self.sourceLocation = sourceLocation
     }
   }

@@ -8,10 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 @_spi(ForToolsIntegrationOnly) public import Testing
 public import Foundation
 
+#if !hasFeature(Embedded)
 // As with Encodable, implement the protocol requirements for
 // NSSecureCoding-conformant classes by default. The implementation uses
 // NSKeyedArchiver for encoding.
@@ -61,4 +62,5 @@ extension Attachable where Self: NSSecureCoding {
     return try attachment.withUnsafeBytes(body)
   }
 }
+#endif
 #endif

@@ -12,6 +12,7 @@
 
 @Suite("Test.Case Tests")
 struct Test_CaseTests {
+#if !SWT_NO_CODABLE
   @Test func nonParameterized() throws {
     let testCase = Test.Case(body: {})
     #expect(testCase.id.argumentIDs == nil)
@@ -39,7 +40,6 @@ struct Test_CaseTests {
     #expect(testCase.id.isStable)
   }
 
-#if !SWT_NO_CODABLE
   @Test("Two arguments: one non-stable, followed by one stable")
   func nonStableAndStableArgument() throws {
     let testCase = Test.Case(

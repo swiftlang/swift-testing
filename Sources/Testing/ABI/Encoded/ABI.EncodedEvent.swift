@@ -176,7 +176,11 @@ extension ABI {
     /// the known issue matcher. In such cases, the secondary source location(s)
     /// are represented via a distinct property depending on the kind of that
     /// event.
-    var sourceLocation: EncodedSourceLocation<V>?
+    ///
+    /// - Warning: Source locations at this level of the JSON schema are not yet
+    ///   part of said JSON schema.
+    @_spi(Experimental)
+    public var _sourceLocation: EncodedSourceLocation<V>?
 
     init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message] = []) {
       guard let encodedKind = Kind(encoding: event.kind, in: eventContext) else {
@@ -201,31 +205,19 @@ extension ABI {
         iteration = eventContext.iteration
       }
 
-      // Fields introduced in 6.5
-      if V.versionNumber >= ABI.v6_5.versionNumber {
-        switch event.kind {
-        case let .issueRecorded(recordedIssue):
-          sourceLocation = recordedIssue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
-        case let .valueAttached(attachment):
-          sourceLocation = EncodedSourceLocation<V>(encoding: attachment.sourceLocation)
-        case let .testCaseCancelled(skipInfo),
-          let .testSkipped(skipInfo),
-          let .testCancelled(skipInfo):
-          sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
-        default:
-          break
-        }
-      }
-
       // Experimental fields
       if V.includesExperimentalFields {
         switch event.kind {
         case let .issueRecorded(recordedIssue):
-          _comments = recordedIssue.comments.map(\.rawValue)
+          _comments = recordedIssue.comments.map { $0.rawValue }
+          _sourceLocation = recordedIssue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
+        case let .valueAttached(attachment):
+          _sourceLocation = EncodedSourceLocation<V>(encoding: attachment.sourceLocation)
         case let .testCaseCancelled(skipInfo),
           let .testSkipped(skipInfo),
           let .testCancelled(skipInfo):
-          _comments = Array(skipInfo.comment).map(\.rawValue)
+          _comments = Array(skipInfo.comment).map { $0.rawValue }
+          _sourceLocation = skipInfo.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
         default:
           break
         }
@@ -238,8 +230,9 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.EncodedEvent: Codable {
   /// The keys used to encode ``ABI/EncodedEvent``.
   private enum _CodingKeys: String, CodingKey {
@@ -252,23 +245,11 @@ extension ABI.EncodedEvent: Codable {
     case iteration
     case testCase = "_testCase"
     case comments = "_comments"
-    case sourceLocation
+    case sourceLocation = "_sourceLocation"
   }
 
   public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: _CodingKeys.self)
-    try container.encode(kind, forKey: .kind)
-    try container.encode(instant, forKey: .instant)
-    try container.encodeIfPresent(issue, forKey: .issue)
-    try container.encodeIfPresent(attachment, forKey: .attachment)
-    if V.alwaysEncodeMessagesField || !messages.isEmpty {
-      try container.encode(messages, forKey: .messages)
-    }
-    try container.encodeIfPresent(testID, forKey: .testID)
-    try container.encodeIfPresent(iteration, forKey: .iteration)
-    try container.encodeIfPresent(_testCase, forKey: .testCase)
-    try container.encodeIfPresent(_comments, forKey: .comments)
-    try container.encodeIfPresent(sourceLocation, forKey: .sourceLocation)
+    try encoder.encodeJSONEncodableValue(self)
   }
 
   public init(from decoder: any Decoder) throws {
@@ -286,10 +267,39 @@ extension ABI.EncodedEvent: Codable {
     iteration = try container.decodeIfPresent(Int.self, forKey: .iteration)
     _testCase = try container.decodeIfPresent(ABI.EncodedTestCase<V>.self, forKey: .testCase)
     _comments = try container.decodeIfPresent([String].self, forKey: .comments)
-    sourceLocation = try container.decodeIfPresent(ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
+    _sourceLocation = try container.decodeIfPresent(ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
   }
 }
-extension ABI.EncodedEvent.Kind: Codable {}
+
+extension ABI.EncodedEvent.Kind: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
+#endif
+
+extension ABI.EncodedEvent: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["kind"] = kind.rawValue.jsonValue(in: context)
+    result["instant"] = instant.jsonValue(in: context)
+    result["issue"] = issue?.jsonValue(in: context)
+    result["attachment"] = attachment?.jsonValue(in: context)
+    if V.alwaysEncodeMessagesField || !messages.isEmpty {
+      result["messages"] = messages.jsonValue(in: context)
+    }
+    result["testID"] = testID?.stringValue.jsonValue(in: context)
+    result["iteration"] = iteration?.jsonValue(in: context)
+    result["_testCase"] = _testCase?.jsonValue(in: context)
+    result["_comments"] = _comments?.jsonValue(in: context)
+    result["_sourceLocation"] = _sourceLocation?.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
+
+extension ABI.EncodedEvent.Kind: JSON.Encodable {}
 
 // MARK: - Conversion to/from library types
 

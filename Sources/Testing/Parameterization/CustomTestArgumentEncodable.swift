@@ -45,6 +45,7 @@ public protocol CustomTestArgumentEncodable: Sendable {
 }
 #endif
 
+#if !hasFeature(Embedded)
 extension Test.Case.Argument.ID {
   /// Initialize an ID instance with the specified test argument value.
   ///
@@ -113,7 +114,7 @@ extension Test.Case.Argument.ID {
     if let argumentID = argumentIDs.first, argumentIDs.count == 1 {
       self = argumentID
     } else {
-      self.init(bytes: SHA256.hash(argumentIDs.flatMap(\.bytes)))
+      self.init(bytes: SHA256.hash(argumentIDs.flatMap { $0.bytes }))
     }
   }
 }
@@ -175,4 +176,5 @@ extension Encoder {
     userInfo[._testParameterUserInfoKey] as? Test.Parameter
   }
 }
+#endif
 #endif

@@ -160,13 +160,13 @@ public struct Test: Sendable {
     /// - Parameters:
     ///   - function: The function to call to evaluate the test's cases. The
     ///     result is a sequence of test cases.
-    case unevaluated(_ function: @Sendable () async throws -> any Sequence<Test.Case> & Sendable)
+    case unevaluated(_ function: @Sendable () async throws -> AnySendableSequence<Test.Case>)
 
     /// The test's cases have been evaluated.
     ///
     /// - Parameters:
     ///   - testCases: The test's cases.
-    case evaluated(_ testCases: any Sequence<Test.Case> & Sendable)
+    case evaluated(_ testCases: AnySendableSequence<Test.Case>)
 
     /// An error was thrown when the testing library attempted to evaluate the
     /// test's cases.
@@ -207,9 +207,13 @@ public struct Test: Sendable {
         // error (because the test cannot be run.) If an error was thrown, a
         // `Runner.Plan` is expected to record issue for the test, rather than
         // attempt to run it, and thus never access this property.
+#if !hasFeature(Embedded)
         preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage(context: String(reflecting: testCasesState)))")
+#else
+        preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage)")
+#endif
       }
-      return AnySequence(testCases)
+      return testCases
     }
   }
 
@@ -224,7 +228,7 @@ public struct Test: Sendable {
   var uncheckedTestCases: (some Sequence<Test.Case>)? {
     testCasesState.flatMap { testCasesState in
       if case let .evaluated(testCases) = testCasesState {
-        return AnySequence(testCases)
+        return testCases
       }
       return nil
     }
@@ -352,7 +356,7 @@ public struct Test: Sendable {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCasesState: .unevaluated { try await testCases() },
+      testCasesState: .unevaluated { try await AnySendableSequence(testCases()) },
       parameters: parameters,
       isSynthesized: false
     )
@@ -377,7 +381,7 @@ public struct Test: Sendable {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCasesState: .evaluated(testCases),
+      testCasesState: .evaluated(AnySendableSequence(testCases)),
       parameters: parameters,
       isSynthesized: false
     )

@@ -94,7 +94,11 @@ extension ABI {
           _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
         }
         _error = if let error = issue.error {
+#if !hasFeature(Embedded)
           EncodedError(encoding: error)
+#else
+          EncodedError(encoding: error as any Error)
+#endif
         } else {
           switch issue.kind {
           case .apiMisused:
@@ -113,10 +117,40 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
-extension ABI.EncodedIssue: Codable {}
-extension ABI.EncodedIssue.Severity: Codable {}
+#if !SWT_NO_CODABLE
+extension ABI.EncodedIssue: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
+
+extension ABI.EncodedIssue.Severity: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
+  }
+}
+#endif
+
+extension ABI.EncodedIssue: JSON.Encodable {
+  public func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["severity"] = severity?.rawValue.jsonValue(in: context)
+    result["isFailure"] = isFailure?.jsonValue(in: context)
+    result["isKnown"] = isKnown.jsonValue(in: context)
+    result["_knownIssueComment"] = _knownIssueComment?.jsonValue(in: context)
+    result["sourceLocation"] = sourceLocation?.jsonValue(in: context)
+    result["_backtrace"] = _backtrace?.jsonValue(in: context)
+    result["_error"] = _error?.jsonValue(in: context)
+    result["_expression"] = _expression?.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
+
+extension ABI.EncodedIssue.Severity: JSON.Encodable {}
 
 // MARK: - Conversion to/from library types
 
@@ -137,7 +171,7 @@ extension Issue {
       self.comments += comments.map(Comment.init(rawValue:))
     }
     if sourceLocation == nil {
-      sourceLocation = event.sourceLocation.flatMap(SourceLocation.init)
+      sourceLocation = event._sourceLocation.flatMap(SourceLocation.init)
     }
   }
 
@@ -179,10 +213,13 @@ extension Issue {
       // Prior to 6.3, all Issues are errors
         .error
     }
-    let sourceContext = SourceContext(
-      backtrace: issue._backtrace.map { Backtrace(addresses: $0.symbolicatedAddresses.map(\.address)) },
-      sourceLocation: issue.sourceLocation.flatMap(SourceLocation.init)
-    )
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
+    let backtrace = issue._backtrace.map { Backtrace(addresses: $0.symbolicatedAddresses.map { $0.address }) }
+#else
+    let backtrace = issue._backtrace.map { Backtrace(addresses: $0.addresses) }
+#endif
+    let sourceLocation = issue.sourceLocation.flatMap(SourceLocation.init)
+    let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
     self.init(
       kind: issueKind,
       severity: severity,
