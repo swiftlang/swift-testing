@@ -215,7 +215,6 @@ sufficient information to display the event in a human-readable format.
   ["testID": <test-id>,]
   ["iteration": <number>,] ; the iteration number (if the event is recorded
                            ; during test execution)
-  ["sourceLocation": <source-location>,] ; where the event occurred, if known
 }
 
 <event-kind> ::= "runStarted" | "testStarted" | "testCaseStarted" |
