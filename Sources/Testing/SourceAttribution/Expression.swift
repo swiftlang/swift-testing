@@ -383,7 +383,16 @@ public struct __Expression: Sendable {
 
   func capturingRuntimeValues(_ error: (any Error)?) -> Self {
     var result = self
-    result._captureRuntimeValue(String(describingForTest: error))
+    if let error {
+      // Helper structure to turn `any Error` into a stringifiable value.
+      struct _ErrorBox: CustomTestStringConvertible {
+        var error: any Error
+        var testDescription: String {
+          String(describingForTest: error)
+        }
+      }
+      result._captureRuntimeValue(_ErrorBox(error: error))
+    }
     return result
   }
 
