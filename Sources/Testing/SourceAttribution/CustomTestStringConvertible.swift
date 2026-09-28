@@ -112,7 +112,7 @@ extension String {
     self = "<unknown type>"
   }
 
-  init(describingForTest value: any Error) {
+  init(describingForTest error: any Error) {
     let domain = error._domain
     if domain == "(unknown domain in Embedded Swift)" { // TODO: avoid hard-coding
       self = "unknown error \(error._code)"
