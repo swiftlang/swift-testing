@@ -103,13 +103,6 @@ extension ABI.EncodedAttachment: JSON.Encodable {
   func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     var result = [String: JSON.Value]()
 
-#if false
-    switch kind {
-    }
-    if V.versionNumber >= ABI.v6_5.versionNumber {
-      try container.encodeIfPresent(preferredName, forKey: .preferredName)
-    }
-#endif
     lazy var encodeBytes = { [context = copy context] (_ bytes: UnsafeRawBufferPointer) in
 #if !SWT_NO_FOUNDATION
       // If possible, encode this structure as Base64 data.

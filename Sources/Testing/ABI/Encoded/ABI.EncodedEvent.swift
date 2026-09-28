@@ -201,6 +201,7 @@ extension ABI {
       testID = event.testID.map(EncodedTest.ID.init)
 
       // Fields introduced in 6.4
+
       if V.versionNumber >= ABI.v6_4.versionNumber {
         iteration = eventContext.iteration
       }
