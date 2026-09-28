@@ -80,7 +80,7 @@ public func swift_testing_embeddedMain(
   }
 #endif
 
-  _ = Task.immediate {
+  _ = Task {
     let exitCode = await entryPoint(passing: nil, eventHandler: nil)
     exit(exitCode)
   }
