@@ -115,9 +115,10 @@ extension String {
   init(describingForTest value: any Error) {
     let domain = error._domain
     if domain == "(unknown domain in Embedded Swift)" { // TODO: avoid hard-coding
-      return "unknown error \(error._code)"
+      self = "unknown error \(error._code)"
+    } else {
+      self = "error \(error._code) in domain '\(domain)'"
     }
-    return "error \(error._code) in domain '\(domain)'"
   }
 #endif
 }
