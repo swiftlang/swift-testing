@@ -55,52 +55,64 @@ extension ABI {
         /// For parameterized tests, this is what clients expect; the test
         /// itself has a distinct start/end from all the cases.
         ///
-        /// For non-parameterized tests, however, clients don't need a redundant
-        /// `testCaseStarted`/`testCaseEnded` for a single case, so we elide it.
+        /// For non-parameterized tests that are being reiterated, we treat
+        /// iterations in the encoded event stream as equivalent to test cases,
+        /// making the test _de facto_ parameterized over `iteration`.
         ///
-        /// However, we don't know which `iteration` we're on until we've
-        /// started running test cases, and subsequent iterations will post
-        /// additional `testCaseStarted`/`testCaseEnded` events.
+        /// For non-parameterized tests with a single iteration, however,
+        /// clients don't need a redundant `testCaseStarted`/`testCaseEnded` for
+        /// a single case, so we elide it.
         ///
-        /// To provide a coherent façade to our clients:
-        /// - For non-parameterized tests, elide the outer
-        ///   `testStarted`/`testEnded` events, and replace `testCaseStarted`/
-        ///   `testCaseEnded` with `testStarted`/`testEnded`.
-        /// - For parameterized tests, emit all events.
-        var isNonParameterizedTestFunction = false
-        if let test = eventContext.test, !test.isSuite {
-          isNonParameterizedTestFunction = !test.isParameterized
+        /// - Note: When we formalize the JSON schema for test case IDs, we'll
+        ///   likely want to salt them with the iteration number so that we can
+        ///   distinguish different iterations in the event stream consumer.
+        let emitTestCaseEvents = if let test = eventContext.test, !test.isSuite {
+          if test.isParameterized {
+            // A parameterized test, so it has test cases naturally.
+            true
+          } else if eventContext.iteration != nil {
+            // A non-parameterized test that is being iterated. Each iteration
+            // represents a de facto test case for this test.
+            true
+          } else {
+            // A non-parameterized test that isn't going to be repeated; don't
+            // bother to emit test case events.
+            false
+          }
+        } else {
+          // There isn't a test function, so test case events don't apply.
+          false
         }
 
         switch kind {
         case .runStarted:
           self = .runStarted
         case .testStarted:
-          if isNonParameterizedTestFunction {
-            return nil
-          }
           self = .testStarted
         case .testCaseStarted:
-          self = isNonParameterizedTestFunction ? .testStarted : .testCaseStarted
+          guard emitTestCaseEvents else {
+            return nil
+          }
+          self = .testCaseStarted
         case .issueRecorded:
           self = .issueRecorded
         case .valueAttached:
           self = .valueAttached
         case .testCaseEnded:
-          self = isNonParameterizedTestFunction ? .testEnded : .testCaseEnded
-        case .testCaseCancelled:
-          self = isNonParameterizedTestFunction ? .testCancelled : .testCaseCancelled
-        case .testEnded:
-          if isNonParameterizedTestFunction {
+          guard emitTestCaseEvents else {
             return nil
           }
+          self = .testCaseEnded
+        case .testCaseCancelled:
+          guard emitTestCaseEvents else {
+            return nil
+          }
+          self = .testCaseCancelled
+        case .testEnded:
           self = .testEnded
         case .testSkipped:
           self = .testSkipped
         case .testCancelled:
-          if isNonParameterizedTestFunction {
-            return nil
-          }
           self = .testCancelled
         case .runEnded:
           self = .runEnded
