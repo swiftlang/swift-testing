@@ -59,7 +59,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
     configuration.verbosity = args.verbosity
 
     // Configure the event recorder to write events to stderr.
-    let consoleOutputEnabled = Atomic(true)
+    let consoleOutputEnabled = Allocated(Atomic(true))
     if configuration.verbosity > .min {
       // Check for experimental console output flag
       let useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
@@ -74,7 +74,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
         }
 
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
+          if consoleOutputEnabled.value.load(ordering: .sequentiallyConsistent) {
             eventRecorder.record(event, in: context)
           }
           oldEventHandler(event, context)
@@ -88,7 +88,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
           writeToConsole(string)
         }
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
+          if consoleOutputEnabled.value.load(ordering: .sequentiallyConsistent) {
             eventRecorder.record(event, in: context)
           }
           oldEventHandler(event, context)
@@ -137,7 +137,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
         // console in this case. Note that if something is consuming the event
         // stream, we still want to generate .runStarted etc., so we still call
         // runner.run() for that purpose.
-        consoleOutputEnabled.store(false, ordering: .sequentiallyConsistent)
+        consoleOutputEnabled.value.store(false, ordering: .sequentiallyConsistent)
       }
       await runner.run()
     }
