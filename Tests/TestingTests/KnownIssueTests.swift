@@ -291,6 +291,51 @@ final class KnownIssueTests: XCTestCase {
     await fulfillment(of: [issueRecorded], timeout: 0.0)
   }
 
+  func testNestedKnownIssueThatMatches() async {
+    let reportedIssues = await runTestAndRecordIssues {
+      withKnownIssue("parent") {
+        withKnownIssue("child") {
+          Issue.record("the recorded issue")
+        }
+      }
+    }
+
+    XCTExpectFailure("Will be fixed later in this PR") {
+      XCTAssertEqual(reportedIssues.count, 1)
+    }
+    // Issue is reported by the parent context as a known issue.
+    XCTAssert(
+      reportedIssues.contains {
+        guard case Issue.Kind.unconditional = $0.kind else {
+          return false
+        }
+        return $0.knownIssueContext?.comment == "child" &&
+        $0.comments == ["the recorded issue"] &&
+        $0.isKnown == true &&
+        $0.isFailure == false
+      }
+    )
+    // "context" does not report a `knownIssueNotRecorded` error, because the
+    // "parent" scope matches it.
+    XCTAssert(
+      reportedIssues.contains {
+        guard case .knownIssueNotRecorded = $0.kind else { return false }
+        return $0.knownIssueContext == nil &&
+        $0.comments == ["child"]
+      } == false
+    )
+    XCTExpectFailure("Will be fixed later in this PR") {
+      XCTAssert(
+        reportedIssues.contains {
+          guard case .knownIssueNotRecorded = $0.kind else {
+            return false
+          }
+          return $0.knownIssueContext == nil && $0.comments == ["parent"]
+        } == false
+      )
+    }
+  }
+
   func testIssueIsKnownPropertyIsSetCorrectlyWithCustomIssueMatcher() async {
     struct MyError: Error {}
 
