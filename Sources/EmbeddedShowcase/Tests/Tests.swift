@@ -35,7 +35,9 @@ func isSmall(_ i: Int) {
 }
 
 @Test func willFail() {
-  #expect(123 == 456)
+  let sprocketCount = 123
+  let widgetCount = 456
+  #expect(sprocketCount == widgetCount, "Math, am I right?")
 
   struct MyError: Error {}
   #expect(throws: Never.self) {
