@@ -44,8 +44,8 @@ extension ABI.Version {
     return { [humanReadableOutputRecorder] event, context in
       var messages: [Event.HumanReadableOutputRecorder.Message] = []
       if let humanReadableOutputRecorder {
-        var configuration = Configuration()
-        configuration.verbosity = 0
+        var configuration = Configuration.current ?? .init()
+        configuration.verbosity = max(configuration.verbosity, 0)
         messages = humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
       }
       if let record = ABI.Record<Self>(encoding: event, in: context, messages: messages) {
