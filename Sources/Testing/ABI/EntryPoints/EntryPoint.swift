@@ -487,6 +487,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   }
 
   // Parallelization (on by default)
+  if args.hasFlag(withLabel: "--parallel") == true {
+    result.parallel = true
+  }
   if args.hasFlag(withLabel: "--no-parallel") == true {
     result.parallel = false
   }
@@ -552,6 +555,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   var configuration = Configuration()
 
   // Parallelization (on by default)
+#if !hasFeature(Embedded)
   if let parallel = args.parallel {
     configuration.isParallelizationEnabled = parallel
   } else if let maximumParallelizationWidth = args.experimentalMaximumParallelizationWidth {
@@ -560,6 +564,13 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
     }
     configuration.maximumParallelizationWidth = maximumParallelizationWidth
   }
+#else
+  if args.parallel != nil {
+    throw _EntryPointError.featureUnavailable("'--parallel' and '--no-parallel' are not supported on this platform.")
+  } else if args.experimentalMaximumParallelizationWidth != nil {
+    throw _EntryPointError.featureUnavailable("'--experimental-maximum-parallelization-width' is not supported on this platform.")
+  }
+#endif
 
 #if !SWT_NO_BACKTRACE_SYMBOLICATION
   // Whether or not to symbolicate backtraces in the event stream.
