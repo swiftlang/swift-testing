@@ -98,6 +98,17 @@ public macro Suite(
 /// The use of the `@Suite` attribute is optional; types are recognized as test
 /// suites even if they do not have the `@Suite` attribute applied to them.
 ///
+/// > Tip:
+/// > Give a type a readable name that includes spaces and punctuation by
+/// > surrounding the type's name with backticks, instead of using `@Suite` to
+/// > change its display name:
+/// >
+/// > ```swift
+/// > struct `Delivery region tests` {
+/// >   // Add your tests.
+/// > }
+/// > ```
+///
 /// When adding test functions to a type extension, do not use the `@Suite`
 /// attribute. Only a type's primary declaration may have the `@Suite` attribute
 /// applied to it.
@@ -148,6 +159,13 @@ public macro Test(
 ///     this argument is `nil`, the display name of the test is derived from the
 ///     associated function's name.
 ///   - traits: Zero or more traits to apply to this test.
+///
+/// Surround a test's name with backticks as an alternative to setting the
+/// `displayName` parameter; for example:
+///
+/// ```swift
+/// @Test func `Food truck exists`() { ... }
+/// ```
 ///
 /// ## See Also
 ///
@@ -240,6 +258,13 @@ public macro Test<C>(
 /// that the associated test will run. During testing, the testing library calls
 /// the associated test function once for each element in `collection`.
 ///
+/// Surround a test's name with backticks as an alternative to setting the
+/// `displayName` parameter; for example:
+///
+/// ```swift
+/// @Test func `Food truck exists`() { ... }
+/// ```
+///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
 ///     ([103416861](rdar://103416861))
@@ -296,6 +321,13 @@ extension Test {
 /// testing library calls the associated test function once for each pair of
 /// elements in `collection1` and `collection2`.
 ///
+/// Surround a test's name with backticks as an alternative to setting the
+/// `displayName` parameter; for example:
+///
+/// ```swift
+/// @Test func `Food truck exists`() { ... }
+/// ```
+///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
 ///     ([103416861](rdar://103416861))
@@ -327,6 +359,13 @@ public macro Test<C1, C2>(
 /// testing library calls the associated test function once for each pair of
 /// elements in `collection1` and `collection2`.
 ///
+/// Surround a test's name with backticks as an alternative to setting the
+/// `displayName` parameter; for example:
+///
+/// ```swift
+/// @Test func `Food truck exists`() { ... }
+/// ```
+///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
 ///     ([103416861](rdar://103416861))
@@ -355,6 +394,13 @@ public macro Test<C1, C2>(
 /// determines that the associated test will run. During testing, the testing
 /// library calls the associated test function once for each element in
 /// `zippedCollections`.
+///
+/// Surround a test's name with backticks as an alternative to setting the
+/// `displayName` parameter; for example:
+///
+/// ```swift
+/// @Test func `Food truck exists`() { ... }
+/// ```
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
@@ -386,6 +432,13 @@ public macro Test<C1, C2>(
 /// determines that the associated test will run. During testing, the testing
 /// library calls the associated test function once for each element in
 /// `zippedCollections`.
+///
+/// Surround a test's name with backticks as an alternative to setting the
+/// `displayName` parameter; for example:
+///
+/// ```swift
+/// @Test func `Food truck exists`() { ... }
+/// ```
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
