@@ -80,8 +80,10 @@ extension Runner {
   /// per-test basis. If you find yourself wanting to modify a property of this
   /// type at runtime, it may be better-suited for ``Configuration`` instead.
   private struct _Context: Sendable {
+#if !hasFeature(Embedded)
     /// A serializer used to reduce parallelism among test cases.
     var testCaseSerializer: Serializer<Void>?
+#endif
 
     /// A set of test+case IDs that have recorded at least one issue during a
     /// test run. This is consumed by the per-test-case repetition machinery to
@@ -195,10 +197,14 @@ extension Runner {
           try await body(element)
         }
 
+#if !hasFeature(Embedded)
         // If not parallelizing, wait after each task.
         if !_configuration.isParallelizationEnabled {
           try await taskGroup.waitForAll()
         }
+#else
+        try await taskGroup.waitForAll()
+#endif
       }
     }
   }
@@ -358,7 +364,12 @@ extension Runner {
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
   private static func _runChildren(of stepGraph: Graph<String, Plan.Step?>, context: _Context) async throws {
-    let childGraphs = if _configuration.isParallelizationEnabled {
+#if !hasFeature(Embedded)
+    let isParallelizationEnabled = _configuration.isParallelizationEnabled
+#else
+    let isParallelizationEnabled = false
+#endif
+    let childGraphs = if Bool(isParallelizationEnabled) {
       // Explicitly shuffle the steps to help detect accidental dependencies
       // between tests due to their ordering.
       Array(stepGraph.children)
@@ -430,13 +441,14 @@ extension Runner {
     }
 
     await _forEach(in: testCases.enumerated(), namingTasksWith: taskNamer) { _, testCase in
+#if !hasFeature(Embedded)
       if let testCaseSerializer = context.testCaseSerializer {
         // Note that if .serialized is applied to an inner scope, we still use
         // this serializer (if set) so that we don't overcommit.
-        await testCaseSerializer.run { await _runTestCase(testCase, within: step, in: context) }
-      } else {
-        await _runTestCase(testCase, within: step, in: context)
+        return await testCaseSerializer.run { await _runTestCase(testCase, within: step, in: context) }
       }
+#endif
+      await _runTestCase(testCase, within: step, in: context)
     }
   }
 
@@ -483,7 +495,6 @@ extension Runner {
 #if !hasFeature(Embedded)
         // Exit early if the task has already been cancelled.
         try Task.checkCancellation()
-#endif
 
         try await withTimeLimit(for: step.test, configuration: configuration) {
           try await _applyScopingTraits(for: step.test, testCase: testCase) {
@@ -497,6 +508,11 @@ extension Runner {
           )
           issue.record(configuration: configuration)
         }
+#else
+        try await _applyScopingTraits(for: step.test, testCase: testCase) {
+          try await testCase.run(configuration: configuration)
+        }
+#endif
       }
     }
   }
@@ -529,10 +545,12 @@ extension Runner {
     let context: _Context = {
       var context = _Context()
 
+#if !hasFeature(Embedded)
       let maximumParallelizationWidth = runner.configuration.maximumParallelizationWidth
       if maximumParallelizationWidth > 1 && maximumParallelizationWidth < .max {
         context.testCaseSerializer = Serializer(maximumWidth: runner.configuration.maximumParallelizationWidth)
       }
+#endif
 
       return context
     }()
