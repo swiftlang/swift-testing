@@ -543,9 +543,11 @@ extension FileHandle {
         }
       }
 
-      let countWritten = fwrite(bytes.baseAddress!, MemoryLayout<UInt8>.stride, bytes.count, file)
-      if countWritten < bytes.count {
-        throw CError(rawValue: swt_errno())
+      if let baseAddress = bytes.baseAddress {
+        let countWritten = fwrite(baseAddress, MemoryLayout<UInt8>.stride, bytes.count, file)
+        if countWritten < bytes.count {
+          throw CError(rawValue: swt_errno())
+        }
       }
     }
   }

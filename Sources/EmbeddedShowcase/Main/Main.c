@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #else
-_Noreturn extern void swift_testing_embeddedMain(int argc, char *argv[], char *envp[]);
+#include "../../_TestingInternals/include/EmbeddedPlatform.h"
 #endif
 
 int main(
