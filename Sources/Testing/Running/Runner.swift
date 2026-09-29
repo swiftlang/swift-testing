@@ -466,7 +466,7 @@ extension Runner {
     within step: Plan.Step,
     in context: _Context,
   ) async {
-    await _applyRepetitionPolicy(_configuration.repetitionPolicy) {
+    await applyRepetitionPolicy(_configuration.repetitionPolicy) {
       await _runSingleTestCaseIteration(testCase, within: step)
     } didRecordIssue: {
       context.testIssueRecorder.consumeIssue(for: step.test.id, testCase: testCase.id)
