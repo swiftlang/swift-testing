@@ -30,7 +30,7 @@ struct EventIterationTests {
       var configuration = Configuration()
       configuration.eventHandler = { event, context in
         if eventKinds.contains(where: { Self.matchesTestLifetimeEventKind($0, event.kind) }) {
-          if let iteration = context.iteration {
+          if case let iteration = context.iteration ?? 1 {
             recordedIteration.store(iteration, ordering: .sequentiallyConsistent)
           }
           eventReceived()
@@ -73,7 +73,7 @@ struct EventIterationTests {
 
   @Test(arguments: [
     (Configuration.RepetitionPolicy.once, 1),
-    (.repeating(maximumIterationCount: 3), 3),
+    (Configuration.RepetitionPolicy.repeating(maximumIterationCount: 3), 3),
     (.repeating(.whileIssueRecorded, maximumIterationCount: 5), 3),
   ])
   func `event iteration is correct for different repetition policies`(
