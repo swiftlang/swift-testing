@@ -118,7 +118,7 @@ extension AttachmentSavingTrait: TestScoping {
     }
     let oldConfiguration = configuration
 
-    let context = Mutex(Context())
+    let context = Allocated(Mutex(Context()))
     configuration.eventHandler = { event, eventContext in
       var eventDeferred = false
       defer {
@@ -137,20 +137,20 @@ extension AttachmentSavingTrait: TestScoping {
       case .valueAttached:
         // Defer this event until the current test or test case ends.
         eventDeferred = true
-        context.withLock { context in
+        context.value.withLock { context in
           context.deferredEvents.append(event)
         }
 
       case let .issueRecorded(issue):
         if condition.inspectsIssues {
-          context.withLock { context in
+          context.value.withLock { context in
             if issue.isFailure {
               context.hasFailed = true
             }
             context.issues.append(issue)
           }
         } else if issue.isFailure {
-          context.withLock { context in
+          context.value.withLock { context in
             context.hasFailed = true
           }
         }
@@ -167,7 +167,7 @@ extension AttachmentSavingTrait: TestScoping {
     } catch {
       result = .failure(error)
     }
-    await _handleDeferredEvents(in: context.rawValue, for: test, testCase: testCase, configuration: oldConfiguration)
+    await _handleDeferredEvents(in: context.value.rawValue, for: test, testCase: testCase, configuration: oldConfiguration)
     return try result.get()
   }
 
