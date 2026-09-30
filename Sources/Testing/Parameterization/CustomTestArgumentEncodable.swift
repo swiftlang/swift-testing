@@ -45,7 +45,6 @@ public protocol CustomTestArgumentEncodable: Sendable {
 }
 #endif
 
-#if !hasFeature(Embedded)
 extension Test.Case.Argument.ID {
   /// Initialize an ID instance with the specified test argument value.
   ///
@@ -71,7 +70,7 @@ extension Test.Case.Argument.ID {
   /// ## See Also
   ///
   /// - ``CustomTestArgumentEncodable``
-  init?(identifying value: some Sendable, parameter: Test.Parameter) throws {
+  init?(identifying value: any Sendable, parameter: Test.Parameter) throws {
 #if !SWT_NO_CODABLE
     func customArgumentWrapper(for value: some CustomTestArgumentEncodable) -> some Encodable {
       CustomArgumentWrapper(rawValue: value)
@@ -176,5 +175,4 @@ extension Encoder {
     userInfo[._testParameterUserInfoKey] as? Test.Parameter
   }
 }
-#endif
 #endif
