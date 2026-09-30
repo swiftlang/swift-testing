@@ -116,6 +116,24 @@ public struct TypeInfo: Sendable {
     self.init(describing: T.self)
   }
 #endif
+
+  /// The `Any` type.
+  static var any: Self {
+#if !hasFeature(Embedded)
+    Self(describing: Any.self)
+#else
+    Self(fullyQualifiedNameComponents: ["Swift", "Any"])
+#endif
+  }
+
+  /// The `Bool` type.
+  static var bool: Self {
+#if !hasFeature(Embedded)
+    Self(describing: Bool.self)
+#else
+    Self(fullyQualifiedNameComponents: ["Swift", "Bool"])
+#endif
+  }
 }
 
 // MARK: - Name

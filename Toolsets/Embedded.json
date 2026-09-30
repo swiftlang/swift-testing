@@ -12,7 +12,7 @@
       "-lswift_Concurrency",
       "-lswiftUnicodeDataTables",
       "-lswiftEmbeddedPlatformPOSIX",
-      "-lswiftEmbeddedPlatformMultiThreadedPOSIX"
+      "-lswiftEmbeddedPlatformSingleThreaded"
     ]
   }
 }
