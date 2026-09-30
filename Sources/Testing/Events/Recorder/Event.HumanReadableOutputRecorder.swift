@@ -253,7 +253,6 @@ extension Test.Case {
           let typeInfo = TypeInfo(describingTypeOf: argument.value)
           return "\(labeledArgument) (\(typeInfo.fullyQualifiedName))"
         }
-
         return labeledArgument
       }
       .joined(separator: ", ")
