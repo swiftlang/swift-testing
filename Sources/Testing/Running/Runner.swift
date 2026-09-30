@@ -452,7 +452,7 @@ extension Runner {
     if _configuration.shouldUseLegacyPlanLevelRepetition {
       await _runSingleTestCaseIteration(testCase, within: step)
     } else {
-      await _applyRepetitionPolicy(_configuration.repetitionPolicy) {
+      await applyRepetitionPolicy(_configuration.repetitionPolicy) {
         await _runSingleTestCaseIteration(testCase, within: step)
       } didRecordIssue: {
         context.testIssueRecorder.consumeIssue(for: step.test.id, testCase: testCase.id)
@@ -552,7 +552,7 @@ extension Runner {
       }
 
       if runner.configuration.shouldUseLegacyPlanLevelRepetition {
-        await _applyRepetitionPolicy(runner.configuration.repetitionPolicy) { [runner] in
+        await applyRepetitionPolicy(runner.configuration.repetitionPolicy) { [runner] in
           context.testIssueRecorder.clear()
 
           let iteration = Test.currentIteration ?? 1
