@@ -53,22 +53,14 @@ extension Test {
         init(bytes: some Sequence<UInt8>) {
           self.bytes = Array(bytes)
         }
-
-        init(describing value: some CustomTestStringConvertible) {
-          self.init(bytes: String(describingForTest: value).utf8)
-        }
-
-        init(describing value: Any) {
-#if !hasFeature(Embedded)
-          self.init(bytes: String(describingForTest: value).utf8)
-#else
-          self.init(bytes: [])
-#endif
-        }
       }
 
       /// The value of this parameterized test argument.
       public var value: any Sendable
+
+#if hasFeature(Embedded)
+      public private(set) var testDescription: String
+#endif
 
       /// The ID of this parameterized test argument.
       ///
@@ -84,9 +76,12 @@ extension Test {
       /// The parameter of the test function to which this argument was passed.
       public var parameter: Parameter
 
-      init(id: ID, value: any Sendable, parameter: Parameter) {
+      init(id: ID, value: any Sendable, describingWith describe: () -> String, parameter: Parameter) {
         self.id = id
         self.value = value
+#if hasFeature(Embedded)
+        self.testDescription = describe()
+#endif
         self.parameter = parameter
       }
     }
@@ -194,9 +189,60 @@ extension Test {
       parameters: [Parameter],
       body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
     ) {
+      self.init(
+        _values: values,
+        describingValuesWith: {
+#if !hasFeature(Embedded)
+          values.map { String(describingForTest: $0) }
+#else
+          values.map { _ in "(unavailable in Embedded Swift)" }
+#endif
+        },
+        parameters: parameters,
+        body: body
+      )
+    }
+
+#if hasFeature(Embedded)
+    /// Initialize a test case by pairing values with their corresponding
+    /// parameters to form the ``arguments`` array.
+    ///
+    /// - Parameters:
+    ///   - values: The values passed to the parameters for this test case.
+    ///   - parameters: The parameters of the test function for this test case.
+    ///   - body: The body closure of this test case.
+    init(
+      values: [any Sendable & CustomTestStringConvertible],
+      parameters: [Parameter],
+      body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
+    ) {
+      self.init(
+        _values: values.map { $0 as any Sendable },
+        describingValuesWith: { values.map { $0.testDescription } },
+        parameters: parameters,
+        body: body
+      )
+    }
+#endif
+
+    /// Initialize a test case by pairing values with their corresponding
+    /// parameters to form the ``arguments`` array.
+    ///
+    /// - Parameters:
+    ///   - values: The values passed to the parameters for this test case.
+    ///   - describe: A function that provides string representations of the
+    ///     elements of `values`.
+    ///   - parameters: The parameters of the test function for this test case.
+    ///   - body: The body closure of this test case.
+    private init(
+      _values values: [any Sendable],
+      describingValuesWith describe: () -> [String],
+      parameters: [Parameter],
+      body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
+    ) {
       var isStable = true
 
-      let arguments = zip(values, parameters).map { value, parameter in
+      func makeArgument(_ value: any Sendable, _ describe: @autoclosure () -> String, _ parameter: Parameter) -> Argument {
         var stableArgumentID: Argument.ID?
 
         // Attempt to get a stable, encoded representation of this value if no
@@ -221,11 +267,23 @@ extension Test {
           // have a stable ID, there's no point encoding the values which _are_
           // encodable.
           isStable = false
-          argumentID = .init(describing: value)
+#if !hasFeature(Embedded)
+          argumentID = .init(bytes: String(describingForTest: value).utf8)
+#else
+          argumentID = .init(bytes: describe().utf8)
+#endif
         }
 
-        return Argument(id: argumentID, value: value, parameter: parameter)
+        return Argument(id: argumentID, value: value, describingWith: describe, parameter: parameter)
       }
+
+#if !hasFeature(Embedded)
+      let arguments = zip(values, parameters).map { makeArgument($0, "", $1) }
+#else
+      let arguments: Array = zip(zip(values, describe()), parameters).lazy
+        .map { ($0.0, $0.1, $1) }
+        .map { makeArgument($0, $1, $2) }
+#endif
 
       self.init(kind: .parameterized(arguments: arguments, discriminator: 0, isStable: isStable), body: body)
     }
@@ -320,6 +378,16 @@ extension Test.Case.Argument.ID: Codable {}
 
 extension Test.Parameter: Hashable {}
 extension Test.Case.Argument.ID: Hashable {}
+
+// MARK: - CustomTestStringConvertible
+
+extension Test.Case.Argument: CustomTestStringConvertible {
+#if !hasFeature(Embedded)
+  public var testDescription: String {
+    String(describingForTest: value)
+  }
+#endif
+}
 
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting

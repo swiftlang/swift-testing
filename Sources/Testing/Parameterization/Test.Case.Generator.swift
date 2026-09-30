@@ -112,6 +112,21 @@ extension Test.Case {
       }
     }
 
+#if hasFeature(Embedded)
+    @_disfavoredOverload
+    init(
+      arguments collection: S,
+      parameters: [Test.Parameter],
+      testFunction: nonisolated(nonsending) @escaping @Sendable (S.Element) async throws -> Void
+    ) where S: Collection, S.Element: CustomTestStringConvertible {
+      self.init(sequence: collection) { element in
+        Test.Case(values: [element], parameters: parameters) {
+          try await testFunction(element)
+        }
+      }
+    }
+#endif
+
     /// Initialize an instance of this type that iterates over the specified
     /// collections of argument values.
     ///
@@ -136,6 +151,20 @@ extension Test.Case {
       }
     }
 
+#if hasFeature(Embedded)
+    init<C1, C2>(
+      arguments collection1: C1, _ collection2: C2,
+      parameters: [Test.Parameter],
+      testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
+    ) where S == CartesianProduct<C1, C2>, C1.Element: CustomTestStringConvertible, C2.Element: CustomTestStringConvertible {
+      self.init(sequence: cartesianProduct(collection1, collection2)) { element in
+        Test.Case(values: [element.0, element.1], parameters: parameters) {
+          try await testFunction(element.0, element.1)
+        }
+      }
+    }
+#endif
+
     /// Initialize an instance of this type that iterates over the specified
     /// sequence of 2-tuple argument values.
     ///
@@ -158,7 +187,7 @@ extension Test.Case {
       sequence: S,
       parameters: [Test.Parameter],
       testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
-    ) where S.Element == (E1, E2), E1: Sendable, E2: Sendable {
+    ) where S.Element == (E1, E2) {
       if parameters.count > 1 {
         self.init(sequence: sequence) { element in
           Test.Case(values: [element.0, element.1], parameters: parameters) {
@@ -173,6 +202,29 @@ extension Test.Case {
         }
       }
     }
+
+#if hasFeature(Embedded)
+    private init<E1, E2>(
+      sequence: S,
+      parameters: [Test.Parameter],
+      testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
+    ) where S.Element == (E1, E2), E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
+      if parameters.count > 1 {
+        self.init(sequence: sequence) { element in
+          Test.Case(values: [element.0, element.1], parameters: parameters) {
+            try await testFunction(element)
+          }
+        }
+      } else {
+        self.init(sequence: sequence) { element in
+          Test.Case(values: [element], parameters: parameters) {
+            try await testFunction(element)
+          }
+        }
+      }
+    }
+#endif
+
 
     /// Initialize an instance of this type that iterates over the specified
     /// collection of 2-tuple argument values.
@@ -200,6 +252,16 @@ extension Test.Case {
       self.init(sequence: collection, parameters: parameters, testFunction: testFunction)
     }
 
+#if hasFeature(Embedded)
+    init<E1, E2>(
+      arguments collection: S,
+      parameters: [Test.Parameter],
+      testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
+    ) where S: Collection, S.Element == (E1, E2), E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
+      self.init(sequence: collection, parameters: parameters, testFunction: testFunction)
+    }
+#endif
+
     /// Initialize an instance of this type that iterates over the specified
     /// zipped sequence of argument values.
     ///
@@ -217,6 +279,16 @@ extension Test.Case {
     ) where S == Zip2Sequence<C1, C2>, C1: Collection, C2: Collection {
       self.init(sequence: zippedCollections, parameters: parameters, testFunction: testFunction)
     }
+
+#if hasFeature(Embedded)
+    init<C1, C2>(
+      arguments zippedCollections: Zip2Sequence<C1, C2>,
+      parameters: [Test.Parameter],
+      testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
+    ) where S == Zip2Sequence<C1, C2>, C1: Collection, C2: Collection, C1.Element: CustomTestStringConvertible, C2.Element: CustomTestStringConvertible {
+      self.init(sequence: zippedCollections, parameters: parameters, testFunction: testFunction)
+    }
+#endif
 
     /// Initialize an instance of this type that iterates over the specified
     /// dictionary of argument values.
@@ -253,6 +325,28 @@ extension Test.Case {
         }
       }
     }
+
+#if hasFeature(Embedded)
+    init(
+      arguments collection: S,
+      parameters: [Test.Parameter],
+      testFunction: nonisolated(nonsending) @escaping @Sendable ((S.Key, S.Value)) async throws -> Void
+    ) where S: ExpressibleByDictionaryLiteral, S.Element == (key: S.Key, value: S.Value), S.Key: CustomTestStringConvertible, S.Value: CustomTestStringConvertible {
+      if parameters.count > 1 {
+        self.init(sequence: collection) { element in
+          Test.Case(values: [element.key, element.value], parameters: parameters) {
+            try await testFunction(element)
+          }
+        }
+      } else {
+        self.init(sequence: collection) { element in
+          Test.Case(values: [element], parameters: parameters) {
+            try await testFunction(element)
+          }
+        }
+      }
+    }
+#endif
   }
 }
 

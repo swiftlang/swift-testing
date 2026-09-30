@@ -233,14 +233,13 @@ extension Test.Case {
   ///   non-parameterized. If the string is not empty, it includes a leading
   ///   space character.
   fileprivate func labeledArguments(includingQualifiedTypeNames includeTypeNames: Bool = false) -> String {
-#if !hasFeature(Embedded)
     guard let arguments, !arguments.isEmpty else {
       return ""
     }
 
     let result: String = arguments.lazy
       .map { argument in
-        let valueDescription = String(describingForTest: argument.value)
+        let valueDescription = String(describingForTest: argument)
 
         let label = argument.parameter.secondName ?? argument.parameter.firstName
         let labeledArgument = if label == "_" {
@@ -249,17 +248,16 @@ extension Test.Case {
           "\(label) → \(valueDescription)"
         }
 
+#if !hasFeature(Embedded)
         if includeTypeNames {
           let typeInfo = TypeInfo(describingTypeOf: argument.value)
           return "\(labeledArgument) (\(typeInfo.fullyQualifiedName))"
         }
+#endif
         return labeledArgument
       }
       .joined(separator: ", ")
     return " \(result)"
-#else
-    return ""
-#endif
   }
 }
 
