@@ -401,10 +401,10 @@
 
   @Test(.serialized(for: \Environment.self))
   func `Includes messages when SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED is set`() throws {
-    let oldEnvvar = Environment.variable(named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
-    Environment.setVariable(nil, named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+    let oldEnvvar = Environment.variable(named: "SWIFT_TESTING_EVENT_STREAM_ATTACHMENT_BYTES_FIELD_ENABLED")
+    Environment.setVariable("false", named: "SWIFT_TESTING_EVENT_STREAM_ATTACHMENT_BYTES_FIELD_ENABLED")
     defer {
-      Environment.setVariable(oldEnvvar, named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+      Environment.setVariable(oldEnvvar, named: "SWIFT_TESTING_EVENT_STREAM_ATTACHMENT_BYTES_FIELD_ENABLED")
     }
 
     #expect(ABI.v6_3.alwaysEncodeMessagesField)

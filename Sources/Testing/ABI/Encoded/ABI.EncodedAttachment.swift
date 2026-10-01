@@ -24,16 +24,14 @@ extension ABI {
   public struct EncodedAttachment<V>: Sendable where V: ABI.Version {
     /// The different kinds of encoded attachment.
     fileprivate enum Kind: Sendable {
-      /// The attachment has already been saved to disk and we have its local
-      /// file system path.
-      case savedAtPath(String)
-
-      /// The attachment is stored in memory and we have its serialized form.
-      case inMemory([UInt8])
-
       /// The attachment has not been saved nor serialized yet and we still have
       /// it as an attachable value.
-      case abstract(Attachment<AnyAttachable>)
+      case unserialized(Attachment<AnyAttachable>)
+
+      /// The attachment was previously serialized and deserialized.
+      ///
+      /// - Precondition: At least one of `path` or `bytes` must not be `nil`.
+      case serialized(path: String?, bytes: [UInt8]?)
 
       /// An error occurred when the attachment was encoded that prevented it
       /// from being properly serialized.
@@ -44,10 +42,7 @@ extension ABI {
     fileprivate var kind: Kind
 
     /// The preferred name of the attachment.
-    ///
-    /// - Warning: Attachments' preferred names are not yet part of the JSON
-    ///   schema.
-    var _preferredName: String?
+    var preferredName: String?
   }
 }
 
@@ -57,9 +52,9 @@ extension ABI {
 extension ABI.EncodedAttachment: Codable {
   private enum CodingKeys: String, CodingKey {
     case path
-    case preferredName = "_preferredName"
-    case bytes = "_bytes"
-    case error = "_error"
+    case preferredName
+    case bytes
+    case error
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -70,41 +65,35 @@ extension ABI.EncodedAttachment: Codable {
     let container = try decoder.container(keyedBy: CodingKeys.self)
 
     kind = try {
-      if let path = try container.decodeIfPresent(String.self, forKey: .path) {
-        return .savedAtPath(path)
-      }
+      let path = try container.decodeIfPresent(String.self, forKey: .path)
 
-      if V.includesExperimentalFields {
+      var bytes: [UInt8]?
+      if V.versionNumber >= ABI.v6_5.versionNumber {
 #if !SWT_NO_FOUNDATION
         // If possible, decode a whole Foundation Data object.
         if let data = try? container.decodeIfPresent(Data.self, forKey: .bytes) {
-          return .inMemory([UInt8](data))
+          bytes = [UInt8](data)
         }
 #endif
 
         // Fall back to trying to decode an array of integers.
-        if let bytes = try container.decodeIfPresent([UInt8].self, forKey: .bytes) {
-          return .inMemory(bytes)
-        }
-
-        // Finally, look for an error caught during encoding.
-        if let error = try container.decodeIfPresent(ABI.EncodedError<V>.self, forKey: .error) {
-          return .error(error)
+        if bytes == nil {
+          bytes = try container.decodeIfPresent([UInt8].self, forKey: .bytes)
         }
       }
 
-      // Couldn't find anything to decode.
-      throw DecodingError.valueNotFound(
-        String.self,
-        DecodingError.Context(
-          codingPath: decoder.codingPath + [CodingKeys.path],
-          debugDescription: "Encoded attachment did not include any persistent representation."
-        )
-      )
+      // Finally, look for an error caught during encoding.
+      if path == nil && bytes == nil,
+         V.versionNumber >= ABI.v6_5.versionNumber,
+         let error = try container.decodeIfPresent(ABI.EncodedError<V>.self, forKey: .error) {
+        return .error(error)
+      }
+
+      return .serialized(path: path, bytes: bytes)
     }()
 
-    if V.includesExperimentalFields {
-      _preferredName = try container.decodeIfPresent(String.self, forKey: .preferredName)
+    if V.versionNumber >= ABI.v6_5.versionNumber {
+      preferredName = try container.decodeIfPresent(String.self, forKey: .preferredName)
     }
   }
 }
@@ -114,6 +103,13 @@ extension ABI.EncodedAttachment: JSON.Encodable {
   func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     var result = [String: JSON.Value]()
 
+    // Do we include the bytes field? Default to true in the 6.5 schema onward,
+    // but allow for opt-out.
+    var includeBytesField = V.versionNumber >= ABI.v6_5.versionNumber
+    if includeBytesField, let _includeBytesField {
+      includeBytesField = _includeBytesField
+    }
+
     lazy var encodeBytes = { [context = copy context] (_ bytes: UnsafeRawBufferPointer) in
 #if !SWT_NO_FOUNDATION
       // If possible, encode this structure as Base64 data.
@@ -122,40 +118,42 @@ extension ABI.EncodedAttachment: JSON.Encodable {
       } else {
         Data()
       }
-      result["_bytes"] = data.base64EncodedString().jsonValue(in: context)
+      result["bytes"] = data.base64EncodedString().jsonValue(in: context)
 #else
       // Otherwise, it's an array of integers.
-      result["_bytes"] = Array(bytes).jsonValue(in: context)
+      result["bytes"] = Array(bytes).jsonValue(in: context)
 #endif
     }
 
     switch kind {
-    case let .savedAtPath(path):
-      result["path"] = path.jsonValue(in: context)
-    case let .abstract(attachment):
+    case let .serialized(path, bytes):
+      if let path {
+        result["path"] = path.jsonValue(in: context)
+      }
+      if V.versionNumber >= ABI.v6_5.versionNumber, let bytes, includeBytesField {
+        bytes.withUnsafeBytes(encodeBytes)
+      }
+    case let .unserialized(attachment):
       if let path = attachment.fileSystemPath {
         result["path"] = path.jsonValue(in: context)
-      } else if V.includesExperimentalFields {
+      }
+      if V.versionNumber >= ABI.v6_5.versionNumber, includeBytesField {
         do {
           try attachment.withUnsafeBytes(encodeBytes)
         } catch {
           // An error occurred while serializing the attachment. Encode it
           // separately for recovery on the calling side.
           let error = ABI.EncodedError<V>(encoding: error)
-          result["_error"] = error.jsonValue(in: context)
+          result["error"] = error.jsonValue(in: context)
         }
       }
-    case let .inMemory(bytes):
-      if V.includesExperimentalFields {
-        bytes.withUnsafeBytes(encodeBytes)
-      }
     case let .error(error):
-      if V.includesExperimentalFields {
-        result["_error"] = error.jsonValue(in: context)
+      if V.versionNumber >= ABI.v6_5.versionNumber {
+        result["error"] = error.jsonValue(in: context)
       }
     }
-    if V.includesExperimentalFields {
-      result["_preferredName"] = _preferredName?.jsonValue(in: context)
+    if V.versionNumber >= ABI.v6_5.versionNumber, let preferredName {
+      result["preferredName"] = preferredName.jsonValue(in: context)
     }
 
     return .object(result)
@@ -167,39 +165,45 @@ extension ABI.EncodedAttachment: JSON.Encodable {
 extension ABI.EncodedAttachment: Attachable {
   public var estimatedAttachmentByteCount: Int? {
     switch kind {
-    case .savedAtPath, .error:
+    case .error:
       return nil
-    case let .inMemory(bytes):
-      return bytes.count
-    case let .abstract(attachment):
+    case let .serialized(_, bytes):
+      return bytes?.count
+    case let .unserialized(attachment):
       return attachment.attachableValue.estimatedAttachmentByteCount
     }
   }
 
   /// An error type that is thrown when ``ABI/EncodedAttachment`` cannot satisfy
   /// a request for the underlying attachment's bytes.
-  fileprivate struct BytesUnavailableError: Error {}
+  struct BytesUnavailableError: Error {}
 
   public borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     switch kind {
-    case let .savedAtPath(path):
+    case let .serialized(path, bytes):
+      if let bytes {
+        return try bytes.withUnsafeBytes(body)
+      }
+
 #if !SWT_NO_FILE_IO
+      if let path {
 #if !SWT_NO_FOUNDATION
-      // Leverage Foundation's file-mapping logic since we're using Data anyway.
-      let url = URL(fileURLWithPath: path, isDirectory: false)
-      let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])
+        // Leverage Foundation's file-mapping logic since we're using Data anyway.
+        let url = URL(fileURLWithPath: path, isDirectory: false)
+        let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])
 #else
-      let fileHandle = try FileHandle(forReadingAtPath: path)
-      let bytes = try fileHandle.readToEnd()
+        let fileHandle = try FileHandle(forReadingAtPath: path)
+        let bytes = try fileHandle.readToEnd()
 #endif
-      return try bytes.withUnsafeBytes(body)
-#else
-      // Cannot read the attachment from disk on this platform.
+        return try bytes.withUnsafeBytes(body)
+      }
+#endif
+
+      // Cannot read the attachment from disk on this platform, or the decoded
+      // attachment contained neither "path" nor "bytes".
       throw BytesUnavailableError()
-#endif
-    case let .inMemory(bytes):
-      return try bytes.withUnsafeBytes(body)
-    case let .abstract(attachment):
+
+    case let .unserialized(attachment):
       return try attachment.withUnsafeBytes(body)
     case let .error(error):
       throw error
@@ -207,14 +211,14 @@ extension ABI.EncodedAttachment: Attachable {
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
-    _preferredName ?? suggestedName
+    preferredName ?? suggestedName
   }
 }
 
 #if !SWT_NO_FILE_CLONING
 extension ABI.EncodedAttachment: FileClonable {
   package func clone(toFileAtPath filePath: String) -> Bool {
-    guard case let .abstract(attachment) = kind else {
+    guard case let .unserialized(attachment) = kind else {
       return false
     }
     return attachment.attachableValue.clone(toFileAtPath: filePath)
@@ -237,10 +241,8 @@ extension ABI.EncodedAttachment {
   /// - Parameters:
   ///   - attachment: The attachment to initialize this instance from.
   public init(encoding attachment: borrowing Attachment<AnyAttachable>) {
-    kind = .abstract(copy attachment)
-    if V.includesExperimentalFields {
-      _preferredName = attachment.preferredName
-    }
+    kind = .unserialized(copy attachment)
+    preferredName = attachment.preferredName
   }
 
   /// Initialize an instance of this type from the given value.
@@ -278,12 +280,28 @@ extension Attachment where AttachableValue == AnyAttachable {
   ///   - attachment: The encoded attachment to initialize this instance from.
   public init?<V>(decoding attachment: ABI.EncodedAttachment<V>) {
     switch attachment.kind {
-    case let .abstract(attachment):
+    case let .unserialized(attachment):
       self = attachment // No need to nest it further.
     default:
-      let attachmentCopy = Attachment<ABI.EncodedAttachment<V>>(attachment, sourceLocation: .unknown)
+      var attachmentCopy = Attachment<ABI.EncodedAttachment<V>>(attachment, sourceLocation: .unknown)
+      if case let .serialized(path, _) = attachment.kind {
+        attachmentCopy.fileSystemPath = path
+      }
       self.init(attachmentCopy)
     }
   }
 }
+
+// MARK: Inclusion of an attachment's bytes
+
+/// Whether or not to always include the `"messages"` field in encoded events
+/// even when it is an empty array.
+#if DEBUG
+private var _includeBytesField: Bool? {
+  Environment.flag(named: "SWIFT_TESTING_EVENT_STREAM_ATTACHMENT_BYTES_FIELD_ENABLED")
+}
+#else
+private let _includeBytesField = Environment.flag(named: "SWIFT_TESTING_EVENT_STREAM_ATTACHMENT_BYTES_FIELD_ENABLED")
+#endif
+
 #endif
