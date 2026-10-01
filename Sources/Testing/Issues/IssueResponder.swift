@@ -20,9 +20,9 @@ private import Synchronization
 /// you to observe, transform, or even block an issue from being sent up the
 /// chain.
 ///
-/// Use ``withIssueResponder(_:body:)`` to add your IssueResponder to the Issue
-/// Responder Chain.
-package protocol IssueResponder: Sendable {
+/// Use ``withIssueResponder(_:body:)`` (available in the TestingTools module)
+/// to add your IssueResponder to the Issue Responder Chain.
+public protocol IssueResponder: Sendable {
   /// Handle and respond to the given issue.
   ///
   /// - Parameters:
