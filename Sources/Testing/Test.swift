@@ -364,6 +364,34 @@ public struct Test: Sendable {
   }
 
   /// Initialize an instance of this type representing a test function.
+  init<Suite, S>(
+    name: String,
+    displayName: String? = nil,
+    traits: [any Trait],
+    sourceBounds: __SourceBounds,
+    in containingType: Suite.Type?,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
+    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
+    parameters: [Parameter]
+  ) where Suite: ~Copyable & ~Escapable {
+#if !hasFeature(Embedded)
+    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
+#else
+    let containingTypeInfo: TypeInfo? = nil
+#endif
+    self.init(
+      name: name,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: testCases,
+      parameters: parameters
+    )
+  }
+
+  /// Initialize an instance of this type representing a test function.
   init<S>(
     name: String,
     displayName: String? = nil,

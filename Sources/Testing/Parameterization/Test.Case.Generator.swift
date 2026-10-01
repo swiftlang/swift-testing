@@ -84,29 +84,34 @@ extension Test.Case {
     @_disfavoredOverload
     init(
       arguments collection: S,
+      makingArgumentValueWith makeArgumentValue: (@Sendable (S.Element) -> Test.Case.Argument.Value)? = nil,
       parameters: [Test.Parameter],
       testFunction: nonisolated(nonsending) @escaping @Sendable (S.Element) async throws -> Void
     ) where S: Collection {
-#if !hasFeature(Embedded)
-      if parameters.count > 1 {
-        self.init(sequence: collection) { element in
-          let mirror = Mirror(reflectingForTest: element)
-          let values: [any Sendable] = if mirror.displayStyle == .tuple {
-            mirror.children.map { unsafeBitCast($0.value, to: (any Sendable).self) }
-          } else {
-            [element]
-          }
+      let splitsArguments = parameters.count > 1
+      let makeArgumentValue = makeArgumentValue ?? { Test.Case.Argument.Value($0) }
 
-          return Test.Case(values: values, parameters: parameters) {
-            try await testFunction(element)
+      let makeArgumentValues: @Sendable (S.Element) -> [Test.Case.Argument.Value] = { element in
+        if splitsArguments {
+#if !hasFeature(Embedded)
+          let mirror = Mirror(reflectingForTest: element)
+          if mirror.displayStyle == .tuple {
+            return mirror.children.lazy
+              .map { unsafeBitCast($0.value, to: (any Sendable).self) }
+              .map { Test.Case.Argument.Value($0) }
           }
-        }
-        return
-      }
+#else
+          // We can't break down the tuple in Embedded Swift, but we can at
+          // least present the correct number of arguments.
+          // FIXME: switch to variadic generics when Embedded Swift support improves
+          return parameters.map { _ in Test.Case.Argument.Value(()) }
 #endif
+        }
+        return [makeArgumentValue(element)]
+      }
 
       self.init(sequence: collection) { element in
-        Test.Case(values: [element], parameters: parameters) {
+        return Test.Case(values: makeArgumentValues(element), parameters: parameters) {
           try await testFunction(element)
         }
       }
@@ -126,11 +131,13 @@ extension Test.Case {
     ///     passes an argument value from `collection`.
     init<C1, C2>(
       arguments collection1: C1, _ collection2: C2,
+      makingArgumentValuesWith makeArgumentValues: (@Sendable (C1.Element, C2.Element) -> [Test.Case.Argument.Value])? = nil,
       parameters: [Test.Parameter],
       testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
     ) where S == CartesianProduct<C1, C2> {
+      let makeArgumentValues = makeArgumentValues ?? Test.Case.Argument.Value.makeArgumentValues(for: parameters)
       self.init(sequence: cartesianProduct(collection1, collection2)) { element in
-        Test.Case(values: [element.0, element.1], parameters: parameters) {
+        Test.Case(values: makeArgumentValues(element.0, element.1), parameters: parameters) {
           try await testFunction(element.0, element.1)
         }
       }
@@ -155,21 +162,15 @@ extension Test.Case {
     ///     ([103416861](rdar://103416861))
     /// }
     private init<E1, E2>(
-      sequence: S,
+      _sequence sequence: S,
+      makingArgumentValuesWith makeArgumentValues: (@Sendable (E1, E2) -> [Test.Case.Argument.Value])?,
       parameters: [Test.Parameter],
       testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
     ) where S.Element == (E1, E2), E1: Sendable, E2: Sendable {
-      if parameters.count > 1 {
-        self.init(sequence: sequence) { element in
-          Test.Case(values: [element.0, element.1], parameters: parameters) {
-            try await testFunction(element)
-          }
-        }
-      } else {
-        self.init(sequence: sequence) { element in
-          Test.Case(values: [element], parameters: parameters) {
-            try await testFunction(element)
-          }
+      let makeArgumentValues = makeArgumentValues ?? Test.Case.Argument.Value.makeArgumentValues(for: parameters)
+      self.init(sequence: sequence) { element in
+        return Test.Case(values: makeArgumentValues(element.0, element.1), parameters: parameters) {
+          try await testFunction(element)
         }
       }
     }
@@ -194,10 +195,11 @@ extension Test.Case {
     /// }
     init<E1, E2>(
       arguments collection: S,
+      makingArgumentValuesWith makeArgumentValues: (@Sendable (E1, E2) -> [Test.Case.Argument.Value])? = nil,
       parameters: [Test.Parameter],
       testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
     ) where S: Collection, S.Element == (E1, E2) {
-      self.init(sequence: collection, parameters: parameters, testFunction: testFunction)
+      self.init(_sequence: collection, makingArgumentValuesWith: makeArgumentValues, parameters: parameters, testFunction: testFunction)
     }
 
     /// Initialize an instance of this type that iterates over the specified
@@ -212,10 +214,11 @@ extension Test.Case {
     ///     passes an argument value from `zippedCollections`.
     init<C1, C2>(
       arguments zippedCollections: Zip2Sequence<C1, C2>,
+      makingArgumentValuesWith makeArgumentValues: (@Sendable (C1.Element, C2.Element) -> [Test.Case.Argument.Value])? = nil,
       parameters: [Test.Parameter],
       testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
     ) where S == Zip2Sequence<C1, C2>, C1: Collection, C2: Collection {
-      self.init(sequence: zippedCollections, parameters: parameters, testFunction: testFunction)
+      self.init(_sequence: zippedCollections, makingArgumentValuesWith: makeArgumentValues, parameters: parameters, testFunction: testFunction)
     }
 
     /// Initialize an instance of this type that iterates over the specified
@@ -236,20 +239,14 @@ extension Test.Case {
     /// kinds of collections includes labels (`(key: Key, value: Value)`).
     init(
       arguments collection: S,
+      makingArgumentValuesWith makeArgumentValues: (@Sendable (S.Key, S.Value) -> [Test.Case.Argument.Value])? = nil,
       parameters: [Test.Parameter],
-      testFunction: nonisolated(nonsending) @escaping @Sendable ((S.Key, S.Value)) async throws -> Void
+      testFunction: nonisolated(nonsending) @escaping @Sendable (S.Element) async throws -> Void
     ) where S: ExpressibleByDictionaryLiteral, S.Element == (key: S.Key, value: S.Value) {
-      if parameters.count > 1 {
-        self.init(sequence: collection) { element in
-          Test.Case(values: [element.key, element.value], parameters: parameters) {
-            try await testFunction(element)
-          }
-        }
-      } else {
-        self.init(sequence: collection) { element in
-          Test.Case(values: [element], parameters: parameters) {
-            try await testFunction(element)
-          }
+      let makeArgumentValues = makeArgumentValues ?? Test.Case.Argument.Value.makeArgumentValues(for: parameters)
+      self.init(sequence: collection) { element in
+        return Test.Case(values: makeArgumentValues(element.0, element.1), parameters: parameters) {
+          try await testFunction(element)
         }
       }
     }
