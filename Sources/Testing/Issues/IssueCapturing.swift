@@ -89,7 +89,7 @@ private func _recordError(
 /// correctly record issues.
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-func captureIssues(
+package func captureIssues(
   sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: () throws -> Void
 ) -> [Issue] {
@@ -118,7 +118,7 @@ func captureIssues(
 /// correctly record issues.
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-func captureIssues(
+package func captureIssues(
   sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: sending @isolated(any) () async throws -> Void
 ) async -> [Issue] {
@@ -147,7 +147,7 @@ func captureIssues(
 /// correctly record issues.
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-func observeIssues(
+package func observeIssues(
   sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: () throws -> Void
 ) -> [Issue] {
@@ -176,7 +176,7 @@ func observeIssues(
 /// correctly record issues.
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-func observeIssues(
+package func observeIssues(
   sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: sending @isolated(any) () async throws -> Void
 ) async -> [Issue] {
@@ -190,4 +190,3 @@ func observeIssues(
   }
   return responder.issues.value.withLock { $0 }
 }
-
