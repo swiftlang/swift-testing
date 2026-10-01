@@ -18,26 +18,37 @@ extension Issue {
   ///
   /// - Returns: The issue that was recorded (`self` or a modified copy of it.)
   @discardableResult
-  func record(configuration: Configuration? = nil, sendEvent: Bool = true) -> Self {
+  func record(
+    configuration: Configuration? = nil,
+  ) -> Self {
     // If this issue is a caught error that has a custom issue representation,
     // perform that customization now.
     if let selfCopy = customizeIssueIfNeeded(self) {
       return selfCopy.record(configuration: configuration)
     }
 
-    // If this issue matches via the known issue matcher, set a copy of it to be
-    // known and record the copy instead.
-    if !isKnown, let capturingScope = IssueCapturingScope.current, let context = capturingScope.matcher(self) {
-      var selfCopy = self
-      selfCopy.knownIssueContext = context
-      return selfCopy.record(configuration: configuration, sendEvent: !capturingScope.captureSilently)
-    }
+    let responderChain = IssueResponderLink.current?.chain() ?? []
 
-    if sendEvent {
-      Event.post(.issueRecorded(self), configuration: configuration)
-    }
+    let issue: Issue? = {
+      var issue: Issue = self
+      for responder in responderChain {
+        if let nextIssue = responder.respond(to: issue) {
+          issue = nextIssue
+        } else {
+          return nil
+        }
+      }
+      return issue
+    }()
 
-    if !isKnown {
+    guard let issue else { return self }
+
+    Event.post(
+      .issueRecorded(issue),
+      configuration: configuration
+    )
+
+    if !issue.isKnown {
       // Since this is not a known issue, invoke the failure breakpoint.
       //
       // Do this after posting the event above, to allow the issue to be printed
@@ -46,7 +57,7 @@ extension Issue {
       failureBreakpoint()
     }
 
-    return self
+    return issue
   }
 
   /// Records an issue that a test encounters while it's running.

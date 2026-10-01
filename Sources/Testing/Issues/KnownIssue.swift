@@ -12,94 +12,110 @@
 private import Synchronization
 #endif
 
-/// A type that represents an active
-/// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``
-/// call and any parent calls.
+/// An ``IssueResponder`` for transforming any issues into known issues.
 ///
-/// A stack of these is stored in `KnownIssueScope.current`.
-struct KnownIssueScope: Sendable {
-  /// A function which determines if an issue matches a known issue scope or
-  /// any of its ancestor scopes.
+/// Known Issues are issues which are valid and represent broken implementation
+/// code, but for whatever reason, the implementation maintainers have
+/// deprioritized addressing it.
+///
+/// Instances of `KnownIssueResponder` are created whenever a
+/// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)`` call is
+/// made. These are added onto the Issue Responder Chain, and then used to mark
+/// matching issues as known.
+///
+/// `KnownIssueResponder` merely records the number of matched issues it
+/// encounters, and does not record each individual issue it encounters.
+struct KnownIssueResponder: IssueResponder {
+  /// The matcher function for this known issue responder.
+  let issueMatcher: KnownIssueMatcher
+
+  /// The context to be associated with issues matched by `issueMatcher`.
+  let context: Issue.KnownIssueContext
+
+  /// The number of issues this `KnownIssueResponder` and earlier
+  /// `KnownIssueResponder`s in the Issue Responder Chain have matched.
+  let matchCounter = Allocated(Atomic<Int>(0))
+
+  /// The list of responders in the current issue responder chain before this
+  /// responder.
+  let previousChain: [any IssueResponder]
+
+  /// Create a new `KnownIssueResponder`
   ///
   /// - Parameters:
-  ///   - issue: The issue being matched.
-  ///
-  /// - Returns: A known issue context containing information about the known
-  ///   issue, if the issue is considered "known" by this known issue scope or any
-  ///   ancestor scope, or `nil` otherwise.
-  typealias Matcher = @Sendable (_ issue: Issue) -> Issue.KnownIssueContext?
-
-  /// The matcher function for this known issue scope.
-  var matcher: Matcher
-
-  /// The number of issues this scope and its ancestors have matched.
-  fileprivate let matchCounter: Allocated<Atomic<Int>>
-
-  /// Create a new ``KnownIssueScope`` by combining a new issue matcher with
-  /// any already-active scope.
-  ///
-  /// - Parameters:
-  ///   - parent: The context that should be checked next if `issueMatcher`
-  ///     fails to match an issue. Defaults to ``KnownIssueScope.current``.
-  ///   - issueMatcher: A function to invoke when an issue occurs that is used
-  ///     to determine if the issue is known to occur.
+  ///   - issueMatcher: The matcher function for this known issue responder.
   ///   - context: The context to be associated with issues matched by
   ///     `issueMatcher`.
-  init(parent: KnownIssueScope? = .current, issueMatcher: @escaping KnownIssueMatcher, context: Issue.KnownIssueContext) {
-    let matchCounter = Allocated(Atomic(0))
-    self.matchCounter = matchCounter
-    matcher = { issue in
-      let matchedContext = if issueMatcher(issue) {
-        context
-      } else {
-        parent?.matcher(issue)
+  ///   - previousChain: The list of responders in the current issue responder
+  ///     chain prior to this responder being added to the issue responder
+  ///     chain. Defaults to the current issue responder chain as of when
+  ///     this is initialized.
+  init(
+    issueMatcher: @escaping KnownIssueMatcher,
+    context: Issue.KnownIssueContext,
+    previousChain: [any IssueResponder] = IssueResponderLink.current?.chain() ?? []
+  ) {
+    self.issueMatcher = issueMatcher
+    self.context = context
+    self.previousChain = previousChain
+  }
+
+  /// Determins whether the given issues matches this responder or an earlier
+  /// `KnownIssuerResponder` in the Issue Responder Chain.
+  ///
+  /// - Parameter issue: The issue to check for.
+  ///
+  /// - Returns: Whether the issue matches within the current chain.
+  func issueMatchesInChain(_ issue: Issue) -> Bool {
+    if issueMatcher(issue) {
+      return true
+    } else {
+      return previousChain.contains {
+        ($0 as? KnownIssueResponder)?.issueMatcher(issue) == true
       }
-      if matchedContext != nil {
-        matchCounter.value.add(1, ordering: .sequentiallyConsistent)
-      }
-      return matchedContext
     }
   }
 
-  /// The active known issue scope for the current task, if any.
+  /// Respond to the given issue by checking if it matches this responder or an
+  /// earlier `KnownIssueResponder` in the Issue Responder Chain.
   ///
-  /// If there is no call to
-  /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``
-  /// executing on the current task, the value of this property is `nil`.
-  @TaskLocal
-  static var current: KnownIssueScope?
+  /// If the issue matches this responder, then set its `knownIssueContext` to
+  /// `context`.
+  ///
+  /// If the issue matches this or an earlier `KnownIssueResponder`, then also
+  /// increment the number of matched issues in this responder.
+  ///
+  /// - Parameter issue: The issue to handle.
+  ///
+  /// - Returns: The modified issue if it matches this responder, otherwise the
+  ///   given issue.
+  func respond(to issue: Issue) -> Issue? {
+    var issueCopy = issue
+    let matchedIssue: Bool
+    if issueMatcher(issue) {
+      matchedIssue = true
+      if issueCopy.knownIssueContext == nil {
+        issueCopy.knownIssueContext = context
+      }
+    } else {
+      matchedIssue = previousChain.contains {
+        ($0 as? KnownIssueResponder)?.issueMatcher(issue) == true
+      }
+    }
+    if matchedIssue {
+      matchCounter.value.add(1, ordering: .sequentiallyConsistent)
+    }
+    return issueCopy
+  }
 }
 
-/// Check if an error matches using an issue-matching function, and throw it if
-/// it does not.
+/// A function that is used to match known issues.
 ///
 /// - Parameters:
-///   - error: The error to test.
-///   - scope: The known issue scope that is processing the error.
-///   - comment: An optional comment to apply to any issues generated by this
-///     function.
-///   - sourceLocation: The source location to which the issue should be
-///     attributed.
-private func _matchError(_ error: any Error, in scope: IssueCapturingScope, comment: Comment?, sourceLocation: SourceLocation) throws {
-  // ExpectationFailedError is thrown by expectation checking functions to
-  // indicate a condition evaluated to `false`. Those functions record their
-  // own issue, so we don't need to create a new issue and attempt to match it.
-  if error is ExpectationFailedError {
-    return
-  }
-
-  let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error), sourceLocation: sourceLocation)
-  var issue = Issue(kind: .errorCaught(error), comments: [], sourceContext: sourceContext)
-  if let context = scope.matcher(issue) {
-    // It's a known issue, so mark it as such before recording it.
-    issue.knownIssueContext = context
-    issue.record()
-  } else {
-    // Rethrow the error, allowing the caller to catch it or for it to propagate
-    // to the runner to record it as an issue.
-    throw error
-  }
-}
+///   - issue: The issue to match.
+///
+/// - Returns: Whether or not `issue` is known to occur.
+public typealias KnownIssueMatcher = @Sendable (_ issue: Issue) -> Bool
 
 /// Handle any miscounts by the specified match counter.
 ///
@@ -110,8 +126,12 @@ private func _matchError(_ error: any Error, in scope: IssueCapturingScope, comm
 ///     function.
 ///   - sourceLocation: The source location to which the issue should be
 ///     attributed.
-private func _handleMiscount(by matchCounter: Allocated<Mutex<[Issue]>>, comment: Comment?, sourceLocation: SourceLocation) {
-  if matchCounter.value.withLock({ $0.count }) == 0 {
+private func _handleMiscount(
+  by matchCounter: Allocated<Atomic<Int>>,
+  comment: Comment?,
+  sourceLocation: SourceLocation
+) {
+  if matchCounter.value.load(ordering: .sequentiallyConsistent) == 0 {
     let issue = Issue(
       kind: .knownIssueNotRecorded,
       comments: Array(comment),
@@ -123,13 +143,45 @@ private func _handleMiscount(by matchCounter: Allocated<Mutex<[Issue]>>, comment
 
 // MARK: -
 
-/// A function that is used to match known issues.
+/// Check if an error matches using an issue-matching function, and throw it if
+/// it does not.
 ///
 /// - Parameters:
-///   - issue: The issue to match.
-///
-/// - Returns: Whether or not `issue` is known to occur.
-public typealias KnownIssueMatcher = @Sendable (_ issue: Issue) -> Bool
+///   - error: The error to test.
+///   - scope: The known issue scope that is processing the error.
+///   - comment: An optional comment to apply to any issues generated by this
+///     function.
+///   - sourceLocation: The source location to which the issue should be
+///     attributed.
+private func _matchError(
+  _ error: any Error,
+  in responder: KnownIssueResponder,
+  comment: Comment?,
+  sourceLocation: SourceLocation
+) throws {
+  // ExpectationFailedError is thrown by expectation checking functions to
+  // indicate a condition evaluated to `false`. Those functions record their
+  // own issue, so we don't need to create a new issue and attempt to match it.
+  if error is ExpectationFailedError {
+    return
+  }
+
+  let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error), sourceLocation: sourceLocation)
+  let issue = Issue(
+    kind: .errorCaught(error),
+    comments: [],
+    sourceContext: sourceContext
+  )
+
+  if responder.issueMatchesInChain(issue) {
+    // It's a known issue and will be marked in the chain.
+    issue.record()
+  } else {
+    // Rethrow the error, allowing the caller to catch it or for it to propagate
+    // to the runner to record it as an issue.
+    throw error
+  }
+}
 
 /// Invoke a function that has a known issue that is expected to occur during
 /// its execution.
@@ -231,17 +283,25 @@ public func withKnownIssue(
   guard precondition() else {
     return try body()
   }
-  let scope = IssueCapturingScope(captureSilently: false, issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
+  let responder = KnownIssueResponder(
+    issueMatcher: issueMatcher,
+    context: Issue.KnownIssueContext(
+      comment: comment
+    )
+  )
   defer {
     if !isIntermittent {
-      _handleMiscount(by: scope.issues, comment: comment, sourceLocation: sourceLocation)
+      _handleMiscount(
+        by: responder.matchCounter,
+        comment: comment,
+        sourceLocation: sourceLocation)
     }
   }
-  try IssueCapturingScope.$current.withValue(scope) {
+  try withIssueResponder(responder) {
     do {
       try body()
     } catch {
-      try _matchError(error, in: scope, comment: comment, sourceLocation: sourceLocation)
+      try _matchError(error, in: responder, comment: comment, sourceLocation: sourceLocation)
     }
   }
 }
@@ -282,11 +342,10 @@ public func withKnownIssue(
 public func withKnownIssue(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #Testing::sourceLocation,
-  _ body: () async throws -> Void
+  _ body: sending @isolated(any) () async throws -> Void
 ) async {
-  try? await withKnownIssue(comment, isIntermittent: isIntermittent, isolation: isolation, sourceLocation: sourceLocation, body, matching: { _ in true })
+  try? await withKnownIssue(comment, isIntermittent: isIntermittent, sourceLocation: sourceLocation, body, matching: { _ in true })
 }
 
 /// Invoke a function that has a known issue that is expected to occur during
@@ -341,26 +400,34 @@ public func withKnownIssue(
 public func withKnownIssue(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #Testing::sourceLocation,
-  _ body: () async throws -> Void,
+  _ body: sending @isolated(any) () async throws -> Void,
   when precondition: () async -> Bool = { true },
   matching issueMatcher: @escaping KnownIssueMatcher = { _ in true }
 ) async rethrows {
   guard await precondition() else {
     return try await body()
   }
-  let scope = IssueCapturingScope(captureSilently: false, issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
+  let responder = KnownIssueResponder(
+    issueMatcher: issueMatcher,
+    context: Issue.KnownIssueContext(
+      comment: comment
+    )
+  )
   defer {
     if !isIntermittent {
-      _handleMiscount(by: scope.issues, comment: comment, sourceLocation: sourceLocation)
+      _handleMiscount(
+        by: responder.matchCounter,
+        comment: comment,
+        sourceLocation: sourceLocation
+      )
     }
   }
-  try await IssueCapturingScope.$current.withValue(scope) {
+  try await withIssueResponder(responder) {
     do {
       try await body()
     } catch {
-      try _matchError(error, in: scope, comment: comment, sourceLocation: sourceLocation)
+      try _matchError(error, in: responder, comment: comment, sourceLocation: sourceLocation)
     }
   }
 }

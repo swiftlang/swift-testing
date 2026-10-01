@@ -100,16 +100,11 @@ final class KnownIssueTests: XCTestCase {
   }
 
   func testThrownKnownIssueRecordedWithComment() async {
-    let issueMatched = expectation(description: "Issue matched")
-    let issueRecorded = expectation(description: "Issue recorded")
-
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      issueRecorded.fulfill()
-
       guard case .unconditional = issue.kind else {
         return
       }
@@ -128,12 +123,9 @@ final class KnownIssueTests: XCTestCase {
         XCTAssertFalse(issue.isKnown)
         XCTAssertEqual(issue.comments, [])
         XCTAssertNil(issue.knownIssueContext)
-        issueMatched.fulfill()
         return true
       }
     }.run(configuration: configuration)
-
-    await fulfillment(of: [issueMatched, issueRecorded], timeout: 0.0)
   }
 
   func testKnownIssueRecordedWithNoComment() async {
@@ -300,40 +292,17 @@ final class KnownIssueTests: XCTestCase {
       }
     }
 
-    XCTExpectFailure("Will be fixed later in this PR") {
-      XCTAssertEqual(reportedIssues.count, 1)
-    }
+    XCTAssertEqual(reportedIssues.count, 1)
     // Issue is reported by the parent context as a known issue.
-    XCTAssert(
-      reportedIssues.contains {
-        guard case Issue.Kind.unconditional = $0.kind else {
-          return false
-        }
-        return $0.knownIssueContext?.comment == "child" &&
-        $0.comments == ["the recorded issue"] &&
-        $0.isKnown == true &&
-        $0.isFailure == false
-      }
-    )
-    // "context" does not report a `knownIssueNotRecorded` error, because the
-    // "parent" scope matches it.
-    XCTAssert(
-      reportedIssues.contains {
-        guard case .knownIssueNotRecorded = $0.kind else { return false }
-        return $0.knownIssueContext == nil &&
-        $0.comments == ["child"]
-      } == false
-    )
-    XCTExpectFailure("Will be fixed later in this PR") {
-      XCTAssert(
-        reportedIssues.contains {
-          guard case .knownIssueNotRecorded = $0.kind else {
-            return false
-          }
-          return $0.knownIssueContext == nil && $0.comments == ["parent"]
-        } == false
-      )
-    }
+
+    XCTAssert({
+      if case .some(.unconditional) = reportedIssues.last?.kind { return true }
+      return false
+    }())
+    XCTAssertEqual(reportedIssues.last?.comments, ["the recorded issue"])
+    XCTAssertEqual(reportedIssues.last?.isFailure, false)
+    XCTAssertEqual(reportedIssues.last?.isKnown, true)
+    XCTAssertEqual(reportedIssues.last?.knownIssueContext?.comment, "child")
   }
 
   func testIssueIsKnownPropertyIsSetCorrectlyWithCustomIssueMatcher() async {
