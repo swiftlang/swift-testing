@@ -66,7 +66,7 @@ extension Test.Case {
     /// The type of this parameterized test argument's value.
     var typeInfo: TypeInfo {
 #if !hasFeature(Embedded)
-      TypeInfo(describingTypeOf: _value)
+      TypeInfo(describingTypeOf: _value.wrappedValue)
 #else
       parameter.typeInfo
 #endif
