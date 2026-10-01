@@ -1,165 +1,193 @@
 //
-//  IssueCapturing.swift
-//  swift-testing
+// This source file is part of the Swift.org open source project
 //
-//  Created by Rachel Brindle on 8/24/26.
+// Copyright (c) 2026 Apple Inc. and the Swift project authors
+// Licensed under Apache License v2.0 with Runtime Library Exception
+//
+// See https://swift.org/LICENSE.txt for license information
+// See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
 #if canImport(Synchronization)
-private import Synchronization
+internal import Synchronization
 #endif
 
-/// A type that represents an active
-/// ``captureIssues(sourceLocation:_:matching:)``
-/// call and any parent calls.
+/// An ``IssueResponder`` for transparently recording any issues that pass
+/// through it without making any modifications.
 ///
-/// A stack of these is stored in `IssueCapturingContext.current`.
-struct IssueCapturingScope: Sendable {
-  /// A function which determines if an issue matches an issue capturing scope
-  /// or any of its ancestor scopes.
-  ///
-  /// - Parameters:
-  ///   - issue: The issue being matched
-  ///
-  /// - Returns: An issue capturing context containing information about the
-  ///   captured issue, if the issue is "captured" by this this issue capturing
-  ///   scope or any ancestor scope, or `nil` otherwise.
-  typealias Matcher = @Sendable (_ issue: Issue) -> Issue.KnownIssueContext?
+/// Instances of `ObserveIssueResponder` are created whenever an
+/// ``observeIssues(sourceLocation:_:)`` call is made. These are added to the
+/// Issue Responder Chain and used to observe all issues emitted during the
+/// `body` of the `observeIssues` call.
+struct ObserveIssuesResponder: IssueResponder {
+  /// The list of issues recorded during execution.
+  let issues = Allocated(Mutex([Issue]()))
 
-  /// The matcher function for this issue capturing scope.
-  var matcher: Matcher
+  /// Respond to the issue by recording it and sending it to the next responder
+  /// in the chain.
+  func respond(to issue: Issue) -> Issue? {
+    issues.value.withLock { $0.append(issue) }
+    return issue
+  }
+}
 
-  /// The issues this scope has matched.
-  let issues: Allocated<Mutex<[Issue]>>
+/// An ``IssueResponder`` for recording any issues that are sent to it without
+/// making any modifications. `CaptureIssuesResponder` differs from
+/// ``ObserveIssuesResponder`` in that it does not pass the issue on to the
+/// next responder in the Issue Responder Chain.
+struct CaptureIssuesResponder: IssueResponder {
+  /// The list of issues recorded during execution.
+  let issues = Allocated(Mutex([Issue]()))
 
-  let captureSilently: Bool
+  /// Respond to the issue by recording it and stopping the issue from being
+  /// sent to the next responder in the chain.
+  func respond(to issue: Issue) -> Issue? {
+    issues.value.withLock { $0.append(issue) }
+    return nil
+  }
+}
 
-  /// Create a new ``IssueCapturingScope`` by companing a new issue matcher
-  /// with any already-active scope
-  ///
-  /// - Parameters:
-  ///   - Parent: The context that should be checked next if `issueMatcher` fails
-  ///     to match an issue. Defaults to ``IssueCapturingScope.current``.
-  ///   - captureSilently: If true, captured issues will not be immediately
-  ///     reported to the Testing library. This means that callers must manually
-  ///     report issues after the fact in order for them to be recorded.
-  ///   - issueMatcher: A function to invoke when an issue occurs that is used
-  ///     to determine if the issue should be captured by this scope.
-  ///   - context: The context to be associated with issues matched by
-  ///     `issueMatcher`.
-  init(
-    parent: IssueCapturingScope? = .current,
-    captureSilently: Bool,
-    issueMatcher: @escaping KnownIssueMatcher,
-    context: Issue.KnownIssueContext
-  ) {
-    let issues = Allocated(Mutex([Issue]()))
-    self.issues = issues
-    self.captureSilently = captureSilently
+/// Create an ``Issue`` for the error and send it through the Issue Responder Chain.
+///
+/// - Parameters:
+///   - error: The error to convert into an ``Issue``.
+///   - sourceLocation: The source location to which the issue should be
+///     attributed.
+private func _recordError(
+  _ error: any Error,
+  sourceLocation: SourceLocation
+) {
+  // ExpectationFailedError is thrown by expectation checking functions to
+  // indicate a condition evaluated to `false`. Those functions record their
+  // own issue, so we don't need to create a new issue and attempt to match it.
+  if error is ExpectationFailedError {
+    return
+  }
 
-    matcher = { issue in
-      let matchedContext = if issueMatcher(issue) {
-        context
-      } else {
-        parent?.matcher(issue)
-      }
-      if matchedContext != nil {
-        issues.value.withLock { issues in
-          issues.append(issue)
-        }
-      }
-      return matchedContext
+  let sourceContext = SourceContext(
+    backtrace: Backtrace(forFirstThrowOf: error),
+    sourceLocation: sourceLocation
+  )
+  Issue(
+    kind: .errorCaught(error),
+    comments: [],
+    sourceContext: sourceContext
+  ).record()
+}
+
+/// Invoke a function, capture and return any issues recorded during its
+/// execution. Issues captured will not be sent to the next responder in the
+/// Issue Responder Chain.
+///
+/// - Parameters:
+///   - sourceLocation: The source location to which any recorded issues should
+///     be attributed.
+///   - body: The function to invoke.
+///
+/// Library authors use this function to capture and analyze any issues for
+/// later analysis. This is particularly useful for verifying that test helpers
+/// correctly record issues.
+/// Test authors should consider using
+/// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
+func captureIssues(
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
+  _ body: () throws -> Void
+) -> [Issue] {
+  let responder = CaptureIssuesResponder()
+  withIssueResponder(responder) {
+    do {
+      try body()
+    } catch {
+      _recordError(error, sourceLocation: sourceLocation)
     }
   }
-
-  /// The active issue capturing scope for the current task, if any.
-  ///
-  /// If there is no call to
-  /// ``captureIssues(sourceLocation:_:matching:)``
-  /// executing on the current taks, the value of this property is `nil`.
-  @TaskLocal
-  static var current: IssueCapturingScope?
+  return responder.issues.value.withLock { $0 }
 }
 
-/// Invoke a function, and return any issues recorded during its execution.
+/// Invoke a function, capture and return any issues recorded during its
+/// execution. Issues captured will not be sent to the next responder in the
+/// Issue Responder Chain.
 ///
 /// - Parameters:
-///   - comment: An optional comment describing the context around this issue.
-///   - silently: If true, captured issues will not be immediately reported to
-///     the Testing library. This means that callers must manually report issues
-///     after the fact in order for them to be recorded.
 ///   - sourceLocation: The source location to which any recorded issues should
 ///     be attributed.
 ///   - body: The function to invoke.
-///   - issueMatcher: A function to invoke when an issue occurs that is used to
-///     determine if the issue should be captured. By default, all issues match.
-///
-/// - Throws: Whatever is thrown by `body`, unless it is matched by
-///   `issueMatcher`.
 ///
 /// Library authors use this function to capture and analyze any issues for
 /// later analysis. This is particularly useful for verifying that test helpers
 /// correctly record issues.
-/// Test authors should probably use
+/// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-///
-/// - Note: `issueMatcher` may be invoked more than once for the same issue.
-func captureIssues<R>(
-  _ comment: Comment? = nil,
-  silently: Bool,
+func captureIssues(
   sourceLocation: SourceLocation = #Testing::sourceLocation,
-  _ body: () throws -> sending R,
-  matching issueMatcher: @escaping KnownIssueMatcher = { _ in true }
-) rethrows -> (R, [Issue]) {
-  let scope = IssueCapturingScope(
-    captureSilently: silently,
-    issueMatcher: issueMatcher,
-    context: Issue.KnownIssueContext(comment: comment)
-  )
-  let value = try IssueCapturingScope.$current.withValue(scope) {
-    try body()
+  _ body: sending @isolated(any) () async throws -> Void
+) async -> [Issue] {
+  let responder = CaptureIssuesResponder()
+  await withIssueResponder(responder) {
+    do {
+      try await body()
+    } catch {
+      _recordError(error, sourceLocation: sourceLocation)
+    }
   }
-  return (value, scope.issues.value.withLock { $0 })
+  return responder.issues.value.withLock { $0 }
 }
 
 /// Invoke a function, and return any issues recorded during its execution.
+/// Issues recorded will be sent to the next responder in the Issue Responder
+/// Chain.
 ///
 /// - Parameters:
-///   - comment: An optional comment describing the context around this issue.
-///   - silently: If true, captured issues will not be immediately reported to
-///     the Testing library. This means that callers must manually report issues
-///     after the fact in order for them to be recorded.
 ///   - sourceLocation: The source location to which any recorded issues should
 ///     be attributed.
 ///   - body: The function to invoke.
-///   - issueMatcher: A function to invoke when an issue occurs that is used to
-///     determine if the issue should be captured. By default, all issues match.
-///
-/// - Throws: Whatever is thrown by `body`, unless it is matched by
-///   `issueMatcher`.
 ///
 /// Library authors use this function to capture and analyze any issues for
 /// later analysis. This is particularly useful for verifying that test helpers
 /// correctly record issues.
-/// Test authors should probably use
+/// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-///
-/// - Note: `issueMatcher` may be invoked more than once for the same issue.
-func captureIssues<R>(
-  _ comment: Comment? = nil,
-  silently: Bool,
-  isolation: isolated (any Actor)? = #isolation,
+func observeIssues(
   sourceLocation: SourceLocation = #Testing::sourceLocation,
-  _ body: () async throws -> sending R,
-  matching issueMatcher: @escaping KnownIssueMatcher = { _ in true }
-) async rethrows -> (R, [Issue]) {
-  let scope = IssueCapturingScope(
-    captureSilently: silently,
-    issueMatcher: issueMatcher,
-    context: Issue.KnownIssueContext(comment: comment)
-  )
-  let value = try await IssueCapturingScope.$current.withValue(scope) {
-    try await body()
+  _ body: () throws -> Void
+) -> [Issue] {
+  let responder = ObserveIssuesResponder()
+  withIssueResponder(responder) {
+    do {
+      try body()
+    } catch {
+      _recordError(error, sourceLocation: sourceLocation)
+    }
   }
-  return (value, scope.issues.value.withLock { $0 })
+  return responder.issues.value.withLock { $0 }
 }
+
+/// Invoke a function, and return any issues recorded during its execution.
+/// Issues recorded will be sent to the next responder in the Issue Responder
+/// Chain.
+///
+/// - Parameters:
+///   - sourceLocation: The source location to which any recorded issues should
+///     be attributed.
+///   - body: The function to invoke.
+///
+/// Library authors use this function to capture and analyze any issues for
+/// later analysis. This is particularly useful for verifying that test helpers
+/// correctly record issues.
+/// Test authors should consider using
+/// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
+func observeIssues(
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
+  _ body: sending @isolated(any) () async throws -> Void
+) async -> [Issue] {
+  let responder = ObserveIssuesResponder()
+  await withIssueResponder(responder) {
+    do {
+      try await body()
+    } catch {
+      _recordError(error, sourceLocation: sourceLocation)
+    }
+  }
+  return responder.issues.value.withLock { $0 }
+}
+

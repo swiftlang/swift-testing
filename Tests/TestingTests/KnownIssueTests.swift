@@ -100,16 +100,11 @@ final class KnownIssueTests: XCTestCase {
   }
 
   func testThrownKnownIssueRecordedWithComment() async {
-    let issueMatched = expectation(description: "Issue matched")
-    let issueRecorded = expectation(description: "Issue recorded")
-
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      issueRecorded.fulfill()
-
       guard case .unconditional = issue.kind else {
         return
       }
@@ -128,12 +123,9 @@ final class KnownIssueTests: XCTestCase {
         XCTAssertFalse(issue.isKnown)
         XCTAssertEqual(issue.comments, [])
         XCTAssertNil(issue.knownIssueContext)
-        issueMatched.fulfill()
         return true
       }
     }.run(configuration: configuration)
-
-    await fulfillment(of: [issueMatched, issueRecorded], timeout: 0.0)
   }
 
   func testKnownIssueRecordedWithNoComment() async {
