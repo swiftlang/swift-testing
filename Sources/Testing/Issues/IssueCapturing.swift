@@ -51,11 +51,8 @@ struct CaptureIssuesResponder: IssueResponder {
 ///
 /// - Parameters:
 ///   - error: The error to convert into an ``Issue``.
-///   - sourceLocation: The source location to which the issue should be
-///     attributed.
 private func _recordError(
-  _ error: any Error,
-  sourceLocation: SourceLocation
+  _ error: any Error
 ) {
   // ExpectationFailedError is thrown by expectation checking functions to
   // indicate a condition evaluated to `false`. Those functions record their
@@ -64,15 +61,7 @@ private func _recordError(
     return
   }
 
-  let sourceContext = SourceContext(
-    backtrace: Backtrace(forFirstThrowOf: error),
-    sourceLocation: sourceLocation
-  )
-  Issue(
-    kind: .errorCaught(error),
-    comments: [],
-    sourceContext: sourceContext
-  ).record()
+  Issue(for: error).record()
 }
 
 /// Invoke a function, capture and return any issues recorded during its
@@ -80,8 +69,6 @@ private func _recordError(
 /// Issue Responder Chain.
 ///
 /// - Parameters:
-///   - sourceLocation: The source location to which any recorded issues should
-///     be attributed.
 ///   - body: The function to invoke.
 ///
 /// Library authors use this function to capture and analyze any issues for
@@ -90,7 +77,6 @@ private func _recordError(
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
 package func captureIssues(
-  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: () throws -> Void
 ) -> [Issue] {
   let responder = CaptureIssuesResponder()
@@ -98,7 +84,7 @@ package func captureIssues(
     do {
       try body()
     } catch {
-      _recordError(error, sourceLocation: sourceLocation)
+      _recordError(error)
     }
   }
   return responder.issues.value.withLock { $0 }
@@ -109,8 +95,6 @@ package func captureIssues(
 /// Issue Responder Chain.
 ///
 /// - Parameters:
-///   - sourceLocation: The source location to which any recorded issues should
-///     be attributed.
 ///   - body: The function to invoke.
 ///
 /// Library authors use this function to capture and analyze any issues for
@@ -119,7 +103,6 @@ package func captureIssues(
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
 package func captureIssues(
-  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: sending @isolated(any) () async throws -> Void
 ) async -> [Issue] {
   let responder = CaptureIssuesResponder()
@@ -127,7 +110,7 @@ package func captureIssues(
     do {
       try await body()
     } catch {
-      _recordError(error, sourceLocation: sourceLocation)
+      _recordError(error)
     }
   }
   return responder.issues.value.withLock { $0 }
@@ -138,8 +121,6 @@ package func captureIssues(
 /// Chain.
 ///
 /// - Parameters:
-///   - sourceLocation: The source location to which any recorded issues should
-///     be attributed.
 ///   - body: The function to invoke.
 ///
 /// Library authors use this function to capture and analyze any issues for
@@ -148,7 +129,6 @@ package func captureIssues(
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
 package func observeIssues(
-  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: () throws -> Void
 ) -> [Issue] {
   let responder = ObserveIssuesResponder()
@@ -156,7 +136,7 @@ package func observeIssues(
     do {
       try body()
     } catch {
-      _recordError(error, sourceLocation: sourceLocation)
+      _recordError(error)
     }
   }
   return responder.issues.value.withLock { $0 }
@@ -167,8 +147,6 @@ package func observeIssues(
 /// Chain.
 ///
 /// - Parameters:
-///   - sourceLocation: The source location to which any recorded issues should
-///     be attributed.
 ///   - body: The function to invoke.
 ///
 /// Library authors use this function to capture and analyze any issues for
@@ -177,7 +155,6 @@ package func observeIssues(
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
 package func observeIssues(
-  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: sending @isolated(any) () async throws -> Void
 ) async -> [Issue] {
   let responder = ObserveIssuesResponder()
@@ -185,7 +162,7 @@ package func observeIssues(
     do {
       try await body()
     } catch {
-      _recordError(error, sourceLocation: sourceLocation)
+      _recordError(error)
     }
   }
   return responder.issues.value.withLock { $0 }

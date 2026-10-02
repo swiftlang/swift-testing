@@ -15,8 +15,6 @@ public import Testing
 /// Chain.
 ///
 /// - Parameters:
-///   - sourceLocation: The source location to which any recorded issues should
-///     be attributed.
 ///   - body: The function to invoke.
 ///
 /// Library authors use this function to capture and analyze any issues for
@@ -25,10 +23,9 @@ public import Testing
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
 public func observeIssues(
-  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: () throws -> Void
 ) -> [Issue] {
-  Testing.observeIssues(sourceLocation: sourceLocation, body)
+  Testing.observeIssues(body)
 }
 
 /// Invoke a function, and return any issues recorded during its execution.
@@ -36,8 +33,6 @@ public func observeIssues(
 /// Chain.
 ///
 /// - Parameters:
-///   - sourceLocation: The source location to which any recorded issues should
-///     be attributed.
 ///   - body: The function to invoke.
 ///
 /// Library authors use this function to capture and analyze any issues for
@@ -45,9 +40,8 @@ public func observeIssues(
 /// correctly record issues.
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-package func observeIssues(
-  sourceLocation: SourceLocation = #Testing::sourceLocation,
+public func observeIssues(
   _ body: sending @isolated(any) () async throws -> Void
 ) async -> [Issue] {
-  await Testing.observeIssues(sourceLocation: sourceLocation, body)
+  await Testing.observeIssues(body)
 }
