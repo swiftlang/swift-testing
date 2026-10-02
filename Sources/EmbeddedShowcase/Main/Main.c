@@ -16,17 +16,22 @@
 #endif
 
 int main(
+#if __has_include("pico/stdlib.h")
+  void
+#elif defined(__wasi__)
   int argc, char *argv[]
-#if !defined(__wasi__)
-  , char *envp[]
+#else
+  int argc, char *argv[], char *envp[]
 #endif
 ) {
 #if !SWT_EMBEDDED
   fputs("This target is intended for Embedded Swift only.\n", stderr);
   return EXIT_FAILURE;
-#elif !defined(__wasi__)
-  swift_testing_embeddedMain(argc, argv, envp);
-#else
+#elif __has_include("pico/stdlib.h")
+  swift_testing_embeddedMain(0, 0, 0);
+#elif defined(__wasi__)
   swift_testing_embeddedMain(argc, argv, 0);
+#else
+  swift_testing_embeddedMain(argc, argv, envp);
 #endif
 }
