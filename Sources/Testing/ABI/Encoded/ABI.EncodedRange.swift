@@ -23,34 +23,33 @@ extension ABI {
     /// The inclusive upper bound of the range, if any.
     var max: Int?
 
-    // Creates the encoded range from an expected confirmation count.
-    //
-    // Returns nil if the range could not be represented by an inclusive upper
-    // bound (e.g. `..<Int.min`), or if the range was not a supported
-    // integer-valued range.
-    //
-    // For completeness, this supports a superset of ranges allowed by the
-    // Testing library for confirmations. For example,
-    // `confirmation(expectedCount:...10)` without a explicit lower bound is
-    // considered ambiguous, but can be represented as an encoded range with a
-    // nil `min`.
-    init?(expectedRange: any RangeExpression) {
+    /// Creates the encoded range from an expected confirmation count.
+    ///
+    /// - Precondition: The range must be an integer-valued range that can be
+    ///   represented by an inclusive upper bound (so not `..<Int.min`).
+    ///
+    /// For completeness, this supports a superset of ranges allowed by the
+    /// Testing library for confirmations. For example,
+    /// `confirmation(expectedCount:...10)` without a explicit lower bound is
+    /// considered ambiguous, but can be represented as an encoded range with a
+    /// nil `min`.
+    init(encoding expectedRange: any RangeExpression) {
       if let range = expectedRange as? ClosedRange<Int> {
         min = range.lowerBound
         max = range.upperBound
       } else if let range = expectedRange as? Range<Int> {
-        guard range.upperBound > Int.min else { return nil }
+        precondition(range.upperBound > Int.min, "Could not convert a range where upper bound is Int.min: \(expectedRange)")
         min = range.lowerBound
         max = range.upperBound - 1
       } else if let range = expectedRange as? PartialRangeFrom<Int> {
         min = range.lowerBound
       } else if let range = expectedRange as? PartialRangeUpTo<Int> {
-        guard range.upperBound > Int.min else { return nil }
+        precondition(range.upperBound > Int.min, "Could not convert an exclusive partial range where upper bound is Int.min: \(expectedRange)")
         max = range.upperBound - 1
       } else if let range = expectedRange as? PartialRangeThrough<Int> {
         max = range.upperBound
       } else {
-        return nil
+        preconditionFailure("Could not convert an unsupported range: \(expectedRange)")
       }
     }
   }
@@ -79,7 +78,7 @@ extension ClosedRange<Int> {
     let max = value.max ?? Int.max
     guard min <= max else { return nil }
 
-    self.init(uncheckedBounds: (min, max))
+    self = min ... max
   }
 }
 
