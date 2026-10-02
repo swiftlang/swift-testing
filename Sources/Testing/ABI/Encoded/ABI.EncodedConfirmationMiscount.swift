@@ -22,49 +22,21 @@ extension ABI {
     var actual: Int
 
     /// The number of confirmations that were expected.
-    var expected: ExpectedCount
-
-    /// An enumeration describing the number of confirmations that were
-    /// expected, which may be a single value or a range of values.
-    enum ExpectedCount {
-      /// The expected count was a single value.
-      case single(Int)
-
-      /// The expected count was a range of values.
-      case range(ABI.EncodedRange<V>)
-    }
+    /// A single expected count is a range with equal bounds.
+    var expected: ABI.EncodedRange<V>
   }
 }
 
 // MARK: - Conversion to/from library types
-
-extension ClosedRange<Int> {
-  /// Decode an expected count as a range. For a single-valued expected count,
-  /// this is a one-element range.
-  init?<V>(decoding value: ABI.EncodedConfirmationMiscount<V>.ExpectedCount) {
-    switch value {
-    case .single(let start):
-      self.init(uncheckedBounds: (start, start))
-    case .range(let range):
-      self.init(decoding: range)
-    }
-  }
-}
 
 extension ABI.EncodedConfirmationMiscount {
   /// Encodes a miscount based on the actual and expected count.
   /// - Parameter value: A tuple containing actual and expected number of confirmations.
   ///    If the expected count is a single value, provide it as a single value
   ///    range, e.g. `5...5`.
-  init?(encoding value: (actual: Int, expected: any RangeExpression)) {
-    guard let range = ABI.EncodedRange<V>(expectedRange: value.expected) else { return nil }
-
+  init(encoding value: (actual: Int, expected: any RangeExpression)) {
     actual = value.actual
-    if let min = range.min, let max = range.max, min == max {
-      expected = .single(min)
-    } else {
-      expected = .range(range)
-    }
+    expected = ABI.EncodedRange<V>(encoding: value.expected)
   }
 }
 
@@ -85,9 +57,9 @@ extension ABI.EncodedConfirmationMiscount: Codable {
     let container = try decoder.container(keyedBy: _CodingKeys.self)
     actual = try container.decode(Int.self, forKey: .actual)
     if let count = try? container.decode(Int.self, forKey: .expected) {
-      expected = .single(count)
+      expected = ABI.EncodedRange<V>(encoding: count...count)
     } else {
-      expected = .range(try container.decode(ABI.EncodedRange<V>.self, forKey: .expected))
+      expected = try container.decode(ABI.EncodedRange<V>.self, forKey: .expected)
     }
   }
 }
@@ -97,11 +69,11 @@ extension ABI.EncodedConfirmationMiscount: JSON.Encodable {
   func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     var result = [String: JSON.Value]()
     result["actual"] = actual.jsonValue(in: context)
-    switch expected {
-    case .single(let count):
-      result["expected"] = count.jsonValue(in: context)
-    case .range(let range):
-      result["expected"] = range.jsonValue(in: context)
+    if let min = expected.min, min == expected.max {
+      // Single expected count
+      result["expected"] = min.jsonValue(in: context)
+    } else {
+      result["expected"] = expected.jsonValue(in: context)
     }
     return .object(result)
   }

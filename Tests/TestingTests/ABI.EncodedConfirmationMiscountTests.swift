@@ -12,70 +12,54 @@
 
 #if !SWT_NO_ABI_JSON_SCHEMA
 @Suite struct `ABI.EncodedConfirmationMiscount Tests` {
-  @Test func `Collapses expected single element range to a single count`() throws {
-    let miscount = try #require(
-      ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(encoding: (actual: 1, expected: 10...10)))
+  @Test func `Encodes expected single element range with equal bounds`() {
+    let miscount = ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(encoding: (actual: 1, expected: 10...10))
 
-    guard case .single(let expected) = miscount.expected else {
-      Issue.record("Expected .single case, got \(miscount.expected)")
-      return
-    }
     #expect(miscount.actual == 1)
-    #expect(expected == 10)
+    #expect(miscount.expected.min == 10)
+    #expect(miscount.expected.max == 10)
   }
 
-  @Test func `Preserves a range of expected counts`() throws {
-    let miscount = try #require(
-      ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(encoding: (actual: 1, expected: 5...10)))
+  @Test func `Preserves a range of expected counts`() {
+    let miscount = ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(encoding: (actual: 1, expected: 5...10))
 
-    guard case .range(let range) = miscount.expected else {
-      Issue.record("Expected .range case, got \(miscount.expected)")
-      return
-    }
     #expect(miscount.actual == 1)
-    #expect(range.min == 5)
-    #expect(range.max == 10)
+    #expect(miscount.expected.min == 5)
+    #expect(miscount.expected.max == 10)
   }
 
-  @Test func `Returns nil for an unsupported range expression`() {
-    // Unsupported non-integer range
-    let miscount = ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(
-      encoding: (actual: 1, expected: 0.0..<1.5))
-    #expect(miscount == nil)
+#if !SWT_NO_EXIT_TESTS
+  @Test func `Precondition failure on an unsupported range expression`() async throws {
+    await #expect(processExitsWith: .failure) {
+      // Unsupported non-integer range
+      let _ = ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(
+        encoding: (actual: 1, expected: 0.0..<1.5))
+    }
   }
+#endif
 
   @Test func `Encodes a single expected count as an integer`() throws {
-    let miscount = try #require(
-      ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(encoding: (actual: 1, expected: 10...10)))
+    let miscount = ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(encoding: (actual: 1, expected: 10...10))
     let jsonString = try JSON.encode(miscount)
     #expect(jsonString.contains("\"expected\":10"))
   }
 
   @Test func `Round-trips a single expected count through JSON`() throws {
-    let miscount = try #require(
-      ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(encoding: (actual: 1, expected: 10...10)))
+    let miscount = ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(encoding: (actual: 1, expected: 10...10))
     let decoded = try JSON.encodeAndDecode(miscount)
 
-    guard case .single(let expected) = decoded.expected else {
-      Issue.record("Expected .single case, got \(decoded.expected)")
-      return
-    }
     #expect(decoded.actual == 1)
-    #expect(expected == 10)
+    #expect(decoded.expected.min == 10)
+    #expect(decoded.expected.max == 10)
   }
 
   @Test func `Round-trips a range of expected counts through JSON`() throws {
-    let miscount = try #require(
-      ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(encoding: (actual: 1, expected: 5...10)))
+    let miscount = ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(encoding: (actual: 1, expected: 5...10))
     let decoded = try JSON.encodeAndDecode(miscount)
 
-    guard case .range(let range) = decoded.expected else {
-      Issue.record("Expected .range case, got \(decoded.expected)")
-      return
-    }
     #expect(decoded.actual == 1)
-    #expect(range.min == 5)
-    #expect(range.max == 10)
+    #expect(decoded.expected.min == 5)
+    #expect(decoded.expected.max == 10)
   }
 }
 #endif
