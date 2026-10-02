@@ -12,7 +12,7 @@ import Testing
 import TestingTools
 
 struct withIssueResponderTests {
-  struct MyIssueResponder: IssueResponder {
+  struct MyIssueResponder: TestingTools.IssueResponder {
     func respond(to issue: Issue) -> Issue? {
       var issue = issue
       issue.comments.append("Processed by MyIssueResponder")
