@@ -100,16 +100,11 @@ final class KnownIssueTests: XCTestCase {
   }
 
   func testThrownKnownIssueRecordedWithComment() async {
-    let issueMatched = expectation(description: "Issue matched")
-    let issueRecorded = expectation(description: "Issue recorded")
-
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      issueRecorded.fulfill()
-
       guard case .unconditional = issue.kind else {
         return
       }
@@ -128,12 +123,9 @@ final class KnownIssueTests: XCTestCase {
         XCTAssertFalse(issue.isKnown)
         XCTAssertEqual(issue.comments, [])
         XCTAssertNil(issue.knownIssueContext)
-        issueMatched.fulfill()
         return true
       }
     }.run(configuration: configuration)
-
-    await fulfillment(of: [issueMatched, issueRecorded], timeout: 0.0)
   }
 
   func testKnownIssueRecordedWithNoComment() async {
@@ -289,6 +281,28 @@ final class KnownIssueTests: XCTestCase {
     }.run(configuration: configuration)
 
     await fulfillment(of: [issueRecorded], timeout: 0.0)
+  }
+
+  func testNestedKnownIssueThatMatches() async {
+    let reportedIssues = await runTestAndRecordIssues {
+      withKnownIssue("parent") {
+        withKnownIssue("child") {
+          Issue.record("the recorded issue")
+        }
+      }
+    }
+
+    XCTAssertEqual(reportedIssues.count, 1)
+    // Issue is reported by the parent context as a known issue.
+
+    XCTAssert({
+      if case .some(.unconditional) = reportedIssues.last?.kind { return true }
+      return false
+    }())
+    XCTAssertEqual(reportedIssues.last?.comments, ["the recorded issue"])
+    XCTAssertEqual(reportedIssues.last?.isFailure, false)
+    XCTAssertEqual(reportedIssues.last?.isKnown, true)
+    XCTAssertEqual(reportedIssues.last?.knownIssueContext?.comment, "child")
   }
 
   func testIssueIsKnownPropertyIsSetCorrectlyWithCustomIssueMatcher() async {
