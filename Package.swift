@@ -107,7 +107,6 @@ let package = Package(
     ]
 #endif
 
-#if DEBUG
     // In debug mode, offer products for the showcase targets so they can be
     // built and run from the command line.
     result += [
@@ -115,12 +114,16 @@ let package = Package(
         name: "EmbeddedShowcase",
         targets: ["EmbeddedShowcase"]
       ),
+      .library(
+        name: "EmbeddedShowcaseTests",
+        type: .static,
+        targets: ["EmbeddedShowcaseTests"]
+      ),
       .executable(
         name: "SymbolShowcase",
         targets: ["SymbolShowcase"]
       ),
     ]
-#endif
 
     return result
   }(),
@@ -251,6 +254,12 @@ let package = Package(
       path: "Sources/EmbeddedPlatform/WASI",
       exclude: ["CMakeLists.txt"]
     ),
+    .target(
+      name: "EmbeddedPlatformPicoSDK+Testing",
+      dependencies: ["_TestingInternals",],
+      path: "Sources/EmbeddedPlatform/PicoSDK",
+      exclude: ["CMakeLists.txt"]
+    ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
     .target(
@@ -348,8 +357,6 @@ let package = Package(
       name: "EmbeddedShowcaseTests",
       dependencies: [
         "Testing",
-        .target(name: "EmbeddedPlatformPOSIX+Testing", condition: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .android])),
-        .target(name: "EmbeddedPlatformWASI+Testing", condition: .when(platforms: [.wasi])),
       ],
       path: "Sources/EmbeddedShowcase/Tests"
     )
@@ -562,6 +569,11 @@ extension Array where Element: _CLanguageBuildSetting {
 
     if buildingForEmbedded && target.type != .macro {
       result += [.define("SWT_EMBEDDED"),]
+      if let systemHeadersPath = Context.environment["SWT_SYSTEM_HEADERS_PATH"] {
+        result += [
+          .unsafeFlags(["-isystem", systemHeadersPath], nil)
+        ]
+      }
     }
 
     // Define a compiler condition so we can discover at macro expansion time if
@@ -625,13 +637,7 @@ extension Array where Element: _LanguageBuildSetting {
     // Let the environment block override our settings above.
     let environmentVariables = Context.environment
       .filter { $0.key.starts(with: "SWT_NO_") }
-      .compactMapValues { value in
-#if !canImport(Foundation)
-        (value as NSString).boolValue
-#else
-        Bool(value) ?? UInt64(value).map { $0 != 0 }
-#endif
-      }
+      .compactMapValues(\.boolValue)
 
     for (name, environmentVariable) in environmentVariables {
       // The environment variable is set. If the value is `true`, that means
@@ -677,6 +683,16 @@ private protocol _LanguageBuildSetting {
   ///
   /// - Returns: An instance of this setting.
   static func define(_ name: String, _ condition: BuildSettingCondition?) -> Self
+
+  /// Passes some number of language-specific compiler flags.
+  ///
+  /// - Parameters:
+  ///   - flags: The flags to pass to the compiler.
+  ///   - condition: A condition that restricts the application of the build
+  ///     setting.
+  ///
+  /// - Returns: An instance of this setting.
+  static func unsafeFlags(_ flags: [String], _ condition: BuildSettingCondition?) -> Self
 }
 
 extension _LanguageBuildSetting {
@@ -711,3 +727,14 @@ extension _CLanguageBuildSetting {
 extension PackageDescription.SwiftSetting: _LanguageBuildSetting {}
 extension PackageDescription.CSetting: _CLanguageBuildSetting {}
 extension PackageDescription.CXXSetting: _CLanguageBuildSetting {}
+
+extension String {
+  /// This string as a boolean value.
+  var boolValue: Bool? {
+#if !canImport(Foundation)
+    (self as NSString).boolValue
+#else
+    Bool(self) ?? UInt64(self).map { $0 != 0 }
+#endif
+  }
+}

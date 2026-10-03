@@ -42,4 +42,9 @@
 /// An attribute that marks a function's result as non-discardable.
 #define SWT_NODISCARD __attribute__((warn_unused_result))
 
+#if __has_include(<_newlib_version.h>)
+#undef __block
+#define __block __newlib_block
+#endif
+
 #endif // SWT_DEFINES_H
