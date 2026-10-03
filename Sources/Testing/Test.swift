@@ -164,7 +164,7 @@ public struct Test: Sendable {
     /// - Parameters:
     ///   - function: The function to call to evaluate the test's cases. The
     ///     result is a sequence of test cases.
-    case unevaluated(_ function: @Sendable () async throws -> AnySendableSequence<Test.Case>)
+    case unevaluated(_ function: @Sendable () throws -> AnySendableSequence<Test.Case>)
 
     /// The test's cases have been evaluated.
     ///
@@ -248,10 +248,10 @@ public struct Test: Sendable {
   /// re-evaluated.
   ///
   /// - Throws: Any error caught while first evaluating the test arguments.
-  mutating func evaluateTestCases() async throws {
+  mutating func evaluateTestCases() /*async*/ throws {
     if case let .unevaluated(function) = testCasesState {
       do {
-        let sequence = try await function()
+        let sequence = try function()
         self.testCasesState = .evaluated(sequence)
       } catch {
         self.testCasesState = .failed(error)
@@ -350,7 +350,7 @@ public struct Test: Sendable {
     sourceBounds: __SourceBounds,
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
-    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
+    testCases: @escaping @Sendable () throws -> Test.Case.Generator<S>,
     parameters: [Parameter]
   ) {
     let properties = _Properties(
@@ -360,7 +360,7 @@ public struct Test: Sendable {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCasesState: .unevaluated { try await AnySendableSequence(testCases()) },
+      testCasesState: .unevaluated { try AnySendableSequence(testCases()) },
       parameters: parameters,
       isSynthesized: false
     )
@@ -375,7 +375,7 @@ public struct Test: Sendable {
     sourceBounds: __SourceBounds,
     in containingType: Suite.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
-    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
+    testCases: @escaping @Sendable () /*async*/ throws -> Test.Case.Generator<S>,
     parameters: [Parameter]
   ) where Suite: ~Copyable & ~Escapable {
 #if !hasFeature(Embedded)

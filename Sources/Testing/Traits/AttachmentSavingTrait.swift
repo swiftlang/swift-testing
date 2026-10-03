@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !hasFeature(Embedded)
 #if canImport(Synchronization)
 private import Synchronization
 #endif
@@ -296,3 +297,5 @@ extension Trait where Self == AttachmentSavingTrait {
     return savingAttachments(if: condition, sourceLocation: sourceLocation)
   }
 }
+#endif
+

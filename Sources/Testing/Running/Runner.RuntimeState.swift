@@ -93,32 +93,6 @@ extension Configuration {
     return try Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
   }
 
-  /// Call an asynchronous function while the value of ``Configuration/current``
-  /// is set.
-  ///
-  /// - Parameters:
-  ///   - configuration: The new value to set for ``Configuration/current``.
-  ///   - body: A function to call.
-  ///
-  /// - Returns: Whatever is returned by `body`.
-  ///
-  /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(
-    _ configuration: Self,
-    perform body: () async throws -> R
-  ) async rethrows -> R {
-    let id = configuration._addToAll()
-    defer {
-      configuration._removeFromAll(identifiedBy: id)
-    }
-
-    var runtimeState = Runner.RuntimeState.current ?? .init()
-    runtimeState.configuration = configuration
-    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
-      try await body()
-    }
-  }
-
   /// A type containing the mutable state tracked by ``Configuration/_all`` and,
   /// indirectly, by ``Configuration/all``.
   private struct _All: Sendable {
@@ -236,12 +210,12 @@ extension Test {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ test: Self, perform body: () async throws -> R) async rethrows -> R {
+  static func withCurrent<R>(_ test: Self, perform body: () throws -> R) rethrows -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.test = test
     runtimeState.testCase = nil
-    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
-      try await test.withCancellationHandling(body)
+    return try Runner.RuntimeState.$current.withValue(runtimeState) {
+      try body()//test.withCancellationHandling(body)
     }
   }
 
@@ -259,11 +233,11 @@ extension Test {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrentIteration<R>(_ iteration: Int?, perform body: () async throws -> R) async rethrows -> R {
+  static func withCurrentIteration<R>(_ iteration: Int?, perform body: () throws -> R) rethrows -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.iteration = iteration
-    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
-      try await body()
+    return try Runner.RuntimeState.$current.withValue(runtimeState) {
+      try body()
     }
   }
 }
@@ -294,11 +268,11 @@ extension Test.Case {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ testCase: Self, perform body: () async throws -> R) async rethrows -> R {
+  static func withCurrent<R>(_ testCase: Self, perform body: () throws -> R) rethrows -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.testCase = testCase
-    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
-      try await testCase.withCancellationHandling(body)
+    return try Runner.RuntimeState.$current.withValue(runtimeState) {
+      try body()//testCase.withCancellationHandling(body)
     }
   }
 }

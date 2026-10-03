@@ -266,8 +266,8 @@ extension Runner.Plan {
   ///   - test: The test whose action will be determined.
   ///
   /// - Returns:The action to take for `test`.
-  private static func _determineAction(for test: inout Test) async -> Action {
-    let result: Action
+  private static func _determineAction(for test: inout Test) /*async*/ -> Action {
+    var result: Action = _runAction
 
     // We use a task group here with a single child task so that, if the trait
     // code calls Test.cancel() we don't end up cancelling the entire test run.
@@ -276,7 +276,7 @@ extension Runner.Plan {
     //
     // FIXME: Parallelize this work. Calling `prepare(...)` on all traits and
     // evaluating all test arguments should be safely parallelizable.
-    (test, result) = await withTaskGroup(returning: (Test, Action).self) { [test] taskGroup in
+    //(test, result) = /*await*/ withTaskGroup(returning: (Test, Action).self) { [test] taskGroup in
       let testName = test.humanReadableName()
       let (taskName, taskAction) = if test.isSuite {
         ("suite \(testName)", "evaluating traits")
@@ -284,36 +284,10 @@ extension Runner.Plan {
         // TODO: split the task group's single task into two serially-run subtasks
         ("test \(testName)", "evaluating traits and test cases")
       }
-      taskGroup.addTask(name: decorateTaskName(taskName, withAction: taskAction)) {
-        var test = test
+      //taskGroup.addTask(name: decorateTaskName(taskName, withAction: taskAction)) {
         var action = _runAction
 
-        await Test.withCurrent(test) {
-          do {
-            var firstCaughtError: (any Error)?
-
-            for trait in test.traits {
-              do {
-                try await trait.prepare(for: test)
-              } catch {
-                if let skipInfo = SkipInfo(error) {
-                  action = .skip(skipInfo)
-                  break
-                } else {
-                  // Only preserve the first caught error
-                  firstCaughtError = firstCaughtError ?? error
-                }
-              }
-            }
-
-            // If no trait specified that the test should be skipped, but one
-            // did throw an error, then the action is to record an issue for
-            // that error.
-            if case .run = action, let error = firstCaughtError {
-              action = .recordIssue(Issue(for: error))
-            }
-          }
-
+        /*await*/ Test.withCurrent(test) {
           // If the test is still planned to run (i.e. nothing thus far has
           // caused it to be skipped), evaluate its test cases now.
           //
@@ -323,7 +297,7 @@ extension Runner.Plan {
           // appropriate time to evaluate them.
           if case .run = action {
             do {
-              try await test.evaluateTestCases()
+              try /*await*/ test.evaluateTestCases()
             } catch {
               if let skipInfo = SkipInfo(error) {
                 action = .skip(skipInfo)
@@ -334,12 +308,12 @@ extension Runner.Plan {
           }
         }
 
-        return (test, action)
-      }
+        //return (test, action)
+      //}
 
-      return await taskGroup.first { _ in true }!
-    }
-
+      //return /*await*/ taskGroup.first { _ in true }!
+    //}
+result = action
     return result
   }
 
@@ -350,7 +324,7 @@ extension Runner.Plan {
   ///   - configuration: The configuration to use for planning.
   ///
   /// - Returns: A graph of the steps corresponding to `tests`.
-  private static func _constructStepGraph(from tests: some Sequence<Test>, configuration: Configuration) async -> Graph<String, Step?> {
+  private static func _constructStepGraph(from tests: some Sequence<Test>, configuration: Configuration) /*async*/ -> Graph<String, Step?> {
 #if !hasFeature(Embedded)
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
@@ -411,7 +385,7 @@ extension Runner.Plan {
 #endif
 
     // For each test value, determine the appropriate action for it.
-    testGraph = await testGraph.mapValues { keyPath, test in
+    testGraph = /*await*/ testGraph.mapValues { keyPath, test in
       // Skip any nil test, which implies this node is just a placeholder and
       // not actual test content.
       guard var test else {
@@ -423,7 +397,7 @@ extension Runner.Plan {
       // But if any throw another kind of error, keep track of the first error
       // but continue walking, because if any subsequent traits throw a
       // `SkipInfo`, the error should not be recorded.
-      var action = await _determineAction(for: &test)
+      var action = /*await*/ _determineAction(for: &test)
 
       // If the test is parameterized but has no cases, mark it as skipped.
       if case .run = action, let testCases = test.testCases, testCases.first(where: { _ in true }) == nil {
@@ -455,8 +429,8 @@ extension Runner.Plan {
   ///   - configuration: The configuration to use for planning.
   ///
   /// This function produces a new runner plan for the provided tests.
-  public init(tests: some Sequence<Test>, configuration: Configuration) async {
-    let stepGraph = await Self._constructStepGraph(from: tests, configuration: configuration)
+  public init(tests: some Sequence<Test>, configuration: Configuration) /*async*/ {
+    let stepGraph = /*await*/ Self._constructStepGraph(from: tests, configuration: configuration)
     self.init(stepGraph: stepGraph)
   }
 
@@ -465,8 +439,8 @@ extension Runner.Plan {
   ///
   /// - Parameters:
   ///   - configuration: The configuration to use for planning.
-  public init(configuration: Configuration) async {
-    await self.init(tests: Test.all, configuration: configuration)
+  public init(configuration: Configuration) /*async*/ {
+    /*await*/ self.init(tests: Test.all, configuration: configuration)
   }
 }
 

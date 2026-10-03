@@ -79,9 +79,9 @@ extension Runner {
   ///     the test run.
   static func applyRepetitionPolicy(
     _ policy: Configuration.RepetitionPolicy,
-    perform body: () async -> Void,
+    perform body: () /*async*/ -> Void,
     didRecordIssue: () -> Bool
-  ) async {
+  ) /*async*/ {
     let maximumIterationCount = policy.maximumIterationCount
     for var iteration: Int? in 1...maximumIterationCount {
       // If the task or current test was cancelled, stop iterating early.
@@ -96,8 +96,8 @@ extension Runner {
         iteration = nil
       }
 
-      await Test.withCurrentIteration(iteration) {
-        await body()
+      /*await*/ Test.withCurrentIteration(iteration) {
+        /*await*/ body()
       }
 
       let recordedIssue = didRecordIssue()

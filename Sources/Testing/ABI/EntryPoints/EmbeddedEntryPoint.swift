@@ -49,11 +49,8 @@ public func swift_testing_embeddedMain(
   }
 #endif
 
-  _ = Task {
-    let exitCode = await entryPoint(passing: nil, eventHandler: nil)
-    exit(exitCode)
-  }
-  _asyncMainDrainQueue()
+  let exitCode = /*await*/ entryPoint(passing: nil, eventHandler: nil)
+  exit(exitCode)
 }
 
 // MARK: - Argument storage

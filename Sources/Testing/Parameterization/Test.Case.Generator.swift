@@ -57,7 +57,7 @@ extension Test.Case {
     /// - Parameters:
     ///   - testFunction: The test function called by the generated test case.
     init(
-      testFunction: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
+      testFunction:  @escaping @Sendable () throws -> Void
     ) where S == CollectionOfOne<Void> {
       // A beautiful hack to give us the right number of cases: iterate over a
       // collection containing a single Void value.
@@ -88,7 +88,7 @@ extension Test.Case {
       arguments collection: S,
       makingArgumentValueWith makeArgumentValue: (@Sendable (S.Element) -> Test.Case.Argument.Value)? = nil,
       parameters: [Test.Parameter],
-      testFunction: nonisolated(nonsending) @escaping @Sendable (S.Element) async throws -> Void
+      testFunction:  @escaping @Sendable (S.Element) throws -> Void
     ) where S: Collection {
       let splitsArguments = parameters.count > 1
       let makeArgumentValue = makeArgumentValue ?? { Test.Case.Argument.Value($0) }
@@ -114,7 +114,7 @@ extension Test.Case {
 
       self.init(sequence: collection) { element in
         return Test.Case(values: makeArgumentValues(element), parameters: parameters) {
-          try await testFunction(element)
+          try /*await*/ testFunction(element)
         }
       }
     }
@@ -138,12 +138,12 @@ extension Test.Case {
       arguments collection1: C1, _ collection2: C2,
       makingArgumentValuesWith makeArgumentValues: (@Sendable (C1.Element, C2.Element) -> [Test.Case.Argument.Value])? = nil,
       parameters: [Test.Parameter],
-      testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
+      testFunction:  @escaping @Sendable (C1.Element, C2.Element) throws -> Void
     ) where S == CartesianProduct<C1, C2> {
       let makeArgumentValues = makeArgumentValues ?? Test.Case.Argument.Value.makeArgumentValues(for: parameters)
       self.init(sequence: cartesianProduct(collection1, collection2)) { element in
         Test.Case(values: makeArgumentValues(element.0, element.1), parameters: parameters) {
-          try await testFunction(element.0, element.1)
+          try /*await*/ testFunction(element.0, element.1)
         }
       }
     }
@@ -173,12 +173,12 @@ extension Test.Case {
       _sequence sequence: S,
       makingArgumentValuesWith makeArgumentValues: (@Sendable (E1, E2) -> [Test.Case.Argument.Value])?,
       parameters: [Test.Parameter],
-      testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
+      testFunction:  @escaping @Sendable ((E1, E2)) throws -> Void
     ) where S.Element == (E1, E2), E1: Sendable, E2: Sendable {
       let makeArgumentValues = makeArgumentValues ?? Test.Case.Argument.Value.makeArgumentValues(for: parameters)
       self.init(sequence: sequence) { element in
         return Test.Case(values: makeArgumentValues(element.0, element.1), parameters: parameters) {
-          try await testFunction(element)
+          try /*await*/ testFunction(element)
         }
       }
     }
@@ -208,7 +208,7 @@ extension Test.Case {
       arguments collection: S,
       makingArgumentValuesWith makeArgumentValues: (@Sendable (E1, E2) -> [Test.Case.Argument.Value])? = nil,
       parameters: [Test.Parameter],
-      testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
+      testFunction:  @escaping @Sendable ((E1, E2)) throws -> Void
     ) where S: Collection, S.Element == (E1, E2) {
       self.init(_sequence: collection, makingArgumentValuesWith: makeArgumentValues, parameters: parameters, testFunction: testFunction)
     }
@@ -230,7 +230,7 @@ extension Test.Case {
       arguments zippedCollections: Zip2Sequence<C1, C2>,
       makingArgumentValuesWith makeArgumentValues: (@Sendable (C1.Element, C2.Element) -> [Test.Case.Argument.Value])? = nil,
       parameters: [Test.Parameter],
-      testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
+      testFunction:  @escaping @Sendable ((C1.Element, C2.Element)) throws -> Void
     ) where S == Zip2Sequence<C1, C2>, C1: Collection, C2: Collection {
       self.init(_sequence: zippedCollections, makingArgumentValuesWith: makeArgumentValues, parameters: parameters, testFunction: testFunction)
     }
@@ -258,12 +258,12 @@ extension Test.Case {
       arguments collection: S,
       makingArgumentValuesWith makeArgumentValues: (@Sendable (S.Key, S.Value) -> [Test.Case.Argument.Value])? = nil,
       parameters: [Test.Parameter],
-      testFunction: nonisolated(nonsending) @escaping @Sendable (S.Element) async throws -> Void
+      testFunction: /*nonisolated(nonsending)*/ @escaping @Sendable (S.Element) /*async*/ throws -> Void
     ) where S: ExpressibleByDictionaryLiteral, S.Element == (key: S.Key, value: S.Value) {
       let makeArgumentValues = makeArgumentValues ?? Test.Case.Argument.Value.makeArgumentValues(for: parameters)
       self.init(sequence: collection) { element in
         return Test.Case(values: makeArgumentValues(element.0, element.1), parameters: parameters) {
-          try await testFunction(element)
+          try /*await*/ testFunction(element)
         }
       }
     }
