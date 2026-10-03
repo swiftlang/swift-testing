@@ -119,7 +119,7 @@ extern void _swift_testing_writeJSON(const char *destination, const uint8_t *jso
 extern bool _swift_testing_getDurationSinceSystemEpoch(swift_testing_duration_t *outDuration) {
   uint64_t us = time_us_64();
   outDuration->seconds = us / 1000000;
-  outDuration->nanoseconds = us % 1000000;
+  outDuration->nanoseconds = (us % 1000000) * 1000;
   return true;
 }
 
