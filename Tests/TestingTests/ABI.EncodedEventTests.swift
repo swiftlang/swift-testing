@@ -12,22 +12,32 @@
 
 #if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
 @Suite struct `ABI.EncodedEvent Tests` {
-  /// Creates an EncodedEvent from a JSON string.
-  ///
-  /// - Throws: If the JSON doesn't represent a valid EncodedEvent.
-  private func encodedEvent<V>(_ version: V.Type, _ json: String) throws -> ABI.EncodedEvent<V> {
-    var json = json
-    return try json.withUTF8 { json in
-      try JSON.decode(ABI.EncodedEvent<V>.self, from: UnsafeRawBufferPointer(json))
-    }
-  }
+  struct Decoding {}
+  struct Iteration {}
+  struct Instant {}
+  struct Comments {}
+  struct Messages {}
+  struct SourceLocation {}
+}
 
-  /// Creates an EncodedEvent from a JSON string.
-  ///
-  /// - Throws: If the JSON doesn't represent a valid EncodedEvent.
-  private func encodedEvent(_ json: String) throws -> ABI.EncodedEvent<ABI.CurrentVersion> {
-    try encodedEvent(ABI.CurrentVersion.self, json)
+/// Creates an EncodedEvent from a JSON string.
+///
+/// - Throws: If the JSON doesn't represent a valid EncodedEvent.
+private func encodedEvent<V>(_ version: V.Type, _ json: String) throws -> ABI.EncodedEvent<V> {
+  var json = json
+  return try json.withUTF8 { json in
+    try JSON.decode(ABI.EncodedEvent<V>.self, from: UnsafeRawBufferPointer(json))
   }
+}
+
+/// Creates an EncodedEvent from a JSON string.
+///
+/// - Throws: If the JSON doesn't represent a valid EncodedEvent.
+private func encodedEvent(_ json: String) throws -> ABI.EncodedEvent<ABI.CurrentVersion> {
+  try encodedEvent(ABI.CurrentVersion.self, json)
+}
+
+extension `ABI.EncodedEvent Tests`.Decoding {
 
   @Test func `Decoded event always has nil testID and testCaseID`() throws {
     let event = try encodedEvent(
@@ -123,9 +133,9 @@
       return
     }
   }
+}
 
-  // MARK: Iteration
-
+extension `ABI.EncodedEvent Tests`.Iteration {
   @Test func `Encode iteration`() throws {
     let test = Test {}
     let event = Event(.testCaseStarted, testID: .init(["SomeValidTestID", "testFunc()"]), testCaseID: nil)
@@ -171,7 +181,9 @@
       """)
     #expect(event.iteration == nil)
   }
+}
 
+extension `ABI.EncodedEvent Tests`.Instant {
   @Test func `Encoded event for non-parameterized test doesn't add testCase`() async {
     var configuration = Configuration()
     configuration.eventHandler = { event, context in
@@ -370,8 +382,43 @@
       #expect(ABI.decodeEvent(fromRecordJSON: badRecordJSON, in: &context) == nil)
     }
   }
+}
 
-  @Test func `Fails to decode v6.3 record with missing 'messages' field`() throws {
+extension `ABI.EncodedEvent Tests`.Comments {
+  @Test(arguments: [
+    Event.Kind.issueRecorded(.init(kind: .unconditional, comments: ["User provided comment"], sourceContext: .sample)),
+    .testSkipped(.init(comment: "User provided comment", sourceContext: .sample)),
+    .testCancelled(.init(comment: "User provided comment", sourceContext: .sample)),
+    .testCaseCancelled(.init(comment: "User provided comment", sourceContext: .sample)),
+  ])
+  func `'comments' field only encoded in 6.5 and above`(kind: Event.Kind) throws {
+    // Need a parameterised test to successfully encode testCancelled events
+    let test = Test.sampleParameterized
+    let event = Event(kind, testID: .init(["SomeValidTestID", "testFunc()"]), testCaseID: nil)
+    let context = Event.Context(test: test, testCase: nil, iteration: 2, configuration: nil)
+
+
+    // v6.4
+    do {
+      let encoded = try #require(ABI.EncodedEvent<ABI.v6_4>(encoding: event, in: context))
+
+      #expect(encoded.comments == nil)
+      #expect(try !JSON.encode(encoded).contains(#""comments":"#))
+    }
+
+    // v6.5
+    do {
+      let encoded = try #require(ABI.EncodedEvent<ABI.v6_5>(encoding: event, in: context))
+
+      #expect(encoded.comments == ["User provided comment"])
+      #expect(try JSON.encode(encoded).contains(#""comments":"#))
+    }
+
+  }
+}
+
+extension `ABI.EncodedEvent Tests`.Messages {
+  @Test func `Fails to decode v6.3 record with missing 'messages'`() throws {
     #expect(throws: DecodingError.self) {
       _ = try encodedEvent(
         ABI.v6_3.self,
@@ -384,10 +431,11 @@
         """
       )
     }
+  }
 
+  @Test func `Can decode v6.5 record with missing 'messages'`() throws {
     #expect(throws: Never.self) {
-      _ = try encodedEvent(
-        ABI.ExperimentalVersion.self,
+      _ = try JSON.decode(ABI.EncodedEvent<ABI.v6_5>.self, from:
         """
         {
           "kind": "testStarted",
@@ -433,4 +481,52 @@
     eventHandler(event, eventContext)
   }
 }
+
+extension `ABI.EncodedEvent Tests`.SourceLocation {
+  @Test(arguments: [
+    Event.Kind.issueRecorded(.init(kind: .system, sourceContext: .sample)),
+    .valueAttached(Attachment(Attachment("Tomato"))),
+    .testSkipped(.init(comment: "User provided comment", sourceContext: .sample)),
+    .testCancelled(.init(comment: "User provided comment", sourceContext: .sample)),
+    .testCaseCancelled(.init(comment: "User provided comment", sourceContext: .sample)),
+  ])
+  func `Event-level 'sourceLocation' field only encoded in 6.5 and above`(kind: Event.Kind) throws {
+    var test = Test {}
+    test.parameters = [.init(index: 0, firstName: "sample", type: String.self)]
+    let event = Event(kind, testID: .sample, testCaseID: nil)
+    let context = Event.Context(test: test, testCase: nil, iteration: 1, configuration: nil)
+
+    // v6.4
+    do {
+      let encoded = try #require(ABI.EncodedEvent<ABI.v6_4>(encoding: event, in: context))
+      #expect(encoded.sourceLocation == nil)
+    }
+
+    // v6.5
+    do {
+      let encoded = try #require(ABI.EncodedEvent<ABI.v6_5>(encoding: event, in: context))
+      #expect(encoded.sourceLocation != nil)
+    }
+  }
+}
 #endif
+
+extension SourceContext {
+  fileprivate static var sample: Self {
+    .init(sourceLocation: .init(fileID: "Module/Tomato.swift", filePath: "/path/to/tomato.swift", line: 1, column: 1))
+  }
+}
+
+extension Test {
+  fileprivate static var sampleParameterized: Self {
+    var test = Test {}
+    test.parameters = [.init(index: 0, firstName: "sample", type: String.self)]
+    return test
+  }
+}
+
+extension Test.ID {
+  fileprivate static var sample: Self {
+    .init(["SomeValidTestID", "testFunc()"])
+  }
+}
