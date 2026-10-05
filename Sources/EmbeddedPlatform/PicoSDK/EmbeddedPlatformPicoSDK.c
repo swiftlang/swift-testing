@@ -22,7 +22,7 @@
 #include "pico/version.h"
 
 // Swift Testing headers
-#include "../../_TestingInternals/include/EmbeddedPlatform.h"
+#include "../../_TestingInternals/include/EmbeddedPlatform+Testing.h"
 
 // MARK: - POSIX stubs
 

@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #else
-#include "../../_TestingInternals/include/EmbeddedPlatform.h"
+#include "../../_TestingInternals/include/EmbeddedPlatform+Testing.h"
 #endif
 
 int main(

@@ -8,19 +8,60 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if !defined(SWT_EMBEDDED_PLATFORM_H)
-#define SWT_EMBEDDED_PLATFORM_H
-
-#include "Defines.h"
-#include "Includes.h"
-
-SWT_ASSUME_NONNULL_BEGIN
+#if !defined(SWIFT_TESTING_EMBEDDED_PLATFORM_H)
+#define SWIFT_TESTING_EMBEDDED_PLATFORM_H
 
 /// This header includes declarations, but not definitions, of functions that
 /// the testing library needs defined when built for Embedded Swift.
 ///
 /// This header augments the set of declarations in the Swift runtime's Platform
 /// Abstraction Layer, which can be found [here](https://github.com/swiftlang/swift/blob/main/stdlib/public/EmbeddedPlatform/swift/EmbeddedPlatform.h).
+///
+/// This header can be used independently of the testing library's sources, so
+/// it does not directly reference any of the private headers in the testing
+/// library's repository.
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#if defined(__cplusplus)
+#define SWIFT_TESTING_EXTERN extern "C"
+#else
+#define SWIFT_TESTING_EXTERN extern
+#endif
+
+#if defined(__has_attribute) && __has_attribute(__noreturn__)
+#define SWIFT_TESTING_NORETURN __attribute__((__noreturn__))
+#else
+#define SWIFT_TESTING_NORETURN
+#endif
+
+#if defined(__has_attribute) && __has_attribute(__warn_unused_result__)
+#define SWIFT_TESTING_NODISCARD __attribute__((warn_unused_result))
+#else
+#define SWIFT_TESTING_NODISCARD
+#endif
+
+#if defined(__has_attribute) && __has_attribute(__swift_attr__)
+#define SWIFT_TESTING_NONISOLATED_UNSAFE __attribute__((__swift_attr__("nonisolated(unsafe)")))
+#else
+#define SWIFT_TESTING_NONISOLATED_UNSAFE
+#endif
+
+#if defined(__has_attribute) && __has_attribute(__swift_attr__)
+#define SWIFT_TESTING_SENDABLE __attribute__((__swift_attr__("@Sendable")))
+#else
+#define SWIFT_TESTING_SENDABLE
+#endif
+
+#if defined(__has_feature) && __has_feature(nullability)
+#define SWIFT_TESTING_NULLABLE _Nullable
+#define SWIFT_TESTING_NONNULL _Nonnull
+#else
+#define SWIFT_TESTING_NULLABLE
+#define SWIFT_TESTING_NONNULL
+#endif
 
 /// Run tests in the current process according to the specified configuration.
 ///
@@ -63,7 +104,7 @@ SWT_ASSUME_NONNULL_BEGIN
 ///
 /// - Warning: This function's signature is subject to change. This function may
 ///   be removed in a future update.
-SWT_EXTERN _Noreturn void swift_testing_embeddedMain(int argc, char *_Nonnull argv[_Nullable], char *_Nullable envp[_Nullable]);
+SWIFT_TESTING_EXTERN SWIFT_TESTING_NORETURN void swift_testing_embeddedMain(int argc, char *SWIFT_TESTING_NONNULL argv[SWIFT_TESTING_NULLABLE], char *SWIFT_TESTING_NULLABLE envp[SWIFT_TESTING_NULLABLE]);
 
 // MARK: - Process configuration
 
@@ -77,8 +118,8 @@ typedef struct swift_testing_argc_argv_t {
   ///
   /// If the value of the ``argc`` field is less than or equal to `0`, the value
   /// of this field is ignored.
-  char *_Nonnull *_Nullable argv SWT_NONISOLATED_UNSAFE;
-} swift_testing_argc_argv_t SWT_SENDABLE;
+  char *SWIFT_TESTING_NONNULL *SWIFT_TESTING_NULLABLE argv SWIFT_TESTING_NONISOLATED_UNSAFE;
+} swift_testing_argc_argv_t SWIFT_TESTING_SENDABLE;
 
 /// Get the command-line arguments passed to the current process.
 ///
@@ -129,7 +170,7 @@ typedef struct swift_testing_argc_argv_t {
 ///
 /// The testing library calls this function at most once during the lifetime of
 /// a test process.
-SWT_EXTERN SWT_NODISCARD bool _swift_testing_getArgcArgv(swift_testing_argc_argv_t *outArgcArgv);
+SWIFT_TESTING_EXTERN SWIFT_TESTING_NODISCARD bool _swift_testing_getArgcArgv(swift_testing_argc_argv_t *SWIFT_TESTING_NONNULL outArgcArgv);
 
 /// Get the current process' environment block.
 ///
@@ -181,7 +222,7 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getArgcArgv(swift_testing_argc_argv
 /// a test process. General thread safety issues with the POSIX `environ`
 /// variable are [well-documented](https://www.austingroupbugs.net/view.php?id=188)
 /// and are beyond the Platform Abstraction Layer's purview.
-SWT_EXTERN SWT_NODISCARD bool _swift_testing_getEnvironment(char *_Nullable *_Nullable *_Nonnull outEnvironment);
+SWIFT_TESTING_EXTERN SWIFT_TESTING_NODISCARD bool _swift_testing_getEnvironment(char *SWIFT_TESTING_NULLABLE *SWIFT_TESTING_NULLABLE *SWIFT_TESTING_NONNULL outEnvironment);
 
 // MARK: - System metadata
 
@@ -245,7 +286,7 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getEnvironment(char *_Nullable *_Nu
 ///
 /// The testing library calls this function at most once during the lifetime of
 /// a test process.
-SWT_EXTERN bool _swift_testing_getEmbeddedTargetInfo(const char *_Nullable *_Nonnull outEmbeddedTargetInfo);
+SWIFT_TESTING_EXTERN bool _swift_testing_getEmbeddedTargetInfo(const char *SWIFT_TESTING_NULLABLE *SWIFT_TESTING_NONNULL outEmbeddedTargetInfo);
 
 // MARK: - Console output
 
@@ -313,7 +354,7 @@ typedef struct swift_testing_console_capabilities_t {
 ///
 /// This function's implementation must be concurrency-safe unless the system is
 /// single-threaded.
-SWT_EXTERN SWT_NODISCARD bool _swift_testing_getConsoleCapabilities(swift_testing_console_capabilities_t *outConsoleCapabilities);
+SWIFT_TESTING_EXTERN SWIFT_TESTING_NODISCARD bool _swift_testing_getConsoleCapabilities(swift_testing_console_capabilities_t *SWIFT_TESTING_NONNULL outConsoleCapabilities);
 
 /// Writes a sequence of UTF-8 code points to the current system's console.
 ///
@@ -361,7 +402,7 @@ SWT_EXTERN SWT_NODISCARD bool _swift_testing_getConsoleCapabilities(swift_testin
 ///
 /// This function's implementation must be concurrency-safe unless the system is
 /// single-threaded.
-SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count);
+SWIFT_TESTING_EXTERN void _swift_testing_writeToConsole(const uint8_t *SWIFT_TESTING_NONNULL chars, size_t count);
 
 // MARK: - JSON output
 
@@ -443,7 +484,7 @@ SWT_EXTERN void _swift_testing_writeToConsole(const uint8_t *chars, size_t count
 /// In the reference example above, you can substitute platform-specific
 /// equivalents for `flockfile()` and `funlockfile()` if needed, or omit them
 /// entirely in single-threaded environments.
-SWT_EXTERN void _swift_testing_writeJSON(const char *_Nullable destination, const uint8_t *json, size_t count, const uint8_t terminator[_Nullable 1]);
+SWIFT_TESTING_EXTERN void _swift_testing_writeJSON(const char *SWIFT_TESTING_NULLABLE destination, const uint8_t *SWIFT_TESTING_NONNULL json, size_t count, const uint8_t terminator[SWIFT_TESTING_NULLABLE 1]);
 
 // MARK: - Test timing
 
@@ -542,7 +583,5 @@ typedef struct swift_testing_duration_t {
 ///
 /// This function's implementation must be concurrency-safe unless the system is
 /// single-threaded.
-SWT_EXTERN SWT_NODISCARD bool _swift_testing_getDurationSinceSystemEpoch(swift_testing_duration_t *outDuration);
-
-SWT_ASSUME_NONNULL_END
+SWIFT_TESTING_EXTERN SWIFT_TESTING_NODISCARD bool _swift_testing_getDurationSinceSystemEpoch(swift_testing_duration_t *SWIFT_TESTING_NONNULL outDuration);
 #endif
