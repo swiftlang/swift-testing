@@ -115,7 +115,7 @@ public struct Issue: Sendable {
   ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var severity: Severity
-  
+
   /// Whether or not this issue should cause the test it's associated with to be
   /// considered a failure.
   ///
@@ -334,7 +334,7 @@ extension Issue {
     public var kind: Kind.Snapshot
 
     /// The severity of this issue.
-    /// 
+    ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
     ///   @Available(Xcode, introduced: 26.4)

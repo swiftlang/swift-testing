@@ -288,12 +288,12 @@ extension ABI.EncodedEvent.Kind: Codable {
 #endif
 
 extension ABI.EncodedEvent: JSON.Encodable {
-  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) throws(JSON.EncodingError) -> JSON.Value {
     var result = [String: JSON.Value]()
 
     result["kind"] = kind.rawValue.jsonValue(in: context)
     result["instant"] = instant.jsonValue(in: context)
-    result["issue"] = issue?.jsonValue(in: context)
+    result["issue"] = try issue?.jsonValue(in: context)
     result["attachment"] = attachment?.jsonValue(in: context)
     if V.alwaysEncodeMessagesField || !messages.isEmpty {
       result["messages"] = messages.jsonValue(in: context)

@@ -30,16 +30,6 @@ private func encodedIssue<V>(_ version: V.Type, _ json: String) throws -> ABI.En
   }
 }
 
-/// Converts pretty-printed JSON -> single line JSON by trimming out
-/// indentation and newlines.
-///
-/// This allows us to write test expectations with nicer formatting.
-private func minified(_ json: String) -> String {
-  json.split(separator: "\n")
-    .map { $0.trimmingPrefix { $0 == " " } }
-    .joined()
-}
-
 private let expectationFailedIssue: Issue = {
   // SourceLocation must be provided for the Issue in order for it to go from
   // Issue -> EncodedIssue -> Issue and successfully decode its expression
@@ -205,7 +195,7 @@ extension `ABI.EncodedIssue Tests`.`Encode Different Issue Types` {
   func `Encodes issue types to expected JSON`(testCase: IssueEncodingTestCase) throws {
     let issue = ABI.EncodedIssue<ABI.CurrentVersion>(encoding: testCase.issueToEncode, in: .sample)
     let jsonString = try JSON.encode(issue)
-    #expect(jsonString == minified(testCase.expectedJSON))
+    #expect(jsonString == JSON.minified(testCase.expectedJSON))
   }
 
   @Test(arguments: Self.issueTestCases)
@@ -231,31 +221,25 @@ extension `ABI.EncodedIssue Tests`.`Encode Different Issue Types` {
 }
 
 extension `ABI.EncodedIssue Tests`.Decoding {
-  @Test func `Decode EncodedIssue with invalid miscount -> unconditional Issue`() throws {
+  @Test func `Decode EncodedIssue with invalid miscount -> rejects the issue`() throws {
     // Min bound exceeds max bound
-    let encoded = try encodedIssue(
-      ABI.v6_5.self,
-      """
-        {
-          "confirmationMiscount":{
-            "actual":5,
-            "expected":{
-              "max":10,
-              "min":15
-            }
-          },
-          "isFailure":true,
-          "severity":"error"
-        }
-      """
-    )
-
-    let issue = try #require(Issue(decoding: encoded))
-    switch issue.kind {
-    case .unconditional:
-      break
-    default:
-      Issue.record("Expected unconditional issue kind, got: \(issue.kind)")
+    #expect(throws: DecodingError.self) {
+      _ = try encodedIssue(
+        ABI.v6_5.self,
+        """
+          {
+            "confirmationMiscount":{
+              "actual":5,
+              "expected":{
+                "max":10,
+                "min":15
+              }
+            },
+            "isFailure":true,
+            "severity":"error"
+          }
+        """
+      )
     }
   }
 }
@@ -349,7 +333,7 @@ extension `ABI.EncodedIssue Tests`.`Backwards Compatibility` {
     let jsonString = try JSON.encode(issue)
     #expect(
       jsonString
-        == minified(
+        == JSON.minified(
           #"""
           {
             "isFailure":true,

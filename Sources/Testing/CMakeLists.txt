@@ -28,7 +28,6 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedIssue.swift
   ABI/Encoded/ABI.EncodedMessage.swift
   ABI/Encoded/ABI.EncodedMetadata.swift
-  ABI/Encoded/ABI.EncodedRange.swift
   ABI/Encoded/ABI.EncodedSourceLocation.swift
   ABI/Encoded/ABI.EncodedTest.swift
   ABI/Encoded/ABI.EncodedTypeInfo.swift

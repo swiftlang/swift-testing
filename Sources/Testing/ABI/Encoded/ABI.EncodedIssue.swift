@@ -203,7 +203,7 @@ extension ABI.EncodedIssue.Severity: Codable {
 #endif
 
 extension ABI.EncodedIssue: JSON.Encodable {
-  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+  func jsonValue(in context: borrowing JSON.EncodingContext) throws(JSON.EncodingError) -> JSON.Value {
     var result = [String: JSON.Value]()
 
     result["severity"] = severity?.rawValue.jsonValue(in: context)
@@ -227,7 +227,7 @@ extension ABI.EncodedIssue: JSON.Encodable {
     result["error"] = error?.jsonValue(in: context)
     result["expression"] = expression?.jsonValue(in: context)
     result["exceededTimeLimit"] = exceededTimeLimit?.jsonValue(in: context)
-    result["confirmationMiscount"] = confirmationMiscount?.jsonValue(in: context)
+    result["confirmationMiscount"] = try confirmationMiscount?.jsonValue(in: context)
 
     return .object(result)
   }
@@ -294,10 +294,8 @@ extension Issue {
     } else if let exceededTimeLimit = issue.exceededTimeLimit {
       let duration = Duration.seconds(exceededTimeLimit)
       issueKind = .timeLimitExceeded(timeLimitComponents: duration.components)
-    } else if let miscount = issue.confirmationMiscount,
-      let expectedRange = ClosedRange<Int>(decoding: miscount.expected)
-    {
-      issueKind = .confirmationMiscounted(actual: miscount.actual, expected: expectedRange)
+    } else if let miscount = issue.confirmationMiscount {
+      issueKind = .confirmationMiscounted(actual: miscount.actual, expected: miscount.expected)
     } else {
       // TODO: improve fidelity of issue kind reporting (especially those without associated values)
       issueKind = .unconditional

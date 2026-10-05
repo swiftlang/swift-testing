@@ -478,6 +478,16 @@ extension JSON {
       try JSON.decode(T.self, from: UnsafeRawBufferPointer(json))
     }
   }
+
+  /// Converts pretty-printed JSON -> single line JSON by trimming out
+  /// indentation and newlines.
+  ///
+  /// This allows us to write test expectations with nicer formatting.
+  static func minified(_ json: String) -> String {
+    json.split(separator: "\n")
+      .map { $0.trimmingPrefix { $0 == " " } }
+      .joined()
+  }
 }
 #endif
 
