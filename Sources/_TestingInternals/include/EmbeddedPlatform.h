@@ -67,6 +67,98 @@ SWT_EXTERN _Noreturn void swift_testing_embeddedMain(int argc, char *_Nonnull ar
 
 // MARK: - Process configuration
 
+/// Perform any platform-specific setup and configuration needed before tests
+/// start running.
+///
+/// - Parameters:
+///   - argc: The number of command-line arguments at `argv`, as per C's
+///     specification of `main()`.
+///   - argv: The command-line arguments passed to the process, as per C's
+///     specification of `main()`.
+///   - envp: The environment variables set in the process, laid out as per the
+///     POSIX standard for the `environ` global variable.
+///
+/// The testing library calls this function to allow the platform to perform any
+/// necessary setup and configuration before the testing library runs any tests.
+///
+/// The testing library calls this function when you call
+/// `swift_testing_embeddedMain()`. The arguments to this function are the same
+/// as those to `swift_testing_embeddedMain()`, supplemented by the values
+/// returned from `_swift_testing_getArgcArgv()` and
+/// `_swift_testing_getEnvironment()` if the testing library needed to call
+/// them. For more information about those functions, see their documentation.
+///
+/// ### Reference implementations
+///
+/// The implementation of this function is platform-specific. If, for example,
+/// your platform needs to call a function named `open_uart()` before the
+/// testing library writes any text to the console, you could implement it as:
+///
+/// ```c
+/// static UART *uart;
+///
+/// void _swift_testing_init(int argc, char *argv[], char *envp[]) {
+///   uart = open_uart();
+/// }
+/// ```
+///
+/// If your platform does not need to perform any setup or configuration, you
+/// can implement this function as a no-op.
+///
+/// ### Concurrency support
+///
+/// The testing library calls this function at most once during the lifetime of
+/// a test process.
+SWT_EXTERN void _swift_testing_init(int argc, char *_Nonnull argv[_Nullable], char *_Nullable envp[_Nullable]);
+
+/// Perform any platform-specific cleanup after tests finish running.
+///
+/// - Parameters:
+///   - argc: The number of command-line arguments at `argv`, as per C's
+///     specification of `main()`.
+///   - argv: The command-line arguments passed to the process, as per C's
+///     specification of `main()`.
+///   - envp: The environment variables set in the process, laid out as per the
+///     POSIX standard for the `environ` global variable.
+///
+/// The testing library calls this function to allow the platform to clean up
+/// resources, flush buffers, and so on after the testing library has finished
+/// running tests but before it terminates the current process.
+///
+/// The testing library calls this function just before it calls
+/// `_swift_exit()`. The arguments to this function are the same as those to
+/// `_swift_exit()`. For more information about that function, see its
+/// documentation.
+///
+/// - Important: If your test code calls a function that terminates the process
+///   (for example, `exit()` or `raise()`) or if the test process terminates
+///   abnormally (for example, because an assertion failed), it is unspecified
+///   whether or not the testing library will call this function before the
+///   process terminates.
+///
+/// ### Reference implementations
+///
+/// The implementation of this function is platform-specific. If, for example,
+/// your platform needs to call a function named `close_uart()`, you could
+/// implement it as:
+///
+/// ```c
+/// static UART *uart;
+///
+/// void _swift_testing_deinit(int exitCode) {
+///   close_uart(uart);
+/// }
+/// ```
+///
+/// If your platform does not need to perform any cleanup, you can implement
+/// this function as a no-op.
+///
+/// ### Concurrency support
+///
+/// The testing library calls this function at most once during the lifetime of
+/// a test process.
+SWT_EXTERN void _swift_testing_deinit(int exitCode);
+
 /// A structure that stores the `argc` and `argv` values returned from
 /// `_swift_testing_getArgcArgv()`.
 typedef struct swift_testing_argc_argv_t {

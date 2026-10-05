@@ -11,6 +11,9 @@
 internal import _TestingInternals
 
 #if hasFeature(Embedded)
+@c @implementation func _swift_testing_init(_ argc: CInt, _ argv: UnsafeMutablePointer<UnsafeMutablePointer<CChar>>?, _ envp: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?) {}
+@c @implementation func _swift_testing_deinit(_ exitCode: CInt) {}
+
 @c @implementation func _swift_testing_writeToConsole(_ chars: UnsafePointer<UInt8>, _ count: Int) {
   write(STDERR_FILENO, chars, count)
 }

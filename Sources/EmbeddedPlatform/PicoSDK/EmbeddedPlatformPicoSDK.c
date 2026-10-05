@@ -82,6 +82,16 @@ int8_t _task_serialExecutor_isIsolatingCurrentContext(const void *executor, cons
 
 // MARK: -
 
+void _swift_testing_init(int argc, char *argv[], char *envp[]) {
+  status_led_init();
+  stdio_init_all();
+}
+
+void _swift_testing_deinit(int exitCode) {
+  stdio_deinit_all();
+  status_led_deinit();
+}
+
 bool _swift_testing_getArgcArgv(swift_testing_argc_argv_t *outArgcArgv) {
   static char *argv[] = { "swift-test", "--verbose" };
   outArgcArgv->argc = 2;
@@ -102,17 +112,7 @@ bool _swift_testing_getConsoleCapabilities(swift_testing_console_capabilities_t 
   return false;
 }
 
-static atomic_flag _statusLEDInitialized = ATOMIC_FLAG_INIT;
-static atomic_flag _stdioInitialized = ATOMIC_FLAG_INIT;
-
 void _swift_testing_writeToConsole(const uint8_t *chars, size_t count) {
-  if (!atomic_flag_test_and_set(&_statusLEDInitialized)) {
-    status_led_init();
-  }
-  if (!atomic_flag_test_and_set(&_stdioInitialized)) {
-    stdio_init_all();
-  }
-
   status_led_set_state(true);
   stdio_put_string((const char *)chars, count, false, PICO_STDIO_DEFAULT_CRLF);
   status_led_set_state(false);
