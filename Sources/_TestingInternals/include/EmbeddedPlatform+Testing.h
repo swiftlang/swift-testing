@@ -31,31 +31,43 @@
 #define SWIFT_TESTING_EXTERN extern
 #endif
 
-#if defined(__has_attribute) && __has_attribute(__noreturn__)
+#if defined(__has_attribute)
+#define SWIFT_TESTING_COMPILER_HAS_ATTRIBUTE(ATTRIBUTE) __has_attribute(ATTRIBUTE)
+#else
+#define SWIFT_TESTING_COMPILER_HAS_ATTRIBUTE(ATTRIBUTE) 0
+#endif
+
+#if defined(__has_feature)
+#define SWIFT_TESTING_COMPILER_HAS_FEATURE(FEATURE) __has_feature(FEATURE)
+#else
+#define SWIFT_TESTING_COMPILER_HAS_FEATURE(FEATURE) 0
+#endif
+
+#if SWIFT_TESTING_COMPILER_HAS_ATTRIBUTE(__noreturn__)
 #define SWIFT_TESTING_NORETURN __attribute__((__noreturn__))
 #else
 #define SWIFT_TESTING_NORETURN
 #endif
 
-#if defined(__has_attribute) && __has_attribute(__warn_unused_result__)
+#if SWIFT_TESTING_COMPILER_HAS_ATTRIBUTE(__warn_unused_result__)
 #define SWIFT_TESTING_NODISCARD __attribute__((warn_unused_result))
 #else
 #define SWIFT_TESTING_NODISCARD
 #endif
 
-#if defined(__has_attribute) && __has_attribute(__swift_attr__)
+#if SWIFT_TESTING_COMPILER_HAS_ATTRIBUTE(__swift_attr__)
 #define SWIFT_TESTING_NONISOLATED_UNSAFE __attribute__((__swift_attr__("nonisolated(unsafe)")))
 #else
 #define SWIFT_TESTING_NONISOLATED_UNSAFE
 #endif
 
-#if defined(__has_attribute) && __has_attribute(__swift_attr__)
+#if SWIFT_TESTING_COMPILER_HAS_ATTRIBUTE(__swift_attr__)
 #define SWIFT_TESTING_SENDABLE __attribute__((__swift_attr__("@Sendable")))
 #else
 #define SWIFT_TESTING_SENDABLE
 #endif
 
-#if defined(__has_feature) && __has_feature(nullability)
+#if SWIFT_TESTING_COMPILER_HAS_FEATURE(nullability)
 #define SWIFT_TESTING_NULLABLE _Nullable
 #define SWIFT_TESTING_NONNULL _Nonnull
 #else
