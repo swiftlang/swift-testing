@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -38,58 +38,6 @@ extension Test {
 
     /// The kind of this test case.
     private var _kind: _Kind
-
-    /// A type representing an argument passed to a parameter of a parameterized
-    /// test function.
-    @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-    public struct Argument: Sendable {
-      /// A type representing the stable, unique identifier of a parameterized
-      /// test argument.
-      @_spi(ForToolsIntegrationOnly)
-      public struct ID: Sendable {
-        /// The raw bytes of this instance's identifier.
-        public var bytes: [UInt8]
-
-        init(bytes: some Sequence<UInt8>) {
-          self.bytes = Array(bytes)
-        }
-
-        init(describing value: some CustomTestStringConvertible) {
-          self.init(bytes: String(describingForTest: value).utf8)
-        }
-
-        init(describing value: Any) {
-#if !hasFeature(Embedded)
-          self.init(bytes: String(describingForTest: value).utf8)
-#else
-          self.init(bytes: [])
-#endif
-        }
-      }
-
-      /// The value of this parameterized test argument.
-      public var value: any Sendable
-
-      /// The ID of this parameterized test argument.
-      ///
-      /// The uniqueness of this value is narrow: it is considered unique only
-      /// within the scope of the parameter of the test function this argument
-      /// was passed to.
-      ///
-      /// ## See Also
-      ///
-      /// - ``CustomTestArgumentEncodable``
-      public var id: ID
-
-      /// The parameter of the test function to which this argument was passed.
-      public var parameter: Parameter
-
-      init(id: ID, value: any Sendable, parameter: Parameter) {
-        self.id = id
-        self.value = value
-        self.parameter = parameter
-      }
-    }
 
     /// The arguments passed to this test case, if any.
     ///
@@ -190,43 +138,11 @@ extension Test {
     ///   - parameters: The parameters of the test function for this test case.
     ///   - body: The body closure of this test case.
     init(
-      values: [any Sendable],
+      values: [Argument.Value],
       parameters: [Parameter],
       body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
     ) {
-      var isStable = true
-
-      let arguments = zip(values, parameters).map { value, parameter in
-        var stableArgumentID: Argument.ID?
-
-        // Attempt to get a stable, encoded representation of this value if no
-        // such attempts for previous values have failed.
-        if isStable {
-          do {
-            stableArgumentID = try .init(identifying: value, parameter: parameter)
-          } catch {
-            // FIXME: Capture the error and propagate to the user, not as a test
-            // failure but as an advisory warning. A missing stable argument ID
-            // will prevent re-running the test case, but isn't a blocking issue.
-          }
-        }
-
-        let argumentID: Argument.ID
-        if let stableArgumentID {
-          argumentID = stableArgumentID
-        } else {
-          // If we couldn't get a stable representation of at least one value,
-          // give up and consider the overall test case non-stable. This allows
-          // skipping unnecessary work later: if any individual argument doesn't
-          // have a stable ID, there's no point encoding the values which _are_
-          // encodable.
-          isStable = false
-          argumentID = .init(describing: value)
-        }
-
-        return Argument(id: argumentID, value: value, parameter: parameter)
-      }
-
+      let (arguments, isStable) = Argument.makeArguments(withValues: values, for: parameters)
       self.init(kind: .parameterized(arguments: arguments, discriminator: 0, isStable: isStable), body: body)
     }
 
@@ -313,13 +229,11 @@ extension Test {
 // MARK: - Codable
 
 extension Test.Parameter: Codable {}
-extension Test.Case.Argument.ID: Codable {}
 #endif
 
 // MARK: - Equatable, Hashable
 
-extension Test.Parameter: Hashable {}
-extension Test.Case.Argument.ID: Hashable {}
+extension Test.Parameter: Equatable, Hashable {}
 
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting

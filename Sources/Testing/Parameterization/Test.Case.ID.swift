@@ -63,11 +63,15 @@ extension Test.Case {
 
 extension Test.Case.ID: CustomStringConvertible {
   public var description: String {
-    if let argumentIDs, let discriminator {
+    // Pass through Comment to make sure string interpolation uses
+    // CustomTestStringConvertible instead of just CustomStringConvertible in
+    // Embedded Swift.
+    let result: Comment = if let argumentIDs, let discriminator {
       "Parameterized test case ID: argumentIDs: \(argumentIDs), discriminator: \(discriminator), isStable: \(isStable)"
     } else {
       "Non-parameterized test case ID"
     }
+    return result.rawValue
   }
 }
 
