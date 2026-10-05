@@ -35,26 +35,26 @@
 
 int __error = 0;
 
-extern int clock_gettime(clockid_t clockid, struct timespec *tp) {
+int clock_gettime(clockid_t clockid, struct timespec *tp) {
   uint64_t us = time_us_64();
   tp->tv_sec = us / 1000000;
   tp->tv_nsec = us % 1000000000;
   return 0;
 }
 
-extern int memset_s(void* dest, size_t destsz, int ch, size_t count) {
+int memset_s(void *dest, size_t destsz, int ch, size_t count) {
   memset(dest, ch, count);
   return 0;
 }
 
-extern int _nanosleep(const struct timespec *duration, struct timespec *rem) {
+int _nanosleep(const struct timespec *duration, struct timespec *rem) {
   sleep_us(duration->tv_sec * 1000000);
   sleep_us(duration->tv_nsec / 1000);
   memset(rem, 0, sizeof(*rem));
   return 0;
 }
 
-extern int posix_memalign(void **memptr, size_t alignment, size_t size) {
+int posix_memalign(void **memptr, size_t alignment, size_t size) {
   void *result = memalign(alignment, size);
   if (result) {
     *memptr = result;
@@ -68,40 +68,44 @@ extern int posix_memalign(void **memptr, size_t alignment, size_t size) {
 // These functions should be implemented in Swift's _Concurrency module but are
 // currently missing. They will be removed in a future update.
 
-extern __attribute__((__swiftcall__))
+#if __has_attribute(__swiftcall__)
+__attribute__((__swiftcall__))
+#endif
 void _task_serialExecutor_checkIsolated(const void *executor, const void *selfType, const void *wtable) {}
 
-extern __attribute__((__swiftcall__))
+#if __has_attribute(__swiftcall__)
+__attribute__((__swiftcall__))
+#endif
 int8_t _task_serialExecutor_isIsolatingCurrentContext(const void *executor, const void *selfType, const void *wtable) {
   return -1; // unknown
 }
 
 // MARK: -
 
-extern bool _swift_testing_getArgcArgv(swift_testing_argc_argv_t *outArgcArgv) {
+bool _swift_testing_getArgcArgv(swift_testing_argc_argv_t *outArgcArgv) {
   static char *argv[] = { "swift-test", "--verbose" };
   outArgcArgv->argc = 2;
   outArgcArgv->argv = argv;
   return true;
 }
 
-extern bool _swift_testing_getEnvironment(char *_Nullable *_Nullable *_Nonnull outEnvironment) {
+bool _swift_testing_getEnvironment(char *_Nullable *_Nullable *_Nonnull outEnvironment) {
   return false;
 }
 
-extern bool _swift_testing_getEmbeddedTargetInfo(const char **outEmbeddedTargetInfo) {
+bool _swift_testing_getEmbeddedTargetInfo(const char **outEmbeddedTargetInfo) {
   *outEmbeddedTargetInfo = PICO_PLATFORM_STRING " (Pico SDK " PICO_SDK_VERSION_STRING ")";
   return true;
 }
 
-extern bool _swift_testing_getConsoleCapabilities(swift_testing_console_capabilities_t *outConsoleCapabilities) {
+bool _swift_testing_getConsoleCapabilities(swift_testing_console_capabilities_t *outConsoleCapabilities) {
   return false;
 }
 
 static atomic_flag _statusLEDInitialized = ATOMIC_FLAG_INIT;
 static atomic_flag _stdioInitialized = ATOMIC_FLAG_INIT;
 
-extern void _swift_testing_writeToConsole(const uint8_t *chars, size_t count) {
+void _swift_testing_writeToConsole(const uint8_t *chars, size_t count) {
   if (!atomic_flag_test_and_set(&_statusLEDInitialized)) {
     status_led_init();
   }
@@ -114,9 +118,9 @@ extern void _swift_testing_writeToConsole(const uint8_t *chars, size_t count) {
   status_led_set_state(false);
 }
 
-extern void _swift_testing_writeJSON(const char *destination, const uint8_t *json, size_t count, const uint8_t terminator[1]) {}
+void _swift_testing_writeJSON(const char *destination, const uint8_t *json, size_t count, const uint8_t terminator[1]) {}
 
-extern bool _swift_testing_getDurationSinceSystemEpoch(swift_testing_duration_t *outDuration) {
+bool _swift_testing_getDurationSinceSystemEpoch(swift_testing_duration_t *outDuration) {
   uint64_t us = time_us_64();
   outDuration->seconds = us / 1000000;
   outDuration->nanoseconds = (us % 1000000) * 1000;
