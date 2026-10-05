@@ -60,8 +60,8 @@ extension TimeValue: Codable {}
 
 extension TimeValue: CustomStringConvertible {
   var description: String {
-    let seconds = CLongLong(rawValue.components.seconds)
-    var milliseconds = CInt((rawValue - .seconds(rawValue.components.seconds)) / .milliseconds(1))
+    let seconds = rawValue.components.seconds
+    var milliseconds = rawValue.components.attoseconds / 1_000_000_000_000_000
     if seconds == 0 && milliseconds == 0 && rawValue > .zero {
       milliseconds = 1
     }
