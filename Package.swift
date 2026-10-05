@@ -637,7 +637,13 @@ extension Array where Element: _LanguageBuildSetting {
     // Let the environment block override our settings above.
     let environmentVariables = Context.environment
       .filter { $0.key.starts(with: "SWT_NO_") }
-      .compactMapValues(\.boolValue)
+      .compactMapValues { value in
+#if !canImport(Foundation)
+        (value as NSString).boolValue
+#else
+        Bool(value) ?? UInt64(value).map { $0 != 0 }
+#endif
+      }
 
     for (name, environmentVariable) in environmentVariables {
       // The environment variable is set. If the value is `true`, that means
@@ -727,14 +733,3 @@ extension _CLanguageBuildSetting {
 extension PackageDescription.SwiftSetting: _LanguageBuildSetting {}
 extension PackageDescription.CSetting: _CLanguageBuildSetting {}
 extension PackageDescription.CXXSetting: _CLanguageBuildSetting {}
-
-extension String {
-  /// This string as a boolean value.
-  var boolValue: Bool? {
-#if !canImport(Foundation)
-    (self as NSString).boolValue
-#else
-    Bool(self) ?? UInt64(self).map { $0 != 0 }
-#endif
-  }
-}
