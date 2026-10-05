@@ -114,7 +114,7 @@ void _swift_testing_writeToConsole(const uint8_t *chars, size_t count) {
   }
 
   status_led_set_state(true);
-  fwrite(chars, 1, count, stderr);
+  stdio_put_string((const char *)chars, count, false, PICO_STDIO_DEFAULT_CRLF);
   status_led_set_state(false);
 }
 
