@@ -72,6 +72,8 @@ extension Test.Case {
     /// - Parameters:
     ///   - collection: The collection of argument values for which test cases
     ///     should be generated.
+    ///   - makeArgumentValue: A function which, when called, produces instances
+    ///     of ``Test/Case/Argument/Value`` for an element of `collection`.
     ///   - parameters: The parameters of the test function for which test cases
     ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
@@ -125,6 +127,9 @@ extension Test.Case {
     ///     cases should be generated.
     ///   - collection2: The second collection of argument values for which test
     ///     cases should be generated.
+    ///   - makeArgumentValues: A function which, when called, produces
+    ///     instances of ``Test/Case/Argument/Value`` for some pair of elements
+    ///     from `collection` and `collection2`.
     ///   - parameters: The parameters of the test function for which test cases
     ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
@@ -149,6 +154,9 @@ extension Test.Case {
     /// - Parameters:
     ///   - sequence: The sequence of 2-tuple argument values for which test
     ///     cases should be generated.
+    ///   - makeArgumentValues: A function which, when called, produces
+    ///     instances of ``Test/Case/Argument/Value`` for some pair of values
+    ///     forming an element of `sequence`.
     ///   - parameters: The parameters of the test function for which test cases
     ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
@@ -181,6 +189,9 @@ extension Test.Case {
     /// - Parameters:
     ///   - collection: The collection of 2-tuple argument values for which test
     ///     cases should be generated.
+    ///   - makeArgumentValues: A function which, when called, produces
+    ///     instances of ``Test/Case/Argument/Value`` for some pair of values
+    ///     forming an element of `collection`.
     ///   - parameters: The parameters of the test function for which test cases
     ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
@@ -208,6 +219,9 @@ extension Test.Case {
     /// - Parameters:
     ///   - zippedCollections: A zipped sequence of argument values for which
     ///     test cases should be generated.
+    ///   - makeArgumentValues: A function which, when called, produces
+    ///     instances of ``Test/Case/Argument/Value`` for some pair of values
+    ///     forming an element of `zippedCollections`.
     ///   - parameters: The parameters of the test function for which test cases
     ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
@@ -227,6 +241,9 @@ extension Test.Case {
     /// - Parameters:
     ///   - dictionary: A dictionary of argument values for which test cases
     ///     should be generated.
+    ///   - makeArgumentValues: A function which, when called, produces
+    ///     instances of ``Test/Case/Argument/Value`` for some key/value pair
+    ///     forming an element of `dictionary`.
     ///   - parameters: The parameters of the test function for which test cases
     ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
