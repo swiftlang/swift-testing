@@ -104,18 +104,18 @@ extension String {
   @usableFromInline
   init(describingForTest value: borrowing some ~Copyable & ~Escapable) {
     // FIXME: need some sort of description functionality for arbitrary values
-    self = "<unknown value>"
+    self = UnavailableInEmbeddedSwift.testDescription
   }
 
   init(describingForTest value: (some ~Copyable & ~Escapable).Type) {
     // FIXME: need some sort of description functionality for types
-    self = "<unknown type>"
+    self = UnavailableInEmbeddedSwift.testDescription
   }
 
   init(describingForTest error: any Error) {
     let domain = error._domain
     if domain == "(unknown domain in Embedded Swift)" { // TODO: avoid hard-coding
-      self = "unknown error \(error._code)"
+      self = "error \(error._code) in unknown domain"
     } else {
       self = "error \(error._code) in domain '\(domain)'"
     }
@@ -190,6 +190,33 @@ extension Double: CustomTestStringConvertible {}
 extension Bool: CustomTestStringConvertible {
   public var testDescription: String {
     self ? "true" : "false"
+  }
+}
+
+// MARK: - Collection types (Embedded Swift only)
+
+extension Sequence where Self: CustomStringConvertible & CustomTestStringConvertible, Self.Element: CustomTestStringConvertible {
+  public var testDescription: String {
+    String(describing: self)
+  }
+}
+
+extension Array: CustomTestStringConvertible where Element: CustomTestStringConvertible {
+  public var testDescription: String {
+    let result = self.lazy
+      .map { String(describingForTest: $0) }
+      .joined(separator: ", ")
+    return "[\(result)]"
+  }
+}
+
+extension Dictionary: CustomTestStringConvertible where Key: CustomTestStringConvertible, Value: CustomTestStringConvertible {
+  public var testDescription: String {
+    let result = self.lazy
+      .map { (String(describingForTest: $0), String(describingForTest: $1)) }
+      .map { "\($0): \($1)" }
+      .joined(separator: ",")
+    return "[\(result)]"
   }
 }
 #endif

@@ -64,6 +64,7 @@ add_library(Testing
   Issues/Issue+Recording.swift
   Issues/KnownIssue.swift
   Parameterization/CustomTestArgumentEncodable.swift
+  Parameterization/Test.Case.Argument.swift
   Parameterization/Test.Case.Generator.swift
   Parameterization/Test.Case.ID.swift
   Parameterization/Test.Case.swift

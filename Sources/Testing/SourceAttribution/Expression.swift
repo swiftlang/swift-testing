@@ -552,8 +552,12 @@ extension __Expression.Value: CustomTestStringConvertible {
 /// A type that acts as a placeholder for values that cannot be reflected or
 /// described in Embedded Swift.
 struct UnavailableInEmbeddedSwift: Sendable, CustomTestStringConvertible {
-  var testDescription: String {
+  static var testDescription: String {
     "(unavailable in Embedded Swift)"
+  }
+
+  var testDescription: String {
+    Self.testDescription
   }
 }
 
