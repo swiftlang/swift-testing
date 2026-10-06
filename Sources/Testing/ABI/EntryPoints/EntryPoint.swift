@@ -587,84 +587,12 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   }
 #endif
 
-#if !SWT_NO_FILE_IO
-  // XML output
-  if let xunitOutputPath = args.xunitOutput {
-    // Open the XML file for writing.
-    let file = try FileHandle(forWritingAtPath: xunitOutputPath)
-
-    // Set up the XML recorder.
-    let xmlRecorder = Event.JUnitXMLRecorder { string in
-      try? file.write(string)
-    }
-
-    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-      _ = xmlRecorder.record(event, in: context)
-      oldEventHandler(event, context)
-    }
-  }
-
-  // Attachment output.
-  if let attachmentsPath = args.attachmentsPath {
-#if !SWT_NO_FOUNDATION
-      try FileManager().createDirectory(atPath: attachmentsPath, withIntermediateDirectories: true)
-#else
-      guard fileExists(atPath: attachmentsPath) else {
-        throw _EntryPointError.invalidArgument("---attachments-path", value: attachmentsPath)
-      }
-#endif
-    configuration.attachmentsPath = attachmentsPath
-  }
-#endif
-
-#if !SWT_NO_ABI_JSON_SCHEMA
-  // Event stream output
-  do {
-    var eventHandler: Event.Handler?
-#if !hasFeature(Embedded)
-    // In non-Embedded Swift, the caller must specify a destination path for
-    // event stream output in order to enable it, but the event stream schema
-    // version is optional and we'll default to something we consider sensible
-    // if it is not specified.
-    if let eventStreamOutputPath = args.eventStreamOutputPath {
-#if !SWT_NO_FILE_IO
-      let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
-      eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
-        _ = try? file.withLock {
-          try file.write(json)
-          try file.write(.asciiNewlineCharacter)
-        }
-      }
-#else
-      throw _EntryPointError.featureUnavailable("--event-stream-output-path requires support for file I/O, but Swift Testing has been built without it.")
-#endif
-    }
-#else
-    // In Embedded Swift, the target may or may not have a file system to write
-    // to, so the path is optional. If the caller specifies a schema version and
-    // no path, we write to the "default" path instead.
-    let eventStreamOutputPath = args.eventStreamOutputPath
-    let eventStreamVersionNumber = args.eventStreamVersionNumber
-    if eventStreamOutputPath != nil || eventStreamVersionNumber != nil {
-      let eventStreamOutputPath = args.eventStreamOutputPath
-      eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: eventStreamVersionNumber, encodeAsJSONLines: true) { json in
-        if let jsonBaseAddress = json.baseAddress {
-          var newline = UInt8.asciiNewlineCharacter
-          _swift_testing_writeJSON(eventStreamOutputPath, jsonBaseAddress, json.count, &newline)
-        }
-      }
-    }
-#endif
-    if let eventHandler {
-      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-        eventHandler(event, context)
-        oldEventHandler(event, context)
-      }
-    }
-  }
-#endif
-
   // Filtering
+  //
+  // Validate filter patterns before opening any output files for writing.
+  // Opening a file for writing truncates any existing content. If filter
+  // validation fails and throws, output files that were already opened would
+  // be cleared. Validating filters first prevents this data loss.
 
   // Filters currently come in two flavors: those with a prefix and those
   // without. Those without a prefix are treated the same as those with an
@@ -754,6 +682,83 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   if args.includeHiddenTests == true {
     configuration.testFilter.includeHiddenTests = true
   }
+
+#if !SWT_NO_FILE_IO
+  // XML output
+  if let xunitOutputPath = args.xunitOutput {
+    // Open the XML file for writing.
+    let file = try FileHandle(forWritingAtPath: xunitOutputPath)
+
+    // Set up the XML recorder.
+    let xmlRecorder = Event.JUnitXMLRecorder { string in
+      try? file.write(string)
+    }
+
+    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+      _ = xmlRecorder.record(event, in: context)
+      oldEventHandler(event, context)
+    }
+  }
+
+  // Attachment output.
+  if let attachmentsPath = args.attachmentsPath {
+#if !SWT_NO_FOUNDATION
+      try FileManager().createDirectory(atPath: attachmentsPath, withIntermediateDirectories: true)
+#else
+      guard fileExists(atPath: attachmentsPath) else {
+        throw _EntryPointError.invalidArgument("---attachments-path", value: attachmentsPath)
+      }
+#endif
+    configuration.attachmentsPath = attachmentsPath
+  }
+#endif
+
+#if !SWT_NO_ABI_JSON_SCHEMA
+  // Event stream output
+  do {
+    var eventHandler: Event.Handler?
+#if !hasFeature(Embedded)
+    // In non-Embedded Swift, the caller must specify a destination path for
+    // event stream output in order to enable it, but the event stream schema
+    // version is optional and we'll default to something we consider sensible
+    // if it is not specified.
+    if let eventStreamOutputPath = args.eventStreamOutputPath {
+#if !SWT_NO_FILE_IO
+      let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
+      eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
+        _ = try? file.withLock {
+          try file.write(json)
+          try file.write(.asciiNewlineCharacter)
+        }
+      }
+#else
+      throw _EntryPointError.featureUnavailable("--event-stream-output-path requires support for file I/O, but Swift Testing has been built without it.")
+#endif
+    }
+#else
+    // In Embedded Swift, the target may or may not have a file system to write
+    // to, so the path is optional. If the caller specifies a schema version and
+    // no path, we write to the "default" path instead.
+    let eventStreamOutputPath = args.eventStreamOutputPath
+    let eventStreamVersionNumber = args.eventStreamVersionNumber
+    if eventStreamOutputPath != nil || eventStreamVersionNumber != nil {
+      let eventStreamOutputPath = args.eventStreamOutputPath
+      eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: eventStreamVersionNumber, encodeAsJSONLines: true) { json in
+        if let jsonBaseAddress = json.baseAddress {
+          var newline = UInt8.asciiNewlineCharacter
+          _swift_testing_writeJSON(eventStreamOutputPath, jsonBaseAddress, json.count, &newline)
+        }
+      }
+    }
+#endif
+    if let eventHandler {
+      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+        eventHandler(event, context)
+        oldEventHandler(event, context)
+      }
+    }
+  }
+#endif
 
   // Set up the iteration policy for the test run.
   var repetitionPolicy: Configuration.RepetitionPolicy = .once

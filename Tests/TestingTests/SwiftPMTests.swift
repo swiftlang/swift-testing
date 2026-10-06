@@ -174,6 +174,23 @@ struct SwiftPMTests {
     #expect(planTests.contains(test3))
   }
 
+  @Test("Invalid filter does not truncate output files")
+  func invalidFilterDoesNotTruncateOutputFiles() throws {
+    let tempFile = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).path
+    try? "TEST CONTENT".write(toFile: tempFile, atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(atPath: tempFile) }
+
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--xunit-output", tempFile, "--filter", "("])
+    }
+    #expect(try String(contentsOfFile: tempFile, encoding: .utf8) == "TEST CONTENT")
+
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--event-stream-output-path", tempFile, "--filter", "("])
+    }
+    #expect(try String(contentsOfFile: tempFile, encoding: .utf8) == "TEST CONTENT")
+  }
+
   @Test("--filter or --skip argument with bad regex")
   func badArguments() throws {
     #expect(throws: (any Error).self) {
