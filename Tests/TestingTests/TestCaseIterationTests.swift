@@ -186,6 +186,20 @@ struct TestCaseIterationTests {
   }
 
 #if canImport(_StringProcessing)
+  private var encodedEventMessagesCommonPrefix: [Regex<Substring>] {
+    var result = [
+      /Test run started\./,
+      /Testing Library Version: .*/,
+    ]
+
+    if Testing.targetTriple != nil {
+      result += [
+        /Target Platform: .*/,
+      ]
+    }
+    return result
+  }
+
   private func assertEncodedEventMessages<R>(
     _ test: Test,
     match expected: [Regex<R>],
@@ -218,7 +232,7 @@ struct TestCaseIterationTests {
     ])
 
 #if canImport(_StringProcessing)
-    await assertEncodedEventMessages(test, match: [
+    await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
       /Test run started\./,
       /Testing Library Version: .*/,
       /Test ".*" started\./,
@@ -244,7 +258,7 @@ struct TestCaseIterationTests {
     ])
 
 #if canImport(_StringProcessing)
-    await assertEncodedEventMessages(test, match: [
+    await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
       /Test run started\./,
       /Testing Library Version: .*/,
       /Test ".*" started\./,
@@ -274,7 +288,7 @@ struct TestCaseIterationTests {
     ])
 
 #if canImport(_StringProcessing)
-    await assertEncodedEventMessages(test, match: [
+    await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
       /Test run started\./,
       /Testing Library Version: .*/,
       /Test ".*" started\./,
@@ -301,7 +315,7 @@ struct TestCaseIterationTests {
     ])
 
 #if canImport(_StringProcessing)
-    await assertEncodedEventMessages(test, match: [
+    await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
       /Test run started\./,
       /Testing Library Version: .*/,
       /Test ".*" started\./,
