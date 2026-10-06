@@ -27,12 +27,6 @@ extension ABI {
     /// value of this property is `nil`.
     var runtimeValue: String?
 
-    /// The fully-qualified name of the type of value represented by
-    /// `runtimeValue`, or `nil` if that value has not been captured.
-    var runtimeTypeName: String? {
-      _typeInfo?.fullyQualifiedName
-    }
-
     /// The full type info for the value represented by `runtimeValue`, or `nil`
     /// if that value has not been captured.
     fileprivate var _typeInfo: EncodedTypeInfo<V>?

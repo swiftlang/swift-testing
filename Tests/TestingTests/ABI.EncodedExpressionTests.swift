@@ -18,8 +18,13 @@
 
     #expect(encoded.sourceCode == "1 + 1")
     #expect(encoded.runtimeValue == nil)
-    #expect(encoded.runtimeTypeName == nil)
     #expect(encoded.children == nil)
+
+    #expect(try JSON.encode(encoded) == JSON.minified(#"""
+      {
+        "sourceCode":"1 + 1"
+      }
+      """#))
   }
 
   @Test func `Encodes an expression with a runtime value`() throws {
@@ -28,8 +33,20 @@
 
     #expect(encoded.sourceCode == "1 + 1")
     #expect(encoded.runtimeValue == "2")
-    #expect(encoded.runtimeTypeName == "Swift.Int")
     #expect(encoded.children == nil)
+
+    let json = try JSON.encode(encoded)
+    #expect(json == JSON.minified(#"""
+      {
+        "sourceCode":"1 + 1",
+        "type":{
+          "fullyQualifiedName":"Swift.Int",
+          "mangledName":"$sSi",
+          "unqualifiedName":"Int"
+        },
+        "value":"2"
+      }
+      """#))
   }
 
   @Test func `Encodes an expression with children`() throws {
@@ -41,18 +58,6 @@
     #expect(encoded.children?.count == 2)
   }
 
-  @Test func `Expected field names`() throws {
-    let expression = Expression("1 + 1", runtimeValue: .init(describing: 2))
-    let encoded = ABI.EncodedExpression<ABI.CurrentVersion>(encoding: expression)
-
-    try JSON.withEncoding(of: encoded) { buf in
-      let str = String(decoding: buf, as: UTF8.self)
-      #expect(str.contains(#""sourceCode":"#))
-      #expect(str.contains(#""value":"#))
-      #expect(str.contains(#""type":"#))
-    }
-  }
-
   @Test func `Round-trips through JSON`() throws {
     let expression = Expression("1 + 1", runtimeValue: .init(describing: 2))
     let encoded = ABI.EncodedExpression<ABI.CurrentVersion>(encoding: expression)
@@ -60,7 +65,6 @@
 
     #expect(decoded.sourceCode == encoded.sourceCode)
     #expect(decoded.runtimeValue == encoded.runtimeValue)
-    #expect(decoded.runtimeTypeName == encoded.runtimeTypeName)
   }
 }
 #endif

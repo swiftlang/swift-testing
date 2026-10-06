@@ -249,7 +249,19 @@ extension Issue {
     guard let issue = event.issue else {
       return nil
     }
-    self.init(decoding: issue, sourceLocation: event.sourceLocation)
+    self.init(decoding: issue)
+
+    // >=6.5: sourceLocation moved from EncodedIssue to EncodedEvent, so the
+    // above init will have a placeholder location.
+    // Apply the sourceLocation from the event to fields on the decoded Issue.
+    if let sourceLocation = event.sourceLocation.flatMap(SourceLocation.init) {
+      if case .expectationFailed(var expectation) = kind {
+        expectation.sourceLocation = sourceLocation
+        kind = .expectationFailed(expectation)
+      }
+      self.sourceLocation = sourceLocation
+    }
+
     if let comments = event.comments {
       self.comments += comments.map(Comment.init(rawValue:))
     }
