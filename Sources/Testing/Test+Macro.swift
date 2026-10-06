@@ -34,7 +34,8 @@ public typealias __XCTestCompatibleSelector = Never
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-@inlinable public func __xcTestCompatibleSelector(_ selector: String) -> __XCTestCompatibleSelector? {
+@inline(always) @export(implementation)
+public func __xcTestCompatibleSelector(_ selector: String) -> __XCTestCompatibleSelector? {
 #if _runtime(_ObjC)
   __XCTestCompatibleSelector(selector)
 #else
@@ -782,7 +783,8 @@ extension Test {
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @_lifetime(copy value)
-@inlinable public func __requiringTry<T>(_ value: consuming T) throws -> T where T: ~Copyable & ~Escapable {
+@inline(always) @export(implementation)
+public func __requiringTry<T>(_ value: consuming T) throws -> T where T: ~Copyable & ~Escapable {
   value
 }
 
@@ -792,7 +794,8 @@ extension Test {
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @_lifetime(copy value)
-@inlinable public nonisolated(nonsending) func __requiringAwait<T>(_ value: consuming T) async -> T where T: ~Copyable & ~Escapable {
+@inline(always) @export(implementation)
+public nonisolated(nonsending) func __requiringAwait<T>(_ value: consuming T) async -> T where T: ~Copyable & ~Escapable {
   value
 }
 
@@ -802,7 +805,8 @@ extension Test {
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @_lifetime(copy value)
-@unsafe @inlinable public func __requiringUnsafe<T>(_ value: consuming T) -> T where T: ~Copyable & ~Escapable {
+@inline(always) @export(implementation)
+@unsafe public func __requiringUnsafe<T>(_ value: consuming T) -> T where T: ~Copyable & ~Escapable {
   value
 }
 
@@ -813,7 +817,8 @@ extension Test {
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not call
 ///   it directly.
-@inlinable public func __invokeXCTestMethod<T>(
+@inline(always) @export(implementation)
+public func __invokeXCTestMethod<T>(
   _ selector: __XCTestCompatibleSelector?,
   onInstanceOf type: T.Type,
   sourceLocation: SourceLocation

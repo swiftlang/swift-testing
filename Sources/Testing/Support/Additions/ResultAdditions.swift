@@ -13,13 +13,15 @@ extension Result {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __expected() where Success == Void {}
+  @inline(always) @export(implementation)
+  public func __expected() where Success == Void {}
 
   /// Handle this instance as if it were returned from a call to `#require()`.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __required() throws -> Success {
+  @inline(always) @export(implementation)
+  public func __required() throws -> Success {
     try get()
   }
 }
@@ -31,7 +33,9 @@ extension Result {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @discardableResult @inlinable public func __expected<T>() -> Success where Success == T? {
+  @discardableResult
+  @inline(always) @export(implementation)
+  public func __expected<T>() -> Success where Success == T? {
     try? get()
   }
 
