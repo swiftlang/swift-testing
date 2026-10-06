@@ -23,6 +23,33 @@ import RegexBuilder
 import Synchronization
 #endif
 
+#if !SWT_NO_FOUNDATION || canImport(FoundationXML)
+/// A parser delegate that collects report totals and counts result elements.
+private final class _JUnitXMLCountsDelegate: NSObject, XMLParserDelegate {
+  /// The attributes of the test suite element.
+  var suiteAttributes: [String: String]?
+
+  /// The number of test case elements.
+  var testCaseCount = 0
+
+  /// The number of skipped result elements.
+  var skippedTestCaseCount = 0
+
+  func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
+    switch elementName {
+    case "testsuite":
+      suiteAttributes = attributeDict
+    case "testcase":
+      testCaseCount += 1
+    case "skipped":
+      skippedTestCaseCount += 1
+    default:
+      break
+    }
+  }
+}
+#endif
+
 #if FIXED_118452948
 @Suite("Event Recorder Tests")
 #endif
@@ -529,6 +556,102 @@ struct EventRecorderTests {
     #expect(!testCaseLines.isEmpty)
     #expect(!testCaseLines.contains { $0.contains("time=") })
   }
+
+  @Test("JUnitXMLRecorder counts started and skipped tests")
+  func junitXMLCountsStartedAndSkippedTests() async throws {
+    func recordedCounts(started: Int, skipped: Int) async throws -> (tests: Int, skipped: Int, testCases: Int, skippedTestCases: Int) {
+      let stream = Stream()
+      let recorder = Event.JUnitXMLRecorder(writingUsing: stream.write)
+      let runContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
+      recorder.record(Event(.runStarted, testID: nil, testCaseID: nil), in: runContext)
+
+      let suiteTest = await test(for: WrittenTests.self)
+      guard let suite = suiteTest else {
+        Issue.record("Expected to find the test suite fixture.")
+        return (0, 0, 0, 0)
+      }
+      let suiteContext = Event.Context(test: suite, testCase: nil, iteration: nil, configuration: nil)
+      if started > 0 {
+        recorder.record(Event(.testStarted, testID: suite.id, testCaseID: nil), in: suiteContext)
+      } else if skipped > 0 {
+        recorder.record(Event(.testSkipped(.init(sourceContext: .init())), testID: suite.id, testCaseID: nil), in: suiteContext)
+      }
+
+      for index in 0 ..< started {
+        let test = Test(name: "started \(index)") {}
+        let context = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
+        recorder.record(Event(.testStarted, testID: test.id, testCaseID: nil), in: context)
+        recorder.record(Event(.testEnded, testID: test.id, testCaseID: nil), in: context)
+      }
+      for index in 0 ..< skipped {
+        let test = Test(name: "skipped \(index)") {}
+        let context = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
+        recorder.record(Event(.testSkipped(.init(sourceContext: .init())), testID: test.id, testCaseID: nil), in: context)
+      }
+
+      if started > 0 {
+        recorder.record(Event(.testEnded, testID: suite.id, testCaseID: nil), in: suiteContext)
+      }
+
+      recorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: runContext)
+      let xmlData = Data(stream.buffer.rawValue.utf8)
+      let parser = XMLParser(data: xmlData)
+      let delegate = _JUnitXMLCountsDelegate()
+      parser.delegate = delegate
+      #expect(parser.parse())
+      let suiteAttributes = try #require(delegate.suiteAttributes)
+      return (
+        try #require(Int(suiteAttributes["tests"] ?? "")),
+        try #require(Int(suiteAttributes["skipped"] ?? "")),
+        delegate.testCaseCount,
+        delegate.skippedTestCaseCount
+      )
+    }
+
+    let cases: [(started: Int, skipped: Int, expectedTests: Int, expectedSkipped: Int)] = [
+      (0, 0, 0, 0),
+      (0, 1, 1, 1),
+      (0, 3, 3, 3),
+      (1, 0, 1, 0),
+      (1, 1, 2, 1),
+    ]
+    for testCase in cases {
+      let counts = try await recordedCounts(started: testCase.started, skipped: testCase.skipped)
+      #expect(counts.tests == testCase.expectedTests)
+      #expect(counts.skipped == testCase.expectedSkipped)
+      #expect(counts.testCases == testCase.expectedTests)
+      #expect(counts.skippedTestCases == testCase.expectedSkipped)
+    }
+  }
+
+  @Test("JUnit XML counts tests selected by the runner")
+  func junitXMLCountsTestsSelectedByRunner() async throws {
+    let stream = Stream()
+    let recorder = Event.JUnitXMLRecorder(writingUsing: stream.write)
+    let testCaseStarts = Mutex(0)
+    var configuration = Configuration()
+    configuration.repetitionPolicy = .repeating(maximumIterationCount: 2)
+    configuration.eventHandler = { event, context in
+      if case .testCaseStarted = event.kind {
+        testCaseStarts.withLock { $0 += 1 }
+      }
+      recorder.record(event, in: context)
+    }
+
+    await runTest(for: _JUnitSkippedCountFixtures.self, configuration: configuration)
+
+    let parser = XMLParser(data: Data(stream.buffer.rawValue.utf8))
+    let delegate = _JUnitXMLCountsDelegate()
+    parser.delegate = delegate
+    #expect(parser.parse())
+    let suiteAttributes = try #require(delegate.suiteAttributes)
+    #expect(suiteAttributes["tests"] == "5")
+    #expect(suiteAttributes["skipped"] == "4")
+    #expect(suiteAttributes["failures"] == "0")
+    #expect(delegate.testCaseCount == 5)
+    #expect(delegate.skippedTestCaseCount == 4)
+    #expect(testCaseStarts.withLock { $0 } == 6)
+  }
 #endif
 
   @Test("HumanReadableOutputRecorder counts issues without associated tests")
@@ -658,6 +781,36 @@ struct EventRecorderTests {
 }
 
 // MARK: - Fixtures
+
+/// Tests that exercise the report totals for passing and skipped results.
+@Suite(.hidden)
+private struct _JUnitSkippedCountFixtures {
+  @Test(.hidden, arguments: [1, 2, 3])
+  func passing(_ value: Int) {}
+
+  @Test(.hidden, .disabled())
+  func directlySkipped() {
+    Issue.record("A disabled test should not run.")
+  }
+
+  @Test(.hidden, arguments: [Int]())
+  func emptyParameterCollection(_ value: Int) {
+    Issue.record("A test with no arguments should not run.")
+  }
+
+  @Suite(.hidden, .disabled())
+  struct Disabled {
+    @Test(.hidden)
+    func first() {
+      Issue.record("A disabled suite test should not run.")
+    }
+
+    @Test(.hidden)
+    func second() {
+      Issue.record("A disabled suite test should not run.")
+    }
+  }
+}
 
 @Suite("Animal Crackers", .hidden) struct WrittenTests {
   @Test(.hidden) func failWhale() async {
