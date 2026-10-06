@@ -15,6 +15,8 @@
   struct FakeError: Error {}
   struct `Encode Different Issue Types` {}
   struct Decoding {}
+  struct `EncodedEvent Source Location` {}
+  struct `EncodedIssue Source Location` {}
   struct `Backwards Compatibility` {}
 }
 
@@ -221,6 +223,7 @@ extension `ABI.EncodedIssue Tests`.`Encode Different Issue Types` {
 }
 
 extension `ABI.EncodedIssue Tests`.Decoding {
+
   @Test func `Decode EncodedIssue with invalid miscount -> rejects the issue`() throws {
     // Min bound exceeds max bound
     #expect(throws: DecodingError.self) {
@@ -241,6 +244,88 @@ extension `ABI.EncodedIssue Tests`.Decoding {
         """
       )
     }
+  }
+}
+
+extension `ABI.EncodedIssue Tests`.`EncodedEvent Source Location` {
+  @Test func `Decode v6.5 EncodedEvent: expectation failed -> fills in event source location`() throws {
+    let encoded = try #require(
+      ABI.EncodedEvent<ABI.v6_5>(
+        encoding: .init(.issueRecorded(expectationFailedIssue), testID: nil, testCaseID: nil),
+        in: .sample))
+
+    let decoded = try #require(Issue(decoding: encoded))
+    guard case .expectationFailed(let expectation) = decoded.kind else {
+      Issue.record("Expected .expectationFailed, got \(decoded.kind)")
+      return
+    }
+    #expect(expectation.sourceLocation == .sample)
+    #expect(decoded.sourceLocation == .sample)
+  }
+
+  @Test func `Decode v6.5 EncodedEvent: expectation failed, no sourceLocation -> unknown source location`() throws {
+    var encoded = try #require(
+      ABI.EncodedEvent<ABI.v6_5>(
+        encoding: .init(.issueRecorded(expectationFailedIssue), testID: nil, testCaseID: nil),
+        in: .sample))
+    encoded.sourceLocation = nil
+
+    let decoded = try #require(Issue(decoding: encoded))
+    guard case .expectationFailed(let expectation) = decoded.kind else {
+      Issue.record("Expected .expectationFailed, got \(decoded.kind)")
+      return
+    }
+    #expect(expectation.sourceLocation == .unknown)
+    #expect(decoded.sourceLocation == .unknown)
+  }
+
+  @Test func `Decode v6.5 EncodedEvent: non-expectation issue -> fills in event source location`() throws {
+    var encoded = try #require(
+      ABI.EncodedEvent<ABI.v6_5>(
+        encoding: .init(.issueRecorded(Issue(kind: .errorCaught(FakeError()))), testID: nil, testCaseID: nil),
+        in: .sample))
+    encoded.sourceLocation = .init(encoding: .sample)
+
+    let decoded = try #require(Issue(decoding: encoded))
+    #expect(decoded.sourceLocation == .sample)
+  }
+
+  @Test func `Decode v6.5 EncodedEvent: non-expectation issue, no sourceLocation -> unknown source location`() throws {
+    var encoded = try #require(
+      ABI.EncodedEvent<ABI.v6_5>(
+        encoding: .init(.issueRecorded(Issue(kind: .errorCaught(FakeError()))), testID: nil, testCaseID: nil),
+        in: .sample))
+    encoded.sourceLocation = nil
+
+    let decoded = try #require(Issue(decoding: encoded))
+    #expect(decoded.sourceLocation == .unknown)
+  }
+}
+
+extension `ABI.EncodedIssue Tests`.`EncodedIssue Source Location` {
+  @Test func `Decode v6.5 EncodedIssue: no sourceLocation -> unknown source location`() throws {
+    let encoded = ABI.EncodedIssue<ABI.v6_5>(encoding: expectationFailedIssue, in: .sample)
+    try #require(encoded.sourceLocation == nil)
+
+    let decoded = try #require(Issue(decoding: encoded))
+    guard case .expectationFailed(let expectation) = decoded.kind else {
+      Issue.record("Expected .expectationFailed, got \(decoded.kind)")
+      return
+    }
+    #expect(expectation.sourceLocation == .unknown)
+    #expect(decoded.sourceLocation == .unknown)
+  }
+
+  @Test func `Decode v6.4 EncodedIssue: no sourceLocation -> no source location`() throws {
+    var encoded = ABI.EncodedIssue<ABI.v6_4>(encoding: expectationFailedIssue, in: .sample)
+    encoded.sourceLocation = nil
+
+    let decoded = try #require(Issue(decoding: encoded))
+    guard case .unconditional = decoded.kind else {
+      Issue.record("Expected .unconditional, got \(decoded.kind)")
+      return
+    }
+    #expect(decoded.sourceLocation == nil)
   }
 }
 

@@ -38,7 +38,6 @@ private func encodedEvent(_ json: String) throws -> ABI.EncodedEvent<ABI.Current
 }
 
 extension `ABI.EncodedEvent Tests`.Decoding {
-
   @Test func `Decoded event always has nil testID and testCaseID`() throws {
     let event = try encodedEvent(
       """

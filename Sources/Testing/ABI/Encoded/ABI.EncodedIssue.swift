@@ -271,15 +271,14 @@ extension Issue {
   ///
   /// - Parameters:
   ///   - issue: The encoded issue to initialize this instance from.
-  ///   - sourceLocation: The source location associated with the issue.
-  ///   This takes precedence over a non-nil encoded issue source location.
-  ///   Required for >=v6.5, where sourceLocation is no longer available as part
-  ///   of the encoded issue.
   ///
   /// - Note: For higher fidelity, initialize the issue with an encoded event
   ///   representing a recorded issue rather than just the encoded issue.
-  init?<V>(decoding issue: ABI.EncodedIssue<V>, sourceLocation: ABI.EncodedSourceLocation<V>? = nil) {
-    let sourceLocation = (sourceLocation ?? issue.sourceLocation).flatMap(SourceLocation.init)
+  init?<V>(decoding issue: ABI.EncodedIssue<V>) {
+    // >=6.5: EncodedIssue no longer has the source location, so the parent
+    // EncodedEvent fills in the actual source location later.
+    let sourceLocation = issue.sourceLocation.flatMap(SourceLocation.init)
+      ?? (V.versionNumber >= ABI.v6_5.versionNumber ? .unknown : nil)
 
     let issueKind: Issue.Kind
     if let error = issue.error {
@@ -312,6 +311,7 @@ extension Issue {
       // TODO: improve fidelity of issue kind reporting (especially those without associated values)
       issueKind = .unconditional
     }
+
     let severity: Issue.Severity = switch issue.severity {
     case .warning:
       .warning
