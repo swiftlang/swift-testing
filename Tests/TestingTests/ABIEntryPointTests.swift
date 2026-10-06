@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if !SWT_NO_ABI_ENTRY_POINT
+#if !SWT_NO_ABI_ENTRY_POINT && !SWT_NO_CODABLE
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
@@ -194,6 +194,16 @@ struct ABIEntryPointTests {
 
   @Test func badABIVersionString() {
     let version = VersionNumber("not.valid")
+    #expect(version == nil)
+  }
+
+  @Test func overflowingABIVersionString() {
+    let version = VersionNumber("\(CUnsignedLongLong.max).\(CUnsignedLongLong.max)")
+    #expect(version == nil)
+  }
+
+  @Test func abiVersionStringWithInvalidCharacters() {
+    let version = VersionNumber("123qqq.0")
     #expect(version == nil)
   }
 

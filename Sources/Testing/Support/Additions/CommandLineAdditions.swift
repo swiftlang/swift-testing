@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 #if hasFeature(Embedded)
 /// A minimal interface-compatible implementation of the `CommandLine` type from
 /// the Swift standard library.
@@ -18,10 +22,20 @@ private import _TestingInternals
 enum CommandLine {
   /// An array that provides access to this program's command line arguments.
   ///
-  /// In Embedded Swift, this array contains one string standing in for the name
-  /// of the current program (as required by the C language standard).
+  /// In Embedded Swift, the value of this property is initially set when
+  /// `swift_testing_embeddedMain()` is called. If that function has not been
+  /// called, the value of this property is a placeholder array containing a
+  /// single string representing the program name.
   static var arguments: [String] {
-    ["swift-test"]
+    let argcArgv = _argcArgv.rawValue
+    if argcArgv.argc > 0, let argv = argcArgv.argv {
+      let result = (0 ..< Int(clamping: argcArgv.argc))
+        .compactMap { String(validatingCString: argv[$0]) }
+      if !result.isEmpty {
+        return result
+      }
+    }
+    return ["swift-test"]
   }
 }
 #endif

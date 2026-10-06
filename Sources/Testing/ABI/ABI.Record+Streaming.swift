@@ -10,40 +10,51 @@
 
 #if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI.Version {
+  public static func eventHandler(
+    forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
+  ) -> Event.Handler {
+    eventHandler(
+      encodingMessagesField: false, // avoid computing twice (here and in callee)
+      forwardingTo: recordHandler
+    )
+  }
+
   /// Create an event handler that encodes instances of ``Event`` as instances
   /// of ``ABI/Record`` and forwards them to a handler function.
   ///
   /// - Parameters:
+  /// 	- encodingMessagesField: Whether or not to encode the `messages` field
+  ///     in ``ABI/EncodedEvent``. If you do not need these strings, you can
+  ///     reduce CPU and memory usage by passing `false`. This argument is
+  ///     ignored if `Self.alwaysEncodeMessagesField` is `true`.
   ///   - recordHandler: The record handler to forward events to.
   ///
   /// - Returns: An event handler.
   ///
   /// You can use this event handler with ``Configuration/eventHandler`` to
   /// automatically transform instances of ``Event`` to ``ABI/Record``.
-  public static func eventHandler(
+  static func eventHandler(
+    encodingMessagesField: Bool,
     forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
   ) -> Event.Handler {
-#if !SWT_NO_SNAPSHOT_TYPES && DEBUG
-    precondition(self != ABI.Xcode16.self, "Attempted to create an ABI.Record-generating event handler for the Xcode 16 compatibility path.")
-#endif
-
-    let humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
-    return { event, context in
-      if case .testDiscovered = event.kind, let test = context.test {
-        let testRecord = ABI.Record<Self>(encoding: test)
-        recordHandler(testRecord)
-      } else {
-        var configuration = Configuration()
-        configuration.verbosity = 0
-        let messages = humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
-        if let eventRecord = ABI.Record<Self>(encoding: event, in: context, messages: messages) {
-          recordHandler(eventRecord)
-        }
+    var humanReadableOutputRecorder: Event.HumanReadableOutputRecorder?
+    if encodingMessagesField || alwaysEncodeMessagesField {
+      humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
+    }
+    return { [humanReadableOutputRecorder] event, context in
+      var messages: [Event.HumanReadableOutputRecorder.Message] = []
+      if let humanReadableOutputRecorder {
+        var configuration = Configuration.current ?? .init()
+        configuration.verbosity = max(configuration.verbosity, 0)
+        messages = humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
+      }
+      if let record = ABI.Record<Self>(encoding: event, in: context, messages: messages) {
+        recordHandler(record)
       }
     }
   }
 
-  static func eventHandler(
+  public static func eventHandler(
     encodeAsJSONLines: Bool,
     forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
@@ -66,15 +77,24 @@ extension ABI.Version {
 
 extension ABI.Xcode16 {
   static func eventHandler(
+    forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
+  ) -> Event.Handler {
+    preconditionFailure("Attempted to create an ABI.Record-generating event handler for the Xcode 16 compatibility path.")
+  }
+
+  static func eventHandler(
     encodeAsJSONLines: Bool,
     forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
     return { event, context in
-      if case .testDiscovered = event.kind {
+      switch event.kind {
+      case .testDiscovered, .metadataRecorded:
         // Discard events of this kind rather than forwarding them to avoid a
         // crash in Xcode 16 (which does not expect any events to occur before
         // .runStarted.)
         return
+      default:
+        break
       }
 
       struct EventAndContextSnapshot: Codable {

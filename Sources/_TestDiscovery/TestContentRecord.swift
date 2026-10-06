@@ -74,10 +74,8 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   /// | macOS, iOS, watchOS, tvOS, visionOS | [`UnsafePointer<mach_header_64>`](https://developer.apple.com/documentation/kernel/mach_header_64) |
   /// | Linux, FreeBSD, Android | [`UnsafePointer<ElfW(Ehdr)>`](https://www.kernel.org/doc/man-pages/online/pages/man5/elf.5.html) |
   /// | OpenBSD | [`UnsafePointer<Elf_Ehdr>`](https://man.openbsd.org/elf.3) |
+  /// | Wasm | `nil` |
   /// | Windows | [`HMODULE`](https://learn.microsoft.com/en-us/windows/win32/winprog/windows-data-types) |
-  ///
-  /// On platforms such as WASI that statically link to the testing library, the
-  /// value of this property is always `nil`.
   ///
   /// The value of this property is distinct from the pointer returned by
   /// [`dlopen(3)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlopen.3.html)
@@ -177,14 +175,9 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
       return nil
     }
 
-#if !hasFeature(Embedded)
     return withUnsafePointer(to: T.self) { typeAddress in
       Self._load(using: accessor, withTypeAt: typeAddress, withHint: hint)
     }
-#else
-    let typeAddress = UnsafeRawPointer(bitPattern: UInt(T.testContentKind.rawValue)).unsafelyUnwrapped
-    return Self._load(using: accessor, withTypeAt: typeAddress, withHint: hint)
-#endif
   }
 }
 
@@ -201,6 +194,14 @@ extension TestContentRecord: Sendable where Context: Sendable {}
 
 extension TestContentRecord: CustomStringConvertible {
   public var description: String {
+    func desc(_ address: UnsafeRawPointer?) -> String {
+#if !hasFeature(Embedded)
+      address.map(String.init(describing:)) ?? "0x0"
+#else
+      "0x\(String(UInt(bitPattern: address), radix: 16))"
+#endif
+    }
+
 #if !hasFeature(Embedded)
     let typeName = String(describing: Self.self)
 #else
@@ -208,9 +209,14 @@ extension TestContentRecord: CustomStringConvertible {
 #endif
     let recordAddress = imageAddress.map { imageAddress in
       let recordAddressDelta = UnsafeRawPointer(_recordAddress) - imageAddress
-      return "\(imageAddress)+0x\(String(recordAddressDelta, radix: 16))"
-    } ?? "\(_recordAddress)"
+      return "\(desc(imageAddress))+0x\(String(recordAddressDelta, radix: 16))"
+    } ?? desc(_recordAddress)
+#if !hasFeature(Embedded)
     return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(context) }"
+#else
+    let context = UnsafeRawPointer(bitPattern: _recordAddress.pointee.context)
+    return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(desc(context)) }"
+#endif
   }
 }
 
@@ -238,7 +244,7 @@ extension DiscoverableAsTestContent {
     }
   }
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
+#if !SWT_NO_LEGACY_TEST_DISCOVERY && !hasFeature(Embedded)
   @available(swift, deprecated: 6.5, obsoleted: 6.6, message: "Unimplemented")
   public static func allTypeMetadataBasedTestContentRecords(
     loadingWith loader: @escaping @Sendable (Any.Type, UnsafeMutableRawBufferPointer) -> Bool

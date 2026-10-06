@@ -25,7 +25,7 @@ The order of keys in JSON objects is not normative. Whitespace in this schema is
 not normative; it is present to help the reader understand the content of the
 various JSON objects in the schema. The event stream is output using the JSON
 Lines format and does not include newline characters (except **one** at the end
-of the `<output-record-line>` rule.)
+of the `<output-record>` rule as used in the `<output-stream>` rule.)
 
 Trailing commas in JSON objects and arrays are only to be included where
 syntactically valid.
@@ -152,6 +152,9 @@ additional `"testCases"` field describing the individual test cases.
   ["displayName": <string>,] ; the user-supplied custom display name
   "sourceLocation": <source-location>, ; where the test suite is defined
   "id": <test-id>,
+  ["tags": <array:tag>,] ; the tags associated with this test suite
+  ["bugs": <array:bug>,] ; the bugs associated with this test suite
+  ["timeLimit": <number>,] ; the time limit associated with this test suite
 }
 
 <test-function> ::= {
@@ -163,7 +166,7 @@ additional `"testCases"` field describing the individual test cases.
   "isParameterized": <bool>, ; is this a parameterized test function or not?
   ["tags": <array:tag>,] ; the tags associated with this test function
   ["bugs": <array:bug>,] ; the bugs associated with this test function
-  ["timeLimit": <number>] ; the time limit associated with this test function
+  ["timeLimit": <number>,] ; the time limit associated with this test function
 }
 
 <test-id> ::= <string> ; an opaque string representing the test case
@@ -173,7 +176,7 @@ additional `"testCases"` field describing the individual test cases.
 <bug> ::= {
   ["url": <string>,] ; the bug URL
   ["id": <string>,] ; the bug id
-  ["title": <string>] ; the human readable bug title
+  ["title": <string>,] ; the human readable bug title
 }
 ```
 
@@ -205,6 +208,8 @@ sufficient information to display the event in a human-readable format.
   ["attachment": <attachment>,] ; the attachment (if kind is "valueAttached")
   "messages": <array:message>,
   ["testID": <test-id>,]
+  ["iteration": <number>,] ; the iteration number (if the event is recorded
+                           ; during test execution)
 }
 
 <event-kind> ::= "runStarted" | "testStarted" | "testCaseStarted" |
@@ -249,3 +254,4 @@ sufficient information to display the event in a human-readable format.
 | [ST-0016](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0016-test-cancellation.md#integration-with-supporting-tools) | Added test cancellation. | 6.3 | `"6.3"` |
 | [ST-0019](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0019-include-tags-bugs-and-timeline-in-event-stream.md#json-schema-changes) | Added `tags`, `bugs`, and `timeLimit`. | 6.4 | `"6.4"` |
 | [ST-0020](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0020-sourcelocation-filepath.md#detailed-design) | Added `filePath`. | 6.3 | `"6.3"` |
+| [ST-0024](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0024-per-test-case-repetitions.md)| Added `iteration`. | 6.4 | `"6.4"` |

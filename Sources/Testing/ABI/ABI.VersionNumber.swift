@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 extension ABI {
   /// A type describing an ABI version number.
   ///
@@ -50,10 +54,71 @@ extension ABI.VersionNumber {
 // MARK: - CustomStringConvertible
 
 extension ABI.VersionNumber: CustomStringConvertible {
+  /// A cache of previously-parsed version numbers.
+  private static let _versionNumberCache = Mutex<[String: Self?]>()
+
+  /// Parse an instance of this type from the given string.
+  ///
+  /// - Parameters:
+  ///   - string: The string to parse, such as `"0"` or `"6.3.0"`.
+  ///
+  /// - Returns: An instance of this type, or `nil` if one could not be parsed
+  ///   from `string`.
+  ///
+  /// - Bug: We are not able to reuse the logic from swift-syntax's
+  ///   `VersionTupleSyntax` type here because we cannot link to swift-syntax
+  ///   in this target.
+  private static func _parse(_ string: String) -> Self? {
+    // Check if we've previously encountered this version number.
+    let cachedValue = Self._versionNumberCache.withLock { versionNumberCache in
+      versionNumberCache[string]
+    }
+    if case let .some(cachedValue) = cachedValue {
+      return cachedValue
+    }
+
+    var result: Self?
+    do {
+      // Split the string on "." (assuming it is of the form "1", "1.2", or
+      // "1.2.3") and parse the individual components as integers.
+      let components = string.split(separator: ".", omittingEmptySubsequences: false)
+      func componentValue(_ index: Int) -> Component? {
+        components.count > index ? Component(components[index]) : 0
+      }
+      if let majorComponent = componentValue(0),
+         let minorComponent = componentValue(1),
+         let patchComponent = componentValue(2) {
+        result = Self(majorComponent: majorComponent, minorComponent: minorComponent, patchComponent: patchComponent)
+      }
+    }
+
+    Self._versionNumberCache.withLock { versionNumberCache in
+      versionNumberCache[string] = result
+    }
+
+    return result
+  }
+
   /// Initialize an instance of this type by parsing the given string.
   ///
   /// - Parameters:
   ///   - string: The string to parse, such as `"0"` or `"6.3.0"`.
+  ///
+  /// If `string` contains fewer than 3 numeric components, the missing
+  /// components are inferred to be `0` (for example, `"1.2"` is equivalent to
+  /// `"1.2.0"`.) If `string` contains more than 3 numeric components, the
+  /// additional components are ignored.
+  public init?(_ string: String) {
+    guard let result = Self._parse(string) else {
+      return nil
+    }
+    self = result
+  }
+
+  /// Initialize an instance of this type by parsing the given string.
+  ///
+  /// - Parameters:
+  ///   - string: The C string to parse, such as `"0"` or `"6.3.0"`.
   ///
   /// @Comment {
   ///   - Bug: We are not able to reuse the logic from swift-syntax's
@@ -65,20 +130,11 @@ extension ABI.VersionNumber: CustomStringConvertible {
   /// components are inferred to be `0` (for example, `"1.2"` is equivalent to
   /// `"1.2.0"`.) If `string` contains more than 3 numeric components, the
   /// additional components are ignored.
-  public init?(_ string: String) {
-    // Split the string on "." (assuming it is of the form "1", "1.2", or
-    // "1.2.3") and parse the individual components as integers.
-    let components = string.split(separator: ".", omittingEmptySubsequences: false)
-    func componentValue(_ index: Int) -> Component? {
-      components.count > index ? Component(components[index]) : 0
-    }
-
-    guard let majorComponent = componentValue(0),
-          let minorComponent = componentValue(1),
-          let patchComponent = componentValue(2) else {
+  public init?(validatingCString string: UnsafePointer<CChar>) {
+    guard let result = String(validatingCString: string).flatMap(Self._parse) else {
       return nil
     }
-    self.init(majorComponent: majorComponent, minorComponent: minorComponent, patchComponent: patchComponent)
+    self = result
   }
 
   public var description: String {
@@ -108,9 +164,9 @@ extension ABI.VersionNumber: Equatable, Comparable {
   }
 }
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.VersionNumber: Codable {
   public init(from decoder: any Decoder) throws {
     let container = try decoder.singleValueContainer()
@@ -133,14 +189,7 @@ extension ABI.VersionNumber: Codable {
   }
 
   public func encode(to encoder: any Encoder) throws {
-    var container = encoder.singleValueContainer()
-    if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
-      // Version 0 and earlier are encoded as integers for compatibility with
-      // Swift 6.2 and earlier.
-      try container.encode(majorComponent)
-    } else {
-      try container.encode("\(majorComponent).\(minorComponent).\(patchComponent)")
-    }
+    try encoder.encodeJSONEncodableValue(self)
   }
 
 #if !SWT_NO_ABI_JSON_SCHEMA
@@ -152,6 +201,71 @@ extension ABI.VersionNumber: Codable {
   ///
   /// - Throws: Any error that prevented decoding an instance of this type.
   public init(fromRecordJSON recordJSON: UnsafeRawBufferPointer) throws {
+#if !os(Windows) // no memmem()
+    // This is sneaky: if we find the substring ""version": "" in the JSON, and
+    // we only find it once, we can assume that what follows up to a comma,
+    // whitespace, or brace must be the record's version. This is not a safe or
+    // general way to parse JSON of course, so if it fails we fall back to full
+    // JSON decoding.
+    //
+    // "What happens if we extract the string from the wrong place?" Then the
+    // caller will proceed to decode the entire record with an incorrect
+    // ABI.VersionNumber and/or ABI.Version specialization, and decoding will
+    // throw an error (as it would have if we just used `JSON.decode()` below).
+    if #available(_stringInitValidatingAPI, *) {
+      let versionKey = (
+        UInt8(ascii: #"""#), UInt8(ascii: "v"), UInt8(ascii: "e"), UInt8(ascii: "r"),
+        UInt8(ascii: "s"), UInt8(ascii: "i"), UInt8(ascii: "o"), UInt8(ascii: "n"),
+        UInt8(ascii: #"""#), UInt8(ascii: ":"), UInt8(ascii: " "), UInt8(ascii: #"""#)
+      )
+      let result: Self? = withUnsafeBytes(of: versionKey) { versionKey in
+        // NOTE: firstRange(of:) is very slow in DEBUG configuration because it
+        // is completely unspecialized, so drop to memmem() to find the range.
+        func find(_ needle: UnsafeRawBufferPointer, in haystack: UnsafeRawBufferPointer) -> Range<UnsafeRawBufferPointer.Index>? {
+          guard let address = memmem(haystack.baseAddress!, haystack.count, needle.baseAddress!, needle.count) else {
+            return nil
+          }
+          let offset = UnsafeRawPointer(address) - haystack.baseAddress!
+          let startIndex = haystack.index(haystack.startIndex, offsetBy: offset)
+          let endIndex = haystack.index(startIndex, offsetBy: needle.count)
+          return startIndex ..< endIndex
+        }
+
+        // Find the "version" key.
+        guard let range = find(versionKey, in: recordJSON),
+              range.upperBound < recordJSON.endIndex else {
+          return nil
+        }
+        let slicedJSON = UnsafeRawBufferPointer(rebasing: recordJSON[range.endIndex...])
+        guard find(versionKey, in: slicedJSON) == nil else {
+          // The key was present twice, so this JSON is likely invalid.
+          return nil
+        }
+
+        // Appears to be a string (`versionKey` ends with the opening quote).
+        // Find the next quote character; as long as there are no escape
+        // sequences, we can extract the string directly.
+        return withUnsafeBytes(of: UInt8(ascii: #"""#)) { quote in
+          guard let endQuoteRange = find(quote, in: slicedJSON) else {
+            return nil
+          }
+          let stringJSON = UnsafeRawBufferPointer(rebasing: slicedJSON[..<endQuoteRange.startIndex])
+          return withUnsafeBytes(of: UInt8(ascii: #"\"#)) { backslash in
+            guard find(backslash, in: stringJSON) == nil,
+                  let stringValue = String(validating: stringJSON, as: UTF8.self) else {
+              return nil
+            }
+            return Self(stringValue)
+          }
+        }
+      }
+      if let result {
+        self = result
+        return
+      }
+    }
+#endif
+
     struct MinimalRecord: Decodable {
       var version: ABI.VersionNumber
     }
@@ -160,3 +274,16 @@ extension ABI.VersionNumber: Codable {
 #endif
 }
 #endif
+
+extension ABI.VersionNumber: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
+      // Version 0 and earlier are encoded as integers for compatibility with
+      // Swift 6.2 and earlier.
+      return majorComponent.jsonValue(in: context)
+    } else {
+      return "\(majorComponent).\(minorComponent).\(patchComponent)".jsonValue(in: context)
+    }
+
+  }
+}

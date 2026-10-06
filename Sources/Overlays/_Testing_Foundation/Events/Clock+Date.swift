@@ -8,7 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && !SWT_NO_UTC_CLOCK
+#if !hasFeature(Embedded)
+#if !SWT_NO_FOUNDATION && !SWT_NO_UTC_CLOCK
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) public import Testing
 public import Foundation
 
@@ -38,8 +39,12 @@ extension Date {
   /// `instant`. For precise date/time calculations, convert instances of
   /// ``ABI/EncodedInstant`` to `SuspendingClock.Instant` instead of `Date`.
   public init?<V>(decoding instant: ABI.EncodedInstant<V>) {
-    self.init(timeIntervalSince1970: instant.since1970)
+    guard let instant = Test.Clock.Instant(decoding: instant) else {
+      return nil
+    }
+    self.init(instant)
   }
 #endif
 }
+#endif
 #endif

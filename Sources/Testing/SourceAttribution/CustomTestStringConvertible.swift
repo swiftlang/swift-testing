@@ -80,7 +80,7 @@ extension String {
   }
 
   public init(describingForTest value: borrowing some CustomStringConvertible) {
-    self.init(describing: value)
+    self = value.description
   }
 
   public init(describingForTest value: borrowing some CustomDebugStringConvertible & CustomTestStringConvertible) {
@@ -88,7 +88,7 @@ extension String {
   }
 
   public init(describingForTest value: borrowing some CustomDebugStringConvertible) {
-    self = value.debugDescription // FIXME: use init(reflecting:) in Embedded Swift
+    self = value.debugDescription
   }
 
   public init(describingForTest value: borrowing some CustomStringConvertible & CustomDebugStringConvertible & CustomTestStringConvertible) {
@@ -96,7 +96,7 @@ extension String {
   }
 
   public init(describingForTest value: borrowing some CustomStringConvertible & CustomDebugStringConvertible) {
-    self.init(describing: value)
+    self = value.description
   }
 
   @_disfavoredOverload
@@ -104,17 +104,21 @@ extension String {
   @usableFromInline
   init(describingForTest value: borrowing some ~Copyable & ~Escapable) {
     // FIXME: need some sort of description functionality for arbitrary values
-    self = "<unknown value>"
+    self = UnavailableInEmbeddedSwift.testDescription
   }
 
   init(describingForTest value: (some ~Copyable & ~Escapable).Type) {
     // FIXME: need some sort of description functionality for types
-    self = "<unknown type>"
+    self = UnavailableInEmbeddedSwift.testDescription
   }
 
-  init(describingForTest value: any Error) {
-    // FIXME: need some sort of description functionality for errors
-    self = "<unknown error>"
+  init(describingForTest error: any Error) {
+    let domain = error._domain
+    if domain == "(unknown domain in Embedded Swift)" { // TODO: avoid hard-coding
+      self = "error \(error._code) in unknown domain"
+    } else {
+      self = "error \(error._code) in domain '\(domain)'"
+    }
   }
 #endif
 }
@@ -156,6 +160,66 @@ extension _OptionalNilComparisonType: CustomTestStringConvertible {
     "nil"
   }
 }
+
+#if hasFeature(Embedded)
+// MARK: - Arithmetic types (Embedded Swift only)
+
+extension Numeric where Self: CustomStringConvertible & CustomTestStringConvertible {
+  public var testDescription: String {
+    String(describing: self)
+  }
+}
+
+extension Int: CustomTestStringConvertible {}
+extension Int8: CustomTestStringConvertible {}
+extension Int16: CustomTestStringConvertible {}
+extension Int32: CustomTestStringConvertible {}
+extension Int64: CustomTestStringConvertible {}
+extension Int128: CustomTestStringConvertible {}
+
+extension UInt: CustomTestStringConvertible {}
+extension UInt8: CustomTestStringConvertible {}
+extension UInt16: CustomTestStringConvertible {}
+extension UInt32: CustomTestStringConvertible {}
+extension UInt64: CustomTestStringConvertible {}
+extension UInt128: CustomTestStringConvertible {}
+
+extension Float: CustomTestStringConvertible {}
+extension Double: CustomTestStringConvertible {}
+
+extension Bool: CustomTestStringConvertible {
+  public var testDescription: String {
+    self ? "true" : "false"
+  }
+}
+
+// MARK: - Collection types (Embedded Swift only)
+
+extension Sequence where Self: CustomStringConvertible & CustomTestStringConvertible, Self.Element: CustomTestStringConvertible {
+  public var testDescription: String {
+    String(describing: self)
+  }
+}
+
+extension Array: CustomTestStringConvertible where Element: CustomTestStringConvertible {
+  public var testDescription: String {
+    let result = self.lazy
+      .map { String(describingForTest: $0) }
+      .joined(separator: ", ")
+    return "[\(result)]"
+  }
+}
+
+extension Dictionary: CustomTestStringConvertible where Key: CustomTestStringConvertible, Value: CustomTestStringConvertible {
+  public var testDescription: String {
+    let result = self.lazy
+      .map { (String(describingForTest: $0), String(describingForTest: $1)) }
+      .map { "\($0): \($1)" }
+      .joined(separator: ",")
+    return "[\(result)]"
+  }
+}
+#endif
 
 // MARK: - Strings
 

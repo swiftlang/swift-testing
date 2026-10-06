@@ -9,7 +9,10 @@
 //
 
 #if !SWT_NO_CODABLE
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
+#if !canImport(Foundation)
+#error("Platform-specific misconfiguration: support for Foundation requires the 'Foundation' module")
+#endif
 private import Foundation
 #else
 #error("Platform-specific misconfiguration: support for JSON encoding and decoding requires the 'Foundation' module")
@@ -17,12 +20,39 @@ private import Foundation
 #endif
 
 enum JSON {
+  /// String representations of non-finite floating-point values.
+  static var positiveInfinityString: String {
+    "Infinity"
+  }
+  static var negativeInfinityString: String {
+    "-Infinity"
+  }
+  static var nanString: String {
+    "NaN"
+  }
+
 #if !SWT_NO_CODABLE
   /// Whether or not pretty-printed JSON is enabled for this process.
   ///
   /// This is a debugging tool that can be used by developers working on the
   /// testing library to improve the readability of JSON output.
   private static let _prettyPrintingEnabled = Environment.flag(named: "SWT_PRETTY_PRINT_JSON") == true
+
+  /// A JSON encoder to use with the default encoding configuration.
+  ///
+  /// We reuse this object to avoid allocating encoders repeatedly.
+  private static let _defaultEncoder: JSONEncoder = {
+    let encoder = JSONEncoder()
+
+    // Keys must be sorted to ensure deterministic matching of encoded data.
+    encoder.outputFormatting.insert(.sortedKeys)
+    if _prettyPrintingEnabled {
+      encoder.outputFormatting.insert(.prettyPrinted)
+      encoder.outputFormatting.insert(.withoutEscapingSlashes)
+    }
+
+    return encoder
+  }()
 
   /// Encode a value as JSON.
   ///
@@ -34,18 +64,44 @@ enum JSON {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body` or by the encoding process.
-  static func withEncoding<R>(of value: some Encodable, userInfo: [CodingUserInfoKey: any Sendable] = [:], _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    let encoder = JSONEncoder()
+  static func withEncoding<R>(
+    of value: some Swift.Encodable,
+    userInfo: [CodingUserInfoKey: any Sendable] = [:],
+    _ body: (UnsafeRawBufferPointer) throws -> R
+  ) throws -> R {
+    let encoder: JSONEncoder = {
+      if userInfo.isEmpty {
+        return _defaultEncoder
+      }
+      let encoder = JSONEncoder()
 
-    // Keys must be sorted to ensure deterministic matching of encoded data.
-    encoder.outputFormatting.insert(.sortedKeys)
-    if _prettyPrintingEnabled {
-      encoder.outputFormatting.insert(.prettyPrinted)
-      encoder.outputFormatting.insert(.withoutEscapingSlashes)
+      // Set user info keys that clients want to use during encoding.
+      encoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
+
+      if encoder.userInfo[.allowNonConformingFloatingPointValuesUserInfoKey] as? Bool == true {
+        encoder.nonConformingFloatEncodingStrategy = .convertToString(
+          positiveInfinity: positiveInfinityString,
+          negativeInfinity: negativeInfinityString,
+          nan: nanString
+        )
+      }
+
+      // Keys must be sorted to ensure deterministic matching of encoded data.
+      encoder.outputFormatting.insert(.sortedKeys)
+      if _prettyPrintingEnabled {
+        encoder.outputFormatting.insert(.prettyPrinted)
+        encoder.outputFormatting.insert(.withoutEscapingSlashes)
+      }
+
+      return encoder
+    }()
+
+#if DEBUG
+    // Advise us to use our own encoder where possible.
+    if userInfo.isEmpty, value is any JSON.Encodable {
+      writeToConsole("Using 'Codable' conformance to encode a value that also conforms to 'JSON.Encodable': \(value)\n")
     }
-
-    // Set user info keys that clients want to use during encoding.
-    encoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs})
+#endif
 
     let data = try encoder.encode(value)
     return try data.withUnsafeBytes(body)
@@ -77,16 +133,26 @@ enum JSON {
   }
 
 #if !SWT_NO_CODABLE
+  /// A JSON decoder to use with the default decoding configuration.
+  ///
+  /// We reuse this object to avoid allocating decoders repeatedly.
+  private static let _defaultDecoder = JSONDecoder()
+
   /// Decode a value from JSON data.
   ///
   /// - Parameters:
   ///   - type: The type of value to decode.
   ///   - jsonRepresentation: The JSON encoding of the value to decode.
+  ///   - userInfo: Any user info to pass into the decoder during decoding.
   ///
   /// - Returns: An instance of `T` decoded from `jsonRepresentation`.
   ///
   /// - Throws: Whatever is thrown by the decoding process.
-  static func decode<T>(_ type: T.Type, from jsonRepresentation: UnsafeRawBufferPointer) throws -> T where T: Decodable {
+  static func decode<T>(
+    _ type: T.Type,
+    from jsonRepresentation: UnsafeRawBufferPointer,
+    userInfo: [CodingUserInfoKey: any Sendable] = [:]
+  ) throws -> T where T: Decodable {
     try withExtendedLifetime(jsonRepresentation) {
       let byteCount = jsonRepresentation.count
       let data = if byteCount > 0 {
@@ -98,8 +164,37 @@ enum JSON {
       } else {
         Data()
       }
-      return try JSONDecoder().decode(type, from: data)
+      let decoder: JSONDecoder = {
+        if userInfo.isEmpty {
+          return _defaultDecoder
+        }
+        let decoder = JSONDecoder()
+
+        // Set user info keys that clients want to use during decoding.
+        decoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
+
+        if decoder.userInfo[.allowNonConformingFloatingPointValuesUserInfoKey] as? Bool == true {
+          decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+            positiveInfinity: positiveInfinityString,
+            negativeInfinity: negativeInfinityString,
+            nan: nanString
+          )
+        }
+
+        return decoder
+      }()
+      return try decoder.decode(type, from: data)
     }
   }
 #endif
 }
+
+#if !SWT_NO_CODABLE
+extension CodingUserInfoKey {
+  /// A coding user info key whose value is a `Bool` indicating whether or not
+  /// non-finite floating-point values are allowed.
+  static var allowNonConformingFloatingPointValuesUserInfoKey: Self {
+    Self(rawValue: "org.swift.testing.coding-user-info-key.allow-non-conforming-floating-point-values")!
+  }
+}
+#endif

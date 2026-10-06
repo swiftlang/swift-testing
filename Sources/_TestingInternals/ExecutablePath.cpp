@@ -10,9 +10,9 @@
 
 #include "ExecutablePath.h"
 
+#if defined(__OpenBSD__)
 #include <atomic>
 
-#if defined(__OpenBSD__)
 /// Storage for ``swt_getEarlyCWD()``.
 static constinit std::atomic<const char *> earlyCWD { nullptr };
 

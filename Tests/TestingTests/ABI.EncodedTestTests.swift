@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if !SWT_NO_ABI_JSON_SCHEMA
+#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
 @Suite struct `ABI.EncodedTest Tests` {
   let fixture = ABI.EncodedTest<ABI.CurrentVersion>(
     kind: .function,
@@ -95,6 +95,14 @@
     test.id = try testID(invalidTestID)
 
     #expect(test.decodeIDComponents() == nil)
+  }
+
+  @Test func `Can encode an event for a test suite`() {
+    let test = Test(traits: [], sourceLocation: .__here(), containingTypeInfo: TypeInfo(describing: Int.self))
+    let event = Event(.testStarted, testID: test.id, testCaseID: nil)
+    let eventContext = Event.Context(test: test, testCase: nil, iteration: 1, configuration: nil)
+    let encodedEvent = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: eventContext)
+    #expect(encodedEvent != nil)
   }
 }
 #endif

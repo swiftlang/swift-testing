@@ -12,6 +12,11 @@
 private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
+// Resolve ambiguity between C's exit() and our wrapper in the PAL annex. Code
+// in Swift Testing doesn't need to do this because it prefers symbols in the
+// same module, while code outside our package can't see our declaration.
+private let exit = Testing.exit
+
 @Suite("Exit test tests") struct ExitTestTests {
   @Test("Exit code names are reported (where supported)") func exitCodeName() {
     #expect(String(describing: ExitStatus.exitCode(EXIT_SUCCESS)) == ".exitCode(EXIT_SUCCESS)")
@@ -490,7 +495,7 @@ private import _TestingInternals
 
   @Test("Arguments to the macro are not captured during expansion (do not need to be literals/const)")
   func argumentsAreNotCapturedDuringMacroExpansion() async throws {
-    let unrelatedSourceLocation = #_sourceLocation
+    let unrelatedSourceLocation = #Testing::sourceLocation
     func nonConstExitCondition() async throws -> ExitTest.Condition {
       .failure
     }
@@ -566,6 +571,27 @@ private import _TestingInternals
       #expect(i == 123)
       #expect(s == "abc")
       #expect(t == "abc")
+    }
+  }
+
+  @Test(
+    "Capture list (non-conforming floating-point values)",
+    arguments: [Double.infinity, -Double.infinity, Double.nan]
+  )
+  func captureListWithNonConformingFloatingPointValues(_ value: Double) async {
+    let expectedIsNaN = value.isNaN
+    let expectedIsNegative = value.sign == .minus
+    await #expect(processExitsWith: .success) {
+      [
+        value,
+        expectedIsNaN = expectedIsNaN as Bool,
+        expectedIsNegative = expectedIsNegative as Bool,
+      ] in
+      #expect(value.isNaN == expectedIsNaN)
+      if !expectedIsNaN {
+        #expect(value.isInfinite)
+        #expect((value.sign == .minus) == expectedIsNegative)
+      }
     }
   }
 
@@ -677,9 +703,9 @@ private import _TestingInternals
     }
   }
 
-  @Test("Capturing #_sourceLocation")
+  @Test("Capturing #Testing::sourceLocation")
   func captureListPreservesSourceLocationMacro() async {
-    func sl(_ sl: SourceLocation = #_sourceLocation) -> SourceLocation {
+    func sl(_ sl: SourceLocation = #Testing::sourceLocation) -> SourceLocation {
       sl
     }
     await #expect(processExitsWith: .success) { [sl = sl() as SourceLocation] in
@@ -743,6 +769,17 @@ private import _TestingInternals
     await #expect(processExitsWith: .success) {}
   }
 #endif
+
+  @Test("noasync function callable from synchronous exit test body")
+  func noasyncCallable() async throws {
+    await #expect(processExitsWith: .success) {
+      some_noasync_function()
+    }
+
+    await #expect(processExitsWith: .success) { @MainActor in
+      some_noasync_function()
+    }
+  }
 }
 
 // MARK: - Fixtures
@@ -784,4 +821,7 @@ func sellIceCreamCones(count: Int) async throws {
   }
 }
 #endif
+
+@available(*, noasync)
+fileprivate func some_noasync_function() { /* ... */ }
 #endif
