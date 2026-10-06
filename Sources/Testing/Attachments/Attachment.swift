@@ -396,8 +396,18 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
+#if SWT_TARGET_OS_APPLE
+  @available(anyAppleOS, deprecated: 26, message: "Call 'write(to:)' instead of 'withUnsafeBytes(_:)'.")
+#else
+  @available(*, deprecated, message: "Call 'write(to:)' instead of 'withUnsafeBytes(_:)'.")
+#endif
   @inlinable public borrowing func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try attachableValue.withUnsafeBytes(for: self, body)
+  }
+
+  @available(anyAppleOS 26, *)
+  @inlinable public borrowing func write(to write: (borrowing RawSpan) throws -> Void) throws {
+    try attachableValue.write(for: self, to: write)
   }
 }
 

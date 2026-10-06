@@ -78,7 +78,15 @@ public protocol Attachable: ~Copyable {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
+#if SWT_TARGET_OS_APPLE
+  @available(anyAppleOS, deprecated: 26, message: "Implement 'write(for:to:)' instead of 'withUnsafeBytes(for:_:)'.")
+#else
+  @available(*, deprecated, message: "Implement 'write(for:to:)' instead of 'withUnsafeBytes(for:_:)'.")
+#endif
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
+
+  @available(anyAppleOS 26, *)
+  borrowing func write(for attachment: borrowing Attachment<Self>, to write: (borrowing RawSpan) throws -> Void) throws
 
   /// Generate a preferred name for the given attachment.
   ///
@@ -139,6 +147,29 @@ extension Attachable where Self: ~Copyable {
   /// }
   public var estimatedAttachmentByteCount: Int? {
     nil
+  }
+
+  @available(anyAppleOS, introduced: 26)
+#if SWT_TARGET_OS_APPLE
+  @export(implementation)
+#endif
+  public borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    var result = [UInt8]()
+    try write(for: attachment) { bytes in
+      bytes.withUnsafeBytes { result += $0 }
+    }
+    return try result.withUnsafeBytes(body)
+  }
+
+#if SWT_TARGET_OS_APPLE
+  @available(anyAppleOS, introduced: 26, deprecated: 26, message: "Implement 'write(for:to:)' instead of 'withUnsafeBytes(for:_:)'.")
+#else
+  @available(*, deprecated, message: "Implement 'write(for:to:)' instead of 'withUnsafeBytes(for:_:)'.")
+#endif
+  public borrowing func write(for attachment: borrowing Attachment<Self>, to write: (borrowing RawSpan) throws -> Void) throws {
+    @diagnose(DeprecatedDeclaration, as: ignored)
+    let bytes = try withUnsafeBytes(for: attachment) { Array($0) }
+    try write(bytes.span.bytes)
   }
 
   /// @Metadata {
