@@ -37,11 +37,13 @@ final actor Serializer<T> {
   /// The maximum number of work items that may run concurrently.
   nonisolated let maximumWidth: Int
 
+#if !SWT_NO_CONTINUATIONS
   /// The number of scheduled work items, including any currently running.
   private var _currentWidth = 0
 
   /// Continuations for any scheduled work items that haven't started yet.
   private var _continuations = [CheckedContinuation<Void, Never>]()
+#endif
 
   init(maximumWidth: Int = 1) {
     precondition(maximumWidth >= 1, "Invalid serializer width \(maximumWidth).")
@@ -60,6 +62,7 @@ final actor Serializer<T> {
   /// - Warning: Calling this function recursively on the same instance of
   ///   ``Serializer`` will cause a deadlock.
   func run<R>(_ workItem: @isolated(any) @Sendable () async throws -> R) async rethrows -> R where R: Sendable {
+#if !SWT_NO_CONTINUATIONS
     _currentWidth += 1
     defer {
       // Resume the next scheduled closure.
@@ -81,6 +84,7 @@ final actor Serializer<T> {
         _continuations.append(continuation)
       }
     }
+#endif
 
     return try await workItem()
   }
