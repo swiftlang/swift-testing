@@ -523,6 +523,8 @@ struct EventRecorderTests {
 
     let xmlString = stream.buffer.rawValue
     #expect(xmlString.hasPrefix("<?xml"))
+    #expect(xmlString.contains(#"tests="1""#))
+    #expect(xmlString.contains(#"skipped="1""#))
     let testCaseLines = xmlString
       .split(whereSeparator: \.isNewline)
       .filter { $0.contains("<testcase") }
