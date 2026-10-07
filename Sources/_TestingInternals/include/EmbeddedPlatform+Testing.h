@@ -298,7 +298,7 @@ SWIFT_TESTING_EXTERN SWIFT_TESTING_NODISCARD bool _swift_testing_getEnvironment(
 ///
 /// The testing library calls this function at most once during the lifetime of
 /// a test process.
-SWIFT_TESTING_EXTERN bool _swift_testing_getEmbeddedTargetInfo(const char *SWIFT_TESTING_NULLABLE *SWIFT_TESTING_NONNULL outEmbeddedTargetInfo);
+SWIFT_TESTING_EXTERN SWIFT_TESTING_NODISCARD bool _swift_testing_getEmbeddedTargetInfo(const char *SWIFT_TESTING_NULLABLE *SWIFT_TESTING_NONNULL outEmbeddedTargetInfo);
 
 // MARK: - Console output
 
