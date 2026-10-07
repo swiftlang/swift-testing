@@ -612,26 +612,26 @@ extension Array where Element: _LanguageBuildSetting {
     // - embedded: Whether this define should be set unconditionally when
     //   building for Embedded. (This is not currently expressible as a build
     //   setting conditional.)
-    let defines: [String: (platforms: [Platform]?, embedded: Bool)] = [
-      "SWT_NO_EXIT_TESTS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
-      "SWT_NO_PROCESS_SPAWNING": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
-      "SWT_NO_SNAPSHOT_TYPES": (platforms: .nonApplePlatforms, embedded: true),
-      "SWT_NO_DYNAMIC_LINKING": (platforms: [.wasi], embedded: true),
-      "SWT_NO_PIPES": (platforms: [.wasi], embedded: true),
-      "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .nonApplePlatforms, embedded: true),
-      "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
-      "SWT_NO_FILE_IO": (platforms: .none, embedded: true),
-      "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
-      "SWT_NO_ABI_ENTRY_POINT": (platforms: .none, embedded: true),
-      "SWT_NO_CODABLE": (platforms: .none, embedded: true),
-      "SWT_NO_INTEROP": (platforms: .none, embedded: true),
-      "SWT_NO_HARNESS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
-      "SWT_NO_GLOBAL_ACTORS": (platforms: .none, embedded: true),
-      "SWT_NO_SUSPENDING_CLOCK": (platforms: .none, embedded: true),
-      "SWT_NO_BACKTRACE_SYMBOLICATION": (platforms: .none, embedded: true),
+    let defines: [(String, platforms: [Platform]?, embedded: Bool)] = [
+      ("SWT_NO_EXIT_TESTS", platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
+      ("SWT_NO_PROCESS_SPAWNING", platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
+      ("SWT_NO_SNAPSHOT_TYPES", platforms: .nonApplePlatforms, embedded: true),
+      ("SWT_NO_DYNAMIC_LINKING", platforms: [.wasi], embedded: true),
+      ("SWT_NO_PIPES", platforms: [.wasi], embedded: true),
+      ("SWT_NO_FOUNDATION_FILE_COORDINATION", platforms: .nonApplePlatforms, embedded: true),
+      ("SWT_NO_IMAGE_ATTACHMENTS", platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
+      ("SWT_NO_FILE_IO", platforms: .none, embedded: true),
+      ("SWT_NO_FILE_CLONING", platforms: [.openbsd, .wasi, .android], embedded: true),
+      ("SWT_NO_ABI_ENTRY_POINT", platforms: .none, embedded: true),
+      ("SWT_NO_CODABLE", platforms: .none, embedded: true),
+      ("SWT_NO_INTEROP", platforms: .none, embedded: true),
+      ("SWT_NO_HARNESS", platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
+      ("SWT_NO_GLOBAL_ACTORS", platforms: .none, embedded: true),
+      ("SWT_NO_SUSPENDING_CLOCK", platforms: .none, embedded: true),
+      ("SWT_NO_BACKTRACE_SYMBOLICATION", platforms: .none, embedded: true),
 
-      "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),
-      "SWT_NO_FOUNDATION": (platforms: .none, embedded: true),
+      ("SWT_NO_LIBDISPATCH", platforms: .none, embedded: true),
+      ("SWT_NO_FOUNDATION", platforms: .none, embedded: true),
     ]
 
     // Let the environment block override our settings above.
@@ -645,7 +645,10 @@ extension Array where Element: _LanguageBuildSetting {
 #endif
       }
 
-    for (name, environmentVariable) in environmentVariables {
+    // Sort environment variables by their key to make sure the order is
+    // deterministic.
+    let sortedEnvironmentVariables = environmentVariables.sorted(by: { $0.key < $1.key })
+    for (name, environmentVariable) in sortedEnvironmentVariables {
       // The environment variable is set. If the value is `true`, that means
       // the "NO" flag should be set unconditionally. If the value is `false`,
       // that means the flag should _not_ be set.
@@ -654,19 +657,19 @@ extension Array where Element: _LanguageBuildSetting {
       }
     }
 
-    for (name, details) in defines {
+    for (name, platforms, embedded) in defines {
       if environmentVariables[name] != nil {
         // Handled in the loop above. We don't handle it here because it would
         // limit us to only the environment variables that we've explicitly
         // configured in the table above, but that table is not comprehensive.
       } else if !buildingForEmbedded {
-        if let platforms = details.platforms {
+        if let platforms {
           append(.define(name, .when(platforms: platforms)))
         } else {
           // Since there was no condition and we're not building for Embedded,
           // the intention was to never match so don't append this define.
         }
-      } else if details.embedded {
+      } else if embedded {
         // Since we're building for Embedded and this define is supposed to be
         // included unconditionally when building as such, append it.
         append(.define(name, nil))
