@@ -124,7 +124,7 @@ extension ABI {
           case .system:
             EncodedError(encoding: SystemError(description: ""))
           case .knownIssueNotRecorded:
-            EncodedError(encoding: KnownIssueNotRecordedError(description: ""))
+            EncodedError(domain: _knownIssueNotRecordedDomain)
           default:
             nil
           }
@@ -140,6 +140,13 @@ extension ABI {
     }
   }
 }
+
+/// Error domain for the specific kind of issue raised when a known issue
+/// scope fails to match any issues.
+/// ```
+/// withKnownIssue { /* empty */ } // Known issue was not recorded
+/// ```
+private let _knownIssueNotRecordedDomain = "org.swift.testing.KnownIssueNotRecordedError"
 
 // MARK: - Codable, JSON.Encodable
 
@@ -287,7 +294,7 @@ extension Issue {
         issueKind = .apiMisused
       case SystemError.domain:
         issueKind = .system
-      case KnownIssueNotRecordedError.domain:
+      case _knownIssueNotRecordedDomain:
         issueKind = .knownIssueNotRecorded
       default:
         issueKind = .errorCaught(error)

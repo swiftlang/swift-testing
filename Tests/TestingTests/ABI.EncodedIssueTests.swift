@@ -103,13 +103,7 @@ extension `ABI.EncodedIssue Tests`.`Encode Different Issue Types` {
       expectedJSON: #"""
         {
           "error":{
-            "code":1,
-            "domain":"org.swift.testing.KnownIssueNotRecordedError",
-            "type":{
-              "fullyQualifiedName":"Testing.KnownIssueNotRecordedError",
-              "mangledName":"$s7Testing26KnownIssueNotRecordedErrorV",
-              "unqualifiedName":"KnownIssueNotRecordedError"
-            }
+            "domain":"org.swift.testing.KnownIssueNotRecordedError"
           },
           "isFailure":true,
           "severity":"error"
