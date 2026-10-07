@@ -233,8 +233,6 @@ struct TestCaseIterationTests {
 
 #if canImport(_StringProcessing)
     await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
-      /Test run started\./,
-      /Testing Library Version: .*/,
       /Test ".*" started\./,
       /Test ".*" started \(repetition 2\)\./,
       /Test ".*" passed after .* seconds\./,
@@ -259,8 +257,6 @@ struct TestCaseIterationTests {
 
 #if canImport(_StringProcessing)
     await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
-      /Test run started\./,
-      /Testing Library Version: .*/,
       /Test ".*" started\./,
       /Test case passing .* to ".*" started\./,
       /Test case passing .* to ".*" started \(repetition 2\)\./,
@@ -289,8 +285,6 @@ struct TestCaseIterationTests {
 
 #if canImport(_StringProcessing)
     await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
-      /Test run started\./,
-      /Testing Library Version: .*/,
       /Test ".*" started\./,
       /Test ".*" was cancelled after .* seconds./,
       /Test run .* passed after .* seconds\./,
@@ -316,8 +310,6 @@ struct TestCaseIterationTests {
 
 #if canImport(_StringProcessing)
     await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
-      /Test run started\./,
-      /Testing Library Version: .*/,
       /Test ".*" started\./,
       /Test case passing .* to ".*" started\./,
       /Test ".*" with 1 test case passed after .* seconds\./,
