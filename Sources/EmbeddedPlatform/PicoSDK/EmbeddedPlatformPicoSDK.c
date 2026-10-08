@@ -14,6 +14,8 @@
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 // Pico SDK headers
 #include "pico/time.h"
@@ -22,7 +24,7 @@
 #include "pico/version.h"
 
 // Swift Testing headers
-#include "../../_TestingInternals/include/EmbeddedPlatform.h"
+#include "../../_TestingInternals/include/EmbeddedPlatform+Testing.h"
 
 // MARK: - POSIX stubs
 
@@ -118,7 +120,7 @@ void _swift_testing_writeToConsole(const uint8_t *chars, size_t count) {
   status_led_set_state(false);
 }
 
-void _swift_testing_writeJSON(const char *destination, const uint8_t *json, size_t count, const uint8_t terminator[1]) {}
+void _swift_testing_writeJSON(const char *path, const uint8_t *json, size_t count, const uint8_t terminator[1]) {}
 
 bool _swift_testing_getDurationSinceSystemEpoch(swift_testing_duration_t *outDuration) {
   uint64_t us = time_us_64();

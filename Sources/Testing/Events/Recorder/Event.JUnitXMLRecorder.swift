@@ -122,6 +122,7 @@ extension Event.JUnitXMLRecorder {
       let id = test!.id
       let keyPath = id.keyPathRepresentation
       _context.value.withLock { context in
+        context.testCount += 1
         context.testData[keyPath] = _Context.TestData(id: id, startInstant: instant, skipInfo: skipInfo)
       }
       return nil

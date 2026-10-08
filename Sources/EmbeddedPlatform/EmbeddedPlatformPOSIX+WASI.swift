@@ -16,25 +16,24 @@ internal import _TestingInternals
 }
 
 #if !SWT_NO_ABI_JSON_SCHEMA
-@c @implementation func _swift_testing_writeJSON(_ destination: UnsafePointer<CChar>?, _ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
-  // This implementation does not define a "default" JSON destination.
-  guard let destination else {
-    return
-  }
-
+@c @implementation func _swift_testing_writeJSON(_ path: UnsafePointer<CChar>, _ json: UnsafePointer<UInt8>, _ count: Int, _ terminator: UnsafePointer<UInt8>?) {
   // To avoid maintaining a mapping of paths to files, this implementation only
   // supports writing to the /dev/fd/ virtual filesystem.
   var fd: CInt = -1
-  if 0 == strcmp(destination, "/dev/stdout") {
+  if 0 == strcmp(path, "/dev/stdout") {
     fd = STDOUT_FILENO
-  } else if 0 == strcmp(destination, "/dev/stderr") {
+  } else if 0 == strcmp(path, "/dev/stderr") {
     fd = STDERR_FILENO
   } else {
-    let scannedFD = withUnsafeMutablePointer(to: &fd) { fd in
-      withVaList([fd]) { 1 == vsscanf(destination, "/dev/fd/%d", $0) }
-    }
-    guard scannedFD else {
-      return
+    // See if it looks like a path in the file descriptor virtual file system.
+    let slashDevFD = "/dev/fd/"
+    if 0 == strncmp(path, slashDevFD, strlen(slashDevFD)) {
+      var end: UnsafeMutablePointer<CChar>?
+      let longFD = strtol(path + strlen(slashDevFD), &end, 10)
+      guard end?.pointee == 0 else {
+        return
+      }
+      fd = CInt(exactly: longFD) ?? -1
     }
   }
   guard fd >= 0 else {

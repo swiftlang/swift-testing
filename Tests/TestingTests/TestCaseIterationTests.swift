@@ -186,6 +186,20 @@ struct TestCaseIterationTests {
   }
 
 #if canImport(_StringProcessing)
+  private var encodedEventMessagesCommonPrefix: [Regex<Substring>] {
+    var result = [
+      /Test run started\./,
+      /Testing Library Version: .*/,
+    ]
+
+    if Testing.targetTriple != nil {
+      result += [
+        /Target Platform: .*/,
+      ]
+    }
+    return result
+  }
+
   private func assertEncodedEventMessages<R>(
     _ test: Test,
     match expected: [Regex<R>],
@@ -218,9 +232,7 @@ struct TestCaseIterationTests {
     ])
 
 #if canImport(_StringProcessing)
-    await assertEncodedEventMessages(test, match: [
-      /Test run started\./,
-      /Testing Library Version: .*/,
+    await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
       /Test ".*" started\./,
       /Test ".*" started \(repetition 2\)\./,
       /Test ".*" passed after .* seconds\./,
@@ -244,9 +256,7 @@ struct TestCaseIterationTests {
     ])
 
 #if canImport(_StringProcessing)
-    await assertEncodedEventMessages(test, match: [
-      /Test run started\./,
-      /Testing Library Version: .*/,
+    await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
       /Test ".*" started\./,
       /Test case passing .* to ".*" started\./,
       /Test case passing .* to ".*" started \(repetition 2\)\./,
@@ -274,9 +284,7 @@ struct TestCaseIterationTests {
     ])
 
 #if canImport(_StringProcessing)
-    await assertEncodedEventMessages(test, match: [
-      /Test run started\./,
-      /Testing Library Version: .*/,
+    await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
       /Test ".*" started\./,
       /Test ".*" was cancelled after .* seconds./,
       /Test run .* passed after .* seconds\./,
@@ -301,9 +309,7 @@ struct TestCaseIterationTests {
     ])
 
 #if canImport(_StringProcessing)
-    await assertEncodedEventMessages(test, match: [
-      /Test run started\./,
-      /Testing Library Version: .*/,
+    await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
       /Test ".*" started\./,
       /Test case passing .* to ".*" started\./,
       /Test ".*" with 1 test case passed after .* seconds\./,

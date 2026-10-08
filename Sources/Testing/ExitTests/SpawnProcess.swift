@@ -14,6 +14,9 @@ internal import _TestingInternals
 #if SWT_NO_FILE_IO
 #error("Platform-specific misconfiguration: support for process spawning requires support for file I/O")
 #endif
+#if SWT_NO_CONTINUATIONS
+#error("Platform-specific misconfiguration: support for process spawning requires support for Swift Concurrency continuations")
+#endif
 
 /// A platform-specific value identifying a process running on the current
 /// system.

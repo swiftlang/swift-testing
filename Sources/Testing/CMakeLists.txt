@@ -20,6 +20,7 @@ add_library(Testing
   ABI/ABI.swift
   ABI/Encoded/ABI.EncodedAttachment.swift
   ABI/Encoded/ABI.EncodedBacktrace.swift
+  ABI/Encoded/ABI.EncodedConfirmationMiscount.swift
   ABI/Encoded/ABI.EncodedError.swift
   ABI/Encoded/ABI.EncodedEvent.swift
   ABI/Encoded/ABI.EncodedExpression.swift
@@ -29,6 +30,7 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedMetadata.swift
   ABI/Encoded/ABI.EncodedSourceLocation.swift
   ABI/Encoded/ABI.EncodedTest.swift
+  ABI/Encoded/ABI.EncodedTypeInfo.swift
   Attachments/Images/AttachableAsImage.swift
   Attachments/Images/_AttachableImageWrapper.swift
   Attachments/Images/AttachableImageFormat.swift
