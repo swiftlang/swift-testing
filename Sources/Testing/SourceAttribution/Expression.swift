@@ -49,29 +49,22 @@ public struct __Expression: Sendable {
 #if !hasFeature(Embedded)
   init(
     _ sourceCode: String,
-    isNegated: Bool = false,
     runtimeValue: Value? = nil,
     subexpressions: [Self] = []
   ) {
     self.kind = .generic(sourceCode)
-    self.isNegated = isNegated
     self.runtimeValue = runtimeValue
     self._subexpressions = subexpressions
   }
 #else
   init(
     _ sourceCode: String,
-    isNegated: Bool = false,
     subexpressions: [Self] = []
   ) {
     self.kind = .generic(sourceCode)
-    self.isNegated = isNegated
     self._subexpressions = subexpressions
   }
 #endif
-
-  /// Whether or not this instance represents a negated expression (`!foo`).
-  var isNegated = false
 
   /// The source code of the original captured expression.
   @_spi(ForToolsIntegrationOnly)
@@ -279,6 +272,20 @@ public struct __Expression: Sendable {
         self.children = children
       }
     }
+
+    /// Initialize an instance of this type representing a value of the
+    /// specified type that could not be captured (due to e.g. not conforming to
+    /// `Copyable`.)
+    ///
+    /// - Parameters:
+    ///   - type: The type of the uncaptured value.
+    init?<T>(failingToReflectInstanceOf type: T.Type) where T: ~Copyable & ~Escapable {
+      let typeInfo = TypeInfo(describing: type)
+      self.description = "<instance of '\(typeInfo.unqualifiedName)'>"
+      self.debugDescription = "<instance of '\(typeInfo.fullyQualifiedName)'>"
+      self.typeInfo = typeInfo
+      self.isCollection = false
+    }
 #else
     init(describing subject: any CustomTestStringConvertible) {
       // BUG: we cannot use init(describingForTest:) here. The compiler won't
@@ -303,107 +310,6 @@ public struct __Expression: Sendable {
   /// of this property is `nil`.
   @_spi(ForToolsIntegrationOnly)
   public var runtimeValue: Value?
-
-  /// A protocol constraint on types whose values can be captured at runtime.
-#if !hasFeature(Embedded)
-  typealias CapturableValue = Any
-#else
-  typealias CapturableValue = CustomTestStringConvertible
-#endif
-
-  /// Capture the runtime value corresponding to this instance.
-  ///
-  /// - Parameters:
-  ///   - value: The captured runtime value.
-  private mutating func _captureRuntimeValue(_ value: (any CapturableValue)?) {
-    runtimeValue = value.flatMap { Value(reflecting: $0) }
-    if let value = value as? Bool {
-      runtimeValue?.typeInfo = .bool
-      if isNegated {
-        subexpressions[0]._captureRuntimeValue(!value)
-      }
-    }
-#if hasFeature(Embedded)
-    if value is UnavailableInEmbeddedSwift {
-      runtimeValue?.typeInfo = .unavailableInEmbeddedSwift
-    }
-#endif
-  }
-
-  /// Capture the runtime values corresponding to this instance and its
-  /// subexpressions.
-  ///
-  /// - Parameters:
-  ///   - firstValue: The first captured runtime value.
-  ///   - additionalValues: Any additional captured runtime values after the
-  ///     first.
-  private mutating func _captureRuntimeValues(_ firstValue: (any CapturableValue)?, _ additionalValues: [(any CapturableValue)?]) {
-    if isNegated {
-      // A negated expression has an additional level of indirection between it
-      // and any additional values.
-      subexpressions[0]._captureRuntimeValues(nil /* discarded */, additionalValues)
-    } else {
-      for (i, value) in zip(subexpressions.indices, additionalValues) {
-        subexpressions[i]._captureRuntimeValue(value)
-      }
-    }
-    _captureRuntimeValue(firstValue)
-  }
-
-  /// Copy this instance and capture the runtime values corresponding to its
-  /// subexpressions.
-  ///
-  /// - Parameters:
-  ///   - firstValue: The first captured runtime value.
-  ///   - additionalValues: Any additional captured runtime values after the
-  ///     first.
-  ///
-  /// - Returns: A copy of `self` with information about the specified runtime
-  ///   values captured for future use.
-  ///
-  /// If the ``kind`` of `self` is ``Kind/generic`` or ``Kind/stringLiteral``,
-  /// this function is equivalent to ``capturingRuntimeValue(_:)``.
-  ///
-  /// In Embedded Swift, variadic generic support is not yet complete, so we
-  /// instead fall back to a regular variadic function.
-#if !hasFeature(Embedded)
-  func capturingRuntimeValues<each T>(_ firstValue: (some CapturableValue)?, _ additionalValues: repeat (each T)?) -> Self where repeat each T: CapturableValue {
-    var result = self
-    var additionalValuesCopy = [(any CapturableValue)?]()
-    repeat additionalValuesCopy.append(each additionalValues)
-    result._captureRuntimeValues(firstValue, additionalValuesCopy)
-    return result
-  }
-#else
-  func capturingRuntimeValues(_ firstValue: (some CapturableValue)?, _ additionalValues: (any CapturableValue)?...) -> Self {
-    var result = self
-    result._captureRuntimeValues(firstValue, additionalValues)
-    return result
-  }
-
-  func capturingRuntimeValues(_ error: (any Error)?) -> Self {
-    var result = self
-    if let error {
-      // Helper structure to turn `any Error` into a stringifiable value.
-      struct _ErrorBox: CustomTestStringConvertible {
-        var error: any Error
-        var testDescription: String {
-          String(describingForTest: error)
-        }
-      }
-      result._captureRuntimeValue(_ErrorBox(error: error))
-    }
-    return result
-  }
-
-  @_disfavoredOverload
-  func capturingRuntimeValues(_ firstValue: (some Any)?, _ additionalValues: Any?...) -> Self {
-    var result = self
-    let unavailable = UnavailableInEmbeddedSwift()
-    result._captureRuntimeValues(unavailable, additionalValues.map { _ in unavailable })
-    return result
-  }
-#endif
 
   /// Get an expanded description of this instance that contains the source
   /// code and runtime value (or values) it represents.
@@ -483,18 +389,6 @@ public struct __Expression: Sendable {
     }
   }
 
-  /// A description of the difference between the operands in this expression,
-  /// if that difference could be determined.
-  ///
-  /// The value of this property is set for the binary operators `==` and `!=`
-  /// when used to compare collections.
-  ///
-  /// If the containing expectation passed, the value of this property is `nil`
-  /// because the difference is only computed when necessary to assist with
-  /// diagnosing test failures.
-  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-  public internal(set) var differenceDescription: String?
-
   @_spi(ForToolsIntegrationOnly)
   @available(*, deprecated, message: "The value of this property is always nil.")
   public var stringLiteralValue: String? {
@@ -524,7 +418,7 @@ extension __Expression: CustomStringConvertible, CustomDebugStringConvertible {
   /// This initializer does not attempt to parse `sourceCode`.
   @_spi(ForToolsIntegrationOnly)
   public init(_ sourceCode: String) {
-    self.init(sourceCode, isNegated: false)
+    self.init(sourceCode, subexpressions: [])
   }
 
   public var description: String {
