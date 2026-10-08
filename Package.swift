@@ -612,7 +612,7 @@ extension Array where Element: _LanguageBuildSetting {
     // - embedded: Whether this define should be set unconditionally when
     //   building for Embedded. (This is not currently expressible as a build
     //   setting conditional.)
-    let defines: [String: (platforms: [Platform]?, embedded: Bool)] = [
+    let defines: KeyValuePairs<String, (platforms: [Platform]?, embedded: Bool)> = [
       "SWT_NO_EXIT_TESTS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
       "SWT_NO_PROCESS_SPAWNING": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
       "SWT_NO_SNAPSHOT_TYPES": (platforms: .nonApplePlatforms, embedded: true),
@@ -645,7 +645,10 @@ extension Array where Element: _LanguageBuildSetting {
 #endif
       }
 
-    for (name, environmentVariable) in environmentVariables {
+    // Sort environment variables by their key to make sure the order is
+    // deterministic.
+    let sortedEnvironmentVariables = environmentVariables.sorted { $0.key < $1.key }
+    for (name, environmentVariable) in sortedEnvironmentVariables {
       // The environment variable is set. If the value is `true`, that means
       // the "NO" flag should be set unconditionally. If the value is `false`,
       // that means the flag should _not_ be set.
