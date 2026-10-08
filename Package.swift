@@ -647,7 +647,7 @@ extension Array where Element: _LanguageBuildSetting {
 
     // Sort environment variables by their key to make sure the order is
     // deterministic.
-    let sortedEnvironmentVariables = environmentVariables.sorted(by: { $0.key < $1.key })
+    let sortedEnvironmentVariables = environmentVariables.sorted { $0.key < $1.key }
     for (name, environmentVariable) in sortedEnvironmentVariables {
       // The environment variable is set. If the value is `true`, that means
       // the "NO" flag should be set unconditionally. If the value is `false`,
