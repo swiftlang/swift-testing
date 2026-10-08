@@ -97,9 +97,18 @@ struct BacktraceTests {
   }
 
   @inline(never)
+  func throwNSErrorObjCStyle(_ outError: NSErrorPointer) -> Bool {
+    outError?.pointee = NSError(domain: "Oh no!", code: 123, userInfo: [:])
+    return false
+  }
+
+  @inline(never)
   func throwNSError() throws {
-    let error = NSError(domain: "Oh no!", code: 123, userInfo: [:])
-    throw error
+    var error: NSError?
+    if !throwNSErrorObjCStyle(&error) {
+      let error = try #require(error)
+      throw error
+    }
   }
 
   @inline(never)
