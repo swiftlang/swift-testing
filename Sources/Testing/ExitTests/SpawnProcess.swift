@@ -329,7 +329,7 @@ func spawnExecutable(
       // SEE: https://devblogs.microsoft.com/oldnewthing/20101109-00/?p=12323
       let workingDirectoryPath = rootDirectoryPath
 
-      var flags = DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT)
+      var flags = DWORD(CREATE_NO_WINDOW) | DWORD(CREATE_UNICODE_ENVIRONMENT) | DWORD(EXTENDED_STARTUPINFO_PRESENT)
 
       // Start the process suspended so we can attach a debugger if needed. We
       // always start the child process in a suspended state even if the
