@@ -160,8 +160,11 @@ extension ABI.EncodedConfirmationMiscount: JSON.Encodable {
     case let range as PartialRangeThrough<Int>:
       return (nil, range.upperBound)
     default:
-      throw JSON.EncodingError(
-        description: "Could not convert an unsupported range: \(expected)")
+#if !hasFeature(Embedded)
+      throw JSON.EncodingError(description: "Could not convert an unsupported range: \(expected)")
+#else
+      throw JSON.EncodingError(description: "Could not convert an unsupported range")
+#endif
     }
   }
 }
