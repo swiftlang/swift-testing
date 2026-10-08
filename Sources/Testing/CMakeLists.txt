@@ -10,6 +10,7 @@ include(ModuleABIName)
 add_library(Testing
   ABI/EntryPoints/ABIEntryPoint.swift
   ABI/EntryPoints/CommandLineArgumentList.swift
+  ABI/EntryPoints/EmbeddedEntryPoint.swift
   ABI/EntryPoints/EntryPoint.swift
   ABI/EntryPoints/SwiftPMEntryPoint.swift
   ABI/ABI.Context.swift
@@ -19,6 +20,7 @@ add_library(Testing
   ABI/ABI.swift
   ABI/Encoded/ABI.EncodedAttachment.swift
   ABI/Encoded/ABI.EncodedBacktrace.swift
+  ABI/Encoded/ABI.EncodedConfirmationMiscount.swift
   ABI/Encoded/ABI.EncodedError.swift
   ABI/Encoded/ABI.EncodedEvent.swift
   ABI/Encoded/ABI.EncodedExpression.swift
@@ -28,6 +30,7 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedMetadata.swift
   ABI/Encoded/ABI.EncodedSourceLocation.swift
   ABI/Encoded/ABI.EncodedTest.swift
+  ABI/Encoded/ABI.EncodedTypeInfo.swift
   Attachments/Images/AttachableAsImage.swift
   Attachments/Images/_AttachableImageWrapper.swift
   Attachments/Images/AttachableImageFormat.swift
@@ -63,6 +66,7 @@ add_library(Testing
   Issues/Issue+Recording.swift
   Issues/KnownIssue.swift
   Parameterization/CustomTestArgumentEncodable.swift
+  Parameterization/Test.Case.Argument.swift
   Parameterization/Test.Case.Generator.swift
   Parameterization/Test.Case.ID.swift
   Parameterization/Test.Case.swift

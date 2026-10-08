@@ -481,18 +481,22 @@ private func _parseCondition(from expr: ExprSyntax, for macro: some Freestanding
     return _parseCondition(from: expr, leftOperand: infixOperator.leftOperand, operator: op, rightOperand: infixOperator.rightOperand, for: macro, in: context)
   }
 
-  // Handle `is` and `as?` expressions.
-  if let isExpr = expr.as(IsExprSyntax.self) {
-    return _parseCondition(from: isExpr, for: macro, in: context)
-  } else if let asExpr = expr.as(AsExprSyntax.self) {
-    return _parseCondition(from: asExpr, for: macro, in: context)
-  }
+  // Embedded Swift does not support full argument expansion. The patterns here
+  // in particular are not supported.
+  if !context.isTargetEmbedded {
+    // Handle `is` and `as?` expressions.
+    if let isExpr = expr.as(IsExprSyntax.self) {
+      return _parseCondition(from: isExpr, for: macro, in: context)
+    } else if let asExpr = expr.as(AsExprSyntax.self) {
+      return _parseCondition(from: asExpr, for: macro, in: context)
+    }
 
-  // Handle function calls and member accesses.
-  if let functionCallExpr = expr.as(FunctionCallExprSyntax.self) {
-    return _parseCondition(from: functionCallExpr, for: macro, in: context)
-  } else if let memberAccessExpr = expr.as(MemberAccessExprSyntax.self) {
-    return _parseCondition(from: memberAccessExpr, for: macro, in: context)
+    // Handle function calls and member accesses.
+    if let functionCallExpr = expr.as(FunctionCallExprSyntax.self) {
+      return _parseCondition(from: functionCallExpr, for: macro, in: context)
+    } else if let memberAccessExpr = expr.as(MemberAccessExprSyntax.self) {
+      return _parseCondition(from: memberAccessExpr, for: macro, in: context)
+    }
   }
 
   // Handle negation.
@@ -537,10 +541,6 @@ extension ConditionMacro {
 
     _diagnoseTrivialBooleanValue(from: expr, for: macro, in: context)
 
-    if context.isTargetEmbedded {
-      // Embedded Swift does not support full argument expansion.
-      return Condition(expression: expr)
-    }
     return _parseCondition(from: expr, for: macro, in: context)
   }
 }

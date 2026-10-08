@@ -75,7 +75,7 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
     let url = url.resolvingSymlinksInPath()
     let isDirectory = try url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory!
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_FOUNDATION_FILE_COORDINATION
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FOUNDATION_FILE_COORDINATION && !SWT_NO_CONTINUATIONS
     let urlWrapper = try await withCheckedThrowingContinuation { continuation in
       let fileCoordinator = NSFileCoordinator()
       let fileAccessIntent = NSFileAccessIntent.readingIntent(with: url, options: [.forUploading])

@@ -102,6 +102,17 @@ typedef struct SWTContainer {
 } SWTContainer;
 ```
 
+> [!NOTE]
+> Functions and types defined in the Platform Asbtraction Layer Annex in
+> `EmbeddedPlatform.h` follow the pattern set by the core Platform Abstraction
+> Layer (with `swift_testing_` in place of the `swift_` prefix used there). The
+> above examples would then be:
+>
+> - `_swift_testing_isDebugModeEnabled()`
+> - `_swift_testing_setDebugModeEnabled()`
+> - `swift_testing_big_integer_t`
+> - `swift_testing_container_t`
+
 #### Documenting symbols
 
 Most symbols, including symbols marked `private`, should be given markup-style

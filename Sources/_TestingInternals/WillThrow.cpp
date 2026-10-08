@@ -10,6 +10,7 @@
 
 #include "WillThrow.h"
 
+#if !SWT_EMBEDDED
 #if __has_include(<atomic>)
 #include <atomic>
 
@@ -40,3 +41,4 @@ SWTWillThrowTypedHandler swt_setWillThrowTypedHandler(SWTWillThrowTypedHandler h
   return nullptr;
 #endif
 }
+#endif

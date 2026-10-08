@@ -16,22 +16,21 @@ extension ABI {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
-  ///
-  /// - Warning: Expressions are not yet part of the JSON schema.
-  @_spi(Experimental)
   public struct EncodedExpression<V>: Sendable where V: ABI.Version {
     /// The source code of the original captured expression.
     var sourceCode: String
 
+#if !hasFeature(Embedded)
     /// A string representation of the runtime value of this expression.
     ///
     /// If the runtime value of this expression has not been evaluated, the
     /// value of this property is `nil`.
     var runtimeValue: String?
 
-    /// The fully-qualified name of the type of value represented by
-    /// `runtimeValue`, or `nil` if that value has not been captured.
-    var runtimeTypeName: String?
+    /// The full type info for the value represented by `runtimeValue`, or `nil`
+    /// if that value has not been captured.
+    fileprivate var _typeInfo: EncodedTypeInfo<V>?
+#endif
 
     /// Any child expressions within this expression.
     var children: [EncodedExpression]?
@@ -42,6 +41,13 @@ extension ABI {
 
 #if !SWT_NO_CODABLE
 extension ABI.EncodedExpression: Codable {
+  private enum CodingKeys: String, CodingKey {
+    case sourceCode
+    case runtimeValue = "value"
+    case _typeInfo = "type"
+    case children
+  }
+
   public func encode(to encoder: any Encoder) throws {
     try encoder.encodeJSONEncodableValue(self)
   }
@@ -53,8 +59,10 @@ extension ABI.EncodedExpression: JSON.Encodable {
     var result = [String: JSON.Value]()
 
     result["sourceCode"] = sourceCode.jsonValue(in: context)
-    result["runtimeValue"] = runtimeValue?.jsonValue(in: context)
-    result["runtimeTypeName"] = runtimeTypeName?.jsonValue(in: context)
+#if !hasFeature(Embedded)
+    result["value"] = runtimeValue?.jsonValue(in: context)
+    result["type"] = _typeInfo?.jsonValue(in: context)
+#endif
     result["children"] = children?.jsonValue(in: context)
 
     return .object(result)
@@ -70,8 +78,10 @@ extension ABI.EncodedExpression {
   ///   - expression: The expression to initialize this instance from.
   public init(encoding expression: borrowing Expression) {
     sourceCode = expression.sourceCode
+#if !hasFeature(Embedded)
     runtimeValue = expression.runtimeValue.map(String.init(describingForTest:))
-    runtimeTypeName = expression.runtimeValue.map { $0.typeInfo.fullyQualifiedName }
+    _typeInfo = expression.runtimeValue.map { ABI.EncodedTypeInfo<V>(encoding: $0.typeInfo) }
+#endif
     let subexpressions = expression.subexpressions
     if !subexpressions.isEmpty {
       children = subexpressions.map(Self.init(encoding:))
@@ -87,13 +97,15 @@ extension Expression {
   ///   - expression: The encoded expression to initialize this instance from.
   public init?<V>(decoding expression: ABI.EncodedExpression<V>) {
     self.init(expression.sourceCode)
+#if !hasFeature(Embedded)
     if let runtimeValue = expression.runtimeValue,
-       let runtimeTypeName = expression.runtimeTypeName {
+       let runtimeTypeName = expression._typeInfo?.fullyQualifiedName {
       self.runtimeValue =  __Expression.Value(
         description: runtimeValue,
         typeInfo: TypeInfo(fullyQualifiedName: runtimeTypeName, mangledName: nil)
       )
     }
+#endif
     if let children = expression.children {
       self.subexpressions = children.compactMap(__Expression.init(decoding:))
     }

@@ -137,7 +137,6 @@ extension ABI {
       // TODO: define an encodable form of Test.Case.ID
       id = String(describing: testCase.id)
       displayName = arguments.lazy
-        .map { $0.value }
         .map(String.init(describingForTest:))
         .joined(separator: ", ")
     }
@@ -273,7 +272,9 @@ extension ABI.EncodedTest {
       if !bugs.isEmpty {
         self.bugs = bugs
       }
+#if !hasFeature(Embedded)
       self.timeLimit = test.timeLimit.map { $0 / .seconds(1) }
+#endif
     }
   }
 }
@@ -320,9 +321,11 @@ extension Test {
     if let bugs = test.bugs {
       traits += bugs
     }
+#if !hasFeature(Embedded)
     if let timeLimit = test.timeLimit {
       traits.append(TimeLimitTrait(timeLimit: .seconds(timeLimit)))
     }
+#endif
 
     switch test.kind {
     case .suite:

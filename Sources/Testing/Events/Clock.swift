@@ -52,12 +52,11 @@ extension Test {
       /// time APIs they support, the clock used to compute this value is
       /// implementation-defined.
       var sinceSystemEpoch: TimeValue = {
-        var seconds = UInt32(0)
-        var nanoseconds = UInt32(0)
-        guard _swift_testing_getTimeSinceSystemEpoch(&seconds, &nanoseconds) else {
+        var duration = swift_testing_duration_t()
+        guard _swift_testing_getDurationSinceSystemEpoch(&duration) else {
           return TimeValue(rawValue: .zero)
         }
-        return TimeValue(rawValue: .seconds(seconds) + .nanoseconds(nanoseconds))
+        return TimeValue(rawValue: .seconds(duration.seconds) + .nanoseconds(duration.nanoseconds))
       }()
 #endif
 

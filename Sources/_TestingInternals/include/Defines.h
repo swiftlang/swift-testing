@@ -36,7 +36,14 @@
 /// An attribute that renames a C symbol in Swift.
 #define SWT_SWIFT_NAME(name) __attribute__((swift_name(#name)))
 
-/// An attribute that marks a function's result as non-discardable.
-#define SWT_NODISCARD __attribute__((warn_unused_result))
+#if __has_include(<_newlib_version.h>)
+// Some of the headers in newlib use `__block` as an argument name. This name
+// conflicts with clang's use of `__block` as an attribute on block-scoped
+// mutable variables in C, C++, and Objective-C. When building with clang
+// against newlib (as evidenced by the presence of the above header), redefine
+// `__block` to something benign to avoid the conflict.
+#undef __block
+#define __block __newlib_block
+#endif
 
 #endif // SWT_DEFINES_H

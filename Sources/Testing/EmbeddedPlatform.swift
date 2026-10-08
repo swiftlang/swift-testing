@@ -13,6 +13,8 @@ internal import _TestingInternals
 /// This file contains abstractions over functionality that, under Embedded
 /// Swift, is provided by Swift Testing's Platform Abstraction Layer annex.
 
+// MARK: - Console output
+
 /// Writes a Swift string to the current system's console.
 ///
 /// - Parameters:
@@ -49,6 +51,77 @@ internal import _TestingInternals
 #endif
 }
 
+// MARK: - JSON output
+
+#if !SWT_NO_ABI_JSON_SCHEMA && (!SWT_NO_FILE_IO || hasFeature(Embedded))
+extension JSON {
+  /// A type that manages writing JSON to some destination (typically a file).
+  ///
+  /// In non-Embedded Swift, this type trivially forwards output to an instance
+  /// of ``FileHandle``. In Embedded Swift, the Platform Abstraction Layer annex
+  /// provides functions to initialize a writer, write to it, and deinitialize
+  /// it later.
+  struct Writer: Sendable, ~Copyable {
+#if !hasFeature(Embedded)
+    /// The underlying file stream.
+    private let _file: FileHandle
+#else
+    /// The `path` argument to pass to `_swift_testing_writeJSON()`.
+    private let _path: String
+#endif
+
+    /// Construct an instance of this type suitable for writing JSON output to
+    /// the specified path.
+    ///
+    /// - Parameters:
+    ///   - path: The path to write to.
+    ///
+    /// - Throws: If the given path could not be opened for writing or, in
+    ///   Embedded Swift, if the platform does not support writing JSON at all.
+    init(forWritingAtPath path: String) throws {
+#if !hasFeature(Embedded)
+      _file = try FileHandle(forWritingAtPath: path)
+#else
+      _path = path
+#endif
+    }
+
+    /// Write the given JSON output to this writer's destination, optionally
+    /// followed by a terminator character.
+    ///
+    /// - Parameters:
+    ///   - json: A buffer containing JSON output to write.
+    ///   - terminator: If not `nil`, a terminator character to write after
+    ///     `json`. This byte is not included in `json` to avoid creating
+    ///     unnecessary copies of `json` in memory.
+    ///
+    /// - Throws: Any error that occurs while writing `json` or `terminator`.
+    func write(_ json: UnsafeRawBufferPointer, terminatedBy terminator: UInt8?) throws {
+#if !hasFeature(Embedded)
+      _ = try _file.withLock {
+        try _file.write(json)
+        if let terminator {
+          try _file.write(terminator)
+        }
+      }
+#else
+      if let jsonBaseAddress = json.baseAddress {
+        _path.withCString { path in
+          if var terminator {
+            _swift_testing_writeJSON(path, jsonBaseAddress, json.count, &terminator)
+          } else {
+            _swift_testing_writeJSON(path, jsonBaseAddress, json.count, nil)
+          }
+        }
+      }
+#endif
+    }
+  }
+}
+#endif
+
+// MARK: -
+
 #if hasFeature(Embedded)
 /// Exits the current process as if the C `exit()` function were called.
 ///
@@ -77,9 +150,3 @@ let exit: @Sendable (_ exitCode: CInt) -> Never = { exitCode in
   swt_unreachable()
 #endif
 }
-
-#if hasFeature(Embedded)
-/// Workaround `_swift_willThrow()` not being declared in the runtime when
-/// it is built for Embedded Swift.
-@_silgen_name("_swift_willThrow") private nonisolated(unsafe) var _swift_willThrow: UnsafeRawPointer? = nil
-#endif

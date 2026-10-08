@@ -156,7 +156,7 @@ extension ABI.Record: JSON.Encodable {
       result["payload"] = test.jsonValue(in: context)
     case let .event(event):
       result["kind"] = .string("event")
-      result["payload"] = event.jsonValue(in: context)
+      result["payload"] = try event.jsonValue(in: context)
     case let .metadata(metadata) where V.includesExperimentalFields:
       result["kind"] = .string("_metadata")
       result["payload"] = metadata.jsonValue(in: context)

@@ -11,7 +11,7 @@
 #if !SWT_NO_FOUNDATION
 private import Foundation
 #endif
-private import _TestingInternals
+internal import _TestingInternals
 
 #if canImport(Synchronization)
 private import Synchronization
@@ -45,8 +45,8 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
       }
 #endif
 
-    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
     // Configure the test runner.
+    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
     var configuration = try configurationForEntryPoint(from: args)
 
     // Set up the event handler.
@@ -487,6 +487,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   }
 
   // Parallelization (on by default)
+  if args.hasFlag(withLabel: "--parallel") == true {
+    result.parallel = true
+  }
   if args.hasFlag(withLabel: "--no-parallel") == true {
     result.parallel = false
   }
@@ -552,6 +555,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   var configuration = Configuration()
 
   // Parallelization (on by default)
+#if !hasFeature(Embedded)
   if let parallel = args.parallel {
     configuration.isParallelizationEnabled = parallel
   } else if let maximumParallelizationWidth = args.experimentalMaximumParallelizationWidth {
@@ -560,6 +564,13 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
     }
     configuration.maximumParallelizationWidth = maximumParallelizationWidth
   }
+#else
+  if args.parallel != nil {
+    throw _EntryPointError.featureUnavailable("'--parallel' and '--no-parallel' are not supported on this platform.")
+  } else if args.experimentalMaximumParallelizationWidth != nil {
+    throw _EntryPointError.featureUnavailable("'--experimental-maximum-parallelization-width' is not supported on this platform.")
+  }
+#endif
 
 #if !SWT_NO_BACKTRACE_SYMBOLICATION
   // Whether or not to symbolicate backtraces in the event stream.
@@ -606,40 +617,26 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   }
 #endif
 
-#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
   // Event stream output
   do {
-    var eventHandler: Event.Handler?
-#if !hasFeature(Embedded)
     if let eventStreamOutputPath = args.eventStreamOutputPath {
-#if !SWT_NO_FILE_IO
-      let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
-      eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
-        _ = try? file.withLock {
-          try file.write(json)
-          try file.write(.asciiNewlineCharacter)
-        }
+#if !SWT_NO_FILE_IO || hasFeature(Embedded)
+      let jsonWriter = try JSON.Writer(forWritingAtPath: eventStreamOutputPath)
+      let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
+        try? jsonWriter.write(json, terminatedBy: .asciiNewlineCharacter)
+      }
+      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+        eventHandler(event, context)
+        oldEventHandler(event, context)
       }
 #else
       throw _EntryPointError.featureUnavailable("--event-stream-output-path requires support for file I/O, but Swift Testing has been built without it.")
 #endif
     }
-#else
-    eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
-      var newline = UInt8.asciiNewlineCharacter
-      _swift_testing_writeJSON(json.baseAddress!, json.count, &newline)
-    }
-#endif
-    if let eventHandler {
-      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-        eventHandler(event, context)
-        oldEventHandler(event, context)
-      }
-    }
   }
 #endif
 
-#if canImport(_StringProcessing)
   // Filtering
 
   // Filters currently come in two flavors: those with a prefix and those
@@ -659,8 +656,8 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
     // case, we should alert the user that it's not going to match what the
     // user expects and strip the backticks for them.
     func stripBackticksAndReportIfEncountered(string: inout String) {
-      let backtickRegex = /^`[^`]*`$/
-      if string.contains(backtickRegex) {
+      let backtickASCIICharacter = UInt8(ascii: "`")
+      if string.utf8.first == backtickASCIICharacter && string.utf8.last == backtickASCIICharacter {
         let originalString = string
         string = String(string.dropFirst().dropLast())
         if emitWarnings {
@@ -678,7 +675,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
       if let prefix = FilterPrefix.allCases.first(where: { optionArg.hasPrefix($0.rawValue) }) {
         // We have encountered a prefix, so trim it off and add the supplied
         // argument to the appropriate filter list
-        optionArg.trimPrefix(prefix.rawValue)
+        optionArg = String(optionArg.dropFirst(prefix.rawValue.count))
         stripBackticksAndReportIfEncountered(string: &optionArg)
         switch prefix {
           case .id: idPatterns.append(optionArg)
@@ -730,7 +727,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
   if args.includeHiddenTests == true {
     configuration.testFilter.includeHiddenTests = true
   }
-#endif
 
   // Set up the iteration policy for the test run.
   var repetitionPolicy: Configuration.RepetitionPolicy = .once
@@ -974,6 +970,33 @@ extension Event.ConsoleOutputRecorder.Options {
   }
 #endif
 }
+
+#if hasFeature(Embedded) && !SWT_NO_FILE_IO
+/// Get the console capabilities for the given file handle.
+///
+/// - Parameters:
+///   - fileHandle: The C file handle for which capabilities are needed.
+///   - outConsoleCapabilities: On return, the capabilities for `fileHandle`.
+///
+/// - Returns: Whether or not `outConsoleCapabilities` was initialized.
+///
+/// This function is provided for our reference implementations of the Platform
+/// Abstraction Layer annex.
+@export(interface) @c func _swift_testing_getConsoleCapabilitiesForFILE(
+  _ fileHandle: SWT_FILEHandle,
+  _ outConsoleCapabilities: UnsafeMutablePointer<swift_testing_console_capabilities_t>
+) -> CBool {
+  let fileHandle = FileHandle(unsafeCFILEHandle: fileHandle, closeWhenDone: false)
+  let options = Event.ConsoleOutputRecorder.Options.for(fileHandle)
+  outConsoleCapabilities.initialize(
+    to: swift_testing_console_capabilities_t(
+      useANSIEscapeCodes: options.useANSIEscapeCodes ? 1 : 0,
+      ansiColorBitDepth: CUnsignedInt(options.ansiColorBitDepth)
+    )
+  )
+  return true
+}
+#endif
 
 // MARK: - Error reporting
 

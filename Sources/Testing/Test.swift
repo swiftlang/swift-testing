@@ -207,7 +207,11 @@ public struct Test: Sendable {
         // error (because the test cannot be run.) If an error was thrown, a
         // `Runner.Plan` is expected to record issue for the test, rather than
         // attempt to run it, and thus never access this property.
+#if !hasFeature(Embedded)
         preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage(context: String(reflecting: testCasesState)))")
+#else
+        preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage)")
+#endif
       }
       return testCases
     }
@@ -357,6 +361,34 @@ public struct Test: Sendable {
       isSynthesized: false
     )
     _properties = Allocated(properties)
+  }
+
+  /// Initialize an instance of this type representing a test function.
+  init<Suite, S>(
+    name: String,
+    displayName: String? = nil,
+    traits: [any Trait],
+    sourceBounds: __SourceBounds,
+    in containingType: Suite.Type?,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
+    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
+    parameters: [Parameter]
+  ) where Suite: ~Copyable & ~Escapable {
+#if !hasFeature(Embedded)
+    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
+#else
+    let containingTypeInfo: TypeInfo? = nil
+#endif
+    self.init(
+      name: name,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: testCases,
+      parameters: parameters
+    )
   }
 
   /// Initialize an instance of this type representing a test function.

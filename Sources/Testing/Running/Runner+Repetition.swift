@@ -77,12 +77,25 @@ extension Runner {
   ///   - body: The actual body of the function which must ultimately call into the test function.
   ///   - didRecordIssue: A closure passed by the caller to determine if an issue was recorded during
   ///     the test run.
-  static func _applyRepetitionPolicy(
+  static func applyRepetitionPolicy(
     _ policy: Configuration.RepetitionPolicy,
     perform body: () async -> Void,
     didRecordIssue: () -> Bool
   ) async {
-    for iteration in 1...policy.maximumIterationCount {
+    let maximumIterationCount = policy.maximumIterationCount
+    for var iteration: Int? in 1...maximumIterationCount {
+      // If the task or current test was cancelled, stop iterating early.
+      if Task.isCancelled {
+        break
+      }
+
+      // If iteration is disabled, don't bother to report the iteration count.
+      // (This acts as a hint on the event-consuming side: if this property is
+      // set, then we know multiple iterations are expected.)
+      if maximumIterationCount == 1 {
+        iteration = nil
+      }
+
       await Test.withCurrentIteration(iteration) {
         await body()
       }
@@ -111,7 +124,8 @@ extension Runner {
   ///   - testIssueRecorder: The recorder to notify of any recorded issues.
   mutating func configureIssueRecordingEventHandling(testIssueRecorder: TestIssueRecorder<Void>) {
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-      if case .issueRecorded = event.kind, let testID = event.testID, let testCaseID = event.testCaseID {
+      if case let .issueRecorded(issue) = event.kind, issue.isFailure,
+         let testID = event.testID, let testCaseID = event.testCaseID {
         testIssueRecorder.recordIssue(for: testID, testCase: testCaseID)
       }
 
