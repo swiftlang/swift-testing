@@ -418,71 +418,117 @@ SWIFT_TESTING_EXTERN void _swift_testing_writeToConsole(const uint8_t *SWIFT_TES
 
 // MARK: - JSON output
 
+/// A structure that contains any implementation-defined state needed to write
+/// JSON to a previously-specified path.
+typedef struct swift_testing_json_writer_t {
+  /// Storage for the implementation-defined state.
+  ///
+  /// The testing library never interprets the elements of this array. They are
+  /// reserved for use by the Platform Abstraction Layer annex's implementation.
+  uintptr_t implementationDefined[4];
+} swift_testing_json_writer_t SWIFT_TESTING_SENDABLE;
+
+/// Begin writing JSON to the given path and set up any implementation-defined
+/// state associated with it.
+///
+/// - Parameters:
+///   - path: A C string representing the destination to write JSON to. This
+///     string is user-supplied and is not validated by the testing library.
+///   - outWriter: A pointer to memory large enough to hold an instance of the
+///     ``swift_testing_json_writer_t`` structure. On return, initialized to an
+///     instance of that type. The meaning of the fields in the resulting value
+///     is implementation-defined.
+///
+/// - Returns: Whether or not `*outWriter` was successfully initialized. If the
+///   function returns `false`, the value of `*outWriter` is undefined and the
+///   testing library assumes that the system is unable to write JSON to the
+///   specified path.
+///
+/// The testing library uses this function when asked to write JSON output to
+/// the given path.
+///
+/// On systems with full file I/O support, `path` could be a file system path
+/// where the implementation should open a file for writing. It may also be a
+/// string representation of some other destination (for example, the virtual
+/// address of a hardware register) if appropriate to the platform. Ultimately,
+/// the semantic meaning of this string is unspecified by the testing library.
+///
+/// The implementation should initialize the memory at `outWriter` to fit its
+/// needs. It does not need to initialize the entire range of memory at
+/// `outWriter` if it does not need all of it.
+///
+/// - Note: If more than `sizeof(swift_testing_json_writer_t)` bytes of memory
+///   are needed, or if the natural alignment of the structure is insufficient,
+///   consider allocating the memory you need out-of-band and storing a pointer
+///   to it in `outWriter`.
+///
+/// Under normal conditions, every writer created by a call to this function is
+/// later passed to `_swift_testing_deinitJSONWriter()`. However, if the current
+/// process terminates early or terminates abnormally, the testing library may
+/// not be able to call that function.
+
+///
+/// ### Reference implementations
+///
+/// If your system supports file I/O and the C file API, you could implement
+/// this function in C as follows:
+///
+/// ```c
+/// bool _swift_testing_initJSONWriter(const char *path, swift_testing_json_writer_t *outWriter) {
+///   FILE *f = fopen(path, "wbe");
+///   outWriter->implementationDefined[0] = (uintptr_t)f;
+///   return f != NULL;
+/// }
+/// ```
+///
+/// If your platform does not support writing JSON or consuming it later, your
+/// implementation can return `false`:
+///
+/// ```c
+/// bool _swift_testing_initJSONWriter(const char *path, swift_testing_json_writer_t *outWriter) {
+///   return false;
+/// }
+/// ```
+///
+/// ### Concurrency support
+///
+/// This function's implementation must be concurrency-safe unless the system is
+/// single-threaded. The testing library may pass more than one path over time
+/// if it needs to write JSON to more than one destination; any upper limit on
+/// the number of destinations is implementation-defined.
+SWIFT_TESTING_EXTERN bool _swift_testing_initJSONWriter(const char *SWIFT_TESTING_NONNULL path, swift_testing_json_writer_t *SWIFT_TESTING_NONNULL outWriter);
+
 /// Writes a JSON object.
 ///
 /// - Parameters:
-///   - destination: A C string representing the destination to write JSON to.
-///     This string is user-supplied and is not validated by the testing
-///     library.
-///   - json: The JSON bytes to write. It is not `NULL`-terminated.
+///   - writer: A pointer to memory large enough to hold an instance of the
+///     ``swift_testing_json_writer_t`` structure. The value stored at this
+///     address was previously set by a call to `_swift_testing_initJSONWriter()`
+///     and is implementation-defined.
+///   - json: The JSON bytes to write. They are not `NULL`-terminated.
 ///   - count: The number of bytes at `json`.
 ///   - terminator: If not `NULL`, a pointer to a single byte to write
 ///     immediately after writing `json`. This byte is not included in `json` to
 ///     avoid creating unnecessary copies of `json` in memory.
 ///
 /// The testing library uses this function to write the JSON event stream to the
-/// destination described by the `destination` argument.
-///
-/// On systems with full file I/O support, `destination` could be a file system
-/// path where the implementation should open a file for writing. It may also be
-/// a string representation of some other destination (for example, the virtual
-/// address of a hardware register) if appropriate to the platform. Ultimately,
-/// the semantic meaning of this string is unspecified by the testing library.
-///
-/// If `destination` is `NULL`, the implementation should write the JSON to the
-/// "default" destination, if the implementation opts to define one.
+/// destination represented by the `writer` argument.
 ///
 /// ### Reference implementations
 ///
-/// If your system supports file I/O and the C file API, you could implement
-/// this function with the following algorithm in C:
+/// If your system supports file I/O and the C file API, and your implementation
+/// of `_swift_testing_initJSONWriter()` stored a C file handle (`FILE *`) to
+/// `writer`, you could implement this function in C as follows:
 ///
 /// ```c++
-/// static FILE *getOrCreateCachedFILE(const char *path) {
-///   FILE *result = NULL;
-///   lockCache(); {
-///     result = /* ... */;
-///   } unlockCache();
-///   return result;
-/// }
-///
-/// void _swift_testing_writeJSON(const char *destination, const uint8_t *json, size_t count, const uint8_t terminator[1]) {
-///   FILE *f = NULL;
-///   if (destination) {
-///     f = getOrCreateCachedFILE(destination);
-///   } else {
-///     f = getDefaultJSONDestination();
-///   }
-///   if (f) {
-///     flockfile(f); {
-///       fwrite(json, 1, count, f);
-///       if (terminator) {
-///         fputc(*terminator, f);
-///       }
-///     } funlockfile(f);
-///   }
-/// }
-/// ```
-///
-/// If your platform only supports writing JSON to the default destination, you
-/// can ignore calls to this function where `destination` is not `NULL`:
-///
-/// ```c
-/// void _swift_testing_writeJSON(const char *destination, const uint8_t *json, size_t count, const uint8_t terminator[1]) {
-///   if (destination) {
-///     return;
-///   }
-///   // ...
+/// void _swift_testing_writeJSON(const swift_testing_json_writer_t *writer, const uint8_t *json, size_t count, const uint8_t terminator[1]) {
+///   FILE *f = (FILE *)writer->implementationDefined[0];
+///   flockfile(f); {
+///     fwrite(json, 1, count, f);
+///     if (terminator) {
+///       fputc(*terminator, f);
+///     }
+///   } funlockfile(f);
 /// }
 /// ```
 ///
@@ -492,11 +538,57 @@ SWIFT_TESTING_EXTERN void _swift_testing_writeToConsole(const uint8_t *SWIFT_TES
 /// ### Concurrency support
 ///
 /// This function's implementation must be concurrency-safe unless the system is
-/// single-threaded. The testing library may pass more than one path over time.
-/// In the reference example above, you can substitute platform-specific
-/// equivalents for `flockfile()` and `funlockfile()` if needed, or omit them
-/// entirely in single-threaded environments.
-SWIFT_TESTING_EXTERN void _swift_testing_writeJSON(const char *SWIFT_TESTING_NULLABLE destination, const uint8_t *SWIFT_TESTING_NONNULL json, size_t count, const uint8_t terminator[SWIFT_TESTING_NULLABLE 1]);
+/// single-threaded. The testing library may pass more than one writer over
+/// time. In the reference implementation above, you can substitute
+/// platform-specific equivalents for `flockfile()` and `funlockfile()` if
+/// needed, or omit them entirely in single-threaded environments.
+SWIFT_TESTING_EXTERN void _swift_testing_writeJSON(const swift_testing_json_writer_t *SWIFT_TESTING_NONNULL writer, const uint8_t *SWIFT_TESTING_NONNULL json, size_t count, const uint8_t terminator[SWIFT_TESTING_NULLABLE 1]);
+
+/// End writing JSON to the given writer and clean up any implementation-defined
+/// state associated with it.
+///
+/// - Parameters:
+///   - writer: A pointer to memory large enough to hold an instance of the
+///     ``swift_testing_json_writer_t`` structure. On return, the testing
+///     library assumes the memory is uninitialized and can be deallocated.
+///
+/// The testing library uses this function when it is done writing JSON output
+/// to the given writer.
+///
+/// The implementation should deinitialize the memory at `writer` according to
+/// how it initialized it in `_swift_testing_initJSONWriter()`. The
+/// implementation should close files, deallocate memory, and perform other
+/// cleanup as appropriate.
+///
+/// - Important: The testing library owns the memory at `writer`. The
+///   implementation must not attempt to deallocate this memory.
+///
+/// When the test run ends, the testing library calls this function once for
+/// every writer produced by a call to `_swift_testing_initJSONWriter()`.
+/// However, if the current process terminates early or terminates abnormally,
+/// the testing library may not be able to call this function.
+///
+/// ### Reference implementations
+///
+/// If your system supports file I/O and the C file API, and your implementation
+/// of `_swift_testing_initJSONWriter()` stored a C file handle (`FILE *`) to
+/// `writer`, you could implement this function in C as follows:
+///
+/// ```c
+/// bool _swift_testing_deinitJSONWriter(const char *path, swift_testing_json_writer_t *outWriter) {
+///   FILE *f = (FILE *)writer->implementationDefined[0];
+///   fclose(f);
+/// }
+/// ```
+///
+/// If your platform does not support writing JSON or consuming it later, you
+/// can implement this function as a no-op.
+///
+/// ### Concurrency support
+///
+/// This function's implementation must be concurrency-safe unless the system is
+/// single-threaded.
+SWIFT_TESTING_EXTERN void _swift_testing_deinitJSONWriter(swift_testing_json_writer_t *SWIFT_TESTING_NONNULL writer);
 
 // MARK: - Test timing
 
