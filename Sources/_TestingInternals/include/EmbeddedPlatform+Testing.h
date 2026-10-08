@@ -421,9 +421,8 @@ SWIFT_TESTING_EXTERN void _swift_testing_writeToConsole(const uint8_t *SWIFT_TES
 /// Writes a JSON object.
 ///
 /// - Parameters:
-///   - destination: A C string representing the destination to write JSON to.
-///     This string is user-supplied and is not validated by the testing
-///     library.
+///   - path: A C string representing the destination to write JSON to. This
+///     string is user-supplied and is not validated by the testing library.
 ///   - json: The JSON bytes to write. It is not `NULL`-terminated.
 ///   - count: The number of bytes at `json`.
 ///   - terminator: If not `NULL`, a pointer to a single byte to write
@@ -431,16 +430,13 @@ SWIFT_TESTING_EXTERN void _swift_testing_writeToConsole(const uint8_t *SWIFT_TES
 ///     avoid creating unnecessary copies of `json` in memory.
 ///
 /// The testing library uses this function to write the JSON event stream to the
-/// destination described by the `destination` argument.
+/// destination described by the `path` argument.
 ///
-/// On systems with full file I/O support, `destination` could be a file system
-/// path where the implementation should open a file for writing. It may also be
-/// a string representation of some other destination (for example, the virtual
+/// On systems with full file I/O support, `path` could be a file system path
+/// where the implementation should open a file for writing. It may also be a
+/// string representation of some other destination (for example, the virtual
 /// address of a hardware register) if appropriate to the platform. Ultimately,
 /// the semantic meaning of this string is unspecified by the testing library.
-///
-/// If `destination` is `NULL`, the implementation should write the JSON to the
-/// "default" destination, if the implementation opts to define one.
 ///
 /// ### Reference implementations
 ///
@@ -456,13 +452,8 @@ SWIFT_TESTING_EXTERN void _swift_testing_writeToConsole(const uint8_t *SWIFT_TES
 ///   return result;
 /// }
 ///
-/// void _swift_testing_writeJSON(const char *destination, const uint8_t *json, size_t count, const uint8_t terminator[1]) {
-///   FILE *f = NULL;
-///   if (destination) {
-///     f = getOrCreateCachedFILE(destination);
-///   } else {
-///     f = getDefaultJSONDestination();
-///   }
+/// void _swift_testing_writeJSON(const char *path, const uint8_t *json, size_t count, const uint8_t terminator[1]) {
+///   FILE *f = getOrCreateCachedFILE(path);
 ///   if (f) {
 ///     flockfile(f); {
 ///       fwrite(json, 1, count, f);
@@ -471,18 +462,6 @@ SWIFT_TESTING_EXTERN void _swift_testing_writeToConsole(const uint8_t *SWIFT_TES
 ///       }
 ///     } funlockfile(f);
 ///   }
-/// }
-/// ```
-///
-/// If your platform only supports writing JSON to the default destination, you
-/// can ignore calls to this function where `destination` is not `NULL`:
-///
-/// ```c
-/// void _swift_testing_writeJSON(const char *destination, const uint8_t *json, size_t count, const uint8_t terminator[1]) {
-///   if (destination) {
-///     return;
-///   }
-///   // ...
 /// }
 /// ```
 ///
@@ -496,7 +475,7 @@ SWIFT_TESTING_EXTERN void _swift_testing_writeToConsole(const uint8_t *SWIFT_TES
 /// In the reference example above, you can substitute platform-specific
 /// equivalents for `flockfile()` and `funlockfile()` if needed, or omit them
 /// entirely in single-threaded environments.
-SWIFT_TESTING_EXTERN void _swift_testing_writeJSON(const char *SWIFT_TESTING_NULLABLE destination, const uint8_t *SWIFT_TESTING_NONNULL json, size_t count, const uint8_t terminator[SWIFT_TESTING_NULLABLE 1]);
+SWIFT_TESTING_EXTERN void _swift_testing_writeJSON(const char *SWIFT_TESTING_NONNULL path, const uint8_t *SWIFT_TESTING_NONNULL json, size_t count, const uint8_t terminator[SWIFT_TESTING_NULLABLE 1]);
 
 // MARK: - Test timing
 
