@@ -53,7 +53,7 @@ internal import _TestingInternals
 
 // MARK: - JSON output
 
-#if !SWT_NO_ABI_JSON_SCHEMA
+#if !SWT_NO_ABI_JSON_SCHEMA && (!SWT_NO_FILE_IO || hasFeature(Embedded))
 extension JSON {
   /// A type that manages writing JSON to some destination (typically a file).
   ///
