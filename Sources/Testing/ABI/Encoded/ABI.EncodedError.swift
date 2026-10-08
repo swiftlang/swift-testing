@@ -18,9 +18,6 @@ extension ABI {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
-  ///
-  /// - Warning: Errors are not yet part of the JSON schema.
-  @_spi(Experimental)
   public struct EncodedError<V>: Sendable where V: ABI.Version {
     /// The error's description.
     ///
@@ -37,7 +34,10 @@ extension ABI {
     var domain: String?
 
     /// The code of the error.
-    var code: Int
+    var code: Int?
+
+    /// The type info for the error.
+    var typeInfo: EncodedTypeInfo<V>?
 
     // TODO: userInfo (partial) encoding
   }
@@ -56,7 +56,7 @@ extension ABI.EncodedError: Error {
   }
 
   public var _code: Int {
-    code
+    code ?? 1
   }
 
   public var _userInfo: AnyObject? {
@@ -69,6 +69,13 @@ extension ABI.EncodedError: Error {
 
 #if !SWT_NO_CODABLE
 extension ABI.EncodedError: Codable {
+  private enum CodingKeys: String, CodingKey {
+    case code
+    case domain
+    case description
+    case typeInfo = "type"
+  }
+
   public func encode(to encoder: any Encoder) throws {
     try encoder.encodeJSONEncodableValue(self)
   }
@@ -79,9 +86,10 @@ extension ABI.EncodedError: JSON.Encodable {
   func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     var result = [String: JSON.Value]()
 
-    result["description"] = description?.jsonValue(in: context)
+    result["code"] = code?.jsonValue(in: context)
     result["domain"] = domain?.jsonValue(in: context)
-    result["code"] = code.jsonValue(in: context)
+    result["description"] = description?.jsonValue(in: context)
+    result["type"] = typeInfo?.jsonValue(in: context)
 
     return .object(result)
   }
@@ -94,9 +102,9 @@ extension ABI.EncodedError: CustomTestStringConvertible {
     if let description {
       return description
     } else if let domain {
-      return "\(domain) error \(code)"
+      return "\(domain) error \(_code)"
     }
-    return "error \(code)"
+    return "error \(_code)"
   }
 }
 
@@ -113,6 +121,7 @@ extension ABI.EncodedError {
       self.domain = domain
     }
     code = error._code
+    typeInfo = ABI.EncodedTypeInfo<V>(encoding: TypeInfo(describingTypeOf: error))
   }
 }
 
