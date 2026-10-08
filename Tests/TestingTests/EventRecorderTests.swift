@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 import Foundation // for XML API
 #endif
 #if canImport(FoundationXML)
@@ -425,7 +425,7 @@ struct EventRecorderTests {
   }
 #endif
 
-#if canImport(Foundation) || canImport(FoundationXML)
+#if !SWT_NO_FOUNDATION || canImport(FoundationXML)
   @Test(
     "JUnitXMLRecorder outputs valid XML",
     .bug("https://github.com/swiftlang/swift-testing/issues/254")
@@ -481,6 +481,29 @@ struct EventRecorderTests {
     }
   }
 
+  @Test("JUnitXMLRecorder escapes test ID attributes")
+  func junitXMLTestIDAttributesAreEscaped() throws {
+    let stream = Stream()
+    let recorder = Event.JUnitXMLRecorder(writingUsing: stream.write)
+    let test = Test(name: "a & < \" quoted") {}
+    let context = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
+    let runContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
+
+    recorder.record(Event(.runStarted, testID: nil, testCaseID: nil), in: runContext)
+    recorder.record(Event(.testStarted, testID: test.id, testCaseID: nil), in: context)
+    recorder.record(Event(.testEnded, testID: test.id, testCaseID: nil), in: context)
+    recorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: runContext)
+
+    let xmlString = stream.buffer.rawValue
+    #expect(xmlString.contains("name=\"a &amp; &lt; &quot; quoted\""))
+    let xmlData = try #require(xmlString.data(using: .utf8))
+    let parser = XMLParser(data: xmlData)
+    #expect(parser.parse())
+    if let error = parser.parserError {
+      throw error
+    }
+  }
+
   @Test(
     "JUnit XML omits time for skipped tests",
     .bug("https://github.com/swiftlang/swift-testing/issues/740")
@@ -496,6 +519,8 @@ struct EventRecorderTests {
 
     let xmlString = stream.buffer.rawValue
     #expect(xmlString.hasPrefix("<?xml"))
+    #expect(xmlString.contains(#"tests="1""#))
+    #expect(xmlString.contains(#"skipped="1""#))
     let testCaseLines = xmlString
       .split(whereSeparator: \.isNewline)
       .filter { $0.contains("<testcase") }

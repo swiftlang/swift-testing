@@ -12,6 +12,9 @@
 
 import PackageDescription
 import CompilerPluginSupport
+#if !canImport(Foundation)
+import Foundation
+#endif
 
 /// Information about the current state of the package's git repository.
 let git = Context.gitInformation
@@ -104,6 +107,24 @@ let package = Package(
     ]
 #endif
 
+    // In debug mode, offer products for the showcase targets so they can be
+    // built and run from the command line.
+    result += [
+      .executable(
+        name: "EmbeddedShowcase",
+        targets: ["EmbeddedShowcase"]
+      ),
+      .library(
+        name: "EmbeddedShowcaseTests",
+        type: .static,
+        targets: ["EmbeddedShowcaseTests"]
+      ),
+      .executable(
+        name: "SymbolShowcase",
+        targets: ["SymbolShowcase"]
+      ),
+    ]
+
     return result
   }(),
 
@@ -134,15 +155,17 @@ let package = Package(
       dependencies: [
         "_TestDiscovery",
         "_TestingInternals",
-      ] + {
-        // TODO: get macro target building for host when the target is embedded
-        buildingForEmbedded ? [] : ["TestingMacros"]
-      }(),
+        "TestingMacros",
+      ],
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       linkerSettings: [
         .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd])),
-        .linkedLibrary("_TestingInterop"),
-      ]
+      ] + {
+        if !buildingForEmbedded {
+          return [.linkedLibrary("_TestingInterop"),]
+        }
+        return []
+      }()
     ),
     .testTarget(
       name: "TestingTests",
@@ -221,6 +244,26 @@ let package = Package(
       name: "_TestingInterop_DO_NOT_USE",
       dependencies: ["_TestingInternals",],
       path: "Sources/_TestingInterop",
+      exclude: ["CMakeLists.txt"]
+    ),
+
+    // Embedded Swift platform abstraction layer implementations.
+    .target(
+      name: "EmbeddedPlatformPOSIX+Testing",
+      dependencies: ["_TestingInternals",],
+      path: "Sources/EmbeddedPlatform/POSIX",
+      exclude: ["CMakeLists.txt"]
+    ),
+    .target(
+      name: "EmbeddedPlatformWASI+Testing",
+      dependencies: ["_TestingInternals",],
+      path: "Sources/EmbeddedPlatform/WASI",
+      exclude: ["CMakeLists.txt"]
+    ),
+    .target(
+      name: "EmbeddedPlatformPicoSDK+Testing",
+      dependencies: ["_TestingInternals",],
+      path: "Sources/EmbeddedPlatform/PicoSDK",
       exclude: ["CMakeLists.txt"]
     ),
 
@@ -306,6 +349,23 @@ let package = Package(
         "Testing",
       ]
     ),
+    .executableTarget(
+      name: "EmbeddedShowcase",
+      dependencies: [
+        "Testing",
+        "EmbeddedShowcaseTests",
+        .target(name: "EmbeddedPlatformPOSIX+Testing", condition: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .android])),
+        .target(name: "EmbeddedPlatformWASI+Testing", condition: .when(platforms: [.wasi])),
+      ],
+      path: "Sources/EmbeddedShowcase/Main"
+    ),
+    .target(
+      name: "EmbeddedShowcaseTests",
+      dependencies: [
+        "Testing",
+      ],
+      path: "Sources/EmbeddedShowcase/Tests"
+    )
   ],
 
   cxxLanguageStandard: .cxx20
@@ -386,7 +446,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       result.append(.treatWarning("ExplicitSendable", as: .warning))
     }
 
-    if buildingForEmbedded {
+    if buildingForEmbedded && target.type != .macro {
       result.append(.enableExperimentalFeature("Embedded"))
 
       // Swift's concurrency module is not implicitly imported when building for
@@ -397,7 +457,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !target.isTest {
+    if !target.isTest && !target.name.hasSuffix("Showcase") {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]
@@ -413,6 +473,10 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       // Enabled to allow tests to be added to ~Escapable suites.
       .enableExperimentalFeature("Lifetimes"),
+
+      // Enabled to allow us to forward-declare functions in the Platform
+      // Abstraction Layer.
+      .enableExperimentalFeature("Extern"),
 
       .enableUpcomingFeature("InferIsolatedConformances"),
 
@@ -449,6 +513,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
     [
       .enableExperimentalFeature("AvailabilityMacro=_uttypesAPI:macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0"),
       .enableExperimentalFeature("AvailabilityMacro=_clockAPI:macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_stringInitValidatingAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
       .enableExperimentalFeature("AvailabilityMacro=_typedThrowsAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
       .enableExperimentalFeature("AvailabilityMacro=_transferableAPI:macOS 15.2, iOS 18.2, watchOS 11.2, tvOS 18.2, visionOS 2.2"),
       .enableExperimentalFeature("AvailabilityMacro=_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
@@ -508,9 +573,18 @@ extension Array where Element: _CLanguageBuildSetting {
   static func packageSettings(for target: PackageDescription.Target) -> Self {
     var result = Self()
 
+    if buildingForEmbedded && target.type != .macro {
+      result += [.define("SWT_EMBEDDED"),]
+      if let systemHeadersPath = Context.environment["SWT_SYSTEM_HEADERS_PATH"] {
+        result += [
+          .unsafeFlags(["-isystem", systemHeadersPath], nil)
+        ]
+      }
+    }
+
     // Define a compiler condition so we can discover at macro expansion time if
     // we're accidentally expanding our own macros in Swift Testing.
-    if !target.isTest {
+    if !target.isTest && !target.name.hasSuffix("Showcase") {
       result += [
         .define("SWT_BUILDING_SWIFT_TESTING_CONTENT"),
       ]
@@ -544,7 +618,7 @@ extension Array where Element: _LanguageBuildSetting {
     // - embedded: Whether this define should be set unconditionally when
     //   building for Embedded. (This is not currently expressible as a build
     //   setting conditional.)
-    let defines: [String: (platforms: [Platform]?, embedded: Bool)] = [
+    let defines: KeyValuePairs<String, (platforms: [Platform]?, embedded: Bool)> = [
       "SWT_NO_EXIT_TESTS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
       "SWT_NO_PROCESS_SPAWNING": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
       "SWT_NO_SNAPSHOT_TYPES": (platforms: .nonApplePlatforms, embedded: true),
@@ -552,21 +626,49 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_PIPES": (platforms: [.wasi], embedded: true),
       "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .nonApplePlatforms, embedded: true),
       "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
+      "SWT_NO_FILE_IO": (platforms: .none, embedded: true),
       "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
       "SWT_NO_ABI_ENTRY_POINT": (platforms: .none, embedded: true),
-      "SWT_NO_ABI_JSON_SCHEMA": (platforms: .none, embedded: true),
       "SWT_NO_CODABLE": (platforms: .none, embedded: true),
       "SWT_NO_INTEROP": (platforms: .none, embedded: true),
       "SWT_NO_HARNESS": (platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android], embedded: true),
-      "SWT_NO_UNSTRUCTURED_TASKS": (platforms: .none, embedded: true),
       "SWT_NO_GLOBAL_ACTORS": (platforms: .none, embedded: true),
       "SWT_NO_SUSPENDING_CLOCK": (platforms: .none, embedded: true),
+      "SWT_NO_BACKTRACE_SYMBOLICATION": (platforms: .none, embedded: true),
 
       "SWT_NO_LIBDISPATCH": (platforms: .none, embedded: true),
+      "SWT_NO_FOUNDATION": (platforms: .none, embedded: true),
     ]
 
+    // Let the environment block override our settings above.
+    let environmentVariables = Context.environment
+      .filter { $0.key.starts(with: "SWT_NO_") }
+      .compactMapValues { value in
+#if !canImport(Foundation)
+        (value as NSString).boolValue
+#else
+        Bool(value) ?? UInt64(value).map { $0 != 0 }
+#endif
+      }
+
+    // Sort environment variables by their key to make sure the order is
+    // deterministic.
+    let sortedEnvironmentVariables = environmentVariables.sorted { $0.key < $1.key }
+    for (name, environmentVariable) in sortedEnvironmentVariables {
+      // The environment variable is set. If the value is `true`, that means
+      // the "NO" flag should be set unconditionally. If the value is `false`,
+      // that means the flag should _not_ be set.
+      if environmentVariable {
+        append(.define(name, nil))
+      }
+    }
+
     for (name, details) in defines {
-      if !buildingForEmbedded {
+      if environmentVariables[name] != nil {
+        // Handled in the loop above. We don't handle it here because it would
+        // limit us to only the environment variables that we've explicitly
+        // configured in the table above, but that table is not comprehensive.
+      } else if !buildingForEmbedded {
         if let platforms = details.platforms {
           append(.define(name, .when(platforms: platforms)))
         } else {
@@ -596,6 +698,16 @@ private protocol _LanguageBuildSetting {
   ///
   /// - Returns: An instance of this setting.
   static func define(_ name: String, _ condition: BuildSettingCondition?) -> Self
+
+  /// Passes some number of language-specific compiler flags.
+  ///
+  /// - Parameters:
+  ///   - flags: The flags to pass to the compiler.
+  ///   - condition: A condition that restricts the application of the build
+  ///     setting.
+  ///
+  /// - Returns: An instance of this setting.
+  static func unsafeFlags(_ flags: [String], _ condition: BuildSettingCondition?) -> Self
 }
 
 extension _LanguageBuildSetting {

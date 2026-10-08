@@ -50,6 +50,9 @@ extension Event {
     /// A type that contains mutable context for
     /// ``Event/ConsoleOutputRecorder``.
     fileprivate struct Context {
+      /// Metadata that has been recorded so far.
+      var metadataRecorded = [Event.Metadata]()
+
       /// The instant at which the run started.
       var runStartInstant: Test.Clock.Instant?
 
@@ -139,7 +142,7 @@ extension Event.HumanReadableOutputRecorder {
   /// - Returns: A formatted string representing the comments attached to `test`,
   ///   or `nil` if there are none.
   private func _formattedComments(for test: Test) -> [Message] {
-    _formattedComments(test.traits.compactMap { $0.__as(Comment.self) })
+    _formattedComments(test.traits.compactMap { $0 as? Comment })
   }
 
   /// Get the total number of issues recorded in a graph of test data
@@ -157,7 +160,7 @@ extension Event.HumanReadableOutputRecorder {
     }
     let errorIssueCount = graph.compactMap { $0.value?.issueCount[.error] }.reduce(into: 0, +=)
     let warningIssueCount = graph.compactMap { $0.value?.issueCount[.warning] }.reduce(into: 0, +=)
-    let knownIssueCount = graph.compactMap(\.value?.knownIssueCount).reduce(into: 0, +=)
+    let knownIssueCount = graph.compactMap { $0.value?.knownIssueCount }.reduce(into: 0, +=)
     let totalIssueCount = errorIssueCount + warningIssueCount + knownIssueCount
 
     // Construct a string describing the issue counts.
@@ -227,14 +230,21 @@ extension Test.Case {
   ///
   /// - Returns: A string containing the arguments of this test case formatted
   ///   for presentation, or an empty string if this test cases is
-  ///   non-parameterized.
+  ///   non-parameterized. If the string is not empty, it includes a leading
+  ///   space character.
   fileprivate func labeledArguments(includingQualifiedTypeNames includeTypeNames: Bool = false) -> String {
-    guard let arguments else { return "" }
-
-    return arguments.lazy
-      .map { argument in
-        let valueDescription = String(describingForTest: argument.value)
-
+    let result: String = arguments?.lazy
+      .compactMap { argument -> (Test.Case.Argument, String)? in
+#if !hasFeature(Embedded)
+        (argument, String(describingForTest: argument))
+#else
+        let valueDescription = String(describingForTest: argument)
+        if valueDescription == UnavailableInEmbeddedSwift.testDescription {
+          return nil
+        }
+        return (argument, valueDescription)
+#endif
+      }.map { argument, valueDescription in
         let label = argument.parameter.secondName ?? argument.parameter.firstName
         let labeledArgument = if label == "_" {
           valueDescription
@@ -243,13 +253,15 @@ extension Test.Case {
         }
 
         if includeTypeNames {
-          let typeInfo = TypeInfo(describingTypeOf: argument.value)
+          let typeInfo = argument.typeInfo
           return "\(labeledArgument) (\(typeInfo.fullyQualifiedName))"
-        } else {
-          return labeledArgument
         }
-      }
-      .joined(separator: ", ")
+        return labeledArgument
+      }.joined(separator: ", ") ?? ""
+    if result.isEmpty {
+      return ""
+    }
+    return " \(result)"
   }
 }
 
@@ -294,6 +306,11 @@ extension Event.HumanReadableOutputRecorder {
       switch event.kind {
       case .runStarted:
         context.runStartInstant = instant
+
+      case let .metadataRecorded(metadata):
+        if metadata.shouldRecord(withVerbosity: verbosity) {
+          context.metadataRecorded.append(metadata)
+        }
 
       case .testStarted:
         let test = test!
@@ -367,37 +384,18 @@ extension Event.HumanReadableOutputRecorder {
       break
 
     case .runStarted:
-      var comments = [Comment]()
-      if verbosity > 0 {
-        if let swiftStandardLibraryVersion {
-          comments.append("Swift Standard Library Version: \(swiftStandardLibraryVersion)")
-        }
-        comments.append("Swift Compiler Version: \(swiftCompilerVersion)")
-#if os(Linux) && canImport(Glibc)
-        comments.append("GNU C Library Version: \(glibcVersion)")
-#endif
-      }
-      comments.append("Testing Library Version: \(testingLibraryVersion)")
-      if let targetTriple {
-        comments.append("Target Platform: \(targetTriple)")
-      }
-      if verbosity > 0 {
-#if targetEnvironment(simulator)
-        comments.append("OS Version (Simulator): \(simulatorVersion)")
-        comments.append("OS Version (Host): \(operatingSystemVersion)")
-#else
-        comments.append("OS Version: \(operatingSystemVersion)")
-#endif
-#if os(Android)
-        comments.append("API Level: \(apiLevel)")
-#endif
-      }
       return CollectionOfOne(
         Message(
           symbol: .default,
           stringValue: "Test run started."
         )
-      ) + _formattedComments(comments)
+      ) + context.metadataRecorded.map { _formattedComment("\($0)") }
+    case .metadataRecorded:
+      // Handled as part of .runStarted. WHY? So that with older JSON event
+      // stream schemas, the messages appear in the "right" place as part of the
+      // .runStarted event, and so that multiple runs using the same recorder
+      // don't emit duplicate metadata messages.
+      break
 
     case .planStepStarted, .planStepEnded:
       // Suppress events of these kinds from output as they are not generally
@@ -466,16 +464,8 @@ extension Event.HumanReadableOutputRecorder {
       break
 
     case let .issueRecorded(issue):
-      let parameterCount = if let parameters = test?.parameters {
-        parameters.count
-      } else {
-        0
-      }
-      let labeledArguments = if let testCase {
-        testCase.labeledArguments()
-      } else {
-        ""
-      }
+      let parameterCount = test?.parameters?.count ?? 0
+      let labeledArguments = testCase?.labeledArguments() ?? ""
       let symbol: Event.Symbol
       let subject: String
       if issue.isKnown {
@@ -522,7 +512,7 @@ extension Event.HumanReadableOutputRecorder {
       } else {
         Message(
           symbol: symbol,
-          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded \(subject) with \(parameterCount.counting("argument")) \(labeledArguments)\(atSourceLocation): \(issue.kind)",
+          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded \(subject) with \(parameterCount.counting("argument"))\(labeledArguments)\(atSourceLocation): \(issue.kind)",
           conciseStringValue: String(describing: issue.kind)
         )
       }
@@ -550,8 +540,9 @@ extension Event.HumanReadableOutputRecorder {
       let iteration = eventContext.iteration ?? 1
 
       var message: String
-      if testCase.isParameterized, let arguments = testCase.arguments {
-        message = "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started"
+      if testCase.isParameterized {
+        let arguments = testCase.arguments ?? []
+        message = "Test case passing \(arguments.count.counting("argument"))\(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started"
       } else if iteration > 1 {
         message = testStartedMessage(for: test)
       } else {
@@ -569,7 +560,10 @@ extension Event.HumanReadableOutputRecorder {
       ]
 
     case .testCaseEnded:
-      guard verbosity > 0, let test, let testCase, testCase.isParameterized, let arguments = testCase.arguments else {
+      guard verbosity > 0, let test, let testCase, testCase.isParameterized else {
+        break
+      }
+      guard let arguments = testCase.arguments else {
         break
       }
 
@@ -593,7 +587,7 @@ extension Event.HumanReadableOutputRecorder {
       return [
         Message(
           symbol: symbol,
-          stringValue: "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) \(verbed) after \(duration)\(issues.description)\(cancellationComment)"
+          stringValue: "Test case passing \(arguments.count.counting("argument"))\(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) \(verbed) after \(duration)\(issues.description)\(cancellationComment)"
         )
       ]
 
@@ -711,9 +705,3 @@ extension Event.Context {
     return keyPath
   }
 }
-
-#if !SWT_NO_CODABLE
-// MARK: - Codable
-
-extension Event.HumanReadableOutputRecorder.Message: Codable {}
-#endif

@@ -137,7 +137,7 @@ extension AttachableImageFormat {
             0 == _wcsicmp(pathExtension, encoderExt)
           }
         }
-      }.map(\.key)
+      }.map { $0.key }
   }
 
   /// Get the `CLSID` value of the WIC image encoder corresponding to the same

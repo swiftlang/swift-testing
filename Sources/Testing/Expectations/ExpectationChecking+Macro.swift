@@ -530,7 +530,7 @@ public func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     caughtError = error
-    expectationContext.captureValue(error, identifiedBy: .root)
+    expectationContext.captureValue(error as any Error, identifiedBy: .root)
     let secondError = Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try errorMatcher(error)
     }
@@ -582,7 +582,7 @@ public nonisolated(nonsending) func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     caughtError = error
-    expectationContext.captureValue(error, identifiedBy: .root)
+    expectationContext.captureValue(error as any Error, identifiedBy: .root)
     let secondError = await Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try await errorMatcher(error)
     }
@@ -681,10 +681,14 @@ public nonisolated(nonsending) func __checkClosureCall<each T>(
 /// - Returns: A string equivalent to `String(describingForTest: error)` with
 ///   information about its type added if not already present.
 private func _description(of error: any Error) -> String {
+#if !hasFeature(Embedded)
   let errorDescription = "\"\(String(describingForTest: error))\""
   let errorType = type(of: error as Any)
   if errorDescription.contains(String(describingForTest: errorType)) {
     return errorDescription
   }
   return "\(errorDescription) of type \(errorType)"
+#else
+  String(describingForTest: error)
+#endif
 }

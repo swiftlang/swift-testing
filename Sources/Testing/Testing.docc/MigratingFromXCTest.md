@@ -924,13 +924,12 @@ purpose.
 
 To attach a value from a test to the output of a test run, that value must
 conform to the ``Attachable`` protocol. The testing library provides default
-conformances for various standard library and Foundation types.
-
-If you want to attach a value of another type, and that type already conforms to
-[`Encodable`](https://developer.apple.com/documentation/swift/encodable) or to
+conformances for various standard library and Foundation types. The testing
+library also provides convenience initializers for types that conform to
+[`Encodable`](https://developer.apple.com/documentation/swift/encodable),
 [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
-the testing library automatically provides a default implementation when you
-import Foundation:
+[`Transferable`](https://developer.apple.com/documentation/coretransferable/transferable),
+and ``AttachableAsImage``.
 
 @Row {
   @Column {
@@ -940,7 +939,7 @@ import Foundation:
 
     class Tortilla: NSSecureCoding { /* ... */ }
 
-    func testTortillaIntegrity() async {
+    func testTortillaIntegrity() {
       let tortilla = Tortilla(diameter: .large)
       ...
       let attachment = XCTAttachment(
@@ -955,21 +954,59 @@ import Foundation:
     // After
     import Foundation
 
-    struct Tortilla: Codable, Attachable { /* ... */ }
+    struct Tortilla: Codable { /* ... */ }
 
-    @Test func tortillaIntegrity() async {
+    @Test func tortillaIntegrity() throws {
       let tortilla = Tortilla(diameter: .large)
       ...
+      let attachment = try Attachment(
+        encoding: tortilla
+      )
       Attachment.record(tortilla)
     }
     ```
   }
 }
 
-If you have a type that does not (or cannot) conform to `Encodable` or
-`NSSecureCoding`, or if you want fine-grained control over how it is serialized
-when attaching it to a test, you can provide your own implementation of
-``Attachable/withUnsafeBytes(for:_:)``.
+If you have an existing file you want to attach to a test, you can use the
+convenience initializers that XCTest and Swift Testing provide on
+ [`XCTAttachment`](https://developer.apple.com/documentation/xctest/xctattachment)
+and ``Attachment`` respectively:
+
+@Row {
+  @Column {
+    ```swift
+    // Before
+    import Foundation
+
+    func testTortillaWebsite() {
+      ...
+      let attachment = XCTAttachment(
+        contentsOfFile: tortillaURL
+      )
+      self.add(attachment)
+    }
+    ```
+  }
+  @Column {
+    ```swift
+    // After
+    import Foundation
+
+    @Test func tortillaWebsite() async throws {
+      ...
+      let attachment = try await Attachment(
+        contentsOf: tortillaURL
+      )
+      Attachment.record(attachment)
+    }
+    ```
+  }
+}
+
+For more information on the types of values you can attach to a test, and for
+information on how to implement the ``Attachable`` protocol for your own types,
+see <doc:Attachments>.
 
 <!-- NOTE: not discussing attaching to activities here since there is not yet an
 equivalent interface in Swift Testing. -->

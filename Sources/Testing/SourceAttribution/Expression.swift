@@ -46,6 +46,7 @@ public struct __Expression: Sendable {
   /// instance of this type.
   var kind: Kind
 
+#if !hasFeature(Embedded)
   init(
     _ sourceCode: String,
     runtimeValue: Value? = nil,
@@ -55,6 +56,15 @@ public struct __Expression: Sendable {
     self.runtimeValue = runtimeValue
     self._subexpressions = subexpressions
   }
+#else
+  init(
+    _ sourceCode: String,
+    subexpressions: [Self] = []
+  ) {
+    self.kind = .generic(sourceCode)
+    self._subexpressions = subexpressions
+  }
+#endif
 
   /// The source code of the original captured expression.
   @_spi(ForToolsIntegrationOnly)
@@ -73,13 +83,16 @@ public struct __Expression: Sendable {
     /// ``Swift/String/init(describingForTest:)``.
     public var description: String
 
+#if !hasFeature(Embedded)
     /// A debug description of this value, formatted using
     /// `String(reflecting:)`.
     public var debugDescription: String
+#endif
 
     /// Information about the type of this value.
     public var typeInfo: TypeInfo
 
+#if !hasFeature(Embedded)
     /// The label associated with this value, if any.
     ///
     /// For non-child instances, or for child instances of members who do not
@@ -117,12 +130,8 @@ public struct __Expression: Sendable {
       debugDescription = String(reflecting: subject)
       typeInfo = TypeInfo(describingTypeOf: subject)
 
-#if !hasFeature(Embedded)
       let mirror = Mirror(reflectingForTest: subject)
       isCollection = mirror.displayStyle?.isCollection ?? false
-#else
-      isCollection = false
-#endif
     }
 
     /// Initialize an instance of this type with a previously-generated
@@ -206,7 +215,6 @@ public struct __Expression: Sendable {
       self.init(describing: subject)
       self.label = label
 
-#if !hasFeature(Embedded)
       let mirror = Mirror(reflectingForTest: subject)
 
       // If the subject being reflected is an instance of a reference type (e.g.
@@ -263,7 +271,6 @@ public struct __Expression: Sendable {
         }
         self.children = children
       }
-#endif
     }
 
     /// Initialize an instance of this type representing a value of the
@@ -279,6 +286,22 @@ public struct __Expression: Sendable {
       self.typeInfo = typeInfo
       self.isCollection = false
     }
+#else
+    init(describing subject: any CustomTestStringConvertible) {
+      // BUG: we cannot use init(describingForTest:) here. The compiler won't
+      // accept the existential even if we add an overload that takes one.
+      description = subject.testDescription
+      typeInfo = .any
+    }
+
+    init?(reflecting subject: any CustomTestStringConvertible) {
+      let configuration = Configuration.current ?? .init()
+      if configuration.valueReflectionOptions == nil {
+        return nil
+      }
+      self.init(describing: subject)
+    }
+#endif
   }
 
   /// A representation of the runtime value of this expression.
@@ -315,15 +338,22 @@ public struct __Expression: Sendable {
     }
 
     if let runtimeValue {
-      let runtimeValueDescription = String(describingForTest: runtimeValue)
-      // Hack: don't print string representations of function calls.
-      if runtimeValueDescription != "(Function)" && runtimeValueDescription != result {
-        result = "\(result) → \(runtimeValueDescription)"
+      var addDescription = true
+#if hasFeature(Embedded)
+      if runtimeValue.typeInfo == .unavailableInEmbeddedSwift {
+        addDescription = false
+      }
+#endif
+      if addDescription {
+        let runtimeValueDescription = String(describingForTest: runtimeValue)
+        // Hack: don't print string representations of function calls.
+        if runtimeValueDescription != "(Function)" && runtimeValueDescription != result {
+          result = "\(result) → \(runtimeValueDescription)"
+        }
       }
     } else {
       result = "\(result) → <not evaluated>"
     }
-
 
     return result
   }
@@ -338,6 +368,8 @@ public struct __Expression: Sendable {
       if !_subexpressions.isEmpty {
         return _subexpressions
       }
+
+#if !hasFeature(Embedded)
       // If there were no explicitly-added subexpressions, look for any
       // subexpressions captured via reflection instead.
       if let children = runtimeValue?.children {
@@ -348,6 +380,8 @@ public struct __Expression: Sendable {
           return __Expression(label, runtimeValue: child)
         }
       }
+#endif
+
       return []
     }
     set {
@@ -396,7 +430,41 @@ extension __Expression: CustomStringConvertible, CustomDebugStringConvertible {
   }
 }
 
+#if !hasFeature(Embedded)
 extension __Expression.Value: CustomStringConvertible, CustomDebugStringConvertible {}
+#else
+extension __Expression.Value: CustomTestStringConvertible {
+  public var testDescription: String {
+    description
+  }
+}
+#endif
+
+#if hasFeature(Embedded)
+// MARK: - Unavailable value marker
+
+/// A type that acts as a placeholder for values that cannot be reflected or
+/// described in Embedded Swift.
+struct UnavailableInEmbeddedSwift: Sendable, CustomTestStringConvertible {
+  static var testDescription: String {
+    "(unavailable in Embedded Swift)"
+  }
+
+  var testDescription: String {
+    Self.testDescription
+  }
+}
+
+extension TypeInfo {
+  /// A type that acts as a placeholder for values that cannot be reflected or
+  /// described in Embedded Swift.
+  static var unavailableInEmbeddedSwift: Self {
+    Self(fullyQualifiedNameComponents: ["Testing", "UnavailableInEmbeddedSwift"])
+  }
+}
+#endif
+
+// MARK: -
 
 /// A type representing a Swift expression captured at compile-time from source
 /// code.

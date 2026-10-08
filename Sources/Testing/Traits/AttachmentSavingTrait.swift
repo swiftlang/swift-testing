@@ -225,7 +225,7 @@ extension Trait where Self == AttachmentSavingTrait {
   /// evaluates `condition` and, if the condition is met, saves the attachments.
   public static func savingAttachments(
     if condition: Self.Condition,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     Self(condition: condition, sourceLocation: sourceLocation)
   }
@@ -251,7 +251,7 @@ extension Trait where Self == AttachmentSavingTrait {
   /// evaluates `condition` and, if the condition is met, saves the attachments.
   public static func savingAttachments(
     if condition: @autoclosure @escaping @Sendable () throws -> Bool,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     let condition = Self.Condition { _ in try condition() }
     return savingAttachments(if: condition, sourceLocation: sourceLocation)
@@ -284,7 +284,7 @@ extension Trait where Self == AttachmentSavingTrait {
   /// }
   public static func savingAttachments(
     if condition: @escaping @Sendable () async throws -> Bool,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     let condition = Self.Condition { _ in try await condition() }
     return savingAttachments(if: condition, sourceLocation: sourceLocation)

@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && !SWT_NO_FILE_IO
+#if !SWT_NO_FOUNDATION && !SWT_NO_FILE_IO
 public import Testing
 public import Foundation
 
@@ -62,7 +62,7 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
   public init(
     contentsOf url: URL,
     named preferredName: String? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) async throws {
     guard url.isFileURL else {
       // TODO: network URLs?
@@ -75,7 +75,7 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
     let url = url.resolvingSymlinksInPath()
     let isDirectory = try url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory!
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_FOUNDATION_FILE_COORDINATION
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FOUNDATION_FILE_COORDINATION && !SWT_NO_CONTINUATIONS
     let urlWrapper = try await withCheckedThrowingContinuation { continuation in
       let fileCoordinator = NSFileCoordinator()
       let fileAccessIntent = NSFileAccessIntent.readingIntent(with: url, options: [.forUploading])

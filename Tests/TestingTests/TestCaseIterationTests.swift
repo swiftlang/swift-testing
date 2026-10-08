@@ -116,29 +116,107 @@ struct TestCaseIterationTests {
     }
   }
 
+  private enum IssueKind: Sendable {
+    case failure
+    case known
+    case warning
+  }
+
+  @Test(arguments: [
+    (.failure, .whileIssueRecorded, 3),
+    (.known, .whileIssueRecorded, 1),
+    (.warning, .whileIssueRecorded, 1),
+    (.known, .untilIssueRecorded, 3),
+    (.warning, .untilIssueRecorded, 3),
+  ] as [(IssueKind, Configuration.RepetitionPolicy.ContinuationCondition, Int)])
+  private func `Only failures cause repetition`(
+    issueKind: IssueKind,
+    continuingWhen: Configuration.RepetitionPolicy.ContinuationCondition,
+    expectedIterationCount: Int
+  ) async {
+    let iterations = Atomic(0)
+    var configuration = Configuration()
+    configuration.repetitionPolicy = .repeating(continuingWhen, maximumIterationCount: 3)
+
+    await Test {
+      iterations.add(1, ordering: .sequentiallyConsistent)
+      switch issueKind {
+      case .failure:
+        Issue.record("Failure")
+      case .known:
+        withKnownIssue {
+          Issue.record("Expected defect")
+        }
+      case .warning:
+        Issue.record("Warning", severity: .warning)
+      }
+    }.run(configuration: configuration)
+
+    let loadedIterationCount = iterations.load(ordering: .sequentiallyConsistent)
+    #expect(loadedIterationCount == expectedIterationCount)
+  }
+
   // MARK: Encoded event ordering
 
-  private func assertEncodedEventKinds(
-    _ test: Test,
-    equals expected: [ABI.EncodedEvent<ABI.CurrentVersion>.Kind],
-    sourceLocation: SourceLocation = #_sourceLocation
-  ) async {
-    let events = Mutex<[ABI.EncodedEvent<ABI.CurrentVersion>]>([])
+  private func encodedEvents(for test: Test, encodeMessagesField: Bool = false) async -> [ABI.EncodedEvent<ABI.CurrentVersion>] {
+    let events = Mutex<[ABI.EncodedEvent<ABI.CurrentVersion>]>()
     var configuration = Configuration()
-    configuration.eventHandler = { event, context in
-      guard let encoded = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: context) else {
-        return
-      }
-      events.withLock {
-        $0.append(encoded)
+    configuration.eventHandler = ABI.CurrentVersion.eventHandler(
+      encodingMessagesField: encodeMessagesField
+    ) { record in
+      if case let .event(event) = record.kind {
+        events.withLock {
+          $0.append(event)
+        }
       }
     }
     configuration.repetitionPolicy = .repeating(maximumIterationCount: 2)
 
     await test.run(configuration: configuration)
-    let kinds = events.rawValue.map(\.kind)
+    return events.rawValue
+  }
+
+  private func assertEncodedEventKinds(
+    _ test: Test,
+    equals expected: [ABI.EncodedEvent<ABI.CurrentVersion>.Kind],
+    sourceLocation: SourceLocation = #Testing::sourceLocation
+  ) async {
+    let events = await encodedEvents(for: test)
+    let kinds = events.map(\.kind)
     #expect(kinds == expected, sourceLocation: sourceLocation)
   }
+
+#if canImport(_StringProcessing)
+  private var encodedEventMessagesCommonPrefix: [Regex<Substring>] {
+    var result = [
+      /Test run started\./,
+      /Testing Library Version: .*/,
+    ]
+
+    if Testing.targetTriple != nil {
+      result += [
+        /Target Platform: .*/,
+      ]
+    }
+    return result
+  }
+
+  private func assertEncodedEventMessages<R>(
+    _ test: Test,
+    match expected: [Regex<R>],
+    sourceLocation: SourceLocation = #Testing::sourceLocation
+  ) async {
+    let events = await encodedEvents(for: test, encodeMessagesField: true)
+    let messages = events.flatMap(\.messages).map(\.text)
+
+    #expect(messages.count == expected.count, sourceLocation: sourceLocation)
+    for (actual, expected) in zip(messages, expected) {
+      #expect(throws: Never.self, sourceLocation: sourceLocation) {
+        try #expect(expected.wholeMatch(in: actual) != nil, sourceLocation: sourceLocation)
+      }
+    }
+}
+#endif
 
   @Test
   func `Non-parameterized test repetitions don't nest`() async throws {
@@ -146,11 +224,22 @@ struct TestCaseIterationTests {
     await assertEncodedEventKinds(test, equals: [
       .runStarted,
       .testStarted,
-      .testEnded,
-      .testStarted,
+      .testCaseStarted,
+      .testCaseEnded,
+      .testCaseStarted,
+      .testCaseEnded,
       .testEnded,
       .runEnded
     ])
+
+#if canImport(_StringProcessing)
+    await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
+      /Test ".*" started\./,
+      /Test ".*" started \(repetition 2\)\./,
+      /Test ".*" passed after .* seconds\./,
+      /Test run .* passed after .* seconds\./,
+    ])
+#endif
   }
 
   @Test
@@ -166,10 +255,20 @@ struct TestCaseIterationTests {
       .testEnded,
       .runEnded
     ])
+
+#if canImport(_StringProcessing)
+    await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
+      /Test ".*" started\./,
+      /Test case passing .* to ".*" started\./,
+      /Test case passing .* to ".*" started \(repetition 2\)\./,
+      /Test ".*" with 1 test case passed after .* seconds\./,
+      /Test run .* passed after .* seconds\./,
+    ])
+#endif
   }
 
   @Test
-  func `Non-parameterized test cancellation reports a testCancelled event`() async throws {
+  func `Non-parameterized test cancellation reports both testCancelled and testCaseCancelled events, stops iterating the whole test`() async throws {
     let test = Test(name: "Test Name") {
       try Test.cancel()
     }
@@ -177,17 +276,25 @@ struct TestCaseIterationTests {
     await assertEncodedEventKinds(test, equals: [
       .runStarted,
       .testStarted,
+      .testCaseStarted,
       .testCancelled,
-      .testEnded,
-      .testStarted,
-      .testCancelled,
+      .testCaseCancelled,
+      .testCaseEnded,
       .testEnded,
       .runEnded
     ])
+
+#if canImport(_StringProcessing)
+    await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
+      /Test ".*" started\./,
+      /Test ".*" was cancelled after .* seconds./,
+      /Test run .* passed after .* seconds\./,
+    ])
+#endif
   }
 
   @Test
-  func `Parameterized test cancellation reports a testCaseCancelled event`() async throws {
+  func `Parameterized test cancellation reports a testCaseCancelled event, stops iterating that test case`() async throws {
     let test = Test(arguments: [0], name: "Test Name") { _ in
       try Test.cancel()
     }
@@ -198,11 +305,17 @@ struct TestCaseIterationTests {
       .testCaseStarted,
       .testCaseCancelled,
       .testCaseEnded,
-      .testCaseStarted,
-      .testCaseCancelled,
-      .testCaseEnded,
       .testEnded,
       .runEnded
     ])
+
+#if canImport(_StringProcessing)
+    await assertEncodedEventMessages(test, match: encodedEventMessagesCommonPrefix + [
+      /Test ".*" started\./,
+      /Test case passing .* to ".*" started\./,
+      /Test ".*" with 1 test case passed after .* seconds\./,
+      /Test run .* passed after .* seconds\./,
+    ])
+#endif
   }
 }

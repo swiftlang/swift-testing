@@ -115,7 +115,7 @@ public struct Issue: Sendable {
   ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var severity: Severity
-  
+
   /// Whether or not this issue should cause the test it's associated with to be
   /// considered a failure.
   ///
@@ -244,7 +244,7 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
       ""
     } else {
       ": " + comments.lazy
-        .map(\.rawValue)
+        .map { $0.rawValue }
         .joined(separator: "\n")
     }
     return "\(kind) (\(severity))\(joinedComments)"
@@ -255,24 +255,12 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
       ""
     } else {
       ": " + comments.lazy
-        .map(\.rawValue)
+        .map { $0.rawValue }
         .joined(separator: "\n")
     }
     return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "") (\(severity))\(joinedComments)"
   }
 }
-
-#if !hasFeature(Embedded)
-/// An empty protocol defining a type that conforms to `RangeExpression<Int>`.
-///
-/// In the future, when our minimum deployment target supports casting a value
-/// to a constrained existential type ([SE-0353](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0353-constrained-existential-types.md#effect-on-abi-stability)),
-/// we can remove this protocol and cast to `RangeExpression<Int>` instead.
-private protocol _RangeExpressionOverIntValues: RangeExpression & Sequence where Bound == Int, Element == Int {}
-extension ClosedRange<Int>: _RangeExpressionOverIntValues {}
-extension PartialRangeFrom<Int>: _RangeExpressionOverIntValues {}
-extension Range<Int>: _RangeExpressionOverIntValues {}
-#endif
 
 extension Issue.Kind: CustomStringConvertible {
   public var description: String {
@@ -290,7 +278,7 @@ extension Issue.Kind: CustomStringConvertible {
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
 #if !hasFeature(Embedded)
-      if let expected = expected as? any _RangeExpressionOverIntValues {
+      if let expected = expected as? any Sequence<Int> {
         let lowerBound = expected.first { _ in true }
         if let lowerBound {
           // Not actually an upper bound, just "any value greater than the lower
@@ -344,7 +332,7 @@ extension Issue {
     public var kind: Kind.Snapshot
 
     /// The severity of this issue.
-    /// 
+    ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
     ///   @Available(Xcode, introduced: 26.4)
@@ -603,7 +591,7 @@ extension Issue.Snapshot: CustomStringConvertible, CustomDebugStringConvertible 
       ""
     } else {
       ": " + comments.lazy
-        .map(\.rawValue)
+        .map { $0.rawValue }
         .joined(separator: "\n")
     }
     return "\(kind) (\(severity))\(joinedComments)"
@@ -614,7 +602,7 @@ extension Issue.Snapshot: CustomStringConvertible, CustomDebugStringConvertible 
       ""
     } else {
       ": " + comments.lazy
-        .map(\.rawValue)
+        .map { $0.rawValue }
         .joined(separator: "\n")
     }
     return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "") (\(severity))\(joinedComments)"

@@ -65,14 +65,14 @@ extension Tag {
 
 // MARK: - Predefined tag hard-coded colors
 
-extension Tag.Color {
+extension Color {
   /// The set of predefined tag colors used by ``ConsoleOutputRecorder``.
   ///
   /// Tags in this set will have colors automatically applied to them in console
   /// output even if a user has not specified a color in e.g. a tag-colors.json
   /// file. New predefined tag colors should be rare as they are inherently
   /// subjective for most tags.
-  static var predefined: [Tag: Self] {
+  static var predefinedTagColors: [Tag: Self] {
     [
       .red: .red, .orange: .orange, .yellow: .yellow,
       .green: .green, .blue: .blue, .purple: .purple,
