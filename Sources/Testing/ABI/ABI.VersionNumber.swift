@@ -137,6 +137,7 @@ extension ABI.VersionNumber: CustomStringConvertible {
       func componentValue(_ index: Int) -> Component? {
         if components.count > index {
           // FIXME: need BinaryInteger.init?(_: UTF8View)
+          // SEE: https://github.com/swiftlang/swift/issues/93113
           return String(components[index]).flatMap(Component.init)
         }
         return 0
