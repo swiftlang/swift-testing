@@ -295,7 +295,7 @@ extension ABI.VersionNumber: Codable {
   ///
   /// - Throws: Any error that prevented decoding an instance of this type.
   public init(fromRecordJSON recordJSON: UnsafeRawBufferPointer) throws {
-#if !hasFeature(Embedded) && !os(Windows) // no memmem()
+#if !os(Windows) // no memmem()
     // This is sneaky: if we find the substring ""version": "" in the JSON, and
     // we only find it once, we can assume that what follows up to a comma,
     // whitespace, or brace must be the record's version. This is not a safe or
@@ -409,7 +409,7 @@ extension ABI.VersionNumber.Flags {
     var rawValue: String.UTF8View.SubSequence
 
     static func ==(lhs: Self, rhs: Self) -> Bool {
-#if !hasFeature(Embedded) // no memcmp()
+#if !hasFeature(Embedded)
       guard lhs.rawValue.count == rhs.rawValue.count else {
         return false
       }
