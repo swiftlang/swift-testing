@@ -24,6 +24,13 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
     providingPeersOf declaration: some DeclSyntaxProtocol,
     in context: some MacroExpansionContext
   ) throws -> [DeclSyntax] {
+    if context.isTargetEmbedded {
+      // Don't bother doing any expansion at all in Embedded Swift in order to
+      // keep reported diagnostics reasonable. The `Suite` macro declarations
+      // are marked unavailable and will diagnose, but will not prevent macro
+      // expansion code from running.
+      return []
+    }
     guard _diagnoseIssues(with: declaration, suiteAttribute: node, in: context),
           let declaration = declaration.asProtocol((any DeclGroupSyntax).self) else {
       return []

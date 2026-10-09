@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 #if _runtime(_ObjC)
 public import ObjectiveC
 
@@ -57,7 +59,6 @@ public typealias __TraitArray<T> = [T]
 public typealias __TraitArray<T> = [any Trait]
 #endif
 
-#if !hasFeature(Embedded) // TODO: @Suite support in some form
 // MARK: - @Suite
 
 /// Declare a test suite.
@@ -78,6 +79,7 @@ public typealias __TraitArray<T> = [any Trait]
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
+@_unavailableInEmbedded
 @attached(peer)
 @_documentation(visibility: private)
 public macro Suite(
@@ -105,11 +107,13 @@ public macro Suite(
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
+@_unavailableInEmbedded
 @attached(peer) public macro Suite(
   _ displayName: _const String? = nil,
   _ traits: any SuiteTrait...
 ) = #externalMacro(module: "TestingMacros", type: "SuiteDeclarationMacro")
 
+#if !hasFeature(Embedded)
 extension Test {
   /// Create an instance of ``Test`` for a suite type.
   ///

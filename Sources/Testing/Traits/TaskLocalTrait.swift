@@ -20,7 +20,7 @@
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.5)
 /// }
-public struct TaskLocalTrait<Value>: SuiteTrait, TestTrait where Value: Sendable {
+public struct TaskLocalTrait<Value>: TestTrait where Value: Sendable {
   /// This trait's task-local value key.
   ///
   /// @Metadata {
@@ -55,7 +55,15 @@ public struct TaskLocalTrait<Value>: SuiteTrait, TestTrait where Value: Sendable
   public func evaluate() async throws -> Value {
     try _value()
   }
+}
 
+#if !hasFeature(Embedded)
+// MARK: - SuiteTrait
+
+/// @Metadata {
+///   @Available(Swift, introduced: 6.5)
+/// }
+extension TaskLocalTrait: SuiteTrait {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.5)
   /// }
@@ -63,6 +71,7 @@ public struct TaskLocalTrait<Value>: SuiteTrait, TestTrait where Value: Sendable
     true
   }
 }
+#endif
 
 // MARK: - TestScoping
 
