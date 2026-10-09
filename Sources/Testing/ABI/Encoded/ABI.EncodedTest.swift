@@ -263,9 +263,12 @@ extension ABI.EncodedTest {
     }
 
     if V.versionNumber >= ABI.v6_4.versionNumber {
-      self.tags = test.tags.sorted().map { tag in
-        switch tag.kind {
-        case .staticMember(let value): value
+      let tags = test.tags
+      if !tags.isEmpty {
+        self.tags = test.tags.sorted().map { tag in
+          switch tag.kind {
+          case .staticMember(let value): value
+          }
         }
       }
       let bugs = test.associatedBugs
