@@ -101,8 +101,35 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   ///   returns.
   public private(set) nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
-  /// The address at which the record is located.
+  /// The address at which the underlying record is located.
+  ///
+  /// Avoid loading directly from this property as it may not always be
+  /// sufficiently aligned. Use `_record` instead unless you specifically need
+  /// the record's address in memory.
   private nonisolated(unsafe) var _recordAddress: UnsafePointer<_TestContentRecord>
+
+  /// The underlying record.
+  private var _record: _TestContentRecord {
+    _read {
+      // If a target platform does not guarantee that the test content section
+      // is sufficiently aligned for `_TestContentRecord` instances, we need to
+      // use `loadUnaligned()` there. All non-embedded platforms we currently
+      // target have, at least, pointer alignment for section data, which is
+      // what `_TestContentRecord` needs, but there is no guarantee of that for
+      // Embedded Swift.
+#if hasFeature(Embedded)
+      let isMisaligned = Int(bitPattern: _recordAddress)
+        .quotientAndRemainder(dividingBy: MemoryLayout<_TestContentRecord>.alignment)
+        .remainder == 0
+      if _slowPath(isMisaligned) {
+        let record = UnsafeRawPointer(_recordAddress).loadUnaligned(as: _TestContentRecord.self)
+        yield record
+        return
+      }
+#endif
+      yield _recordAddress.pointee
+    }
+  }
 
   fileprivate init(imageAddress: UnsafeRawPointer?, recordAddress: UnsafePointer<_TestContentRecord>) {
     precondition(recordAddress.pointee.kind == T.testContentKind.rawValue)
@@ -112,7 +139,7 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
 
   /// The kind of this test content record.
   public var kind: TestContentKind {
-    TestContentKind(rawValue: _recordAddress.pointee.kind)
+    TestContentKind(rawValue: _record.kind)
   }
 
   /// The type of the ``context`` property.
@@ -121,7 +148,7 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   /// The context of this test content record.
   public var context: Context {
     T.validateMemoryLayout()
-    return withUnsafeBytes(of: _recordAddress.pointee.context) { context in
+    return withUnsafeBytes(of: _record.context) { context in
       context.load(as: Context.self)
     }
   }
@@ -171,7 +198,7 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   /// than once on the same instance, the testing library calls the underlying
   /// test content record's accessor function each time.
   public func load(withHint hint: Hint? = nil) -> T? {
-    guard let accessor = _recordAddress.pointee.accessor else {
+    guard let accessor = _record.accessor else {
       return nil
     }
 
