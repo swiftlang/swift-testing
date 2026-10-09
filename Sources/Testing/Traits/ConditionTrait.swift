@@ -18,7 +18,7 @@
 /// - ``Trait/disabled(_:sourceLocation:)``
 /// - ``Trait/disabled(if:_:sourceLocation:)``
 /// - ``Trait/disabled(_:sourceLocation:_:)``
-public struct ConditionTrait: TestTrait, SuiteTrait {
+public struct ConditionTrait: TestTrait {
   /// An enumeration that describes the conditions that an instance of this type
   /// can represent.
   enum Kind: Sendable {
@@ -94,11 +94,17 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
       try Test.cancel(comments.first, sourceLocation: sourceLocation)
     }
   }
+}
 
+#if !hasFeature(Embedded)
+// MARK: - SuiteTrait
+
+extension ConditionTrait: SuiteTrait {
   public var isRecursive: Bool {
     true
   }
 }
+#endif
 
 // MARK: -
 
