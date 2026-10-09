@@ -120,21 +120,26 @@ extension ABI.VersionNumber: CustomStringConvertible {
       // need to continue to support a negative major component, so if the first
       // character is "-", we need to skip it during splitting, then insert it
       // back into the first string.
-      var componentsThenPrereleaseIDs: [Substring]
-      if string.first == "-" {
-        componentsThenPrereleaseIDs = string.dropFirst().split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
+      let string = string.utf8
+      var componentsThenPrereleaseIDs: [String.UTF8View.SubSequence]
+      if string.first == UInt8(ascii: "-") {
+        componentsThenPrereleaseIDs = string.dropFirst().split(separator: UInt8(ascii: "-"), maxSplits: 1, omittingEmptySubsequences: false)
         let allComponents = componentsThenPrereleaseIDs[0]
         componentsThenPrereleaseIDs[0] = string[..<allComponents.endIndex]
       } else {
-        componentsThenPrereleaseIDs = string.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
+        componentsThenPrereleaseIDs = string.split(separator: UInt8(ascii: "-"), maxSplits: 1, omittingEmptySubsequences: false)
       }
 
       // Split the string on "." (assuming it is of the form "1", "1.2", or
       // "1.2.3") and parse the individual components as integers.
       let allComponents = componentsThenPrereleaseIDs[0]
-      let components = allComponents.split(separator: ".", omittingEmptySubsequences: false)
+      let components = allComponents.split(separator: UInt8(ascii: "."), omittingEmptySubsequences: false)
       func componentValue(_ index: Int) -> Component? {
-        components.count > index ? Component(components[index]) : 0
+        if components.count > index {
+          // FIXME: need BinaryInteger.init?(_: UTF8View)
+          return String(components[index]).flatMap(Component.init)
+        }
+        return 0
       }
       if let majorComponent = componentValue(0),
          let minorComponent = componentValue(1),
@@ -148,7 +153,7 @@ extension ABI.VersionNumber: CustomStringConvertible {
           // There was a trailing "-" which is invalid.
           result = nil
         } else {
-          let prereleaseIDs = allPrereleaseIDs.split(separator: ".", omittingEmptySubsequences: false)
+          let prereleaseIDs = allPrereleaseIDs.split(separator: UInt8(ascii: "."), omittingEmptySubsequences: false)
 
           var flags: Flags = []
           for prereleaseID in prereleaseIDs {
@@ -390,13 +395,61 @@ extension ABI.VersionNumber.Flags {
     return result
   }()
 
+  /// A structure wrapping a string's UTF-8 view that can be used as a
+  /// dictionary key.
+  ///
+  /// Because valid version number strings are always ASCII (as far as the
+  /// testing library is concerned), we can reliably use their UTF-8 views and
+  /// avoid any overhead from Unicode when comparing and hashing them.
+  ///
+  /// - Bug: `String.UTF8View` and related types should conform to `Hashable`.
+  ///   ([swift-#93112](https://github.com/swiftlang/swift/issues/93112))
+  private struct _UTF8PrereleaseID: Sendable, RawRepresentable, Equatable, Hashable {
+    var rawValue: String.UTF8View.SubSequence
+
+    static func ==(lhs: Self, rhs: Self) -> Bool {
+      guard lhs.rawValue.count == rhs.rawValue.count else {
+        return false
+      }
+      if lhs.rawValue.count == 0 {
+        return true
+      }
+      let result = lhs.rawValue.withContiguousStorageIfAvailable { lhs in
+        rhs.rawValue.withContiguousStorageIfAvailable { rhs in
+          0 == memcmp(lhs.baseAddress!, rhs.baseAddress!, lhs.count)
+        }
+      }
+      if case let .some(.some(result)) = result {
+        _onFastPath()
+        return result
+      }
+      return lhs.rawValue.elementsEqual(rhs.rawValue)
+    }
+
+    func hash(into hasher: inout Hasher) {
+      let result: Void? = rawValue.withContiguousStorageIfAvailable { rawValue in
+        hasher.combine(bytes: UnsafeRawBufferPointer(rawValue))
+      }
+      if _slowPath(result == nil) {
+        for c in rawValue {
+          hasher.combine(c)
+        }
+      }
+    }
+  }
+
   /// The set of recognized ``Flag`` values keyed by their corresponding
   /// prerelease IDs.
   ///
   /// The keys of this dictionary are substrings to allow lookup during parsing
   /// without needing to copy substrings of the original string.
+  ///
+  /// - Bug: `String.UTF8View` does not conform to `Hashable`, so we must use
+  ///   `Substring` instead for our keys.
   private static let _flagsByPrereleaseID = Dictionary(
-    uniqueKeysWithValues: _prereleaseIDsByFlag.map { ($1[...], $0) }
+    uniqueKeysWithValues: _prereleaseIDsByFlag.map { flag, prereleaseID in
+      (_UTF8PrereleaseID(rawValue: prereleaseID.utf8[...]), flag)
+    }
   )
 
   /// The set of non-zero bits set in this instance's raw value.
@@ -435,8 +488,9 @@ extension ABI.VersionNumber.Flags {
     return "-" + prereleaseIDs.joined(separator: ".")
   }
 
-  init?<S>(prereleaseID: S) where S: StringProtocol, S.SubSequence == Substring {
-    guard let flag = Self._flagsByPrereleaseID[prereleaseID[...]] else {
+  init?(prereleaseID: String.UTF8View.SubSequence) {
+    let prereleaseID = _UTF8PrereleaseID(rawValue: prereleaseID)
+    guard let flag = Self._flagsByPrereleaseID[prereleaseID] else {
       return nil
     }
 
