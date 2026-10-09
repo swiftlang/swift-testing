@@ -44,11 +44,13 @@ extension CommandLine {
 #if !hasFeature(Embedded) && !os(WASI) && !SWT_TARGET_OS_APPLE
 #if os(Windows)
   private typealias FPEncoding = UTF16
+  private typealias FPCodeUnit = UTF16.CodeUnit
 #else
   private typealias FPEncoding = UTF8
+  private typealias FPCodeUnit = CChar
 #endif
 
-  private static var executablePathCString: ContiguousArray<FPEncoding.CodeUnit>? {
+  private static var executablePathCString: ContiguousArray<FPCodeUnit>? {
     @_silgen_name("_swift_stdlib_executablePathCString") get
   }
 #endif
@@ -87,10 +89,12 @@ extension CommandLine {
 #endif
       }
       return try executablePathCString.withUnsafeBufferPointer { executablePathCString in
-        guard let result = String.decodeCString(executablePathCString.baseAddress!, as: FPEncoding.self)?.result else {
-          throw SystemError(description: "Could not decode the current executable's path as \(FPEncoding.self).")
+        try executablePathCString.withMemoryRebound(to: FPEncoding.CodeUnit.self) { executablePathCString in
+          guard let result = String.decodeCString(executablePathCString.baseAddress!, as: FPEncoding.self)?.result else {
+            throw SystemError(description: "Could not decode the current executable's path as \(FPEncoding.self).")
+          }
+          return result
         }
-        return result
       }
 #endif
     }
