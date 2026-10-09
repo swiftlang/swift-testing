@@ -90,7 +90,9 @@ extension Runner {
 
     /// The steps of the runner plan.
     public var steps: [Step] {
-      stepGraph.compactMap(\.value).sorted { $0.test.sourceLocation < $1.test.sourceLocation }
+      stepGraph
+        .compactMap { $0.value }
+        .sorted { $0.test.sourceLocation < $1.test.sourceLocation }
     }
 
     /// Initialize an instance of this type with the specified graph of test
@@ -123,6 +125,7 @@ extension Runner {
 // MARK: - Constructing a new runner plan
 
 extension Runner.Plan {
+#if !hasFeature(Embedded)
   /// Recursively apply eligible traits from a test suite to its children in a
   /// graph.
   ///
@@ -136,18 +139,17 @@ extension Runner.Plan {
   /// node.
   private static func _recursivelyApplyTraits(_ parentTraits: [any SuiteTrait] = [], to testGraph: inout Graph<String, Test?>) {
     let traits: [any SuiteTrait] = parentTraits + (testGraph.value?.traits ?? []).lazy
-      .compactMap { $0.__as((any SuiteTrait).self) }
-      .filter(\.isRecursive)
+      .compactMap { $0 as? any SuiteTrait }
+      .filter { $0.isRecursive }
 
     testGraph.children = testGraph.children.mapValues { child in
       var child = child
       _recursivelyApplyTraits(traits, to: &child)
-      child.value?.traits.insert(contentsOf: traits, at: 0)
+      child.value?.traits.insert(contentsOf: traits.map { $0 as any Trait }, at: 0)
       return child
     }
   }
 
-#if !hasFeature(Embedded)
   /// Recursively deduplicate traits on the given test by calling
   /// ``ReducibleTrait/reduce(_:)`` across all nodes in the graph.
   ///
@@ -182,12 +184,11 @@ extension Runner.Plan {
         }
         open(&trait)
       }
-      test.traits = traits.compactMap(\.self)
+      test.traits = traits.compactMap { $0 }
 
       return test
     }
   }
-#endif
 
   /// Recursively synthesize test instances representing suites for all missing
   /// values in the specified test graph.
@@ -254,6 +255,7 @@ extension Runner.Plan {
     _recursivelySynthesizeSuites(in: &testGraph)
     return testGraph.compactMap { $0.value }
   }
+#endif
 
   /// The basic "run" action.
   private static let _runAction = Action.run(options: .init())
@@ -349,12 +351,14 @@ extension Runner.Plan {
   ///
   /// - Returns: A graph of the steps corresponding to `tests`.
   private static func _constructStepGraph(from tests: some Sequence<Test>, configuration: Configuration) async -> Graph<String, Step?> {
+#if !hasFeature(Embedded)
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
     Backtrace.startCachingForThrownErrors()
     defer {
       Backtrace.flushThrownErrorCache()
     }
+#endif
 
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining
@@ -385,6 +389,7 @@ extension Runner.Plan {
       // and that is already guarded earlier in the SwiftPM entry point.
     }
 
+#if !hasFeature(Embedded)
     // Synthesize suites for nodes in the test graph for which they are missing.
     _recursivelySynthesizeSuites(in: &testGraph)
 
@@ -398,7 +403,6 @@ extension Runner.Plan {
     // filtered out.
     _recursivelyApplyTraits(to: &testGraph)
 
-#if !hasFeature(Embedded)
     // Recursively reduce traits in the graph.
     //
     // As with `_recursivelyApplyTraits(to:)`, we must call this function before
@@ -516,7 +520,7 @@ extension Runner.Plan {
 
     /// The steps of this runner plan.
     public var steps: some Collection<Step.Snapshot> {
-      _stepGraph.compactMap(\.value)
+      _stepGraph.compactMap { $0.value }
     }
   }
 }
@@ -622,12 +626,3 @@ extension Runner.Plan.Action {
   }
 }
 #endif
-
-// MARK: - Deprecated
-
-extension Runner.Plan.Action {
-  @available(*, deprecated, message: "Use .skip(_:) and pass a SkipInfo explicitly.")
-  public static func skip() -> Self {
-    .skip(SkipInfo())
-  }
-}

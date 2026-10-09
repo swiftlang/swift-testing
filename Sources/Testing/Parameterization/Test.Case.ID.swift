@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 extension Test.Case {
   /// The ID of a test case.
   ///
@@ -50,7 +54,7 @@ extension Test.Case {
 
   @_spi(ForToolsIntegrationOnly)
   public var id: ID {
-    let argumentIDs = arguments.map { [Argument.ID(combining: $0.map(\.id))] }
+    let argumentIDs = arguments.map { [Argument.ID(combining: $0.map { $0.id })] }
     return ID(argumentIDs: argumentIDs, discriminator: discriminator, isStable: isStable)
   }
 }
@@ -59,11 +63,15 @@ extension Test.Case {
 
 extension Test.Case.ID: CustomStringConvertible {
   public var description: String {
-    if let argumentIDs, let discriminator {
+    // Pass through Comment to make sure string interpolation uses
+    // CustomTestStringConvertible instead of just CustomStringConvertible in
+    // Embedded Swift.
+    let result: Comment = if let argumentIDs, let discriminator {
       "Parameterized test case ID: argumentIDs: \(argumentIDs), discriminator: \(discriminator), isStable: \(isStable)"
     } else {
       "Non-parameterized test case ID"
     }
+    return result.rawValue
   }
 }
 

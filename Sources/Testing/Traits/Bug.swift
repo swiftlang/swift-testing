@@ -46,19 +46,37 @@ extension Bug: Equatable, Hashable {
   }
 }
 
-#if !SWT_NO_CODABLE
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension Bug: Codable {}
 #endif
 
+extension Bug: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["url"] = url?.jsonValue(in: context)
+    result["id"] = id?.jsonValue(in: context)
+    result["title"] = title?.rawValue.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
+
 // MARK: - Trait, TestTrait, SuiteTrait
 
-extension Bug: TestTrait, SuiteTrait {
+extension Bug: TestTrait {
   public var comments: [Comment] {
     Array(title)
   }
 }
+
+#if !hasFeature(Embedded)
+extension Bug: SuiteTrait {}
+#endif
+
+// MARK: -
 
 extension Trait where Self == Bug {
   /// Constructs a bug to track with a test.

@@ -102,7 +102,7 @@ public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: Int = 1,
   isolation: isolated (any Actor)? = #isolation,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: (Confirmation) async throws -> sending R
 ) async rethrows -> R {
   try await confirmation(
@@ -176,7 +176,7 @@ public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: some RangeExpression<Int> & Sequence<Int> & Sendable,
   isolation: isolated (any Actor)? = #isolation,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: (Confirmation) async throws -> sending R
 ) async rethrows -> R {
   let confirmation = Confirmation()
@@ -205,7 +205,7 @@ public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: UnboundedRange,
   isolation: isolated (any Actor)? = #isolation,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
   swt_unreachable()
@@ -215,13 +215,14 @@ public func confirmation<R>(
 /// that handles the partial-range-through operator (`...n`).
 ///
 /// This overload is necessary because the lower bound of `PartialRangeThrough`
-/// is ambiguous: does it start at `0` or `1`? Test authors should specify a
+/// is ambiguous: does it start at `0` or `1`? Test authors should specify an
+/// explicit lower bound.
 @available(*, unavailable, message: "Range expression '...n' is ambiguous without an explicit lower bound")
 public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: PartialRangeThrough<Int>,
   isolation: isolated (any Actor)? = #isolation,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
   swt_unreachable()
@@ -231,13 +232,14 @@ public func confirmation<R>(
 /// that handles the partial-range-up-to operator (`..<n`).
 ///
 /// This overload is necessary because the lower bound of `PartialRangeUpTo` is
-/// ambiguous: does it start at `0` or `1`? Test authors should specify a
+/// ambiguous: does it start at `0` or `1`? Test authors should specify an
+/// explicit lower bound.
 @available(*, unavailable, message: "Range expression '..<n' is ambiguous without an explicit lower bound")
 public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: PartialRangeUpTo<Int>,
   isolation: isolated (any Actor)? = #isolation,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
   swt_unreachable()

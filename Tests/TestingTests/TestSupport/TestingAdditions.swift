@@ -168,10 +168,10 @@ extension Test {
   /// the `@Test` macro.
   init(
     _ traits: any TestTrait...,
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     name: String = #function,
-    testFunction: @escaping @Sendable () async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
   ) {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(testFunction: testFunction)
@@ -199,11 +199,11 @@ extension Test {
     parameters: [Parameter] = [
       Parameter(index: 0, firstName: "x", type: C.Element.self),
     ],
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     column: Int = #column,
     name: String = #function,
-    testFunction: @escaping @Sendable (C.Element) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
   ) where C: Collection & Sendable, C.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
@@ -216,11 +216,11 @@ extension Test {
     parameters: [Parameter] = [
       Parameter(index: 0, firstName: "x", type: C.Element.self),
     ],
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     column: Int = #column,
     name: String = #function,
-    testFunction: @escaping @Sendable (C.Element) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
   ) where C: Collection & Sendable, C.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = { @Sendable in
@@ -252,10 +252,10 @@ extension Test {
       Parameter(index: 0, firstName: "x", type: C1.Element.self),
       Parameter(index: 1, firstName: "y", type: C2.Element.self),
     ],
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     name: String = #function,
-    testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: collection1, collection2, parameters: parameters, testFunction: testFunction)
@@ -280,10 +280,10 @@ extension Test {
       Parameter(index: 0, firstName: "x", type: C1.Element.self),
       Parameter(index: 1, firstName: "y", type: C2.Element.self),
     ],
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     sourceBounds: __SourceBounds? = nil,
     name: String = #function,
-    testFunction: @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = Case.Generator(arguments: zippedCollections, parameters: parameters, testFunction: testFunction)
@@ -424,6 +424,7 @@ let performanceTestsEnabled = Environment.flag(named: "SWT_ENABLE_PERFORMANCE_TE
 #if !SWT_NO_CODABLE
 extension JSON {
   /// Round-trip a value through JSON encoding/decoding.
+  /// Encoding prioritizes JSON.Encodable over Encodable.
   ///
   /// - Parameters:
   ///   - value: The value to round-trip.
@@ -432,9 +433,60 @@ extension JSON {
   ///
   /// - Throws: Any error encountered encoding or decoding `value`.
   static func encodeAndDecode<T>(_ value: T) throws -> T where T: Codable {
-    try JSON.withEncoding(of: value) { data in
-      try JSON.decode(T.self, from: data)
+    if let jsonEncodableValue = value as? any JSON.Encodable & Decodable {
+      try JSON.withEncoding(of: jsonEncodableValue) { data in
+        try JSON.decode(T.self, from: data)
+      }
+    } else {
+      try JSON.withEncoding(of: value) { data in
+        try JSON.decode(T.self, from: data)
+      }
     }
+  }
+
+  /// Encode a value to a JSON string.
+  ///
+  /// - Parameters:
+  ///   - value: The value to encode.
+  ///
+  /// - Returns: The encoded JSON string.
+  ///
+  /// - Throws: Any error encountered encoding or decoding `value`.
+  static func encode<T>(_ value: T) throws -> String where T: JSON.Encodable {
+    try JSON.withEncoding(of: value) { data in
+      return String(decoding: data, as: UTF8.self)
+    }
+  }
+
+  /// Decode a value of a given type from a JSON string.
+  ///
+  /// For example, decode an encoded event from a JSON string:
+  /// ```swift
+  /// let event = try JSON.decode(ABI.EncodedEvent<ABI.v6_5>.self, from: "...")
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - type: The type to decode.
+  ///   - json: The JSON string to decode.
+  ///
+  /// - Returns: An instance of `type` decoded from `json`.
+  ///
+  /// - Throws: Any error encountered while decoding `json`.
+  static func decode<T>(_ type: T.Type, from json: String) throws -> T where T: Decodable {
+    var json = json
+    return try json.withUTF8 { json in
+      try JSON.decode(T.self, from: UnsafeRawBufferPointer(json))
+    }
+  }
+
+  /// Converts pretty-printed JSON -> single line JSON by trimming out
+  /// indentation and newlines.
+  ///
+  /// This allows us to write test expectations with nicer formatting.
+  static func minified(_ json: String) -> String {
+    json.split(separator: "\n")
+      .map { $0.trimmingPrefix { $0 == " " } }
+      .joined()
   }
 }
 #endif

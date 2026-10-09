@@ -35,14 +35,17 @@ struct ClockTests {
     #expect(instants.count == 2)
 
     let now = Test.Clock.Instant.now
+#if !SWT_NO_SUSPENDING_CLOCK
     #expect(now.suspending.rawValue.components.seconds > 0)
     #expect(now.suspending.rawValue.components.attoseconds >= 0)
+#endif
 #if !SWT_NO_UTC_CLOCK
     #expect(now.wall.rawValue.components.seconds > 0)
     #expect(now.wall.rawValue.components.attoseconds >= 0)
 #endif
   }
 
+#if !SWT_NO_SUSPENDING_CLOCK
   @Test("Creating a SuspendingClock.Instant from Test.Clock.Instant")
   func suspendingInstantInitializer() async throws {
     let instant1 = SuspendingClock.Instant(Test.Clock.Instant.now)
@@ -51,6 +54,7 @@ struct ClockTests {
 
     #expect(instant1 < instant2)
   }
+#endif
 
   @Test("Clock.sleep(until:tolerance:) method")
   func sleepUntilTolerance() async throws {
@@ -121,7 +125,9 @@ struct ClockTests {
     let decoded = try #require(Test.Clock.Instant(decoding: encoded))
 
     // Instant -> EncodedInstant loses some precision when converting from Duration -> Double
+#if !SWT_NO_SUSPENDING_CLOCK
     #expect(abs((now.suspending.rawValue - decoded.suspending.rawValue) / .seconds(1)) < 0.001)
+#endif
 #if !SWT_NO_UTC_CLOCK
     #expect(abs((now.durationSince1970 - decoded.durationSince1970) / .seconds(1)) < 0.001)
 #endif

@@ -72,7 +72,7 @@
   }
 
   @Test func `Cancelling a test propagates its SkipInfo to its test cases`() async {
-    let sourceLocation = #_sourceLocation
+    let sourceLocation = #Testing::sourceLocation
     await testCancellation(testCancelled: 1, testCaseCancelled: 1) { configuration in
       await Test {
         try Test.cancel("Cancelled test", sourceLocation: sourceLocation)

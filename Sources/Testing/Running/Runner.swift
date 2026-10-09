@@ -19,7 +19,7 @@ public struct Runner: Sendable {
   public var plan: Plan
 
   /// The set of tests this runner will run.
-  public var tests: [Test] { plan.steps.map(\.test) }
+  public var tests: [Test] { plan.steps.map { $0.test } }
 
   /// The runner's configuration.
   public var configuration: Configuration
@@ -80,8 +80,10 @@ extension Runner {
   /// per-test basis. If you find yourself wanting to modify a property of this
   /// type at runtime, it may be better-suited for ``Configuration`` instead.
   private struct _Context: Sendable {
+#if !hasFeature(Embedded)
     /// A serializer used to reduce parallelism among test cases.
     var testCaseSerializer: Serializer<Void>?
+#endif
 
     /// A set of test+case IDs that have recorded at least one issue during a
     /// test run. This is consumed by the per-test-case repetition machinery to
@@ -106,7 +108,7 @@ extension Runner {
   private static func _applyScopingTraits(
     for test: Test,
     testCase: Test.Case?,
-    _ body: @escaping @Sendable () async throws -> Void
+    _ body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
   ) async throws {
     // If the test does not have any traits, exit early to avoid unnecessary
     // heap allocations below.
@@ -121,8 +123,13 @@ extension Runner {
     // trait is the first one to be invoked.
     let executeAllTraits = test.traits.lazy
       .reversed()
-      .compactMap { $0.scopeProvider(for: test, testCase: testCase) }
-      .map { $0.provideScope(for:testCase:performing:) }
+      .compactMap { trait in
+#if !hasFeature(Embedded)
+        trait.scopeProvider(for: test, testCase: testCase)
+#else
+        trait.__scopeProvider(for: test, testCase: testCase)
+#endif
+      }.map { $0.provideScope(for:testCase:performing:) }
       .reduce(body) { executeAllTraits, provideScope in
         {
           try await provideScope(test, testCase, executeAllTraits)
@@ -142,7 +149,7 @@ extension Runner {
   ///
   /// - Throws: Whatever is thrown by `body` or by any of the traits' provide
   ///   scope function calls.
-  private static func _applyIssueHandlingTraits(for test: Test, _ body: @escaping @Sendable () async throws -> Void) async throws {
+  private static func _applyIssueHandlingTraits(for test: Test, _ body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) async throws {
     // If the test does not have any traits, exit early to avoid unnecessary
     // heap allocations below.
     if test.traits.isEmpty {
@@ -155,7 +162,7 @@ extension Runner {
     // second-to-last invokes the last, etc. and ultimately the first trait is
     // the first one to be invoked.
     let executeAllTraits = test.traits.lazy
-      .compactMap { $0.__as(IssueHandlingTrait.self) }
+      .compactMap { $0 as? IssueHandlingTrait }
       .reversed()
       .map { $0.provideScope(performing:) }
       .reduce(body) { executeAllTraits, provideScope in
@@ -190,10 +197,14 @@ extension Runner {
           try await body(element)
         }
 
+#if !hasFeature(Embedded)
         // If not parallelizing, wait after each task.
         if !_configuration.isParallelizationEnabled {
           try await taskGroup.waitForAll()
         }
+#else
+        try await taskGroup.waitForAll()
+#endif
       }
     }
   }
@@ -353,7 +364,12 @@ extension Runner {
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
   private static func _runChildren(of stepGraph: Graph<String, Plan.Step?>, context: _Context) async throws {
-    let childGraphs = if _configuration.isParallelizationEnabled {
+#if !hasFeature(Embedded)
+    let isParallelizationEnabled = _configuration.isParallelizationEnabled
+#else
+    let isParallelizationEnabled = false
+#endif
+    let childGraphs = if Bool(isParallelizationEnabled) {
       // Explicitly shuffle the steps to help detect accidental dependencies
       // between tests due to their ordering.
       Array(stepGraph.children)
@@ -393,7 +409,7 @@ extension Runner {
     }
 
     // Run the child nodes.
-    try await _forEach(in: childGraphs.lazy.map(\.value), namingTasksWith: taskNamer) { childGraph in
+    try await _forEach(in: childGraphs.lazy.map { $0.value }, namingTasksWith: taskNamer) { childGraph in
       try await _runStep(atRootOf: childGraph, context: context)
     }
   }
@@ -425,13 +441,14 @@ extension Runner {
     }
 
     await _forEach(in: testCases.enumerated(), namingTasksWith: taskNamer) { _, testCase in
+#if !hasFeature(Embedded)
       if let testCaseSerializer = context.testCaseSerializer {
         // Note that if .serialized is applied to an inner scope, we still use
         // this serializer (if set) so that we don't overcommit.
-        await testCaseSerializer.run { await _runTestCase(testCase, within: step, in: context) }
-      } else {
-        await _runTestCase(testCase, within: step, in: context)
+        return await testCaseSerializer.run { await _runTestCase(testCase, within: step, in: context) }
       }
+#endif
+      await _runTestCase(testCase, within: step, in: context)
     }
   }
 
@@ -449,7 +466,7 @@ extension Runner {
     within step: Plan.Step,
     in context: _Context,
   ) async {
-    await _applyRepetitionPolicy(_configuration.repetitionPolicy) {
+    await applyRepetitionPolicy(_configuration.repetitionPolicy) {
       await _runSingleTestCaseIteration(testCase, within: step)
     } didRecordIssue: {
       context.testIssueRecorder.consumeIssue(for: step.test.id, testCase: testCase.id)
@@ -478,11 +495,10 @@ extension Runner {
 #if !hasFeature(Embedded)
         // Exit early if the task has already been cancelled.
         try Task.checkCancellation()
-#endif
 
         try await withTimeLimit(for: step.test, configuration: configuration) {
           try await _applyScopingTraits(for: step.test, testCase: testCase) {
-            try await testCase.body()
+            try await testCase.run(configuration: configuration)
           }
         } timeoutHandler: { timeLimit in
           let issue = Issue(
@@ -492,6 +508,11 @@ extension Runner {
           )
           issue.record(configuration: configuration)
         }
+#else
+        try await _applyScopingTraits(for: step.test, testCase: testCase) {
+          try await testCase.run(configuration: configuration)
+        }
+#endif
       }
     }
   }
@@ -524,10 +545,12 @@ extension Runner {
     let context: _Context = {
       var context = _Context()
 
+#if !hasFeature(Embedded)
       let maximumParallelizationWidth = runner.configuration.maximumParallelizationWidth
       if maximumParallelizationWidth > 1 && maximumParallelizationWidth < .max {
         context.testCaseSerializer = Serializer(maximumWidth: runner.configuration.maximumParallelizationWidth)
       }
+#endif
 
       return context
     }()
@@ -543,6 +566,9 @@ extension Runner {
       }
       schedule(tests)
 
+      for metadata in Event.Metadata.all {
+        Event.post(.metadataRecorded(metadata), for: (nil, nil), configuration: runner.configuration)
+      }
       Event.post(.runStarted, for: (nil, nil), configuration: runner.configuration)
       defer {
         Event.post(.runEnded, for: (nil, nil), configuration: runner.configuration)

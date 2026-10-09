@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -94,7 +94,7 @@ var swiftTestingDirectoryPath: String? {
 /// assumed to contain a JSON object (a dictionary) where the keys are tags'
 /// string values and the values represent tag colors. For a list of the
 /// supported formats for tag colors in this dictionary, see <doc:AddingTags>.
-func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? = swiftTestingDirectoryPath) throws -> [Tag: Tag.Color] {
+func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? = swiftTestingDirectoryPath) throws -> [Tag: Color] {
 #if !SWT_NO_CODABLE
   guard let swiftTestingDirectoryPath else {
     // If the platform does not support user-specific configuration, skip custom
@@ -115,7 +115,7 @@ func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? 
   // use for merging tag color data from multiple sources, but it is not valid
   // as an actual tag color, so we have a step here that filters it.
   return try tagColorsData.withUnsafeBytes { tagColorsData in
-    try JSON.decode([Tag: Tag.Color?].self, from: tagColorsData)
+    try JSON.decode([Tag: Color?].self, from: tagColorsData)
       .compactMapValues { $0 }
   }
 #else

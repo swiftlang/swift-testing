@@ -16,6 +16,7 @@ import SwiftParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
+import SwiftIfConfig
 
 @Suite("TagMacro Tests")
 struct TagMacroTests {
@@ -40,8 +41,24 @@ struct TagMacroTests {
   func tagMacro(input: String, typeName: String) throws {
     let (output, diagnostics) = try parse(input)
     #expect(diagnostics.count == 0)
-    #expect(output.contains("__fromStaticMember(of: \(typeName).self,"))
-    #expect(output.contains(#""x")"#))
+    #expect(output.contains(#"__fromStaticMember(of: \#(typeName).self, "x")"#))
+  }
+
+  @Test("@Tag macro in Embedded Swift",
+    arguments: [
+      ("extension Tag { @Tag static var x: Tag }", "Tag"),
+      ("extension Tag { @Tag static var x: Self }", "Tag"),
+      ("extension Testing.Tag { @Tag static var x: Testing.Tag }", "Testing.Tag"),
+      ("extension Testing::Tag { @Tag static var x: Testing::Tag }", "Testing::Tag"),
+      ("extension Testing::Testing.Tag { @Tag static var x: Testing::Testing.Tag }", "Testing::Testing.Tag"),
+      ("extension Testing::Testing.Tag { @Tag static var x: Testing.Tag }", "Testing::Testing.Tag"),
+      ("extension Testing.Tag { @Tag static var x: Testing::Testing.Tag }", "Testing.Tag"),
+    ]
+  )
+  func tagMacroInEmbeddedSwift(input: String, typeName: String) throws {
+    let (output, diagnostics) = try parse(input, languageMode: VersionTuple(99), isEmbedded: true)
+    #expect(diagnostics.count == 0)
+    #expect(output.contains(#"__fromStaticMember("x")"#))
   }
 
   @Test("Error diagnostics emitted on API misuse",
@@ -69,6 +86,26 @@ struct TagMacroTests {
   )
   func apiMisuseErrors(input: String, expectedMessage: String) throws {
     let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.count > 0)
+    for diagnostic in diagnostics {
+      #expect(diagnostic.diagMessage.severity == .error)
+      #expect(diagnostic.message == expectedMessage)
+    }
+  }
+
+  @Test("Error diagnostics emitted on API misuse in Embedded Swift",
+    arguments: [
+      "@Tag struct S {}":
+        "Attribute 'Tag' cannot be applied to a structure",
+      "extension Tag { @Tag static var x: String }":
+        "Attribute 'Tag' cannot be applied to a property of type 'String'",
+      "extension Tag { struct S { @Tag static var x: Tag } }":
+        "Attribute 'Tag' cannot be applied to a property within type 'Tag.S' in Embedded Swift",
+    ]
+  )
+  func apiMisuseErrorsInEmbeddedSwift(input: String, expectedMessage: String) throws {
+    let (_, diagnostics) = try parse(input, languageMode: VersionTuple(99), isEmbedded: true)
 
     #expect(diagnostics.count > 0)
     for diagnostic in diagnostics {

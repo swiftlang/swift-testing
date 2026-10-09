@@ -43,6 +43,7 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertFalse(expectation.isRequired)
+      assert(expectation.evaluatedExpression, contains: " → false")
     }
 
     await Test {
@@ -87,6 +88,7 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertTrue(expectation.isRequired)
+      assert(expectation.evaluatedExpression, contains: " → false")
     }
 
     await Test {
@@ -291,7 +293,8 @@ final class IssueTests: XCTestCase {
         expectationFailed.fulfill()
         // The presence of `try` means we don't do complex expansion (yet.)
         XCTAssertNotNil(expectation.evaluatedExpression)
-        XCTAssertNil(expectation.evaluatedExpression.runtimeValue)
+        assert(expectation.evaluatedExpression, contains: "TypeWithMemberFunctions")
+        assert(expectation.evaluatedExpression, contains: " → false")
       }
     }
 
@@ -1082,7 +1085,7 @@ final class IssueTests: XCTestCase {
     let issueRecorded = expectation(description: "Issue recorded")
     issueRecorded.expectedFulfillmentCount = 2
 
-    let lowerBound = #_sourceLocation
+    let lowerBound = #Testing::sourceLocation
     let upperBound = Self.testFailWithoutCurrentTestEnd
     let sourceBounds = __SourceBounds(
       __uncheckedLowerBound: lowerBound,
@@ -1091,7 +1094,7 @@ final class IssueTests: XCTestCase {
     let test = Test(sourceBounds: sourceBounds) {
       await Task.detached {
         _ = Issue.record()
-        Self.recordIssue(sourceLocation: #_sourceLocation)
+        Self.recordIssue(sourceLocation: #Testing::sourceLocation)
       }.value
     }
 
@@ -1110,7 +1113,7 @@ final class IssueTests: XCTestCase {
 
     await fulfillment(of: [issueRecorded], timeout: 0.0)
   }
-  private static let testFailWithoutCurrentTestEnd = #_sourceLocation
+  private static let testFailWithoutCurrentTestEnd = #Testing::sourceLocation
 
   func testFailWithoutCurrentTestAndNoSourceLocation() async throws {
     var configuration = Configuration()
@@ -1717,7 +1720,7 @@ final class IssueTests: XCTestCase {
 
   func testExplicitSourceContextWithoutLocation() async {
     // This just ensures that `Issue.record` with an explicit sourceContext
-    // doesn't infer the location via #_sourceLocation.
+    // doesn't infer the location via #Testing::sourceLocation.
 
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -1770,7 +1773,7 @@ struct IssueCodingTests {
   private static let issueKinds: [Issue.Kind] = [
     Issue.Kind.apiMisused,
     Issue.Kind.errorCaught(NSError(domain: "Domain", code: 13, userInfo: ["UserInfoKey": "UserInfoValue"])),
-    Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .init("abc"), isPassing: true, isRequired: true, sourceLocation: #_sourceLocation)),
+    Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .init("abc"), isPassing: true, isRequired: true, sourceLocation: #Testing::sourceLocation)),
     Issue.Kind.knownIssueNotRecorded,
     Issue.Kind.system,
     Issue.Kind.timeLimitExceeded(timeLimitComponents: (123, 0)),
@@ -1784,7 +1787,7 @@ struct IssueCodingTests {
     let issue = Issue(
       kind: issueKind,
       comments: ["Comment"],
-      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: #_sourceLocation)
+      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: #Testing::sourceLocation)
     )
     let issueSnapshot = Issue.Snapshot(snapshotting: issue)
     let decoded = try JSON.encodeAndDecode(issueSnapshot)
@@ -1859,7 +1862,7 @@ struct IssueCodingTests {
     let issue = Issue(
       kind: issueKind,
       comments: ["Comment"],
-      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: #_sourceLocation)
+      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: #Testing::sourceLocation)
     )
     let issueSnapshot = Issue.Snapshot(snapshotting: issue)
 

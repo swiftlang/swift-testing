@@ -111,35 +111,18 @@ public protocol Trait: Sendable {
   func scopeProvider(for test: Test, testCase: Test.Case?) -> TestScopeProvider?
 
 #if hasFeature(Embedded)
+  /// Get this trait's scope provider for the specified test and optional test
+  /// case.
+  ///
+  /// - Warning: This function is used to implement traits under Embedded Swift.
+  ///   Do not use it or provide an implementation for it.
+  func __scopeProvider(for test: Test, testCase: Test.Case?) -> (any TestScoping)?
+
   /// Get this value as an instance of ``TestTrait``.
   ///
   /// - Warning: This function is used to implement traits under Embedded Swift.
   ///   Do not use it or provide an implementation for it.
   func __as(_: (any TestTrait).Type) -> (any TestTrait)?
-
-  /// Get this value as an instance of ``SuiteTrait``.
-  ///
-  /// - Warning: This function is used to implement traits under Embedded Swift.
-  ///   Do not use it or provide an implementation for it.
-  func __as(_: (any SuiteTrait).Type) -> (any SuiteTrait)?
-
-  /// Get this value as an instance of ``Tag/List``.
-  ///
-  /// - Warning: This function is used to implement traits under Embedded Swift.
-  ///   Do not use it or provide an implementation for it.
-  func __as(_: Comment.Type) -> Comment?
-
-  /// Get this value as an instance of ``IssueHandlingTrait``.
-  ///
-  /// - Warning: This function is used to implement traits under Embedded Swift.
-  ///   Do not use it or provide an implementation for it.
-  func __as(_: IssueHandlingTrait.Type) -> IssueHandlingTrait?
-
-  /// Get this value as an instance of ``Tag/List``.
-  ///
-  /// - Warning: This function is used to implement traits under Embedded Swift.
-  ///   Do not use it or provide an implementation for it.
-  func __as(_: Tag.List.Type) -> Tag.List?
 #endif
 }
 
@@ -198,6 +181,14 @@ public protocol TestScoping: Sendable {
   func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws
 }
 
+#if hasFeature(Embedded)
+extension Trait {
+  public func __scopeProvider(for test: Test, testCase: Test.Case?) -> (any TestScoping)? {
+    scopeProvider(for: test, testCase: testCase)
+  }
+}
+#endif
+
 extension Trait where Self: TestScoping {
   /// Get this trait's scope provider for the specified test or test case.
   ///
@@ -221,6 +212,7 @@ extension Trait where Self: TestScoping {
   }
 }
 
+@_unavailableInEmbedded
 extension SuiteTrait where Self: TestScoping {
   /// Get this trait's scope provider for the specified test and optional test
   /// case.
@@ -269,6 +261,7 @@ public protocol TestTrait: Trait {}
 /// The testing library defines a number of traits that you can add to test
 /// suites. You can also define your own traits by creating types that
 /// conform to this protocol, or to the ``TestTrait`` protocol.
+@_unavailableInEmbedded
 public protocol SuiteTrait: Trait {
   /// Whether this instance should be applied recursively to child test suites
   /// and test functions.
@@ -312,49 +305,22 @@ extension Trait where TestScopeProvider == Never {
   }
 }
 
+@_unavailableInEmbedded
 extension SuiteTrait {
   public var isRecursive: Bool {
     false
   }
 }
 
-#if !hasFeature(Embedded)
-extension Trait {
-  func __as<T>(_: T.Type) -> T? {
-    self as? T
-  }
-}
-#else
+#if hasFeature(Embedded)
 extension Trait {
   public func __as(_: (any TestTrait).Type) -> (any TestTrait)? {
-    nil
-  }
-
-  public func __as(_: (any SuiteTrait).Type) -> (any SuiteTrait)? {
-    nil
-  }
-
-  public func __as(_: Comment.Type) -> Comment? {
-    nil
-  }
-
-  public func __as(_: IssueHandlingTrait.Type) -> IssueHandlingTrait? {
-    nil
-  }
-
-  public func __as(_: Tag.List.Type) -> Tag.List? {
     nil
   }
 }
 
 extension Trait where Self: TestTrait {
   public func __as(_: (any TestTrait).Type) -> (any TestTrait)? {
-    self
-  }
-}
-
-extension Trait where Self: SuiteTrait {
-  public func __as(_: (any SuiteTrait).Type) -> (any SuiteTrait)? {
     self
   }
 }

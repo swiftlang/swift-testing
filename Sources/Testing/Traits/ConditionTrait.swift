@@ -18,7 +18,7 @@
 /// - ``Trait/disabled(_:sourceLocation:)``
 /// - ``Trait/disabled(if:_:sourceLocation:)``
 /// - ``Trait/disabled(_:sourceLocation:_:)``
-public struct ConditionTrait: TestTrait, SuiteTrait {
+public struct ConditionTrait: TestTrait {
   /// An enumeration that describes the conditions that an instance of this type
   /// can represent.
   enum Kind: Sendable {
@@ -94,11 +94,17 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
       try Test.cancel(comments.first, sourceLocation: sourceLocation)
     }
   }
+}
 
+#if !hasFeature(Embedded)
+// MARK: - SuiteTrait
+
+extension ConditionTrait: SuiteTrait {
   public var isRecursive: Bool {
     true
   }
 }
+#endif
 
 // MARK: -
 
@@ -123,7 +129,7 @@ extension Trait where Self == ConditionTrait {
   public static func enabled(
     if condition: @autoclosure @escaping @Sendable () throws -> Bool,
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     Self(kind: .conditional(condition), comments: Array(comment), sourceLocation: sourceLocation)
   }
@@ -141,7 +147,7 @@ extension Trait where Self == ConditionTrait {
   ///   closure you provide.
   public static func enabled(
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     _ condition: @escaping @Sendable () async throws -> Bool
   ) -> Self {
     Self(kind: .conditional(condition), comments: Array(comment), sourceLocation: sourceLocation)
@@ -157,7 +163,7 @@ extension Trait where Self == ConditionTrait {
   ///   test to which it is added.
   public static func disabled(
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     Self(kind: .unconditional(false), comments: Array(comment), sourceLocation: sourceLocation)
   }
@@ -182,7 +188,7 @@ extension Trait where Self == ConditionTrait {
   public static func disabled(
     if condition: @autoclosure @escaping @Sendable () throws -> Bool,
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     Self(kind: .conditional { !(try condition()) }, comments: Array(comment), sourceLocation: sourceLocation)
   }
@@ -200,7 +206,7 @@ extension Trait where Self == ConditionTrait {
   ///   specified closure.
   public static func disabled(
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation,
+    sourceLocation: SourceLocation = #Testing::sourceLocation,
     _ condition: @escaping @Sendable () async throws -> Bool
   ) -> Self {
     Self(kind: .conditional { !(try await condition()) }, comments: Array(comment), sourceLocation: sourceLocation)

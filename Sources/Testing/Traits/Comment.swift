@@ -184,17 +184,17 @@ extension Comment.Kind: Codable {}
 
 // MARK: - Trait, TestTrait, SuiteTrait
 
-extension Comment: TestTrait, SuiteTrait {
+extension Comment: TestTrait {
   public var comments: [Comment] {
     [self]
   }
-
-#if hasFeature(Embedded)
-  public func __as(_: Comment.Type) -> Comment? {
-    self
-  }
-#endif
 }
+
+#if !hasFeature(Embedded)
+extension Comment: SuiteTrait {}
+#endif
+
+// MARK: -
 
 @_spi(Experimental)
 extension Trait where Self == Comment {
@@ -223,6 +223,6 @@ extension Trait where Self == Comment {
 extension Test {
   /// The complete set of comments about this test from all of its traits.
   public var comments: [Comment] {
-    traits.flatMap(\.comments)
+    traits.flatMap { $0.comments }
   }
 }

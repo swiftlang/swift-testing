@@ -146,10 +146,14 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       result = ("deinitializer", "a")
     case .subscriptDecl:
       result = ("subscript", "a")
+    case .accessorDecl:
+      result = ("accessor", "an")
     case .enumCaseDecl:
       result = ("enumeration case", "an")
     case .typeAliasDecl:
       result = ("typealias", "a")
+    case .associatedTypeDecl:
+      result = ("associated type", "an")
     case .macroDecl:
       result = ("macro", "a")
     case .protocolDecl:
@@ -389,10 +393,12 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - genericClause: If not `nil`, a syntax node that causes `node` to be
   ///     generic.
   ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///   - inEmbedded: Whether or not the constraint applies specifically to
+  ///     Embedded Swift.
   ///   - decl: The declaration in question (contained in `node`.)
   ///
   /// - Returns: A diagnostic message.
-  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
+  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, inEmbedded: Bool = false, on decl: some SyntaxProtocol) -> Self {
     // Avoid using a syntax node from a lexical context (it won't have source
     // location information.)
     let syntax: Syntax = if let genericClause, attribute.root == genericClause.root {
@@ -424,12 +430,17 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       } else {
         message += " within an extension to type '\(extensionDecl.extendedType.trimmedDescription)'"
       }
+    } else if let type = node.as(TypeSyntax.self) {
+      message += " within\(generic) type '\(type.trimmedDescription)'"
     } else {
       if genericClause != nil {
         message += " within a generic \(_kindString(for: node))"
       } else {
         message += " within \(_kindString(for: node, includeA: true))"
       }
+    }
+    if inEmbedded {
+      message += " in Embedded Swift"
     }
     if let decl = node.as(DeclSyntax.self), declarationInheritsFromXCTestClass(decl) == true {
       message += " because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'"
