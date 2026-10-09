@@ -73,6 +73,11 @@ let package = Package(
         name: "Testing",
         type: .dynamic, // needed so Windows exports ABI entry point symbols
         targets: ["Testing"]
+      ),
+      .library(
+        name: "TestingTools",
+        type: .dynamic,
+        targets: ["TestingTools"]
       )
     ]
 #else
@@ -80,6 +85,10 @@ let package = Package(
       .library(
         name: "Testing",
         targets: ["Testing"]
+      ),
+      .library(
+        name: "TestingTools",
+        targets: ["TestingTools"]
       )
     ]
 #endif
@@ -167,6 +176,11 @@ let package = Package(
         return []
       }()
     ),
+    .target(
+      name: "TestingTools",
+      dependencies: ["Testing"],
+      exclude: ["CMakeLists.txt"]
+    ),
     .testTarget(
       name: "TestingTests",
       dependencies: [
@@ -182,6 +196,12 @@ let package = Package(
       ],
       linkerSettings: [
         .linkedLibrary("util", .when(platforms: [.openbsd]))
+      ]
+    ),
+    .testTarget(
+      name: "TestingToolsTests",
+      dependencies: [
+        "TestingTools"
       ]
     ),
 
