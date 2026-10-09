@@ -81,9 +81,11 @@ public func __checkValue(
   }
 
   // Capture the correct expression in the expectation.
-  if !condition, let expressionWithCapturedRuntimeValues = expressionWithCapturedRuntimeValues() {
-    expression = expressionWithCapturedRuntimeValues
-    if expression.runtimeValue == nil, expression.isNegated {
+  if !condition {
+    if let expressionWithCapturedRuntimeValues = expressionWithCapturedRuntimeValues() {
+      expression = expressionWithCapturedRuntimeValues
+    }
+    if expression.runtimeValue == nil {
       expression = expression.capturingRuntimeValues(condition)
     }
   }

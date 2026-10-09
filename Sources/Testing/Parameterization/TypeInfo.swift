@@ -134,6 +134,16 @@ public struct TypeInfo: Sendable {
     Self(fullyQualifiedNameComponents: ["Swift", "Bool"])
 #endif
   }
+
+  /// The `any Error` type.
+  static var anyError: Self {
+#if !hasFeature(Embedded)
+    Self(describing: (any Error).self)
+#else
+    Self(fullyQualifiedNameComponents: ["Swift", "Error"])
+#endif
+  }
+
 }
 
 // MARK: - Name

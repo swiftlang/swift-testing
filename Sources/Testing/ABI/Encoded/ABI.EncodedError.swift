@@ -121,7 +121,11 @@ extension ABI.EncodedError {
       self.domain = domain
     }
     code = error._code
+#if !hasFeature(Embedded)
     typeInfo = ABI.EncodedTypeInfo<V>(encoding: TypeInfo(describingTypeOf: error))
+#else
+    typeInfo = ABI.EncodedTypeInfo<V>(encoding: .anyError)
+#endif
   }
 }
 
