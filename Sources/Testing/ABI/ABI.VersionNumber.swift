@@ -409,6 +409,7 @@ extension ABI.VersionNumber.Flags {
     var rawValue: String.UTF8View.SubSequence
 
     static func ==(lhs: Self, rhs: Self) -> Bool {
+#if !hasFeature(Embedded)
       guard lhs.rawValue.count == rhs.rawValue.count else {
         return false
       }
@@ -424,6 +425,7 @@ extension ABI.VersionNumber.Flags {
         _onFastPath()
         return result
       }
+#endif
       return lhs.rawValue.elementsEqual(rhs.rawValue)
     }
 
