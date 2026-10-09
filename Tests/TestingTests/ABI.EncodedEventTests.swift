@@ -447,11 +447,11 @@ extension `ABI.EncodedEvent Tests`.Messages {
   }
 
   @Test(.serialized(for: \Environment.self))
-  func `Includes messages when SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED is set`() throws {
-    let oldEnvvar = Environment.variable(named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
-    Environment.setVariable(nil, named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+  func `Includes messages when SWIFT_TESTING_EVENT_STREAM_MESSAGES_FIELD_ENABLED is set`() throws {
+    let oldEnvvar = Environment.variable(named: "SWIFT_TESTING_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+    Environment.setVariable(nil, named: "SWIFT_TESTING_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
     defer {
-      Environment.setVariable(oldEnvvar, named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+      Environment.setVariable(oldEnvvar, named: "SWIFT_TESTING_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
     }
 
     #expect(ABI.v6_3.alwaysEncodeMessagesField)
@@ -460,7 +460,7 @@ extension `ABI.EncodedEvent Tests`.Messages {
     #expect(!ABI.ExperimentalVersion.alwaysEncodeMessagesField)
     #expect(!ABI.ExperimentalVersion.alwaysDecodeMessagesField)
 
-    Environment.setVariable("true", named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+    Environment.setVariable("true", named: "SWIFT_TESTING_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
 
     #expect(ABI.ExperimentalVersion.alwaysEncodeMessagesField)
     #expect(!ABI.ExperimentalVersion.alwaysDecodeMessagesField)
