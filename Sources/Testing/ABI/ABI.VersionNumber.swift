@@ -42,12 +42,44 @@ extension ABI {
 
     /// The patch, revision, or bug fix version.
     var patchComponent: Component = 0
+
+    /// A type describing flags for version numbers.
+    ///
+    /// When converting a version number to or from a string, all flags are
+    /// represented as "pre-release identifiers" per the semantic versioning
+    /// specification.
+    ///
+    /// - Important: The semantic versioning specification requires that the
+    ///   order of prerelease IDs be preserved so that it can factor into
+    ///   version number comparisons. This type does _not_ follow that rule so
+    ///   we can save space: if we preserved ordering, the stride of
+    ///   ``ABI/VersionNumber`` would need to be at least as large as two
+    ///   pointers to hold the numeric components, the flags, and their
+    ///   ordering.
+    struct Flags: OptionSet {
+      var rawValue: Component.Magnitude
+
+      /// The owning version number represents a development build of the
+      /// testing library.
+      static var developmentBuild: Self { .init(rawValue: 1 << 0) }
+
+#if DEBUG
+      /// Whether or not the testing library was built as a debug build.
+      ///
+      /// - Note: We only ever use this flag in our own debug builds to allow
+      ///   for testing the logic in this file.
+      static var debugBuild: Self { .init(rawValue: 1 << (RawValue.bitWidth - 1)) }
+#endif
+    }
+
+    /// Flags for this instance.
+    var flags: Flags = []
   }
 }
 
 extension ABI.VersionNumber {
-  init(_ majorComponent: _const Component, _ minorComponent: _const Component, _ patchComponent: _const Component = 0) {
-    self.init(majorComponent: majorComponent, minorComponent: minorComponent, patchComponent: patchComponent)
+  init(_ majorComponent: _const Component, _ minorComponent: _const Component, _ patchComponent: _const Component = 0, flags: Flags = []) {
+    self.init(majorComponent: majorComponent, minorComponent: minorComponent, patchComponent: patchComponent, flags: flags)
   }
 }
 
@@ -69,6 +101,11 @@ extension ABI.VersionNumber: CustomStringConvertible {
   ///   `VersionTupleSyntax` type here because we cannot link to swift-syntax
   ///   in this target.
   private static func _parse(_ string: String) -> Self? {
+    // The empty string is obviously invalid.
+    if string.isEmpty {
+      return nil
+    }
+
     // Check if we've previously encountered this version number.
     let cachedValue = Self._versionNumberCache.withLock { versionNumberCache in
       versionNumberCache[string]
@@ -79,16 +116,56 @@ extension ABI.VersionNumber: CustomStringConvertible {
 
     var result: Self?
     do {
+      // Split the string on "-" once to extract any prerelease identifiers. We
+      // need to continue to support a negative major component, so if the first
+      // character is "-", we need to skip it during splitting, then insert it
+      // back into the first string.
+      let string = string.utf8
+      var componentsThenPrereleaseIDs: [String.UTF8View.SubSequence]
+      if string.first == UInt8(ascii: "-") {
+        componentsThenPrereleaseIDs = string.dropFirst().split(separator: UInt8(ascii: "-"), maxSplits: 1, omittingEmptySubsequences: false)
+        let allComponents = componentsThenPrereleaseIDs[0]
+        componentsThenPrereleaseIDs[0] = string[..<allComponents.endIndex]
+      } else {
+        componentsThenPrereleaseIDs = string.split(separator: UInt8(ascii: "-"), maxSplits: 1, omittingEmptySubsequences: false)
+      }
+
       // Split the string on "." (assuming it is of the form "1", "1.2", or
       // "1.2.3") and parse the individual components as integers.
-      let components = string.split(separator: ".", omittingEmptySubsequences: false)
+      let allComponents = componentsThenPrereleaseIDs[0]
+      let components = allComponents.split(separator: UInt8(ascii: "."), omittingEmptySubsequences: false)
       func componentValue(_ index: Int) -> Component? {
-        components.count > index ? Component(components[index]) : 0
+        if components.count > index {
+          // FIXME: need BinaryInteger.init?(_: UTF8View)
+          // SEE: https://github.com/swiftlang/swift/issues/93113
+          return String(components[index]).flatMap(Component.init)
+        }
+        return 0
       }
       if let majorComponent = componentValue(0),
          let minorComponent = componentValue(1),
          let patchComponent = componentValue(2) {
         result = Self(majorComponent: majorComponent, minorComponent: minorComponent, patchComponent: patchComponent)
+      }
+
+      if componentsThenPrereleaseIDs.count > 1 {
+        let allPrereleaseIDs = componentsThenPrereleaseIDs[1]
+        if allPrereleaseIDs.isEmpty {
+          // There was a trailing "-" which is invalid.
+          result = nil
+        } else {
+          let prereleaseIDs = allPrereleaseIDs.split(separator: UInt8(ascii: "."), omittingEmptySubsequences: false)
+
+          var flags: Flags = []
+          for prereleaseID in prereleaseIDs {
+            guard let flag = Flags(prereleaseID: prereleaseID) else {
+              result = nil
+              break
+            }
+            flags.insert(flag)
+          }
+          result?.flags = flags
+        }
       }
     }
 
@@ -138,18 +215,18 @@ extension ABI.VersionNumber: CustomStringConvertible {
   }
 
   public var description: String {
-    if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
+    if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 && flags.isEmpty {
       // Version 0 and earlier are described as integers for compatibility with
       // Swift 6.2 and earlier.
       return String(describing: majorComponent)
     } else if patchComponent == 0 {
-      return "\(majorComponent).\(minorComponent)"
+      return "\(majorComponent).\(minorComponent)\(flags.prereleaseIDSuffix)"
     }
-    return "\(majorComponent).\(minorComponent).\(patchComponent)"
+    return "\(majorComponent).\(minorComponent).\(patchComponent)\(flags.prereleaseIDSuffix)"
   }
 }
 
-// MARK: - Equatable, Comparable
+// MARK: - Equatable, Comparable, Hashable
 
 extension ABI.VersionNumber: Equatable, Comparable {
   public static func <(lhs: Self, rhs: Self) -> Bool {
@@ -159,10 +236,27 @@ extension ABI.VersionNumber: Equatable, Comparable {
       return lhs.minorComponent < rhs.minorComponent
     } else if lhs.patchComponent != rhs.patchComponent {
       return lhs.patchComponent < rhs.patchComponent
+    } else if case let lhs = lhs.flags.rawValue.nonzeroBitCount,
+              case let rhs = rhs.flags.rawValue.nonzeroBitCount,
+              lhs != rhs {
+      if lhs == 0 {
+        return false
+      } else if rhs == 0 {
+        return true
+      }
+      return lhs < rhs
+    } else if lhs.flags != rhs.flags {
+      for (lhs, rhs) in zip(lhs.flags.prereleaseIDs, rhs.flags.prereleaseIDs) {
+        if lhs != rhs {
+          return lhs < rhs
+        }
+      }
     }
     return false
   }
 }
+
+extension ABI.VersionNumber.Flags: Equatable, Hashable {}
 
 // MARK: - Codable, JSON.Encodable
 
@@ -277,13 +371,132 @@ extension ABI.VersionNumber: Codable {
 
 extension ABI.VersionNumber: JSON.Encodable {
   func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
-    if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
+    if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 && flags.isEmpty {
       // Version 0 and earlier are encoded as integers for compatibility with
       // Swift 6.2 and earlier.
       return majorComponent.jsonValue(in: context)
     } else {
-      return "\(majorComponent).\(minorComponent).\(patchComponent)".jsonValue(in: context)
+      return "\(majorComponent).\(minorComponent).\(patchComponent)\(flags.prereleaseIDSuffix)".jsonValue(in: context)
+    }
+  }
+}
+
+// MARK: - Converting flags to/from semver prerelease IDs
+
+extension ABI.VersionNumber.Flags {
+  /// The set of recognized prerelease IDs keyed by their corresponding ``Flag``
+  /// values.
+  private static let _prereleaseIDsByFlag = {
+    var result: [Self: String] = [
+      .developmentBuild: "dev",
+    ]
+#if DEBUG
+    result[.debugBuild] = "debug"
+#endif
+    return result
+  }()
+
+  /// A structure wrapping a string's UTF-8 view that can be used as a
+  /// dictionary key.
+  ///
+  /// Because valid version number strings are always ASCII (as far as the
+  /// testing library is concerned), we can reliably use their UTF-8 views and
+  /// avoid any overhead from Unicode when comparing and hashing them.
+  ///
+  /// - Bug: `String.UTF8View` and related types should conform to `Hashable`.
+  ///   ([swift-#93112](https://github.com/swiftlang/swift/issues/93112))
+  private struct _UTF8PrereleaseID: Sendable, RawRepresentable, Equatable, Hashable {
+    var rawValue: String.UTF8View.SubSequence
+
+    static func ==(lhs: Self, rhs: Self) -> Bool {
+#if !hasFeature(Embedded) // no memcmp()
+      guard lhs.rawValue.count == rhs.rawValue.count else {
+        return false
+      }
+      if lhs.rawValue.count == 0 {
+        return true
+      }
+      let result = lhs.rawValue.withContiguousStorageIfAvailable { lhs in
+        rhs.rawValue.withContiguousStorageIfAvailable { rhs in
+          0 == memcmp(lhs.baseAddress!, rhs.baseAddress!, lhs.count)
+        }
+      }
+      if case let .some(.some(result)) = result {
+        _onFastPath()
+        return result
+      }
+#endif
+      return lhs.rawValue.elementsEqual(rhs.rawValue)
     }
 
+    func hash(into hasher: inout Hasher) {
+      let result: Void? = rawValue.withContiguousStorageIfAvailable { rawValue in
+        hasher.combine(bytes: UnsafeRawBufferPointer(rawValue))
+      }
+      if _slowPath(result == nil) {
+        for c in rawValue {
+          hasher.combine(c)
+        }
+      }
+    }
+  }
+
+  /// The set of recognized ``Flag`` values keyed by their corresponding
+  /// prerelease IDs.
+  ///
+  /// The keys of this dictionary are substrings to allow lookup during parsing
+  /// without needing to copy substrings of the original string.
+  ///
+  /// - Bug: `String.UTF8View` does not conform to `Hashable`, so we must use
+  ///   `Substring` instead for our keys.
+  private static let _flagsByPrereleaseID = Dictionary(
+    uniqueKeysWithValues: _prereleaseIDsByFlag.map { flag, prereleaseID in
+      (_UTF8PrereleaseID(rawValue: prereleaseID.utf8[...]), flag)
+    }
+  )
+
+  /// The set of non-zero bits set in this instance's raw value.
+  ///
+  /// The order of the values in this sequence is from low bit to high bit.
+  ///
+  /// Bits are represented here as masks, not positionally. For example, the
+  /// bit `0b10` is represented here as `(1 << 1)`, not as `1`.
+  fileprivate var nonZeroBits: some Sequence<RawValue> {
+    sequence(state: rawValue) { rawValue in
+      if rawValue.nonzeroBitCount == 0 {
+        return nil
+      }
+      let lowBit = RawValue(1 << rawValue.trailingZeroBitCount)
+      rawValue &= ~lowBit
+      return lowBit
+    }
+  }
+
+  /// The set of prerelease IDs, per the semantic versioning specification,
+  /// represented by this instance.
+  ///
+  /// The order of strings in this sequence matches that of ``nonZeroBits``.
+  var prereleaseIDs: some Sequence<String> {
+    nonZeroBits.lazy
+      .map(Self.init(rawValue:))
+      .compactMap { Self._prereleaseIDsByFlag[$0] }
+  }
+
+  /// The suffix to apply to the owning instance of ``ABI/VersionNumber``
+  /// when converting it to a string.
+  fileprivate var prereleaseIDSuffix: String {
+    if self.isEmpty {
+      return ""
+    }
+    return "-" + prereleaseIDs.joined(separator: ".")
+  }
+
+  init?(prereleaseID: String.UTF8View.SubSequence) {
+    let prereleaseID = _UTF8PrereleaseID(rawValue: prereleaseID)
+    guard let flag = Self._flagsByPrereleaseID[prereleaseID] else {
+      return nil
+    }
+
+    self = flag
   }
 }
