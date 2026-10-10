@@ -70,20 +70,20 @@ func videoMetadata() {
 
 ### Scalable coverage and execution
 
-Parameterized tests help you run the same test over a sequence of values so you
-can write less code. And all tests integrate seamlessly with Swift Concurrency
-and run in parallel by default.
+Parameterized tests run the same test over a sequence of values so you can
+write less code. Each value in `arguments` is passed, one at a time, as the
+test function's parameter, so three values are three runs of one function. All
+tests integrate with Swift Concurrency and run in parallel by default.
 
 ```swift
-@Test("Continents mentioned in videos", arguments: [
-    "A Beach",
-    "By the Lake",
-    "Camping in the Woods"
-])
-func mentionedContinents(videoName: String) async throws {
-    let videoLibrary = try await VideoLibrary()
-    let video = try #require(await videoLibrary.video(named: videoName))
-    #expect(video.mentionedContinents.count <= 3)
+enum VideoRating {
+    case kids, teens, adults
+}
+
+@Test(arguments: [VideoRating.kids, .teens, .adults])
+func videoMatchesRating(rating: VideoRating) async throws {
+    let video = try await VideoLibrary().video(rated: rating)
+    #expect(video.rating == rating)
 }
 ```
 
