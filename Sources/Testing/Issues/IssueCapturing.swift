@@ -16,9 +16,9 @@ internal import Synchronization
 /// through it without making any modifications.
 ///
 /// Instances of `ObserveIssueResponder` are created whenever an
-/// ``observeIssues(sourceLocation:_:)`` call is made. These are added to the
+/// ``withIssueObservation(_:)`` call is made. These are added to the
 /// Issue Responder Chain and used to observe all issues emitted during the
-/// `body` of the `observeIssues` call.
+/// `body` of the `withIssueObservation` call.
 struct ObserveIssuesResponder: IssueResponder {
   /// The list of issues recorded during execution.
   let issues = Allocated(Mutex([Issue]()))
@@ -76,7 +76,7 @@ private func _recordError(
 /// correctly record issues.
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-package func captureIssues(
+package func withIssueCapturing(
   _ body: () throws -> Void
 ) -> [Issue] {
   let responder = CaptureIssuesResponder()
@@ -102,7 +102,7 @@ package func captureIssues(
 /// correctly record issues.
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-package func captureIssues(
+package func withIssueCapturing(
   _ body: sending @isolated(any) () async throws -> Void
 ) async -> [Issue] {
   let responder = CaptureIssuesResponder()
@@ -128,7 +128,7 @@ package func captureIssues(
 /// correctly record issues.
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-package func observeIssues(
+package func withIssueObservation(
   _ body: () throws -> Void
 ) -> [Issue] {
   let responder = ObserveIssuesResponder()
@@ -154,7 +154,7 @@ package func observeIssues(
 /// correctly record issues.
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-package func observeIssues(
+package func withIssueObservation(
   _ body: sending @isolated(any) () async throws -> Void
 ) async -> [Issue] {
   let responder = ObserveIssuesResponder()

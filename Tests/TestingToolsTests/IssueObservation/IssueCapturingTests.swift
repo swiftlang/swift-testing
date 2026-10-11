@@ -13,12 +13,12 @@ import TestingTools
 
 struct IssueCapturingTests {
   // See `TestingTests.IssueCapturingTests` for more thorough and comprehensive
-  // tests of `captureIssues`.
+  // tests of `withIssueCapturing`.
 
-  // Disambiguation is required because `captureIssues` has package level
+  // Disambiguation is required because `withIssueCapturing` has package level
   // access in `Testing`.
-  @Test func `captureIssues synchronous`() {
-    let issues = TestingTools.captureIssues {
+  @Test func `withIssueCapturing synchronous`() {
+    let issues = TestingTools.withIssueCapturing {
       Issue.record("oh no")
     }
 
@@ -27,10 +27,10 @@ struct IssueCapturingTests {
     #expect(issues.last?.isFailure == true)
   }
 
-  @Test func `captureIssues asynchronous`() async {
+  @Test func `withIssueCapturing asynchronous`() async {
     func forceAsync() async -> Void {}
 
-    let issues = await TestingTools.captureIssues {
+    let issues = await TestingTools.withIssueCapturing {
       Issue.record("oh no")
       await forceAsync()
     }

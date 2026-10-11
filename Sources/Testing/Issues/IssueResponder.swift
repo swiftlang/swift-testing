@@ -22,7 +22,7 @@ private import Synchronization
 ///
 /// Use ``withIssueResponder(_:body:)`` to add your IssueResponder to the Issue
 /// Responder Chain.
-package protocol IssueResponder: Sendable {
+internal protocol IssueResponder: Sendable {
   /// Handle and respond to the given issue.
   ///
   /// - Parameters:
@@ -40,7 +40,7 @@ package protocol IssueResponder: Sendable {
 /// they are initially recorded (such as with `Issue.record`) and when they are
 /// sent to the eventing system. The very last link in the Issue Responder Chain
 /// is sending the issue to the eventing system.
-package struct IssueResponderLink: Sendable {
+internal struct IssueResponderLink: Sendable {
   /// A closure referencing the parent, or previous link in the issue responder
   /// chain.
   let parent: @Sendable () -> IssueResponderLink?
@@ -91,7 +91,7 @@ package struct IssueResponderLink: Sendable {
 ///
 /// - returns: Whatever is returned by `body`.
 /// - throws: Whatever is thrown by `body`.
-package func withIssueResponder<T>(
+internal func withIssueResponder<T>(
   _ issueResponder: any IssueResponder,
   body: () throws -> T
 ) rethrows -> T {
@@ -115,7 +115,7 @@ package func withIssueResponder<T>(
 ///
 /// - returns: Whatever is returned by `body`.
 /// - throws: Whatever is thrown by `body`.
-package func withIssueResponder<T>(
+internal func withIssueResponder<T>(
   _ issueResponder: any IssueResponder,
   body: sending @isolated(any) () async throws -> sending T
 ) async rethrows -> sending T {

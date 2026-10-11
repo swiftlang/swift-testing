@@ -22,10 +22,10 @@ public import Testing
 /// correctly record issues.
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-public func captureIssues(
+public func withIssueCapturing(
   _ body: () throws -> Void
 ) -> [Issue] {
-  Testing.captureIssues(body)
+  Testing.withIssueCapturing(body)
 }
 
 /// Invoke a function, capture and return any issues recorded during its
@@ -40,8 +40,8 @@ public func captureIssues(
 /// correctly record issues.
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-public func captureIssues(
+public func withIssueCapturing(
   _ body: sending @isolated(any) () async throws -> Void
 ) async -> [Issue] {
-  await Testing.captureIssues(body)
+  await Testing.withIssueCapturing(body)
 }
