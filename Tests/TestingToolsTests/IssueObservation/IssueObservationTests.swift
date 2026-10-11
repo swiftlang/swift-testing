@@ -13,13 +13,13 @@ import TestingTools
 
 struct IssueObservationTests {
   // See `TestingTests.IssueObservationTests` for more thorough and
-  // comprehensive tests of `observeIssues`.
+  // comprehensive tests of `withIssueObservation`.
 
-  // Disambiguation is required because `captureIssues` has package level
+  // Disambiguation is required because `withIssueObservation` has package level
   // access in `Testing`.
-  @Test func `captureIssues synchronous`() {
-    let issues = TestingTools.captureIssues {
-      let observedIssues = TestingTools.observeIssues {
+  @Test func `withIssueObservation synchronous`() {
+    let issues = TestingTools.withIssueCapturing {
+      let observedIssues = TestingTools.withIssueObservation {
         Issue.record("oh no")
       }
 
@@ -28,19 +28,20 @@ struct IssueObservationTests {
       #expect(observedIssues.last?.isFailure == true)
     }
 
-    // If `observeIssues` didn't work, then `captureIssues` would have recorded more than 1 issue.
+    // If `withIssueObservation` didn't work, then `withIssueCapturing` would
+    // have recorded more than 1 issue.
 
     #expect(issues.count == 1)
     #expect(issues.last?.comments == ["oh no"])
     #expect(issues.last?.isFailure == true)
   }
 
-  @Test func `captureIssues asynchronous`() async {
+  @Test func `withIssueObservation asynchronous`() async {
     func forceAsync() async -> Void {}
 
-    let issues = await TestingTools.captureIssues {
+    let issues = await TestingTools.withIssueCapturing {
       await forceAsync()
-      let observedIssues = TestingTools.observeIssues {
+      let observedIssues = TestingTools.withIssueObservation {
         Issue.record("oh no")
       }
       #expect(observedIssues.count == 1)
@@ -48,7 +49,8 @@ struct IssueObservationTests {
       #expect(observedIssues.last?.isFailure == true)
     }
 
-    // If `observeIssues` didn't work, then `captureIssues` would have recorded more than 1 issue.
+    // If `withIssueObservation` didn't work, then `withIssueCapturing` would
+    // have recorded more than 1 issue.
 
     #expect(issues.count == 1)
     #expect(issues.last?.comments == ["oh no"])

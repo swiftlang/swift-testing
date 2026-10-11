@@ -14,11 +14,11 @@ private import Synchronization
 #endif
 
 struct IssueCapturingTests {
-  @Test func `captureIssues sync does not report issues`() async {
+  @Test func `withIssueCapturing sync does not report issues`() async {
     let capturedIssues = Allocated(Mutex([Issue]()))
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = captureIssues {
+      let issues = withIssueCapturing {
         Issue.record("")
       }
       capturedIssues.value.withLock { $0 = issues }
@@ -33,13 +33,13 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `captureIssues async does not report issues`() async {
+  @Test func `withIssueCapturing async does not report issues`() async {
     @Sendable func forceAsync() async {}
 
     let capturedIssues = Allocated(Mutex([Issue]()))
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = await captureIssues {
+      let issues = await withIssueCapturing {
         Issue.record("")
         await forceAsync()
       }
@@ -55,11 +55,11 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `observeIssues sync does report issues`() async {
+  @Test func `withIssueObservation sync does report issues`() async {
     let capturedIssues = Allocated(Mutex([Issue]()))
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = observeIssues {
+      let issues = withIssueObservation {
         Issue.record("")
       }
       capturedIssues.value.withLock { $0 = issues }
@@ -76,13 +76,13 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `observeIssues async does report issues`() async {
+  @Test func `withIssueObservation async does report issues`() async {
     @Sendable func forceAsync() async {}
 
     let capturedIssues = Allocated(Mutex([Issue]()))
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = await observeIssues {
+      let issues = await withIssueObservation {
         Issue.record("")
         await forceAsync()
       }
@@ -100,13 +100,13 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `observeIssues reports and sets isKnown correctly`() async {
+  @Test func `withIssueObservation reports and sets isKnown correctly`() async {
     struct MyError: Error {}
 
     let observedIssues = Allocated(Mutex([Issue]()))
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = observeIssues {
+      let issues = withIssueObservation {
         throw MyError()
       }
       observedIssues.value.withLock { $0 = issues }
@@ -123,11 +123,11 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `observeIssues recorded with comment`() async {
+  @Test func `withIssueObservation recorded with comment`() async {
     let observedIssues = Allocated(Mutex([Issue]()))
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = observeIssues {
+      let issues = withIssueObservation {
         Issue.record("Issue Comment")
       }
       observedIssues.value.withLock { $0 = issues }
@@ -147,13 +147,13 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `nesting observeIssues inside captureIssues`() async {
+  @Test func `nesting withIssueObservation inside withIssueCapturing`() async {
     let capturedIssues = Allocated(Mutex([Issue]()))
     let observedIssues = Allocated(Mutex([Issue]()))
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = captureIssues {
-        let issues = observeIssues {
+      let issues = withIssueCapturing {
+        let issues = withIssueObservation {
           Issue.record("Issue Comment")
         }
         observedIssues.value.withLock { $0 = issues }
@@ -180,13 +180,13 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `nesting captureIssues inside observeIssues`() async {
+  @Test func `nesting withIssueCapturing inside withIssueObservation`() async {
     let capturedIssues = Mutex([Issue]())
     let observedIssues = Mutex([Issue]())
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = observeIssues {
-        let issues = captureIssues {
+      let issues = withIssueObservation {
+        let issues = withIssueCapturing {
           Issue.record("Issue Comment")
         }
         capturedIssues.withLock { $0 = issues }
@@ -208,11 +208,11 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `nesting withKnownIssue inside observeIssues, when an issue is recorded`() async {
+  @Test func `nesting withKnownIssue inside withIssueObservation, when an issue is recorded`() async {
     let observedIssues = Mutex([Issue]())
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = observeIssues {
+      let issues = withIssueObservation {
         withKnownIssue("known issue scope") {
           Issue.record("Issue Comment")
         }
@@ -233,11 +233,11 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `nesting withKnownIssue inside observeIssues, when an issue is recorded, but not matched to the parent scope`() async {
+  @Test func `nesting withKnownIssue inside withIssueObservation, when an issue is recorded, but not matched to the parent scope`() async {
     let observedIssues = Mutex([Issue]())
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = observeIssues {
+      let issues = withIssueObservation {
         withKnownIssue("known issue scope") {
           Issue.record("Issue Comment")
         } matching: { _ in false }
@@ -272,11 +272,11 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `nesting withKnownIssue inside observeIssues, when no issue is recorded`() async {
+  @Test func `nesting withKnownIssue inside withIssueObservation, when no issue is recorded`() async {
     let observedIssues = Mutex([Issue]())
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = observeIssues {
+      let issues = withIssueObservation {
         withKnownIssue("known issue scope") {
         }
       }
@@ -296,11 +296,11 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `nesting withKnownIssue inside captureIssues, when an issue is recorded`() async {
+  @Test func `nesting withKnownIssue inside withIssueCapturing, when an issue is recorded`() async {
     let capturedIssues = Mutex([Issue]())
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = captureIssues {
+      let issues = withIssueCapturing {
         withKnownIssue("known issue scope") {
           Issue.record("Issue Comment")
         }
@@ -318,11 +318,11 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `nesting withKnownIssue inside captureIssues, when an issue is recorded, but not matched to the parent scope`() async {
+  @Test func `nesting withKnownIssue inside withIssueCapturing, when an issue is recorded, but not matched to the parent scope`() async {
     let capturedIssues = Mutex([Issue]())
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = captureIssues {
+      let issues = withIssueCapturing {
         withKnownIssue("known issue scope") {
           Issue.record("Issue Comment")
         } matching: { _ in false }
@@ -347,11 +347,11 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `nesting withKnownIssue inside captureIssues, when no issue is recorded`() async {
+  @Test func `nesting withKnownIssue inside withIssueCapturing, when no issue is recorded`() async {
     let capturedIssues = Mutex([Issue]())
 
     let reportedIssues = await runTestAndRecordIssues {
-      let issues = captureIssues {
+      let issues = withIssueCapturing {
         withKnownIssue("known issue scope") {
         }
       }
@@ -369,12 +369,12 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `nesting captureIssues inside withKnownIssue`() async {
+  @Test func `nesting withIssueCapturing inside withKnownIssue`() async {
     let capturedIssues = Mutex([Issue]())
 
     let reportedIssues = await runTestAndRecordIssues {
       withKnownIssue("known issue scope") {
-        let issues = captureIssues {
+        let issues = withIssueCapturing {
           Issue.record("Issue Comment")
         }
         capturedIssues.withLock { $0 = issues }
@@ -398,12 +398,12 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `nesting observeIssues inside withKnownIssue`() async {
+  @Test func `nesting withIssueObservation inside withKnownIssue`() async {
     let observedIssues = Mutex([Issue]())
 
     let reportedIssues = await runTestAndRecordIssues {
       withKnownIssue("known issue scope") {
-        let issues = observeIssues {
+        let issues = withIssueObservation {
           Issue.record("Issue Comment")
         }
         observedIssues.withLock { $0 = issues }
@@ -417,7 +417,7 @@ struct IssueCapturingTests {
     #expect(reportedIssues.last?.comments == ["Issue Comment"])
     #expect(reportedIssues.last?.knownIssueContext?.comment == "known issue scope")
 
-    // inside of `observeIssues`, this is something we want to report back to
+    // inside of `withIssueObservation`, this is something we want to report back to
     // the testing library as an unexpected issue.
     // However, once it passes into withKnownIssue, that'll transform this into
     // a known issue.
