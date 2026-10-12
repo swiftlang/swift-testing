@@ -69,9 +69,9 @@ func `Check video metadata`() {
 
 ### Scalable coverage and execution
 
-Parameterized tests help you run the same test over a sequence of values so you
-can write less code. And all tests integrate seamlessly with Swift Concurrency
-and run in parallel by default.
+Parameterized tests let you write less code by running the same test over many
+different inputs. And all tests integrate seamlessly with Swift Concurrency and
+run in parallel by default.
 
 ```swift
 @Test(arguments: [
