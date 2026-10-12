@@ -59,11 +59,10 @@ like tests that target a specific device or use a specific module. You can also
 give tests a descriptive name so you know what they’re doing at a glance.
 
 ```swift
-@Test("Check video metadata",
-      .tags(.metadata))
-func videoMetadata() {
-    let video = Video(fileName: "By the Lake.mov")
-    let expectedMetadata = Metadata(duration: .seconds(90))
+@Test(.tags(.metadata))
+func `Check video metadata`() {
+    let video = Video(fileName: "By Lake Tahoe.mov")
+    let expectedMetadata = Metadata(duration: .seconds(90), filmingLocation: "California")
     #expect(video.metadata == expectedMetadata)
 }
 ```
@@ -75,15 +74,15 @@ can write less code. And all tests integrate seamlessly with Swift Concurrency
 and run in parallel by default.
 
 ```swift
-@Test("Continents mentioned in videos", arguments: [
-    "A Beach",
-    "By the Lake",
-    "Camping in the Woods"
+@Test(arguments: [
+    "Weekend at Big Sur",
+    "By Lake Tahoe",
+    "Camping in Muir Woods"
 ])
-func mentionedContinents(videoName: String) async throws {
+func `California vacation videos have locations`(videoName: String) async throws {
     let videoLibrary = try await VideoLibrary()
     let video = try #require(await videoLibrary.video(named: videoName))
-    #expect(video.mentionedContinents.count <= 3)
+    #expect(video.metadata.filmingLocation == "California")
 }
 ```
 
