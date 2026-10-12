@@ -82,8 +82,8 @@ enum VideoRating {
 
 @Test(arguments: [VideoRating.kids, .teens, .adults])
 func videoMatchesRating(rating: VideoRating) async throws {
-    let video = try await VideoLibrary().video(rated: rating)
-    #expect(video.rating == rating)
+    let video = try await VideoLibrary().videos(rated: rating).first
+    #expect(video?.rating == rating)
 }
 ```
 
