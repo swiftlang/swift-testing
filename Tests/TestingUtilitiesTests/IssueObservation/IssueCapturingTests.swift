@@ -9,7 +9,7 @@
 //
 
 import Testing
-import TestingTools
+import TestingUtilities
 
 struct IssueCapturingTests {
   // See `TestingTests.IssueCapturingTests` for more thorough and comprehensive
@@ -18,7 +18,7 @@ struct IssueCapturingTests {
   // Disambiguation is required because `withIssueCapturing` has package level
   // access in `Testing`.
   @Test func `withIssueCapturing synchronous`() {
-    let issues = TestingTools.withIssueCapturing {
+    let issues = TestingUtilities.withIssueCapturing {
       Issue.record("oh no")
     }
 
@@ -30,7 +30,7 @@ struct IssueCapturingTests {
   @Test func `withIssueCapturing asynchronous`() async {
     func forceAsync() async -> Void {}
 
-    let issues = await TestingTools.withIssueCapturing {
+    let issues = await TestingUtilities.withIssueCapturing {
       Issue.record("oh no")
       await forceAsync()
     }

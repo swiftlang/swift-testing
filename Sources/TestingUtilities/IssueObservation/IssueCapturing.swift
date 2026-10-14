@@ -11,8 +11,8 @@
 public import Testing
 
 /// Invoke a function, capture and return any issues recorded during its
-/// execution. Issues captured will not be sent to the next responder in the
-/// Issue Responder Chain.
+/// execution. Issues captured will not be sent to the rest of the testing
+/// library.
 ///
 /// - Parameters:
 ///   - body: The function to invoke.
@@ -29,8 +29,8 @@ public func withIssueCapturing(
 }
 
 /// Invoke a function, capture and return any issues recorded during its
-/// execution. Issues captured will not be sent to the next responder in the
-/// Issue Responder Chain.
+/// execution. Issues captured will not be sent to the rest of the testing
+/// library.
 ///
 /// - Parameters:
 ///   - body: The function to invoke.

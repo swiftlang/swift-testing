@@ -75,9 +75,9 @@ let package = Package(
         targets: ["Testing"]
       ),
       .library(
-        name: "TestingTools",
+        name: "TestingUtilities",
         type: .dynamic,
-        targets: ["TestingTools"]
+        targets: ["TestingUtilities"]
       )
     ]
 #else
@@ -87,8 +87,8 @@ let package = Package(
         targets: ["Testing"]
       ),
       .library(
-        name: "TestingTools",
-        targets: ["TestingTools"]
+        name: "TestingUtilities",
+        targets: ["TestingUtilities"]
       )
     ]
 #endif
@@ -174,7 +174,7 @@ let package = Package(
       }()
     ),
     .target(
-      name: "TestingTools",
+      name: "TestingUtilities",
       dependencies: ["Testing"],
       exclude: ["CMakeLists.txt"]
     ),
@@ -196,9 +196,9 @@ let package = Package(
       ]
     ),
     .testTarget(
-      name: "TestingToolsTests",
+      name: "TestingUtilitiesTests",
       dependencies: [
-        "TestingTools"
+        "TestingUtilities"
       ]
     ),
 
