@@ -9,7 +9,7 @@
 //
 
 import Testing
-import TestingTools
+import TestingUtilities
 
 struct IssueObservationTests {
   // See `TestingTests.IssueObservationTests` for more thorough and
@@ -18,8 +18,8 @@ struct IssueObservationTests {
   // Disambiguation is required because `withIssueObservation` has package level
   // access in `Testing`.
   @Test func `withIssueObservation synchronous`() {
-    let issues = TestingTools.withIssueCapturing {
-      let observedIssues = TestingTools.withIssueObservation {
+    let issues = TestingUtilities.withIssueCapturing {
+      let observedIssues = TestingUtilities.withIssueObservation {
         Issue.record("oh no")
       }
 
@@ -39,9 +39,9 @@ struct IssueObservationTests {
   @Test func `withIssueObservation asynchronous`() async {
     func forceAsync() async -> Void {}
 
-    let issues = await TestingTools.withIssueCapturing {
+    let issues = await TestingUtilities.withIssueCapturing {
       await forceAsync()
-      let observedIssues = TestingTools.withIssueObservation {
+      let observedIssues = TestingUtilities.withIssueObservation {
         Issue.record("oh no")
       }
       #expect(observedIssues.count == 1)

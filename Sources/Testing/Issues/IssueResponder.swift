@@ -91,10 +91,10 @@ internal struct IssueResponderLink: Sendable {
 ///
 /// - returns: Whatever is returned by `body`.
 /// - throws: Whatever is thrown by `body`.
-internal func withIssueResponder<T>(
-  _ issueResponder: any IssueResponder,
-  body: () throws -> T
-) rethrows -> T {
+internal func withIssueResponder<Value, Responder>(
+  _ issueResponder: Responder,
+  body: () throws -> Value
+) rethrows -> Value where Responder: IssueResponder {
   try IssueResponderLink.$current.withValue(
     IssueResponderLink(
       parent: IssueResponderLink.current,
@@ -115,10 +115,10 @@ internal func withIssueResponder<T>(
 ///
 /// - returns: Whatever is returned by `body`.
 /// - throws: Whatever is thrown by `body`.
-internal func withIssueResponder<T>(
-  _ issueResponder: any IssueResponder,
-  body: sending @isolated(any) () async throws -> sending T
-) async rethrows -> sending T {
+internal func withIssueResponder<Value, Responder>(
+  _ issueResponder: Responder,
+  body: sending @isolated(any) () async throws -> sending Value
+) async rethrows -> sending Value where Responder: IssueResponder {
   try await IssueResponderLink.$current.withValue(
     IssueResponderLink(
       parent: IssueResponderLink.current,

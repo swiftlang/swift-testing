@@ -34,7 +34,7 @@ struct KnownIssueResponder: IssueResponder {
 
   /// The number of issues this `KnownIssueResponder` and earlier
   /// `KnownIssueResponder`s in the Issue Responder Chain have matched.
-  let matchCounter = Allocated(Atomic<Int>(0))
+  fileprivate let matchCounter = Allocated(Atomic<Int>(0))
 
   /// The list of responders in the current issue responder chain before this
   /// responder.

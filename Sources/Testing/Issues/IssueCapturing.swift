@@ -65,8 +65,8 @@ private func _recordError(
 }
 
 /// Invoke a function, capture and return any issues recorded during its
-/// execution. Issues captured will not be sent to the next responder in the
-/// Issue Responder Chain.
+/// execution. Issues captured will not be sent to the rest of the testing
+/// library.
 ///
 /// - Parameters:
 ///   - body: The function to invoke.
@@ -91,8 +91,8 @@ package func withIssueCapturing(
 }
 
 /// Invoke a function, capture and return any issues recorded during its
-/// execution. Issues captured will not be sent to the next responder in the
-/// Issue Responder Chain.
+/// execution. Issues captured will not be sent to the rest of the testing
+/// library.
 ///
 /// - Parameters:
 ///   - body: The function to invoke.
@@ -117,8 +117,7 @@ package func withIssueCapturing(
 }
 
 /// Invoke a function, and return any issues recorded during its execution.
-/// Issues recorded will be sent to the next responder in the Issue Responder
-/// Chain.
+/// Issues recorded will still be sent to the rest of the testing library.
 ///
 /// - Parameters:
 ///   - body: The function to invoke.
@@ -143,8 +142,7 @@ package func withIssueObservation(
 }
 
 /// Invoke a function, and return any issues recorded during its execution.
-/// Issues recorded will be sent to the next responder in the Issue Responder
-/// Chain.
+/// Issues recorded will still be sent to the rest of the testing library.
 ///
 /// - Parameters:
 ///   - body: The function to invoke.

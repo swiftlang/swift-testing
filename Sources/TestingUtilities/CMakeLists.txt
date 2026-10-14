@@ -7,13 +7,13 @@
 # See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 include(ModuleABIName)
-add_library(TestingTools
+add_library(TestingUtilities
   IssueResponderChain/IssueCapturing.swift
   IssueResponderChain/IssueObservation.swift
   IssueResponderChain/IssueResponder.swift
   )
-add_dependencies(TestingTools
+add_dependencies(TestingUtilities
   Testing)
-target_compile_options(TestingTools PRIVATE
+target_compile_options(TestingUtilities PRIVATE
   -enable-library-evolution
-  -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:TestingTools,Swift_MODULE_DIRECTORY>/TestingTools.swiftinterface)
+  -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:TestingUtilities,Swift_MODULE_DIRECTORY>/TestingUtilities.swiftinterface)

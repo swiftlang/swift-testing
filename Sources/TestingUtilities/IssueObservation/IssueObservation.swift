@@ -11,8 +11,7 @@
 public import Testing
 
 /// Invoke a function, and return any issues recorded during its execution.
-/// Issues recorded will be sent to the next responder in the Issue Responder
-/// Chain.
+/// Issues recorded will still be sent to the rest of the testing library.
 ///
 /// - Parameters:
 ///   - body: The function to invoke.
@@ -29,8 +28,7 @@ public func withIssueObservation(
 }
 
 /// Invoke a function, and return any issues recorded during its execution.
-/// Issues recorded will be sent to the next responder in the Issue Responder
-/// Chain.
+/// Issues recorded will still be sent to the rest of the testing library.
 ///
 /// - Parameters:
 ///   - body: The function to invoke.
