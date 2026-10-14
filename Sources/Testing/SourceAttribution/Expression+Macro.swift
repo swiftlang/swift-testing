@@ -129,7 +129,6 @@ extension __Expression {
     }
     return Self(
       sourceCode,
-      isNegated: true,
       subexpressions: [expression]
     )
   }

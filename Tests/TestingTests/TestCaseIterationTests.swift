@@ -152,7 +152,8 @@ struct TestCaseIterationTests {
       }
     }.run(configuration: configuration)
 
-    #expect(iterations.load(ordering: .sequentiallyConsistent) == expectedIterationCount)
+    let loadedIterationCount = iterations.load(ordering: .sequentiallyConsistent)
+    #expect(loadedIterationCount == expectedIterationCount)
   }
 
   // MARK: Encoded event ordering
