@@ -43,6 +43,7 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertFalse(expectation.isRequired)
+      assert(expectation.evaluatedExpression, contains: " → false")
     }
 
     await Test {
@@ -87,6 +88,7 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertTrue(expectation.isRequired)
+      assert(expectation.evaluatedExpression, contains: " → false")
     }
 
     await Test {
@@ -291,6 +293,8 @@ final class IssueTests: XCTestCase {
         expectationFailed.fulfill()
         XCTAssertNotNil(expectation.evaluatedExpression)
         XCTAssertNotNil(expectation.evaluatedExpression.runtimeValue)
+        assert(expectation.evaluatedExpression, contains: "TypeWithMemberFunctions")
+        assert(expectation.evaluatedExpression, contains: " → false")
       }
     }
 

@@ -29,7 +29,7 @@
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
 /// }
-public struct IssueHandlingTrait: TestTrait, SuiteTrait {
+public struct IssueHandlingTrait: TestTrait {
   /// A function which handles an issue and returns an optional replacement.
   ///
   /// - Parameters:
@@ -61,11 +61,27 @@ public struct IssueHandlingTrait: TestTrait, SuiteTrait {
   public func handleIssue(_ issue: Issue) -> Issue? {
     _handler(issue)
   }
+}
 
+#if !hasFeature(Embedded)
+// MARK: - SuiteTrait
+
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
+extension IssueHandlingTrait: SuiteTrait {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public var isRecursive: Bool {
     true
   }
 }
+#endif
+
+// MARK: - TestScoping
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)

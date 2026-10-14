@@ -66,11 +66,17 @@ extension Bug: JSON.Encodable {
 
 // MARK: - Trait, TestTrait, SuiteTrait
 
-extension Bug: TestTrait, SuiteTrait {
+extension Bug: TestTrait {
   public var comments: [Comment] {
     Array(title)
   }
 }
+
+#if !hasFeature(Embedded)
+extension Bug: SuiteTrait {}
+#endif
+
+// MARK: -
 
 extension Trait where Self == Bug {
   /// Constructs a bug to track with a test.

@@ -184,12 +184,65 @@ extension UInt32: CustomTestStringConvertible {}
 extension UInt64: CustomTestStringConvertible {}
 extension UInt128: CustomTestStringConvertible {}
 
-extension Float: CustomTestStringConvertible {}
-extension Double: CustomTestStringConvertible {}
+extension Float16: CustomTestStringConvertible {}
+extension Float32: CustomTestStringConvertible {}
+extension Float64: CustomTestStringConvertible {}
+#if !(os(Windows) || os(Android) || ($Embedded && !os(Linux) && !os(anyAppleOS))) && (arch(i386) || arch(x86_64))
+extension Float80: CustomTestStringConvertible {}
+#endif
 
 extension Bool: CustomTestStringConvertible {
   public var testDescription: String {
     self ? "true" : "false"
+  }
+}
+
+// MARK: - Pointer types (Embedded Swift only)
+
+extension _Pointer where Self: CustomTestStringConvertible {
+  public var testDescription: String {
+    let bitPattern = UInt(bitPattern: self)
+    return "0x\(String(bitPattern, radix: 16))"
+  }
+}
+
+extension UnsafeRawPointer: CustomTestStringConvertible {}
+extension UnsafeMutableRawPointer: CustomTestStringConvertible {}
+extension UnsafePointer: CustomTestStringConvertible {}
+extension UnsafeMutablePointer: CustomTestStringConvertible {}
+
+extension OpaquePointer: CustomTestStringConvertible {
+  public var testDescription: String {
+    let bitPattern = UInt(bitPattern: self)
+    return "0x\(String(bitPattern, radix: 16))"
+  }
+}
+
+extension UnsafeRawBufferPointer: CustomTestStringConvertible {
+  public var testDescription: String {
+    let bitPattern = UInt(bitPattern: baseAddress)
+    return "UnsafeRawBufferPointer(start: 0x\(String(bitPattern, radix: 16)), count: \(count))"
+  }
+}
+
+extension UnsafeMutableRawBufferPointer: CustomTestStringConvertible {
+  public var testDescription: String {
+    let bitPattern = UInt(bitPattern: baseAddress)
+    return "UnsafeMutableRawBufferPointer(start: 0x\(String(bitPattern, radix: 16)), count: \(count))"
+  }
+}
+
+extension UnsafeBufferPointer: CustomTestStringConvertible {
+  public var testDescription: String {
+    let bitPattern = UInt(bitPattern: baseAddress)
+    return "UnsafeBufferPointer(start: 0x\(String(bitPattern, radix: 16)), count: \(count))"
+  }
+}
+
+extension UnsafeMutableBufferPointer: CustomTestStringConvertible {
+  public var testDescription: String {
+    let bitPattern = UInt(bitPattern: baseAddress)
+    return "UnsafeMutableBufferPointer(start: 0x\(String(bitPattern, radix: 16)), count: \(count))"
   }
 }
 
