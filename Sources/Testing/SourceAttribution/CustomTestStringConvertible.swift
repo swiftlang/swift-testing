@@ -70,11 +70,25 @@ extension String {
 #endif
   }
 
-#if hasFeature(Embedded)
-  public init(describingForTest value: borrowing some CustomTestStringConvertible) {
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// @Comment {
+  ///   This overload is used to trivially describe values that are statically
+  ///   known to conform to ``CustomTestStringConvertible``.
+  /// }
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  @_documentation(visibility: private)
+  @inlinable public init(describingForTest value: borrowing some CustomTestStringConvertible) {
     self = value.testDescription
   }
 
+#if hasFeature(Embedded)
   public init(describingForTest value: borrowing some CustomStringConvertible & CustomTestStringConvertible) {
     self = value.testDescription
   }

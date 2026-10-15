@@ -110,15 +110,15 @@ extension Comment: ExpressibleByStringInterpolation {
       rawValue += literal
     }
 
+    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomTestStringConvertible) {
+      rawValue += String(describingForTest: value)
+    }
+
 #if !hasFeature(Embedded)
     @inlinable public mutating func appendInterpolation(_ value: (some Any)?) {
       rawValue += String(describingForTest: value)
     }
 #else
-    @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomTestStringConvertible) {
-      rawValue += String(describingForTest: value)
-    }
-
     @inlinable public mutating func appendInterpolation(_ value: borrowing some CustomStringConvertible & CustomTestStringConvertible) {
       rawValue += String(describingForTest: value)
     }
@@ -165,6 +165,9 @@ extension Comment: ExpressibleByStringInterpolation {
       if let value {
         rawValue += value
       } else {
+#if !SWT_FIXED_93291
+        let value: some CustomTestStringConvertible = value
+#endif
         rawValue += String(describingForTest: value)
       }
     }
