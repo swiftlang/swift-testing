@@ -284,7 +284,7 @@ public struct __Expression: Sendable {
       // BUG: we cannot use init(describingForTest:) here. The compiler won't
       // accept the existential even if we add an overload that takes one.
       description = subject.testDescription
-      typeInfo = .any
+      typeInfo = TypeInfo(describingTypeOf: subject) ?? .any
     }
 
     init?(reflecting subject: any CustomTestStringConvertible) {
@@ -317,17 +317,9 @@ public struct __Expression: Sendable {
   ///   - value: The captured runtime value.
   private mutating func _captureRuntimeValue(_ value: (any CapturableValue)?) {
     runtimeValue = value.flatMap { Value(reflecting: $0) }
-    if let value = value as? Bool {
-      runtimeValue?.typeInfo = .bool
-      if isNegated {
-        subexpressions[0]._captureRuntimeValue(!value)
-      }
+    if isNegated, let value = value as? Bool {
+      subexpressions[0]._captureRuntimeValue(!value)
     }
-#if hasFeature(Embedded)
-    if value is UnavailableInEmbeddedSwift {
-      runtimeValue?.typeInfo = .unavailableInEmbeddedSwift
-    }
-#endif
   }
 
   /// Capture the runtime values corresponding to this instance and its
@@ -553,6 +545,10 @@ struct UnavailableInEmbeddedSwift: Sendable, CustomTestStringConvertible {
 
   var testDescription: String {
     Self.testDescription
+  }
+
+  static var __testingTypeInfo: Any? {
+    TypeInfo.unavailableInEmbeddedSwift
   }
 }
 

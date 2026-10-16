@@ -126,15 +126,6 @@ public struct TypeInfo: Sendable {
 #endif
   }
 
-  /// The `Bool` type.
-  static var bool: Self {
-#if !hasFeature(Embedded)
-    Self(describing: Bool.self)
-#else
-    Self(fullyQualifiedNameComponents: ["Swift", "Bool"])
-#endif
-  }
-
   /// The `any Error` type.
   static var anyError: Self {
 #if !hasFeature(Embedded)
