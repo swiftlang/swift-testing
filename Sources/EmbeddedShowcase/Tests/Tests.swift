@@ -14,50 +14,54 @@ import Testing
 // Testing can be built for an Embedded Swift target.
 
 extension Tag {
-  @Tag static var foo: Self
+  enum Foo {
+    @Tag static var bar: Tag
+  }
 }
 
-@Test(.tags(.foo)) func addition() {
-  #expect(1 + 1 == 2)
-}
-
-@Test func subtraction() {
-  #expect(5 - 3 == 2)
-}
-
-@Test(arguments: 0 ..< 5)
-func isSmall(_ i: Int) {
-  #expect(i < 5)
-}
-
-@Test func multiplication() {
-  #expect(6 * 7 == 42)
-}
-
-@Test(
-  arguments: [
-    ("abc", 1.0),
-    ("def", 2.0),
-    ("ghi", 3.0),
-    ("jkl", nil),
-  ]
-)
-func stringsAndNumbers(_ x: String, _ y: Double?) {}
-
-@Test func willFail() {
-  let sprocketCount = 123
-  let widgetCount = 456
-  #expect(sprocketCount == widgetCount, "Math, am I right?")
-
-  struct MyError: Error {}
-  #expect(throws: Never.self) {
-    throw MyError()
+@Suite struct `Embedded Swift Testing Showcase!` {
+  @Test(.tags(.Foo.bar)) func addition() {
+    #expect(1 + 1 == 2)
   }
 
-  Issue.record("This is just a friendly warning.", severity: .warning)
-}
+  @Test func subtraction() {
+    #expect(5 - 3 == 2)
+  }
 
-@Test func recordAttachment() {
-  let loremIpsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-  Attachment.record(loremIpsum, named: "Lorem Ipsum.txt")
+  @Test(arguments: 0 ..< 5)
+  func isSmall(_ i: Int) {
+    #expect(i < 5)
+  }
+
+  @Test func multiplication() {
+    #expect(6 * 7 == 42)
+  }
+
+  @Test(
+    arguments: [
+      ("abc", 1.0),
+      ("def", 2.0),
+      ("ghi", 3.0),
+      ("jkl", nil),
+    ]
+  )
+  func stringsAndNumbers(_ x: String, _ y: Double?) {}
+
+  @Test func willFail() {
+    let sprocketCount = 123
+    let widgetCount = 456
+    #expect(sprocketCount == widgetCount, "Math, am I right?")
+
+    struct MyError: Error {}
+    #expect(throws: Never.self) {
+      throw MyError()
+    }
+
+    Issue.record("This is just a friendly warning.", severity: .warning)
+  }
+
+  @Test func recordAttachment() {
+    let loremIpsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+    Attachment.record(loremIpsum, named: "Lorem Ipsum.txt")
+  }
 }
