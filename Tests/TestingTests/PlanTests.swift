@@ -542,9 +542,60 @@ struct PlanTests {
     await runTestFunction(named: "disabled(x:)", in: ParameterizedTests.self, configuration: configuration)
   }
 #endif
+
+  @Test("Test cases and arguments of a test inside a skipped suite are not evaluated")
+  func testCasesInsideSkippedSuiteNotEvaluated() async throws {
+    let suite = try #require(await test(for: SkippedSuiteFixtures.self))
+    let childTest = try #require(await testFunction(named: "childTest(param:)", in: SkippedSuiteFixtures.self))
+
+    let tests = [suite, childTest]
+    var configuration = Configuration()
+    configuration.setTestFilter(toInclude: [suite.id, childTest.id], includeHiddenTests: true)
+
+    let plan = await Runner.Plan(tests: tests, configuration: configuration)
+
+    // Ensure both suite and child test are planned as skipped
+    let suiteStep = try #require(plan.steps.first { $0.test == suite })
+    guard case .skip = suiteStep.action else {
+      Issue.record("Expected suite step to be skipped, but got \(suiteStep.action)")
+      return
+    }
+
+    let childStep = try #require(plan.steps.first { $0.test == childTest })
+    guard case .skip = childStep.action else {
+      Issue.record("Expected child step to be skipped, but got \(childStep.action)")
+      return
+    }
+
+    // Verify that the argument closure was never evaluated
+    #expect(SkippedSuiteFixtures.argumentsEvaluationCount == 0)
+  }
 }
 
 // MARK: - Fixtures
+
+private struct NonRecursiveSkipTrait: SuiteTrait {
+  var isRecursive: Bool {
+    false
+  }
+
+  func prepare(for test: Test) async throws {
+    throw SkipInfo(comment: "Skipping suite via custom trait", sourceContext: .init())
+  }
+}
+
+@Suite(.hidden, NonRecursiveSkipTrait())
+private struct SkippedSuiteFixtures {
+  nonisolated(unsafe) static var argumentsEvaluationCount = 0
+
+  static func makeArguments() -> [Int] {
+    argumentsEvaluationCount += 1
+    return [1, 2, 3]
+  }
+
+  @Test(.hidden, arguments: makeArguments())
+  func childTest(param: Int) {}
+}
 
 @Suite(.hidden, DummyRecursiveTrait())
 private struct OuterTest {

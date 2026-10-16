@@ -343,6 +343,50 @@ extension Runner.Plan {
     return result
   }
 
+  /// Recursively construct the step graph from the test graph, applying inherited actions
+  /// (such as `.skip` or `.recordIssue`) top-down so child traits and arguments are not evaluated
+  /// when an ancestor test or suite is not planned to run.
+  ///
+  /// - Parameters:
+  ///   - testGraph: The graph of tests.
+  ///   - inheritedAction: The action inherited from the parent node, if any.
+  ///
+  /// - Returns: A graph of steps corresponding to `testGraph`.
+  private static func _recursivelyDetermineSteps(
+    in testGraph: Graph<String, Test?>,
+    inheritedAction: Action? = nil
+  ) async -> Graph<String, Step?> {
+    var step: Step?
+    var currentAction = inheritedAction
+
+    if var test = testGraph.value {
+      if let inheritedAction {
+        currentAction = inheritedAction
+      } else {
+        var action = await _determineAction(for: &test)
+        if case .run = action, let testCases = test.testCases, testCases.first(where: { _ in true }) == nil {
+          action = .skip(SkipInfo(comment: "No test cases found.", sourceContext: .init(backtrace: nil, sourceLocation: test.sourceLocation)))
+        }
+        currentAction = action
+      }
+      step = Step(test: test, action: currentAction!)
+    }
+
+    let nextInheritedAction = if let currentAction, currentAction.isRecursive {
+      currentAction
+    } else {
+      inheritedAction
+    }
+
+    var stepChildren = [String: Graph<String, Step?>]()
+    stepChildren.reserveCapacity(testGraph.children.count)
+    for (key, childGraph) in testGraph.children {
+      stepChildren[key] = await _recursivelyDetermineSteps(in: childGraph, inheritedAction: nextInheritedAction)
+    }
+
+    return Graph<String, Step?>(value: step, children: stepChildren)
+  }
+
   /// Construct a graph of runner plan steps for the specified tests.
   ///
   /// - Parameters:
@@ -360,22 +404,15 @@ extension Runner.Plan {
     }
 #endif
 
-    // Convert the list of test into a graph of steps. The actions for these
-    // steps will all be .run() *unless* an error was thrown while examining
-    // them, in which case it will be .recordIssue().
-    let runAction = _runAction
+    // Convert the list of test into a graph of tests.
     var testGraph = Graph<String, Test?>()
-    var actionGraph = Graph<String, Action>(value: runAction)
     for test in tests {
       let idComponents = test.id.keyPathRepresentation
       testGraph.insertValue(test, at: idComponents)
-      actionGraph.insertValue(runAction, at: idComponents, intermediateValue: runAction)
     }
 
     // Remove any tests that should be filtered out per the runner's
-    // configuration. The action graph is not modified here: actions that lose
-    // their corresponding tests are effectively filtered out by the call to
-    // zip() near the end of the function.
+    // configuration.
     do {
       testGraph = try configuration.testFilter.apply(to: testGraph)
     } catch {
@@ -410,41 +447,9 @@ extension Runner.Plan {
     _recursivelyReduceTraits(in: &testGraph)
 #endif
 
-    // For each test value, determine the appropriate action for it.
-    testGraph = await testGraph.mapValues { keyPath, test in
-      // Skip any nil test, which implies this node is just a placeholder and
-      // not actual test content.
-      guard var test else {
-        return nil
-      }
-
-      // Walk all the traits and tell each to prepare to run the test.
-      // If any throw a `SkipInfo` error at this stage, stop walking further.
-      // But if any throw another kind of error, keep track of the first error
-      // but continue walking, because if any subsequent traits throw a
-      // `SkipInfo`, the error should not be recorded.
-      var action = await _determineAction(for: &test)
-
-      // If the test is parameterized but has no cases, mark it as skipped.
-      if case .run = action, let testCases = test.testCases, testCases.first(where: { _ in true }) == nil {
-        action = .skip(SkipInfo(comment: "No test cases found.", sourceContext: .init(backtrace: nil, sourceLocation: test.sourceLocation)))
-      }
-
-      actionGraph.updateValue(action, at: keyPath)
-
-      return test
-    }
-
-    // Now that we have allowed all the traits to update their corresponding
-    // actions, recursively apply those actions to child tests in the graph.
-    actionGraph = actionGraph.mapValues { _, action in
-      (action, recursivelyApply: action.isRecursive)
-    }
-
-    // Zip the tests and actions together and return them.
-    return zip(testGraph, actionGraph).mapValues { _, pair in
-      pair.0.map { Step(test: $0, action: pair.1) }
-    }
+    // Recursively determine the appropriate action and construct steps for each test,
+    // propagating non-run actions (e.g. .skip or .recordIssue) top-down to child tests.
+    return await _recursivelyDetermineSteps(in: testGraph)
   }
 
   /// Initialize an instance of this type with the specified tests and
