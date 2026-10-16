@@ -184,17 +184,11 @@ extension Comment.Kind: Codable {}
 
 // MARK: - Trait, TestTrait, SuiteTrait
 
-extension Comment: TestTrait {
+extension Comment: TestTrait, SuiteTrait {
   public var comments: [Comment] {
     [self]
   }
 }
-
-#if !hasFeature(Embedded)
-extension Comment: SuiteTrait {}
-#endif
-
-// MARK: -
 
 @_spi(Experimental)
 extension Trait where Self == Comment {
