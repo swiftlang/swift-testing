@@ -390,10 +390,11 @@ public struct __Expression: Sendable {
   @_disfavoredOverload
   func capturingRuntimeValues<F, each A>(_ firstValue: F?, _ additionalValues: repeat (each A)?) -> Self {
     var result = self
-    let additionalValuesCount = parameterPackCount(repeat each additionalValues)
+    var additionalValuesCopy = [Any?]()
+    repeat additionalValuesCopy.append(each additionalValues)
     result._captureRuntimeValues(
-      UnavailableInEmbeddedSwift(),
-      (0 ..< additionalValuesCount).lazy.map { _ in UnavailableInEmbeddedSwift() }
+      firstValue.map { _ in UnavailableInEmbeddedSwift() },
+      additionalValuesCopy.lazy.map { $0.map { _ in UnavailableInEmbeddedSwift() } },
     )
     return result
   }
