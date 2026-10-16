@@ -165,10 +165,7 @@ extension Comment: ExpressibleByStringInterpolation {
       if let value {
         rawValue += value
       } else {
-#if !SWT_FIXED_93291
-        let value: some CustomTestStringConvertible = value
-#endif
-        rawValue += String(describingForTest: value)
+        rawValue += _OptionalNilComparisonType.testDescription
       }
     }
   }
