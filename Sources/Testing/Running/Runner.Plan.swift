@@ -198,20 +198,24 @@ extension Runner.Plan {
   ///   - nameComponents: The name components of the suite to synthesize, based
   ///     on the key path from the root node of the test graph to `graph`.
   private static func _recursivelySynthesizeSuites(in graph: inout Graph<String, Test?>, nameComponents: [String] = []) {
-    // The recursive function. This is a local function to simplify the initial
-    // call which does not need to pass the `sourceLocation:` inout argument.
-    func synthesizeSuites(in graph: inout Graph<String, Test?>, nameComponents: [String] = [], sourceLocation: inout SourceLocation?) {
+    // The recursive function.
+    @discardableResult
+    func synthesizeSuites(in graph: inout Graph<String, Test?>, nameComponents: [String] = []) -> SourceLocation? {
+      var childLocations = [SourceLocation]()
       for (key, var childGraph) in graph.children {
-        synthesizeSuites(in: &childGraph, nameComponents: nameComponents + [key], sourceLocation: &sourceLocation)
+        if let childLocation = synthesizeSuites(in: &childGraph, nameComponents: nameComponents + [key]) {
+          childLocations.append(childLocation)
+        }
         graph.children[key] = childGraph
       }
+      let minChildLocation = childLocations.min()
 
       if let test = graph.value {
-        sourceLocation = test.sourceLocation
-      } else if let unqualifiedName = nameComponents.last, let sourceLocation {
+        return test.sourceLocation
+      } else if let unqualifiedName = nameComponents.last, let minChildLocation {
         // Don't synthesize suites representing modules.
         if nameComponents.count <= 1 {
-          return
+          return minChildLocation
         }
 
         // Don't synthesize suites for nodes in the graph which are the
@@ -219,21 +223,24 @@ extension Runner.Plan {
         // used to disambiguate test functions which have equal names but
         // different source locations.
         if let firstChildTest = graph.children.values.first?.value, !firstChildTest.isSuite {
-          return
+          return minChildLocation
         }
 
         let typeInfo = TypeInfo(fullyQualifiedNameComponents: nameComponents, unqualifiedName: unqualifiedName)
 
         // Note: When a suite is synthesized, it does not have an accurate
-        // source location, so we use the source location of a close descendant
-        // test. We do this instead of falling back to some "unknown"
-        // placeholder in an attempt to preserve the correct sort ordering.
-        graph.value = Test(traits: [], sourceLocation: sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+        // source location, so we use the earliest source location among its
+        // descendant tests. We do this instead of falling back to some
+        // "unknown" placeholder to preserve a deterministic sort ordering.
+        let test = Test(traits: [], sourceLocation: minChildLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+        graph.value = test
+        return minChildLocation
       }
+
+      return minChildLocation
     }
 
-    var sourceLocation: SourceLocation?
-    synthesizeSuites(in: &graph, sourceLocation: &sourceLocation)
+    synthesizeSuites(in: &graph)
   }
 
   /// Given an array of tests, synthesize any containing suites that are not

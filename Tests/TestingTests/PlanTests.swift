@@ -446,6 +446,18 @@ struct PlanTests {
       #expect(implicitParentSuite_A.isSynthesized)
     }
 
+    @Test("An implicit suite with multiple tests deterministically uses the earliest source location")
+    func multipleTestsInImplicitSuite() async throws {
+      let plan = await Runner.Plan(selecting: ImplicitParentSuite_MultiTest.self)
+      let implicitSuite = try #require(plan.steps.map(\.test).first { $0.name == "ImplicitParentSuite_MultiTest" })
+      let earlyTest = try #require(plan.steps.map(\.test).first { $0.name == "earlyTest()" })
+      let lateTest = try #require(plan.steps.map(\.test).first { $0.name == "lateTest()" })
+
+      #expect(earlyTest.sourceLocation < lateTest.sourceLocation)
+      #expect(implicitSuite.sourceLocation == earlyTest.sourceLocation)
+      #expect(implicitSuite.isSynthesized)
+    }
+
     @Test("A test function in a type hierarchy where the nearest suite is explicit and outer ones are implicit", arguments: [
       ImplicitGrandparentSuite_B.self,
       ImplicitGrandparentSuite_B.ImplicitParentSuite_B.self,
@@ -589,6 +601,12 @@ private struct BasicRecursiveTrait: SuiteTrait, TestTrait, CustomStringConvertib
 // synthesis. Its children can be `.hidden`, though.
 fileprivate struct ImplicitParentSuite_A {
   @Test(.hidden) func example() {}
+}
+
+fileprivate struct ImplicitParentSuite_MultiTest {
+  @Test(.hidden) func earlyTest() {}
+  @Test(.hidden) func middleTest() {}
+  @Test(.hidden) func lateTest() {}
 }
 
 fileprivate struct ImplicitGrandparentSuite_B {
