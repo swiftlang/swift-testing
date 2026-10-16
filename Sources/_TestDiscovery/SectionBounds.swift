@@ -297,45 +297,25 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> EmptyCollection<Secti
 #else
 // MARK: - Statically-linked implementation
 
-/// A type representing the upper or lower bound of a metadata section.
-///
-/// This type is move-only and instances of it are declared as global mutable
-/// variables below to ensure that they have fixed addresses. Use the `..<`
-/// operator to get a range of addresses from two instances of this type.
-///
-/// On platforms that use static linkage and have well-defined bounds symbols,
-/// those symbols are imported into Swift below using the experimental
-/// `@_silgen_name` attribute.
-private struct _SectionBound: Sendable, ~Copyable {
-  /// A property that forces the structure to have an in-memory representation.
-  private var _storage: CChar = 0
-
-  static func ..<(lhs: inout Self, rhs: inout Self) -> Range<UnsafeRawPointer> {
-    withUnsafeMutablePointer(to: &lhs) { lhs in
-      withUnsafeMutablePointer(to: &rhs) { rhs in
-        UnsafeRawPointer(lhs) ..< UnsafeRawPointer(rhs)
-      }
-    }
-  }
-}
+private import Synchronization
 
 #if objectFormat(MachO)
 private nonisolated(unsafe) let _imageAddress: UnsafeRawPointer? = #dsohandle
-@_silgen_name(raw: "section$start$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
-@_silgen_name(raw: "section$end$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
+@_silgen_name(raw: "section$start$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) let _testContentSectionBegin: _Cell<CChar>
+@_silgen_name(raw: "section$end$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) let _testContentSectionEnd: _Cell<CChar>
 #elseif objectFormat(ELF)
 private nonisolated(unsafe) let _imageAddress = swt_ehdr_start()
-@_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
-@_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
+@_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) let _testContentSectionBegin: _Cell<CChar>
+@_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) let _testContentSectionEnd: _Cell<CChar>
 #elseif objectFormat(Wasm)
 private nonisolated(unsafe) let _imageAddress: UnsafeRawPointer? = nil
-@_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
-@_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
+@_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) let _testContentSectionBegin: _Cell<CChar>
+@_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) let _testContentSectionEnd: _Cell<CChar>
 #else
 #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
 private nonisolated(unsafe) let _imageAddress: UnsafeRawPointer? = nil
-private nonisolated(unsafe) let _testContentSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
-private nonisolated(unsafe) let _testContentSectionEnd = _testContentSectionBegin
+@exclusivity(unchecked) private nonisolated(unsafe) let _testContentSectionBegin = _Cell<CChar>(0)
+private var _testContentSectionEnd: _Cell<CChar> { _read { yield _testContentSectionBegin } }
 #endif
 
 /// The common implementation of ``SectionBounds/all(_:)`` for platforms that do
@@ -349,7 +329,7 @@ private nonisolated(unsafe) let _testContentSectionEnd = _testContentSectionBegi
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> CollectionOfOne<SectionBounds> {
   let range = switch kind {
   case .testContent:
-    _testContentSectionBegin ..< _testContentSectionEnd
+    _testContentSectionBegin._address ..< _testContentSectionEnd._address
   }
   let buffer = UnsafeRawBufferPointer(start: range.lowerBound, count: range.count)
   let sb = SectionBounds(imageAddress: _imageAddress, buffer: buffer)
