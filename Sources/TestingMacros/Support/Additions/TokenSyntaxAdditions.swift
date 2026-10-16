@@ -41,6 +41,21 @@ extension TokenSyntax {
 
     return nil
   }
+
+  /// The text of this instance with all backticks removed _unless_ it is a
+  /// valid raw identifier.
+  ///
+  /// The value of this property only includes backticks if the value of this
+  /// instance's ``text`` property already has them.
+  var textWithoutBackticksUnlessNeeded: String {
+    let (textWithoutBackticks, backticksRemoved) = _textWithoutBackticks
+    if backticksRemoved, !textWithoutBackticks.isValidSwiftIdentifier(for: .memberAccess) {
+      // There were backticks _and_ they are necessary.
+      return text
+    }
+    return textWithoutBackticks
+  }
+
 }
 
 /// The `static` keyword, if `typeName` is not `nil`.

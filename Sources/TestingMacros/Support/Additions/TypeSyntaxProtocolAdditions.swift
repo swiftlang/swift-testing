@@ -9,6 +9,7 @@
 //
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
 
 /// An array of syntax node kinds that always represent generic types.
 private let _knownGenericTypeKinds: [SyntaxKind] = [
@@ -17,6 +18,26 @@ private let _knownGenericTypeKinds: [SyntaxKind] = [
 ]
 
 extension TypeSyntaxProtocol {
+  /// Get a copy of this instance in which all of its tokens have been trimmed.
+  ///
+  /// - Returns: A copy of `self` with all tokens trimmed.
+  ///
+  /// The result of this function differs from `self.trimmed` if tokens within
+  /// the syntax node have trivia. For example, given this type declaration:
+  ///
+  /// ```swift
+  /// A<B /* C */, D>
+  /// ```
+  ///
+  /// `self.trimmed` equals `A<B /* C */, D>`, while the result of this function
+  /// equals `A<B,D>`.
+  func trimmingAllTokens() -> TypeSyntax {
+    let description = self.tokens(viewMode: .sourceAccurate)
+    .map(\.textWithoutBackticksUnlessNeeded)
+    .joined()
+    return "\(raw: description)"
+  }
+
   /// This type's module selector, if any.
   var moduleSelector: ModuleSelectorSyntax? {
     if let type = self.as(IdentifierTypeSyntax.self) {

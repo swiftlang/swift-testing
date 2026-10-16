@@ -190,6 +190,8 @@ extension Comment: TestTrait, SuiteTrait {
   }
 }
 
+// MARK: -
+
 @_spi(Experimental)
 extension Trait where Self == Comment {
   /// Construct a comment related to a test.

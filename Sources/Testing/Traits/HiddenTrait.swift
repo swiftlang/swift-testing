@@ -23,6 +23,8 @@ struct HiddenTrait: TestTrait, SuiteTrait {
   }
 }
 
+// MARK: -
+
 extension Trait where Self == HiddenTrait {
   static var hidden: Self {
     HiddenTrait()

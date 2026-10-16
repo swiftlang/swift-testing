@@ -53,6 +53,8 @@ extension Tag.List: TestTrait, SuiteTrait {
   }
 }
 
+// MARK: -
+
 extension Trait where Self == Tag.List {
   /// Construct a list of tags to apply to a test.
   ///

@@ -72,6 +72,8 @@ extension Bug: TestTrait, SuiteTrait {
   }
 }
 
+// MARK: -
+
 extension Trait where Self == Bug {
   /// Constructs a bug to track with a test.
   ///

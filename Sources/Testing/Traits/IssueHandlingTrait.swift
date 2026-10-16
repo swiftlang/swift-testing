@@ -62,10 +62,16 @@ public struct IssueHandlingTrait: TestTrait, SuiteTrait {
     _handler(issue)
   }
 
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public var isRecursive: Bool {
     true
   }
 }
+
+// MARK: - TestScoping
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
