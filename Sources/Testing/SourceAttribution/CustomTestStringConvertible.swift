@@ -70,11 +70,25 @@ extension String {
 #endif
   }
 
-#if hasFeature(Embedded)
-  public init(describingForTest value: borrowing some CustomTestStringConvertible) {
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// @Comment {
+  ///   This overload is used to trivially describe values that are statically
+  ///   known to conform to ``CustomTestStringConvertible``.
+  /// }
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  @_documentation(visibility: private)
+  @inlinable public init(describingForTest value: borrowing some CustomTestStringConvertible) {
     self = value.testDescription
   }
 
+#if hasFeature(Embedded)
   public init(describingForTest value: borrowing some CustomStringConvertible & CustomTestStringConvertible) {
     self = value.testDescription
   }
@@ -101,7 +115,6 @@ extension String {
 
   @_disfavoredOverload
   @available(*, deprecated, message: "String representations of arbitrary values are not supported in Embedded Swift")
-  @usableFromInline
   init(describingForTest value: borrowing some ~Copyable & ~Escapable) {
     // FIXME: need some sort of description functionality for arbitrary values
     self = UnavailableInEmbeddedSwift.testDescription
@@ -137,27 +150,37 @@ extension String {
 private func _testDescription(of type: any Any.Type) -> String {
   TypeInfo(describing: type).unqualifiedName
 }
-#endif
 
 extension Optional: CustomTestStringConvertible {
   public var testDescription: String {
     switch self {
     case let .some(unwrappedValue):
-#if !hasFeature(Embedded)
       String(describingForTest: unwrappedValue)
-#else
-      // FIXME: need some sort of description functionality for arbitrary values
-      "<unknown value>"
-#endif
     case nil:
-      "nil"
+      _OptionalNilComparisonType.testDescription
     }
   }
 }
+#else
+extension Optional: CustomTestStringConvertible where Wrapped: CustomTestStringConvertible {
+  public var testDescription: String {
+    switch self {
+    case let .some(unwrappedValue):
+      String(describingForTest: unwrappedValue)
+    case nil:
+      _OptionalNilComparisonType.testDescription
+    }
+  }
+}
+#endif
 
 extension _OptionalNilComparisonType: CustomTestStringConvertible {
-  public var testDescription: String {
+  @inlinable static var testDescription: String {
     "nil"
+  }
+
+  public var testDescription: String {
+    Self.testDescription
   }
 }
 

@@ -156,6 +156,11 @@ extension Comment: ExpressibleByStringInterpolation {
     mutating func appendInterpolation(_ value: any Error) {
       rawValue += String(describingForTest: value)
     }
+
+    @inlinable public mutating func appendInterpolation(_ value: some StringProtocol & CustomTestStringConvertible & CustomStringConvertible & CustomDebugStringConvertible) {
+      let value: (some StringProtocol)? = value
+      appendInterpolation(value)
+    }
 #endif
 
     @inlinable public mutating func appendInterpolation(_ value: (some StringProtocol)?) {
@@ -165,7 +170,7 @@ extension Comment: ExpressibleByStringInterpolation {
       if let value {
         rawValue += value
       } else {
-        rawValue += String(describingForTest: value)
+        rawValue += _OptionalNilComparisonType.testDescription
       }
     }
   }
