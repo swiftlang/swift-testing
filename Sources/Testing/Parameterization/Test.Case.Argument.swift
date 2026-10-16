@@ -39,19 +39,26 @@ extension Test.Case {
         self.wrappedValue = wrappedValue
       }
 
-      init(_ wrappedValue: some Sendable & CustomTestStringConvertible) {
+      init<T>(_ wrappedValue: T) where T: Sendable & CustomTestStringConvertible {
         self.wrappedValue = wrappedValue
         self._testDescription = String(describingForTest: wrappedValue)
+        self.typeInfo = TypeInfo(describing: T.self)
       }
 
       // FIXME: switch to variadic generics when Embedded Swift support improves
-      init(_ wrappedValue: (some Sendable & CustomTestStringConvertible, some Sendable & CustomTestStringConvertible)) {
+      init<T, U>(_ wrappedValue: (T, U)) where T: Sendable & CustomTestStringConvertible, U: Sendable & CustomTestStringConvertible {
         self.wrappedValue = wrappedValue
         self._testDescription = "(\(String(describingForTest: wrappedValue.0)), \(String(describingForTest: wrappedValue.1)))"
+        let fqn0 = TypeInfo(describing: T.self)?.fullyQualifiedName ?? "_"
+        let fqn1 = TypeInfo(describing: U.self)?.fullyQualifiedName ?? "_"
+        self.typeInfo = TypeInfo(fullyQualifiedNameComponents: ["(\(fqn0), \(fqn1))"])
       }
 
       /// Storage for ``testDescription``
       private var _testDescription: String?
+
+      /// The type of this value, if known.
+      fileprivate var typeInfo: TypeInfo?
 #endif
     }
 
@@ -68,7 +75,7 @@ extension Test.Case {
 #if !hasFeature(Embedded)
       TypeInfo(describingTypeOf: _value.wrappedValue)
 #else
-      parameter.typeInfo
+      _value.typeInfo ?? parameter.typeInfo
 #endif
     }
 

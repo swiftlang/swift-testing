@@ -23,6 +23,20 @@ public protocol CustomTestStringConvertible {
   /// Do not use this property directly. To get the test description of a value,
   /// use ``Swift/String/init(describingForTest:)``.
   var testDescription: String { get }
+
+#if hasFeature(Embedded)
+  /// A description of this type.
+  ///
+  /// - Warning: This function is used to implement value capturing under
+  ///   Embedded Swift. Do not use it or provide an implementation for it.
+  static var __typeInfo: Any? { get }
+
+  /// A description of this value's type.
+  ///
+  /// - Warning: This function is used to implement value capturing under
+  ///   Embedded Swift. Do not use it or provide an implementation for it.
+  var __typeInfo: Any? { get }
+#endif
 }
 
 extension String {
@@ -162,6 +176,32 @@ extension Optional: CustomTestStringConvertible {
   }
 }
 #else
+extension CustomTestStringConvertible {
+  public static var __typeInfo: Any? {
+    nil
+  }
+
+  public var __typeInfo: Any? {
+    Self.__typeInfo
+  }
+}
+
+extension TypeInfo {
+  init?(describing type: (some CustomTestStringConvertible).Type) {
+    guard let typeInfo = type.__typeInfo as? TypeInfo else {
+      return nil
+    }
+    self = typeInfo
+  }
+
+  init?(describingTypeOf value: any CustomTestStringConvertible) {
+    guard let typeInfo = value.__typeInfo as? TypeInfo else {
+      return nil
+    }
+    self = typeInfo
+  }
+}
+
 extension Optional: CustomTestStringConvertible where Wrapped: CustomTestStringConvertible {
   public var testDescription: String {
     switch self {
@@ -170,6 +210,11 @@ extension Optional: CustomTestStringConvertible where Wrapped: CustomTestStringC
     case nil:
       _OptionalNilComparisonType.testDescription
     }
+  }
+
+  public static var __typeInfo: Any? {
+    let wrappedTypeName = TypeInfo(describing: Wrapped.self)?.fullyQualifiedName ?? "_"
+    return TypeInfo(fullyQualifiedNameComponents: ["Swift", "Optional<\(wrappedTypeName)>"])
   }
 }
 #endif
@@ -182,6 +227,12 @@ extension _OptionalNilComparisonType: CustomTestStringConvertible {
   public var testDescription: String {
     Self.testDescription
   }
+
+#if hasFeature(Embedded)
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "_OptionalNilComparisonType"])
+  }
+#endif
 }
 
 #if hasFeature(Embedded)
@@ -193,30 +244,73 @@ extension Numeric where Self: CustomStringConvertible & CustomTestStringConverti
   }
 }
 
-extension Int: CustomTestStringConvertible {}
+extension SignedInteger where Self: CustomTestStringConvertible & FixedWidthInteger {
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "Int\(Self.bitWidth)"])
+  }
+}
+
+extension UnsignedInteger where Self: CustomTestStringConvertible & FixedWidthInteger {
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "UInt\(Self.bitWidth)"])
+  }
+}
+
+extension Int: CustomTestStringConvertible {
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "Int"])
+  }
+}
 extension Int8: CustomTestStringConvertible {}
 extension Int16: CustomTestStringConvertible {}
 extension Int32: CustomTestStringConvertible {}
 extension Int64: CustomTestStringConvertible {}
 extension Int128: CustomTestStringConvertible {}
 
-extension UInt: CustomTestStringConvertible {}
+extension UInt: CustomTestStringConvertible {
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "UInt"])
+  }
+}
 extension UInt8: CustomTestStringConvertible {}
 extension UInt16: CustomTestStringConvertible {}
 extension UInt32: CustomTestStringConvertible {}
 extension UInt64: CustomTestStringConvertible {}
 extension UInt128: CustomTestStringConvertible {}
 
-extension Float16: CustomTestStringConvertible {}
-extension Float32: CustomTestStringConvertible {}
-extension Float64: CustomTestStringConvertible {}
+extension Float16: CustomTestStringConvertible {
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "Float16"])
+  }
+}
+
+extension Float32: CustomTestStringConvertible  {
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "Float"])
+  }
+}
+
+extension Float64: CustomTestStringConvertible  {
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "Double"])
+  }
+}
+
 #if !(os(Windows) || os(Android) || ($Embedded && !os(Linux) && !os(anyAppleOS))) && (arch(i386) || arch(x86_64))
-extension Float80: CustomTestStringConvertible {}
+extension Float80: CustomTestStringConvertible  {
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "Float80"])
+  }
+}
 #endif
 
 extension Bool: CustomTestStringConvertible {
   public var testDescription: String {
     self ? "true" : "false"
+  }
+
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "Bool"])
   }
 }
 
@@ -229,15 +323,35 @@ extension _Pointer where Self: CustomTestStringConvertible {
   }
 }
 
-extension UnsafeRawPointer: CustomTestStringConvertible {}
-extension UnsafeMutableRawPointer: CustomTestStringConvertible {}
-extension UnsafePointer: CustomTestStringConvertible {}
-extension UnsafeMutablePointer: CustomTestStringConvertible {}
+extension UnsafeRawPointer: CustomTestStringConvertible {
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "UnsafeRawPointer"])
+  }
+}
+extension UnsafeMutableRawPointer: CustomTestStringConvertible {
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "UnsafeMutableRawPointer"])
+  }
+}
+extension UnsafePointer: CustomTestStringConvertible {
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "UnsafePointer<_>"])
+  }
+}
+extension UnsafeMutablePointer: CustomTestStringConvertible {
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "UnsafeMutablePointer<_>"])
+  }
+}
 
 extension OpaquePointer: CustomTestStringConvertible {
   public var testDescription: String {
     let bitPattern = UInt(bitPattern: self)
     return "0x\(String(bitPattern, radix: 16))"
+  }
+
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "OpaquePointer"])
   }
 }
 
@@ -246,12 +360,20 @@ extension UnsafeRawBufferPointer: CustomTestStringConvertible {
     let bitPattern = UInt(bitPattern: baseAddress)
     return "UnsafeRawBufferPointer(start: 0x\(String(bitPattern, radix: 16)), count: \(count))"
   }
+
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "UnsafeRawBufferPointer"])
+  }
 }
 
 extension UnsafeMutableRawBufferPointer: CustomTestStringConvertible {
   public var testDescription: String {
     let bitPattern = UInt(bitPattern: baseAddress)
     return "UnsafeMutableRawBufferPointer(start: 0x\(String(bitPattern, radix: 16)), count: \(count))"
+  }
+
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "UnsafeMutableRawBufferPointer"])
   }
 }
 
@@ -260,12 +382,20 @@ extension UnsafeBufferPointer: CustomTestStringConvertible {
     let bitPattern = UInt(bitPattern: baseAddress)
     return "UnsafeBufferPointer(start: 0x\(String(bitPattern, radix: 16)), count: \(count))"
   }
+
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "UnsafeBufferPointer<_>"])
+  }
 }
 
 extension UnsafeMutableBufferPointer: CustomTestStringConvertible {
   public var testDescription: String {
     let bitPattern = UInt(bitPattern: baseAddress)
     return "UnsafeMutableBufferPointer(start: 0x\(String(bitPattern, radix: 16)), count: \(count))"
+  }
+
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "UnsafeMutableBufferPointer<_>"])
   }
 }
 
@@ -284,6 +414,11 @@ extension Array: CustomTestStringConvertible where Element: CustomTestStringConv
       .joined(separator: ", ")
     return "[\(result)]"
   }
+
+  public static var __typeInfo: Any? {
+    let elementTypeName = TypeInfo(describing: Element.self)?.fullyQualifiedName ?? "_"
+    return TypeInfo(fullyQualifiedNameComponents: ["Swift", "Array<\(elementTypeName)>"])
+  }
 }
 
 extension Dictionary: CustomTestStringConvertible where Key: CustomTestStringConvertible, Value: CustomTestStringConvertible {
@@ -293,6 +428,12 @@ extension Dictionary: CustomTestStringConvertible where Key: CustomTestStringCon
       .map { "\($0): \($1)" }
       .joined(separator: ",")
     return "[\(result)]"
+  }
+
+  public static var __typeInfo: Any? {
+    let keyTypeName = TypeInfo(describing: Key.self)?.fullyQualifiedName ?? "_"
+    let valueTypeName = TypeInfo(describing: Value.self)?.fullyQualifiedName ?? "_"
+    return TypeInfo(fullyQualifiedNameComponents: ["Swift", "Dictionary<\(keyTypeName), \(valueTypeName)>"])
   }
 }
 #endif
@@ -305,8 +446,21 @@ extension CustomTestStringConvertible where Self: StringProtocol {
   }
 }
 
-extension String: CustomTestStringConvertible {}
-extension Substring: CustomTestStringConvertible {}
+extension String: CustomTestStringConvertible {
+#if hasFeature(Embedded)
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "String"])
+  }
+#endif
+}
+
+extension Substring: CustomTestStringConvertible {
+#if hasFeature(Embedded)
+  public static var __typeInfo: Any? {
+    TypeInfo(fullyQualifiedNameComponents: ["Swift", "Substring"])
+  }
+#endif
+}
 
 #if !hasFeature(Embedded)
 // MARK: - Ranges
