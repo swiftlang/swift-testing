@@ -175,7 +175,7 @@ extension Optional: CustomTestStringConvertible where Wrapped: CustomTestStringC
 #endif
 
 extension _OptionalNilComparisonType: CustomTestStringConvertible {
-  @export(implementation) static var testDescription: String {
+  @inlinable static var testDescription: String {
     "nil"
   }
 
