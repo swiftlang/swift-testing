@@ -87,7 +87,7 @@ extension `ABI.EncodedConfirmationMiscount Tests`.`Unsupported Ranges` {
     range: any RangeExpression & Sendable
   ) {
     #expect(throws: JSON.EncodingError.self) {
-      let miscount = try ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(
+      let miscount = ABI.EncodedConfirmationMiscount<ABI.CurrentVersion>(
         encoding: (actual: 1, expected: range))
       _ = try JSON.encode(miscount)
     }

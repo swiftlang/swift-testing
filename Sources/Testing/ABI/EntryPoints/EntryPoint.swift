@@ -118,9 +118,11 @@ func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager
         }
       }
 
+#if !hasFeature(Embedded)
       // Synthesize any missing suites. Note we write to stdout before this
       // step because we don't emit suites to stdout anyway.
       tests = Runner.Plan.synthesizeSuites(for: tests)
+#endif
 
       // Post an event for every discovered test. These events are turned into
       // JSON objects if JSON output is enabled.

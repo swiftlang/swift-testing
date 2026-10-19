@@ -93,11 +93,15 @@ public struct Test: Sendable {
       // Prevent programmatically adding suite traits to test functions or test
       // traits to test suites.
       func traitsAreCorrectlyTyped() -> Bool {
+#if !hasFeature(Embedded)
         if isSuite {
-          return newValue.allSatisfy { $0.__as((any SuiteTrait).self) != nil }
+          return newValue.allSatisfy { $0 is any SuiteTrait }
         } else {
-          return newValue.allSatisfy { $0.__as((any TestTrait).self) != nil }
+          return newValue.allSatisfy { $0 is any TestTrait }
         }
+#else
+        return newValue.allSatisfy { $0.__as((any TestTrait).self) != nil }
+#endif
       }
       precondition(traitsAreCorrectlyTyped(), "Programmatically added an inapplicable trait to test \(self)")
       _setValue(newValue, forKeyPath: \.traits)

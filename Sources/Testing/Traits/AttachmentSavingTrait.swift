@@ -24,7 +24,7 @@ private import Synchronization
 /// testing library then evaluates the instance's condition and, if the
 /// condition is met, saves the attachments.
 @_spi(Experimental)
-public struct AttachmentSavingTrait: TestTrait, SuiteTrait {
+public struct AttachmentSavingTrait: TestTrait {
   /// A type that describes the conditions under which the testing library
   /// will save attachments.
   ///
@@ -76,11 +76,17 @@ public struct AttachmentSavingTrait: TestTrait, SuiteTrait {
 
   /// The source location where this trait is specified.
   var sourceLocation: SourceLocation
+}
 
+// MARK: - SuiteTrait
+
+#if !hasFeature(Embedded)
+extension AttachmentSavingTrait: SuiteTrait {
   public var isRecursive: Bool {
     true
   }
 }
+#endif
 
 // MARK: - TestScoping
 

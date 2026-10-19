@@ -400,10 +400,10 @@ extension Event {
 /// even when it is an empty array.
 #if DEBUG
 private var _alwaysIncludeMessagesField: Bool? {
-  Environment.flag(named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+  Environment.flag(named: "SWIFT_TESTING_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
 }
 #else
-private let _alwaysIncludeMessagesField = Environment.flag(named: "SWT_EXPERIMENTAL_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
+private let _alwaysIncludeMessagesField = Environment.flag(named: "SWIFT_TESTING_EVENT_STREAM_MESSAGES_FIELD_ENABLED")
 #endif
 
 extension ABI.Version {

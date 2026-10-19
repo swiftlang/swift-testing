@@ -125,6 +125,7 @@ extension Runner {
 // MARK: - Constructing a new runner plan
 
 extension Runner.Plan {
+#if !hasFeature(Embedded)
   /// Recursively apply eligible traits from a test suite to its children in a
   /// graph.
   ///
@@ -138,7 +139,7 @@ extension Runner.Plan {
   /// node.
   private static func _recursivelyApplyTraits(_ parentTraits: [any SuiteTrait] = [], to testGraph: inout Graph<String, Test?>) {
     let traits: [any SuiteTrait] = parentTraits + (testGraph.value?.traits ?? []).lazy
-      .compactMap { $0.__as((any SuiteTrait).self) }
+      .compactMap { $0 as? any SuiteTrait }
       .filter { $0.isRecursive }
 
     testGraph.children = testGraph.children.mapValues { child in
@@ -149,7 +150,6 @@ extension Runner.Plan {
     }
   }
 
-#if !hasFeature(Embedded)
   /// Recursively deduplicate traits on the given test by calling
   /// ``ReducibleTrait/reduce(_:)`` across all nodes in the graph.
   ///
@@ -189,7 +189,6 @@ extension Runner.Plan {
       return test
     }
   }
-#endif
 
   /// Recursively synthesize test instances representing suites for all missing
   /// values in the specified test graph.
@@ -256,6 +255,7 @@ extension Runner.Plan {
     _recursivelySynthesizeSuites(in: &testGraph)
     return testGraph.compactMap { $0.value }
   }
+#endif
 
   /// The basic "run" action.
   private static let _runAction = Action.run(options: .init())
@@ -389,6 +389,7 @@ extension Runner.Plan {
       // and that is already guarded earlier in the SwiftPM entry point.
     }
 
+#if !hasFeature(Embedded)
     // Synthesize suites for nodes in the test graph for which they are missing.
     _recursivelySynthesizeSuites(in: &testGraph)
 
@@ -402,7 +403,6 @@ extension Runner.Plan {
     // filtered out.
     _recursivelyApplyTraits(to: &testGraph)
 
-#if !hasFeature(Embedded)
     // Recursively reduce traits in the graph.
     //
     // As with `_recursivelyApplyTraits(to:)`, we must call this function before
