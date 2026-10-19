@@ -721,7 +721,7 @@ final class RunnerTests: XCTestCase {
     let plan = await Runner.Plan(selecting: ObsoletedTests.self)
     for step in plan.steps where !step.test.isSuite {
       let conditionComments = step.test.traits
-        .compactMap { $0.__as(ConditionTrait.self) }
+        .compactMap { $0 as? ConditionTrait }
         .flatMap(\.comments)
         .map(\.rawValue)
       XCTAssertNotNil(conditionComments.first { $0.contains("999.0") })
@@ -874,28 +874,16 @@ final class RunnerTests: XCTestCase {
     }
   }
 
-  @available(*, deprecated)
-  func testSynchronousTestFunctionRunsOnMainActorWhenEnforced() async {
-    var configuration = Configuration()
-    configuration.isMainActorIsolationEnforced = true
-    await Self.$isMainActorIsolationEnforced.withValue(true) {
-      await runTest(for: MainActorIsolationTests.self, configuration: configuration)
-    }
-
-    configuration.isMainActorIsolationEnforced = false
-    await Self.$isMainActorIsolationEnforced.withValue(false) {
-      await runTest(for: MainActorIsolationTests.self, configuration: configuration)
-    }
-  }
-
   func testSynchronousTestFunctionRunsInDefaultIsolationContext() async {
     var configuration = Configuration()
+#if !hasFeature(Embedded)
     configuration.defaultSynchronousIsolationContext = MainActor.shared
     await Self.$isMainActorIsolationEnforced.withValue(true) {
       await runTest(for: MainActorIsolationTests.self, configuration: configuration)
     }
 
     configuration.defaultSynchronousIsolationContext = nil
+#endif
     await Self.$isMainActorIsolationEnforced.withValue(false) {
       await runTest(for: MainActorIsolationTests.self, configuration: configuration)
     }

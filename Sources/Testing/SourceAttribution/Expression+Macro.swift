@@ -86,7 +86,7 @@ extension __Expression {
 
     return Self(
       sourceCode,
-      subexpressions: Array(value) + arguments.map(\.value)
+      subexpressions: Array(value) + arguments.map { $0.value }
     )
   }
 

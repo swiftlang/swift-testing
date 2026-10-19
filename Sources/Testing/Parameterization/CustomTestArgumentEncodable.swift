@@ -70,7 +70,7 @@ extension Test.Case.Argument.ID {
   /// ## See Also
   ///
   /// - ``CustomTestArgumentEncodable``
-  init?(identifying value: some Sendable, parameter: Test.Parameter) throws {
+  init?(identifying value: any Sendable, parameter: Test.Parameter) throws {
 #if !SWT_NO_CODABLE
     func customArgumentWrapper(for value: some CustomTestArgumentEncodable) -> some Encodable {
       CustomArgumentWrapper(rawValue: value)
@@ -113,7 +113,7 @@ extension Test.Case.Argument.ID {
     if let argumentID = argumentIDs.first, argumentIDs.count == 1 {
       self = argumentID
     } else {
-      self.init(bytes: SHA256.hash(argumentIDs.flatMap(\.bytes)))
+      self.init(bytes: SHA256.hash(argumentIDs.flatMap { $0.bytes }))
     }
   }
 }

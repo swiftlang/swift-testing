@@ -10,10 +10,13 @@
 
 #include "Versions.h"
 
-#include <array>
-#include <algorithm>
-#include <iterator>
-#include <mutex>
+/// A type that represents a C string and can substitute for `std::array` on
+/// systems where that type is not available.
+template <size_t count>
+struct CString {
+  /// The underlying C string.
+  char value[count];
+};
 
 const char *swt_getTestingLibraryVersion(void) {
 #if defined(SWT_TESTING_LIBRARY_VERSION)
@@ -22,7 +25,7 @@ const char *swt_getTestingLibraryVersion(void) {
   return SWT_TESTING_LIBRARY_VERSION;
 #elif __clang_major__ >= 17 && defined(__has_embed)
 #if __has_embed("../../VERSION.txt")
-  static constexpr std::array result = [] () {
+  static constexpr CString result = [] () {
     // Read the version from version.txt at the root of the package's repo.
     constexpr const char version[] = {
 #pragma clang diagnostic push
@@ -33,18 +36,18 @@ const char *swt_getTestingLibraryVersion(void) {
 
     // Copy from the C string into a C++ array, stopping at the first newline if
     // one is present.
-    std::array<char, std::size(version)> result {};
-    for (size_t i = 0; i < std::size(version); i++) {
+    CString<sizeof(version)> result {};
+    for (size_t i = 0; i < sizeof(version); i++) {
       char c = version[i];
       if (c == '\r' || c == '\n') {
         break;
       }
-      result[i] = c;
+      result.value[i] = c;
     }
     return result;
   }();
 
-  return result.data();
+  return result.value;
 #else
 #warning SWT_TESTING_LIBRARY_VERSION not defined and VERSION.txt not found: testing library version is unavailable
   return nullptr;

@@ -182,7 +182,7 @@ private func _cancel<T>(_ cancellableValue: T?, for testAndTestCase: (Test?, Tes
         comments: [
           "Attempted to cancel the current test or test case, but one is not associated with the current task.",
           skipInfo.comment,
-        ].compactMap(\.self),
+        ].compactMap { $0 },
         sourceContext: skipInfo.sourceContext
       )
       issue.record()

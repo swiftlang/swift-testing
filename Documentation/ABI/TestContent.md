@@ -31,6 +31,11 @@ section in built test products:
   padding. This padding will be removed in a future update to the Swift
   toolchain ([swift-#87650](https://github.com/swiftlang/swift/issues/87650)).
 
+In Embedded Swift, or when statically linking the standard library and runtime,
+there is a single statically linked test content section. At this time,
+statically-linked test content is supported if you use the Mach-O, ELF, or Wasm
+image format.
+
 ### Record layout
 
 Regardless of platform, all test content records created and discoverable by the
@@ -122,11 +127,6 @@ This argument helps to prevent memory corruption if two copies of Swift Testing
 or a third-party library are inadvertently loaded into the same process. If the
 value at `type` does not match the test content record's expected type, the
 accessor function must return `false` and must not modify `outValue`.
-
-When building for **Embedded Swift**, the value passed as `type` by Swift
-Testing is unspecified because type metadata pointers are not available in that
-environment.
-<!-- TODO: specify what they are instead (FQN type name C strings maybe?) -->
 
 [^mightNotBeSwift]: Although this document primarily deals with Swift, the test
   content record section is generally language-agnostic. The use of languages

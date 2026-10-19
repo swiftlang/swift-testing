@@ -754,7 +754,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     // Get the corresponding messages for this issue
     guard issueIndex < testData.issueMessages.count else {
       // Fallback to error description if available
-      if let errorDesc = issue._error?.description {
+      if let errorDesc = issue.error?.description {
         return errorDesc
       }
       return "Issue recorded"
@@ -791,7 +791,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     }
     
     // Final fallback
-    if let errorDesc = issue._error?.description {
+    if let errorDesc = issue.error?.description {
       // Truncate very long error descriptions
       if errorDesc.count > 200 {
         return String(errorDesc.prefix(200)) + "..."

@@ -65,7 +65,7 @@ struct SourceLocationTests {
     #expect(sourceLocation.fileName == "D.swift")
   }
 
-#if !SWT_NO_ABI_JSON_SCHEMA
+#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
   @Test("SourceLocation.fileID property is synthesized if not decoded")
   func sourceLocationFileIDSynthesizedWhenNeeded() throws {
 #if os(Windows)
@@ -163,6 +163,7 @@ struct SourceLocationTests {
     #expect(sourceLocation.filePath == "A")
   }
 
+#if !hasFeature(Embedded)
   @available(swift, deprecated: 6.3)
   @Test("SourceLocation._filePath property")
   func sourceLocation_filePath() {
@@ -172,6 +173,7 @@ struct SourceLocationTests {
     sourceLocation._filePath = "A"
     #expect(sourceLocation._filePath == "A")
   }
+#endif
 
   @Test("SourceLocation comparisons")
   func comparisons() {

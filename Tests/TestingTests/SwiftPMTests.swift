@@ -10,16 +10,14 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION
 private import Foundation
 #endif
 
-private func configurationForEntryPoint(withArguments args: [String]) throws -> Configuration {
+private func configurationForEntryPoint(withArguments args: [String], emitWarnings: Bool = true) throws -> Configuration {
   let args = try parseCommandLineArguments(from: args)
-  return try configurationForEntryPoint(from: args)
+  return try configurationForEntryPoint(from: args, emitWarnings: emitWarnings)
 }
-
-#if !SWT_NO_ABI_JSON_SCHEMA
 
 private extension Tag {
   @Tag static var testTag: Self
@@ -27,6 +25,7 @@ private extension Tag {
   @Tag static var unrelatedTag: Self
 }
 
+#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
 /// Reads event stream output from the provided file matching event stream
 /// version `V`.
 private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String) throws -> [ABI.Record<V>] {
@@ -55,6 +54,12 @@ struct SwiftPMTests {
     #expect(EXIT_NO_TESTS_FOUND != EXIT_FAILURE)
   }
 
+  @Test("Unrecognized arguments are ignored")
+  func ignoreUnrecognized() throws {
+    _ = try configurationForEntryPoint(withArguments: ["PATH", "--unrecognized", "123", "foo", "bar", "--foo=bar"])
+  }
+
+#if !hasFeature(Embedded)
   @Test("--parallel/--no-parallel argument")
   func parallel() throws {
     var configuration = try configurationForEntryPoint(withArguments: ["PATH"])
@@ -85,7 +90,26 @@ struct SwiftPMTests {
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-maximum-parallelization-width", "0"])
     }
   }
+#else
+  @Test("--parallel/--no-parallel argument throws")
+  func parallelThrows() {
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--parallel"])
+    }
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--no-parallel"])
+    }
+  }
 
+  @Test("--experimental-maximum-parallelization-width argument throws")
+  func maximumParallelizationWidth() {
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-maximum-parallelization-width", "12345"])
+    }
+  }
+#endif
+
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
   @Test("--symbolicate-backtraces argument",
     arguments: [
       (String?.none, Backtrace.SymbolicationMode?.none),
@@ -101,6 +125,7 @@ struct SwiftPMTests {
     }
     #expect(configuration.backtraceSymbolicationMode == expectedMode)
   }
+#endif
 
   @Test("No --filter or --skip argument")
   func defaultFiltering() async throws {
@@ -207,7 +232,7 @@ struct SwiftPMTests {
 
   @Test("--filter tag: argument strips backticks around tag names")
   func filterByTagStripsBackticks() async throws {
-    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:`testTag`"])
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "tag:`testTag`"], emitWarnings: false)
     let test1 = Test(.tags(.testTag), name: "hello") {}
     let test2 = Test(name: "goodbye") {}
     let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
@@ -297,8 +322,12 @@ struct SwiftPMTests {
 
   @Test("--filter or --skip argument as last argument")
   func filterOrSkipAsLast() async throws {
-    _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter"])
-    _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
+    #expect(throws: CommandLineArgumentList.ParseError.missingValue(label: "--filter")) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter"])
+    }
+    #expect(throws: CommandLineArgumentList.ParseError.missingValue(label: "--skip")) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
+    }
   }
 
 #if !SWT_NO_EXIT_TESTS
@@ -361,8 +390,9 @@ struct SwiftPMTests {
   @Test("--xunit-output argument (missing path)")
   func xunitOutputWithMissingPath() throws {
     // Test that a missing path doesn't read off the end of the argument array.
-    let args = try parseCommandLineArguments(from: ["PATH", "--xunit-output"])
-    #expect(args.xunitOutput == nil)
+    #expect(throws: CommandLineArgumentList.ParseError.missingValue(label: "--xunit-output").self) {
+      _ = try parseCommandLineArguments(from: ["PATH", "--xunit-output"])
+    }
   }
 
   @Test("--xunit-output argument (writes to file)")
@@ -388,7 +418,7 @@ struct SwiftPMTests {
     #expect(fileContents.contains(UInt8(ascii: ">")))
   }
 
-  #if canImport(Foundation)
+  #if !SWT_NO_FOUNDATION
   @Test(
     "--attachments-path argument (creates missing directory)",
     arguments: ["--attachments-path", "--experimental-attachments-path"]
@@ -407,7 +437,7 @@ struct SwiftPMTests {
   }
   #endif
 
-  #if canImport(Foundation)
+  #if !SWT_NO_FOUNDATION
   @Test("--attachments-path argument (bad path)")
   func attachmentsPathWithBadPath() throws {
       let tempDirPath = try temporaryDirectory()
@@ -418,7 +448,6 @@ struct SwiftPMTests {
         Issue.record("Test setup failure.  Could not create file at \(attachmentPath).")
       }
       defer {
-        print("removing \(attachmentPath) ...")
         _ = remove(attachmentPath)
       }
       #expect(throws: (any Error).self, "Attachment path is: \(attachmentPath)") {
@@ -439,6 +468,7 @@ struct SwiftPMTests {
     )
   }
 
+#if !SWT_NO_CODABLE
   @Test("--configuration-path argument", arguments: [
     "--configuration-path", "--experimental-configuration-path",
   ])
@@ -468,6 +498,7 @@ struct SwiftPMTests {
     #expect(args.skip == nil)
     #expect(args.parallel == false)
   }
+#endif
 
   @available(*, deprecated)
   @Test("Deprecated eventStreamVersion property")
@@ -537,6 +568,7 @@ struct SwiftPMTests {
 #endif
 
 #if !SWT_NO_ABI_JSON_SCHEMA
+#if !SWT_NO_CODABLE
   @Test("Severity and isFailure fields included in version 6.3")
   func validateEventStreamContents() async throws {
     let tempDirPath = try temporaryDirectory()
@@ -658,6 +690,7 @@ struct SwiftPMTests {
     }
     #expect(eventRecords.count == 4)
   }
+#endif
 
   @Test("Experimental ABI version requires --experimental-event-stream-version argument")
   func experimentalABIVersionNeedsExperimentalFlag() {
@@ -675,6 +708,7 @@ struct SwiftPMTests {
     }
   }
 
+#if !SWT_NO_CODABLE
   @Test("Can extract the ABI version from record JSON")
   func getVersionFromRecordJSON() throws {
     var json = #"{ "kind": "test", "version": "1.2.3", "payload": {} }"#
@@ -683,6 +717,7 @@ struct SwiftPMTests {
     }
     #expect(versionNumber == ABI.VersionNumber(1, 2, 3))
   }
+#endif
 #endif
 #endif
 

@@ -147,7 +147,9 @@ extension ExitStatus: CustomStringConvertible {
       // These platforms do not have API to get the programmatic name of a
       // signal constant.
 #else
+#if !hasFeature(Embedded)
 #warning("Platform-specific implementation missing: signal names unavailable")
+#endif
 #endif
     }
 

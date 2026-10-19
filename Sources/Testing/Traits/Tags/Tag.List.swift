@@ -47,17 +47,17 @@ extension Tag.List: CustomStringConvertible {
 
 // MARK: - Trait, TestTrait, SuiteTrait
 
-extension Tag.List: TestTrait, SuiteTrait {
+extension Tag.List: TestTrait {}
+
+#if !hasFeature(Embedded)
+extension Tag.List: SuiteTrait {
   public var isRecursive: Bool {
     true
   }
-
-#if hasFeature(Embedded)
-  public func __as(_: Tag.List.Type) -> Tag.List? {
-    self
-  }
-#endif
 }
+#endif
+
+// MARK: -
 
 extension Trait where Self == Tag.List {
   /// Construct a list of tags to apply to a test.

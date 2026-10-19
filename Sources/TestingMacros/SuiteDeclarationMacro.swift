@@ -24,6 +24,13 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
     providingPeersOf declaration: some DeclSyntaxProtocol,
     in context: some MacroExpansionContext
   ) throws -> [DeclSyntax] {
+    if context.isTargetEmbedded {
+      // Don't bother doing any expansion at all in Embedded Swift in order to
+      // keep reported diagnostics reasonable. The `Suite` macro declarations
+      // are marked unavailable and will diagnose, but will not prevent macro
+      // expansion code from running.
+      return []
+    }
     guard _diagnoseIssues(with: declaration, suiteAttribute: node, in: context),
           let declaration = declaration.asProtocol((any DeclGroupSyntax).self) else {
       return []
@@ -130,8 +137,8 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
     let generatorName = context.makeUniqueName("generator")
     result.append(
       """
-      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-      @Sendable private \(staticKeyword(for: containingType)) func \(generatorName)() async -> Testing.Test {
+      @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
+      @Sendable private nonisolated(nonsending) \(staticKeyword(for: containingType)) func \(generatorName)() async -> Testing.Test {
         .__type(
           \(declaration.type.trimmed).self,
           \(raw: attributeInfo.functionArgumentList(in: context))

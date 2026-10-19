@@ -628,6 +628,7 @@ public macro require<E, R>(
 ///   #expect(error?.napkinCount == 0)
 ///   ```
 /// }
+@_unavailableInEmbedded
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#expect(throws:)' instead.")
 @discardableResult
 @freestanding(expression)
@@ -692,6 +693,7 @@ public macro expect<R>(
 ///   #expect(error?.napkinCount == 0)
 ///   ```
 /// }
+@_unavailableInEmbedded
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#expect(throws:)' instead.")
 @discardableResult
 @freestanding(expression) public macro expect<R>(
@@ -761,6 +763,7 @@ public macro expect<R>(
 ///   #expect(error.napkinCount == 0)
 ///   ```
 /// }
+@_unavailableInEmbedded
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#require(throws:)' instead.")
 @discardableResult
 @freestanding(expression)
@@ -832,6 +835,7 @@ public macro require<R>(
 ///   #expect(error.napkinCount == 0)
 ///   ```
 /// }
+@_unavailableInEmbedded
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#require(throws:)' instead.")
 @discardableResult
 @freestanding(expression) public macro require<R>(

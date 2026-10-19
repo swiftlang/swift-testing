@@ -17,6 +17,7 @@ public struct Configuration: Sendable {
   /// configuration.
   public init() {}
 
+#if !hasFeature(Embedded)
   // MARK: - Parallelization
 
   /// Whether or not to parallelize the execution of tests and test cases.
@@ -51,7 +52,9 @@ public struct Configuration: Sendable {
   ///   the ``isParallelizationEnabled`` property.
   @_spi(Experimental)
   public var maximumParallelizationWidth: Int = defaultParallelizationWidth
+#endif
 
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
   /// How to symbolicate backtraces captured during a test run.
   ///
   /// If the value of this property is not `nil`, symbolication will be
@@ -61,6 +64,7 @@ public struct Configuration: Sendable {
   /// Swift in-process. When handling a backtrace in Swift, use its
   /// ``Backtrace/symbolicate(_:)`` function to symbolicate it.
   public var backtraceSymbolicationMode: Backtrace.SymbolicationMode?
+#endif
 
   /// A type describing whether or not, and how, to iterate a test case
   /// repeatedly.
@@ -144,17 +148,26 @@ public struct Configuration: Sendable {
 
   // MARK: - Isolation context for synchronous tests
 
+  /// Storage for ``defaultSynchronousIsolationContext``.
+  private var _defaultSynchronousIsolationContext: (any Actor)? = nil
+
   /// The isolation context to use for synchronous test functions.
   ///
   /// If the value of this property is `nil`, synchronous test functions run in
   /// an unspecified isolation context.
-  public var defaultSynchronousIsolationContext: (any Actor)? = nil
+  @_unavailableInEmbedded
+  public var defaultSynchronousIsolationContext: (any Actor)? {
+    get {
+      _defaultSynchronousIsolationContext
+    }
+    set {
+      _defaultSynchronousIsolationContext = newValue
+    }
+  }
 
   // MARK: - Time limits
 
-  /// Storage for the ``defaultTestTimeLimit`` property.
-  private var _defaultTestTimeLimit: (any Sendable)?
-
+#if !hasFeature(Embedded)
   /// The default amount of time a test may run for before timing out if it does
   /// not have an instance of ``TimeLimitTrait`` applied to it.
   ///
@@ -163,17 +176,7 @@ public struct Configuration: Sendable {
   ///
   /// To determine the actual time limit that applies to an instance of
   /// ``Test`` at runtime, use ``Test/adjustedTimeLimit(configuration:)``.
-  public var defaultTestTimeLimit: Duration? {
-    get {
-      _defaultTestTimeLimit as? Duration
-    }
-    set {
-      _defaultTestTimeLimit = newValue
-    }
-  }
-
-  /// Storage for the ``maximumTestTimeLimit`` property.
-  private var _maximumTestTimeLimit: (any Sendable)?
+  public var defaultTestTimeLimit: Duration?
 
   /// The maximum amount of time a test may run for before timing out,
   /// regardless of the value of ``defaultTestTimeLimit`` or individual
@@ -184,17 +187,10 @@ public struct Configuration: Sendable {
   ///
   /// To determine the actual time limit that applies to an instance of
   /// ``Test`` at runtime, use ``Test/adjustedTimeLimit(configuration:)``.
-  public var maximumTestTimeLimit: Duration? {
-    get {
-      _maximumTestTimeLimit as? Duration
-    }
-    set {
-      _maximumTestTimeLimit = newValue
-    }
-  }
+  public var maximumTestTimeLimit: Duration?
 
   /// Storage for the ``testTimeLimitGranularity`` property.
-  private var _testTimeLimitGranularity: (any Sendable)?
+  private var _testTimeLimitGranularity: Duration?
 
   /// The granularity to enforce on test time limits.
   ///
@@ -203,12 +199,13 @@ public struct Configuration: Sendable {
   /// value of this property can be adjusted.
   public var testTimeLimitGranularity: Duration {
     get {
-      (_testTimeLimitGranularity as? Duration) ?? .seconds(60)
+      _testTimeLimitGranularity ?? .seconds(60)
     }
     set {
       _testTimeLimitGranularity = newValue
     }
   }
+#endif
 
   // MARK: - Event handling
 
@@ -349,35 +346,5 @@ public struct Configuration: Sendable {
     ///   somewhat larger than it otherwise would be in an attempt to make the
     ///   defaults useful for real-world tests.
     public var maximumChildDepth: Int = 10
-  }
-}
-
-// MARK: - Deprecated
-
-extension Configuration {
-#if !SWT_NO_GLOBAL_ACTORS
-  @available(*, deprecated, message: "Set defaultSynchronousIsolationContext instead.")
-  public var isMainActorIsolationEnforced: Bool {
-    get {
-      defaultSynchronousIsolationContext === MainActor.shared
-    }
-    set {
-      if newValue {
-        defaultSynchronousIsolationContext = MainActor.shared
-      } else {
-        defaultSynchronousIsolationContext = nil
-      }
-    }
-  }
-#endif
-
-  @available(*, deprecated, message: "Set eventHandlingOptions.isExpectationCheckedEventEnabled instead.")
-  public var deliverExpectationCheckedEvents: Bool {
-    get {
-      eventHandlingOptions.isExpectationCheckedEventEnabled
-    }
-    set {
-      eventHandlingOptions.isExpectationCheckedEventEnabled = newValue
-    }
   }
 }

@@ -29,7 +29,7 @@ struct SkipInfoTests {
     #expect(skipInfo.sourceLocation == sourceLocation2)
   }
 
-#if !SWT_NO_ABI_JSON_SCHEMA
+#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
   @Test(
     "Decode from event",
     arguments: [
@@ -43,8 +43,8 @@ struct SkipInfoTests {
         "kind": "\#(kind)",
         "instant": { "since1970": 0, "absolute": 0 },
         "messages": [],
-        "_comments": ["Skipped Test"],
-        "_sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
+        "comments": ["Skipped Test"],
+        "sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
       }
       """#
     let event = try json.withUTF8 { json in
@@ -64,8 +64,8 @@ struct SkipInfoTests {
         "kind": "testStarted",
         "instant": { "since1970": 0, "absolute": 0 },
         "messages": [],
-        "_comments": ["Skipped Test"],
-        "_sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
+        "comments": ["Skipped Test"],
+        "sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
       }
       """#
     let event = try json.withUTF8 { json in

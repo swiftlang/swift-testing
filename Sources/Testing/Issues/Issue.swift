@@ -115,7 +115,7 @@ public struct Issue: Sendable {
   ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var severity: Severity
-  
+
   /// Whether or not this issue should cause the test it's associated with to be
   /// considered a failure.
   ///
@@ -244,7 +244,7 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
       ""
     } else {
       ": " + comments.lazy
-        .map(\.rawValue)
+        .map { $0.rawValue }
         .joined(separator: "\n")
     }
     return "\(kind) (\(severity))\(joinedComments)"
@@ -255,7 +255,7 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
       ""
     } else {
       ": " + comments.lazy
-        .map(\.rawValue)
+        .map { $0.rawValue }
         .joined(separator: "\n")
     }
     return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "") (\(severity))\(joinedComments)"
@@ -334,7 +334,7 @@ extension Issue {
     public var kind: Kind.Snapshot
 
     /// The severity of this issue.
-    /// 
+    ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
     ///   @Available(Xcode, introduced: 26.4)
@@ -593,7 +593,7 @@ extension Issue.Snapshot: CustomStringConvertible, CustomDebugStringConvertible 
       ""
     } else {
       ": " + comments.lazy
-        .map(\.rawValue)
+        .map { $0.rawValue }
         .joined(separator: "\n")
     }
     return "\(kind) (\(severity))\(joinedComments)"
@@ -604,7 +604,7 @@ extension Issue.Snapshot: CustomStringConvertible, CustomDebugStringConvertible 
       ""
     } else {
       ": " + comments.lazy
-        .map(\.rawValue)
+        .map { $0.rawValue }
         .joined(separator: "\n")
     }
     return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "") (\(severity))\(joinedComments)"

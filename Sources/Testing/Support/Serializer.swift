@@ -10,28 +10,9 @@
 
 private import _TestingInternals
 
-#if !SWT_NO_UNSTRUCTURED_TASKS
-/// The number of CPU cores on the current system, or `nil` if that
-/// information is not available.
-private var _cpuCoreCount: Int? {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
-  return Int(sysconf(Int32(_SC_NPROCESSORS_CONF)))
-#elseif os(Windows)
-  var siInfo = SYSTEM_INFO()
-  GetSystemInfo(&siInfo)
-  return Int(siInfo.dwNumberOfProcessors)
-#elseif os(WASI)
-  return 1
-#else
-#warning("Platform-specific implementation missing: CPU core count unavailable")
-  return nil
-#endif
-}
-#endif
-
+#if !hasFeature(Embedded)
 /// The default parallelization width when parallelized testing is enabled.
 let defaultParallelizationWidth: Int = {
-  // _cpuCoreCount.map { max(1, $0) * 2 } ?? .max
   if let environmentValue = Environment.variable(named: "SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH").flatMap(Int.init),
      environmentValue > 0 {
     return environmentValue
@@ -56,7 +37,7 @@ final actor Serializer<T> {
   /// The maximum number of work items that may run concurrently.
   nonisolated let maximumWidth: Int
 
-#if !SWT_NO_UNSTRUCTURED_TASKS
+#if !SWT_NO_CONTINUATIONS
   /// The number of scheduled work items, including any currently running.
   private var _currentWidth = 0
 
@@ -81,7 +62,7 @@ final actor Serializer<T> {
   /// - Warning: Calling this function recursively on the same instance of
   ///   ``Serializer`` will cause a deadlock.
   func run<R>(_ workItem: @isolated(any) @Sendable () async throws -> R) async rethrows -> R where R: Sendable {
-#if !SWT_NO_UNSTRUCTURED_TASKS
+#if !SWT_NO_CONTINUATIONS
     _currentWidth += 1
     defer {
       // Resume the next scheduled closure.
@@ -108,3 +89,4 @@ final actor Serializer<T> {
     return try await workItem()
   }
 }
+#endif

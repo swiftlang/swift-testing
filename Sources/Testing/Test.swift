@@ -93,11 +93,15 @@ public struct Test: Sendable {
       // Prevent programmatically adding suite traits to test functions or test
       // traits to test suites.
       func traitsAreCorrectlyTyped() -> Bool {
+#if !hasFeature(Embedded)
         if isSuite {
-          return newValue.allSatisfy { $0.__as((any SuiteTrait).self) != nil }
+          return newValue.allSatisfy { $0 is any SuiteTrait }
         } else {
-          return newValue.allSatisfy { $0.__as((any TestTrait).self) != nil }
+          return newValue.allSatisfy { $0 is any TestTrait }
         }
+#else
+        return newValue.allSatisfy { $0.__as((any TestTrait).self) != nil }
+#endif
       }
       precondition(traitsAreCorrectlyTyped(), "Programmatically added an inapplicable trait to test \(self)")
       _setValue(newValue, forKeyPath: \.traits)
@@ -160,13 +164,13 @@ public struct Test: Sendable {
     /// - Parameters:
     ///   - function: The function to call to evaluate the test's cases. The
     ///     result is a sequence of test cases.
-    case unevaluated(_ function: @Sendable () async throws -> any Sequence<Test.Case> & Sendable)
+    case unevaluated(_ function: @Sendable () async throws -> AnySendableSequence<Test.Case>)
 
     /// The test's cases have been evaluated.
     ///
     /// - Parameters:
     ///   - testCases: The test's cases.
-    case evaluated(_ testCases: any Sequence<Test.Case> & Sendable)
+    case evaluated(_ testCases: AnySendableSequence<Test.Case>)
 
     /// An error was thrown when the testing library attempted to evaluate the
     /// test's cases.
@@ -207,9 +211,13 @@ public struct Test: Sendable {
         // error (because the test cannot be run.) If an error was thrown, a
         // `Runner.Plan` is expected to record issue for the test, rather than
         // attempt to run it, and thus never access this property.
+#if !hasFeature(Embedded)
         preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage(context: String(reflecting: testCasesState)))")
+#else
+        preconditionFailure("Attempting to access test cases with invalid state. \(fileABugMessage)")
+#endif
       }
-      return AnySequence(testCases)
+      return testCases
     }
   }
 
@@ -224,7 +232,7 @@ public struct Test: Sendable {
   var uncheckedTestCases: (some Sequence<Test.Case>)? {
     testCasesState.flatMap { testCasesState in
       if case let .evaluated(testCases) = testCasesState {
-        return AnySequence(testCases)
+        return testCases
       }
       return nil
     }
@@ -352,11 +360,39 @@ public struct Test: Sendable {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCasesState: .unevaluated { try await testCases() },
+      testCasesState: .unevaluated { try await AnySendableSequence(testCases()) },
       parameters: parameters,
       isSynthesized: false
     )
     _properties = Allocated(properties)
+  }
+
+  /// Initialize an instance of this type representing a test function.
+  init<Suite, S>(
+    name: String,
+    displayName: String? = nil,
+    traits: [any Trait],
+    sourceBounds: __SourceBounds,
+    in containingType: Suite.Type?,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
+    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
+    parameters: [Parameter]
+  ) where Suite: ~Copyable & ~Escapable {
+#if !hasFeature(Embedded)
+    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
+#else
+    let containingTypeInfo: TypeInfo? = nil
+#endif
+    self.init(
+      name: name,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: testCases,
+      parameters: parameters
+    )
   }
 
   /// Initialize an instance of this type representing a test function.
@@ -377,7 +413,7 @@ public struct Test: Sendable {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCasesState: .evaluated(testCases),
+      testCasesState: .evaluated(AnySendableSequence(testCases)),
       parameters: parameters,
       isSynthesized: false
     )
