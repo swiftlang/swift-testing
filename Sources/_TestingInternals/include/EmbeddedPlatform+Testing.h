@@ -89,6 +89,8 @@
 ///     necessary context for that function. The testing library does not
 ///     dereference this pointer. The caller and completion handler are
 ///     responsible for managing the addressed memory.
+///   - completionHandler: A callback this function calls after finishing a
+///     test run.
 ///
 /// This function serves as the entry point to the testing library in Embedded
 /// Swift. Call this function in your `main()` function.
@@ -96,6 +98,10 @@
 /// When the test run is finished, this function calls `completionHandler` and
 /// passes it a C exit code, representing the overall state of the test run, and
 /// the `context` argument.
+///
+/// - Important: If the process terminates early or abnormally (for example,
+///   because test code calls `exit()` or `fatalError()`), the testing library
+///   may not have an opportunity to call `completionHandler`.
 ///
 /// The testing library exports this function by default; you do not need to
 /// provide an implementation when you implement the testing library's Platform
