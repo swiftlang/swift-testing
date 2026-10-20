@@ -222,7 +222,7 @@ func spawnExecutable(
       // was only built for arm64 (this is particularly relevant to exit tests).
       if let mh = _NSGetMachExecuteHeader() {
         var types = [mh.pointee.cputype, CPU_TYPE_ANY]
-        var subtypes = [mh.pointee.cputype, CPU_SUBTYPE_ANY]
+        var subtypes = [mh.pointee.cpusubtype, CPU_SUBTYPE_ANY]
         assert(types.count == subtypes.count, "CPU type list \(types) has \(types.count) entries, but CPU subtype list \(subtypes) has \(subtypes.count) entries. \(fileABugMessage)")
         posix_spawnattr_setarchpref_np(attrs, types.count, &types, &subtypes, nil)
       }
