@@ -33,10 +33,8 @@ private let _captureArgcArgv: @convention(c) (CInt, UnsafeMutablePointer<UnsafeM
     return
   }
 
-  if argc > 0, let argv {
-    let argcArgv = swift_testing_argc_argv_t(argc: argc, argv: argv)
-    _argcArgv.withLock { $0 = argcArgv }
-  }
+  let argcArgv = swift_testing_argc_argv_t(argc: argc, argv: argv)
+  _argcArgv.withLock { $0 = argcArgv }
 }
 
 @c @implementation func _swift_testing_getArgcArgv(_ outArgcArgv: UnsafeMutablePointer<swift_testing_argc_argv_t>) -> CBool {
@@ -45,9 +43,6 @@ private let _captureArgcArgv: @convention(c) (CInt, UnsafeMutablePointer<UnsafeM
   }
 
   let argcArgv = _argcArgv.withLock { $0 }
-  guard let argcArgv else {
-    return false
-  }
   outArgcArgv.initialize(to: argcArgv)
   return true
 }
