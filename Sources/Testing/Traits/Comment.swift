@@ -138,6 +138,9 @@ extension Comment: ExpressibleByStringInterpolation {
         return append(value)
       } else if let value = value as? Substring? {
         return append(value)
+      } else if let value = value as? StaticString? {
+        let value = value.map { String(describing: $0) }
+        return append(value)
       }
 #if !hasFeature(Embedded)
       if let value = value as? any StringProtocol? {

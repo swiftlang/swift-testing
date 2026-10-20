@@ -308,6 +308,14 @@ extension CustomTestStringConvertible where Self: StringProtocol {
 extension String: CustomTestStringConvertible {}
 extension Substring: CustomTestStringConvertible {}
 
+#if hasFeature(Embedded)
+extension StaticString: CustomTestStringConvertible {
+  public var testDescription: String {
+    String(describing: self)
+  }
+}
+#endif
+
 #if !hasFeature(Embedded)
 // MARK: - Ranges
 
