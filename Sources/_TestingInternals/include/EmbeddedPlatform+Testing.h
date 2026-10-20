@@ -75,6 +75,55 @@
 #define SWIFT_TESTING_NONNULL
 #endif
 
+/// Run tests in the current process according to the specified configuration
+/// and call a completion handler when the test run ends.
+///
+/// - Parameters:
+///   - argc: The number of command-line arguments at `argv`, as per C's
+///     specification of `main()`.
+///   - argv: The command-line arguments passed to the process, as per C's
+///     specification of `main()`.
+///   - envp: The environment variables set in the process, laid out as per the
+///     POSIX standard for the `environ` global variable.
+///   - context: A pointer to pass to `completionHandler` that can contain any
+///     necessary context for that function. The testing library does not
+///     dereference this pointer. The caller and completion handler are
+///     responsible for managing the addressed memory.
+///
+/// This function serves as the entry point to the testing library in Embedded
+/// Swift. Call this function in your `main()` function.
+///
+/// When the test run is finished, this function calls `completionHandler` and
+/// passes it a C exit code, representing the overall state of the test run, and
+/// the `context` argument.
+///
+/// The testing library exports this function by default; you do not need to
+/// provide an implementation when you implement the testing library's Platform
+/// Abstraction Layer annex.
+///
+/// ### Passing command-line arguments and environment variables
+///
+/// You can directly pass the `argc` and `argv` arguments from your C `main()`
+/// function to this function. On many platforms, `main()` can be declared with
+/// an additional `envp` argument representing the environment block, which you
+/// can also pass.
+///
+/// Alternatively, the testing library can get the program's command-line
+/// arguments or environment variables by calling functions from its Platform
+/// Abstraction Layer annex instead:
+///
+/// - If `argc` is `0` or `argv` is `nil`, the testing library calls the
+///   function `_swift_testing_getArgcArgv()` to get values for them.
+/// - If `envp` is `nil`, the testing library calls the function
+/// `_swift_testing_getEnvironment()` to get a value for it.
+///
+/// - Important: If not `nil`, `argv` and `envp` must remain valid for the
+///   lifetime of the program.
+///
+/// - Warning: This function's signature is subject to change. This function may
+///   be removed in a future update.
+SWIFT_TESTING_EXTERN void swift_testing_embeddedMainWithCompletionHandler(int argc, char *SWIFT_TESTING_NONNULL argv[SWIFT_TESTING_NULLABLE], char *SWIFT_TESTING_NULLABLE envp[SWIFT_TESTING_NULLABLE], void *SWIFT_TESTING_NULLABLE context, void (* SWIFT_TESTING_NONNULL SWIFT_TESTING_SENDABLE completionHandler)(void *SWIFT_TESTING_NULLABLE context, int exitCode));
+
 /// Run tests in the current process according to the specified configuration.
 ///
 /// - Parameters:
