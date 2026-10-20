@@ -83,20 +83,12 @@ func subexpressionShowcase() async throws {
     borrowing func h() -> Bool { false }
     consuming func j() -> Bool { false }
   }
-#if false
-  // Unsupported: move-only types have too many constraints that cannot be
-  // resolved by inspecting syntax. Borrowing calls cannot be boxed (at least
-  // until we get @lifetime) and the compiler forbids making consuming calls in
-  // a closure in case the closure gets called multiple times.
-  //
-  // A workaround is to explicitly write `consume` on an expression (or the
-  // unsupported `_borrow`) which will tell our macros code not to try expanding
-  // the expression.
   let s = S()
-  #expect(s.h())
+  Testing.__checkCondition({(__ec: Testing.__ExpectationContext<Swift.Bool>) -> Swift.Bool in __ec[__ec[s,0x6].h(),0x0]
+  },sourceCode: [0x0:"s.h()",0x6:"s"],comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+  // #expect(s.h())
 #if false
   #expect(s.j()) // consuming -- this DOES still fail, no syntax-level way to tell
-#endif
 #endif
 
   do {

@@ -210,9 +210,9 @@ extension __ExpectationContext where Output: ~Copyable {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T where T: Copyable & Escapable {
+  public subscript<T>(value: T, id: __ExpressionID) -> T where T: Copyable & Escapable {
     captureValue(value, identifiedBy: id)
-    return copy value
+    return value
   }
 
   /// Capture information about a value for use if the expectation currently
@@ -227,10 +227,12 @@ extension __ExpectationContext where Output: ~Copyable {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @_lifetime(borrow value)
-  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T where T: Copyable & ~Escapable {
-    captureValue(value, identifiedBy: id)
-    return copy value
+  public subscript<T>(value: borrowing T, id: __ExpressionID) -> T where T: ~Copyable & ~Escapable {
+    @_lifetime(borrow value)
+    _read {
+      captureValue(value, identifiedBy: id)
+      yield value
+    }
   }
 
   /// Capture information about a value passed `inout` to a function call after

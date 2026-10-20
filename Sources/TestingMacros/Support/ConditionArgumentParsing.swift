@@ -181,19 +181,32 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
       ExprSyntax(expectationContextNameExpr)
     }
 
-    var result = ExprSyntax(
-      FunctionCallExprSyntax(
-        calledExpression: calledExpr,
-        leftParen: .leftParenToken(),
-        rightParen: .rightParenToken()
-      ) {
-        LabeledExprSyntax(expression: node.trimmed)
-        LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode, in: context))
-        for argument in additionalArguments {
-          LabeledExprSyntax(argument)
+    var result: ExprSyntax
+    if functionName != nil {
+      result = ExprSyntax(
+        FunctionCallExprSyntax(
+          calledExpression: calledExpr,
+          leftParen: .leftParenToken(),
+          rightParen: .rightParenToken()
+        ) {
+          LabeledExprSyntax(expression: node.trimmed)
+          LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode, in: context))
+          for argument in additionalArguments {
+            LabeledExprSyntax(argument)
+          }
         }
-      }
-    )
+      )
+    } else {
+      result = ExprSyntax(
+        SubscriptCallExprSyntax(calledExpression: calledExpr) {
+          LabeledExprSyntax(expression: node.trimmed)
+          LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode, in: context))
+          for argument in additionalArguments {
+            LabeledExprSyntax(argument)
+          }
+        }
+      )
+    }
 
     // If the resulting expression has an optional type due to containing an
     // optional chaining expression (e.g. `foo?`) *and* its immediate parent
