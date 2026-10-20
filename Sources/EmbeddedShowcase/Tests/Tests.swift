@@ -39,9 +39,10 @@ func isSmall(_ i: Int) {
     ("abc", 1.0),
     ("def", 2.0),
     ("ghi", 3.0),
+    ("jkl", nil),
   ]
 )
-func stringsAndNumbers(_ x: String, _ y: Double) {}
+func stringsAndNumbers(_ x: String, _ y: Double?) {}
 
 @Test func willFail() {
   let sprocketCount = 123
