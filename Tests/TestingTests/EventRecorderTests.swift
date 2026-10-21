@@ -35,6 +35,13 @@ private final class _JUnitXMLCountsDelegate: NSObject, XMLParserDelegate {
   /// The number of skipped result elements.
   var skippedTestCaseCount = 0
 
+  /// Get the value of an attribute of the test suite element parsed as an integer.
+  func integerAttribute(_ name: String) throws -> Int {
+    let suiteAttributes = try #require(self.suiteAttributes)
+    let value = try #require(suiteAttributes[name])
+    return try #require(Int(value))
+  }
+
   func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
     switch elementName {
     case "testsuite":
@@ -610,10 +617,9 @@ struct EventRecorderTests {
     let delegate = _JUnitXMLCountsDelegate()
     parser.delegate = delegate
     try #require(parser.parse())
-    let suiteAttributes = try #require(delegate.suiteAttributes)
-    #expect(suiteAttributes["tests"] == String(expectedTests))
-    #expect(suiteAttributes["skipped"] == String(expectedSkipped))
-    #expect(suiteAttributes["failures"] == "0")
+    #expect(try delegate.integerAttribute("tests") == expectedTests)
+    #expect(try delegate.integerAttribute("skipped") == expectedSkipped)
+    #expect(try delegate.integerAttribute("failures") == 0)
     #expect(delegate.testCaseCount == expectedTests)
     #expect(delegate.skippedTestCaseCount == expectedSkipped)
   }
@@ -638,11 +644,10 @@ struct EventRecorderTests {
     let delegate = _JUnitXMLCountsDelegate()
     parser.delegate = delegate
     try #require(parser.parse())
-    let suiteAttributes = try #require(delegate.suiteAttributes)
     // Count test functions even when parameter values run more than once.
-    #expect(suiteAttributes["tests"] == "5")
-    #expect(suiteAttributes["skipped"] == "4")
-    #expect(suiteAttributes["failures"] == "0")
+    #expect(try delegate.integerAttribute("tests") == 5)
+    #expect(try delegate.integerAttribute("skipped") == 4)
+    #expect(try delegate.integerAttribute("failures") == 0)
     #expect(delegate.testCaseCount == 5)
     #expect(delegate.skippedTestCaseCount == 4)
     #expect(testCaseStarts.withLock { $0 } == 6)
