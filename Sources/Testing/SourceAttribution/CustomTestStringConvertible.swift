@@ -94,7 +94,7 @@ extension String {
   }
 
   public init(describingForTest value: borrowing some CustomStringConvertible) {
-    self = value.description
+    self = String(describing: copy value)
   }
 
   public init(describingForTest value: borrowing some CustomDebugStringConvertible & CustomTestStringConvertible) {
@@ -102,7 +102,7 @@ extension String {
   }
 
   public init(describingForTest value: borrowing some CustomDebugStringConvertible) {
-    self = value.debugDescription
+    self = value.debugDescription // BUG: swift-#93531
   }
 
   public init(describingForTest value: borrowing some CustomStringConvertible & CustomDebugStringConvertible & CustomTestStringConvertible) {
@@ -110,7 +110,7 @@ extension String {
   }
 
   public init(describingForTest value: borrowing some CustomStringConvertible & CustomDebugStringConvertible) {
-    self = value.description
+    self = String(describing: copy value)
   }
 
   @_disfavoredOverload

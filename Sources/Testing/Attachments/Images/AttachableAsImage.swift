@@ -10,6 +10,9 @@
 
 #if SWT_TARGET_OS_APPLE || os(Windows)
 // These platforms support image attachments.
+#elseif hasFeature(Embedded)
+// Embedded Swift can support image attachments, but the implementation will be
+// platform-specific and we cannot automatically provide it.
 #elseif !SWT_NO_IMAGE_ATTACHMENTS
 #error("Platform-specific misconfiguration: support for image attachments requires a platform-specific implementation")
 #endif
@@ -89,8 +92,7 @@ public protocol AttachableAsImage {
   /// a reference to `self`. If this type does not support making copies, return
   /// `self` verbatim.
   ///
-  /// The default implementation of this function when `Self` conforms to
-  /// `Sendable` simply returns `self`.
+  /// The default implementation of this function simply returns `self`.
   ///
   /// This function is not part of the public interface of the testing library.
   /// It may be removed in a future update.
@@ -102,11 +104,7 @@ public protocol AttachableAsImage {
   /// handles or COM objects) associated with this image. The testing library
   /// automatically invokes this function as needed.
   ///
-  /// This function is not responsible for releasing the image returned from
-  /// `_copyAttachableIWICBitmapSource(using:)`.
-  ///
-  /// The default implementation of this function when `Self` conforms to
-  /// `Sendable` does nothing.
+  /// The default implementation of this function does nothing.
   ///
   /// This function is not part of the public interface of the testing library.
   /// It may be removed in a future update.
