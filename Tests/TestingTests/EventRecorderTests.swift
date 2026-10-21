@@ -571,11 +571,19 @@ struct EventRecorderTests {
   func junitXMLCountsStartedAndSkippedTests(started: Int, skipped: Int, expectedTests: Int, expectedSkipped: Int) async throws {
     let stream = Stream()
     let recorder = Event.JUnitXMLRecorder(writingUsing: stream.write)
+    // Suite events must not contribute to the number of reported tests.
+    let suite = try #require(await test(for: WrittenTests.self))
+    let startedTests = (0 ..< started).map { Test(name: "started \($0)") {} }
+    let skippedTests = (0 ..< skipped).map { Test(name: "skipped \($0)") {} }
+
+    recorder.record(Event(.testDiscovered, testID: suite.id, testCaseID: nil), in: Event.Context(test: suite, testCase: nil, iteration: nil, configuration: nil))
+    for test in startedTests + skippedTests {
+      recorder.record(Event(.testDiscovered, testID: test.id, testCaseID: nil), in: Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil))
+    }
+
     let runContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
     recorder.record(Event(.runStarted, testID: nil, testCaseID: nil), in: runContext)
 
-    // Suite events must not contribute to the number of reported tests.
-    let suite = try #require(await test(for: WrittenTests.self))
     let suiteContext = Event.Context(test: suite, testCase: nil, iteration: nil, configuration: nil)
     if started > 0 {
       recorder.record(Event(.testStarted, testID: suite.id, testCaseID: nil), in: suiteContext)
@@ -583,14 +591,12 @@ struct EventRecorderTests {
       recorder.record(Event(.testSkipped(.init(sourceContext: .init())), testID: suite.id, testCaseID: nil), in: suiteContext)
     }
 
-    for index in 0 ..< started {
-      let test = Test(name: "started \(index)") {}
+    for test in startedTests {
       let context = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
       recorder.record(Event(.testStarted, testID: test.id, testCaseID: nil), in: context)
       recorder.record(Event(.testEnded, testID: test.id, testCaseID: nil), in: context)
     }
-    for index in 0 ..< skipped {
-      let test = Test(name: "skipped \(index)") {}
+    for test in skippedTests {
       let context = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
       recorder.record(Event(.testSkipped(.init(sourceContext: .init())), testID: test.id, testCaseID: nil), in: context)
     }
