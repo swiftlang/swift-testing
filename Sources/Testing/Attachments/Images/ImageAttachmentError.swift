@@ -8,7 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if os(Windows)
 package import _TestingInternals
+#endif
 
 /// A type representing an error that can occur when attaching an image.
 #if SWT_NO_IMAGE_ATTACHMENTS
@@ -44,7 +46,7 @@ package enum ImageAttachmentError: Error {
   case propertyBagWritingFailed(String, HRESULT)
 
   /// The `HRESULT` value underlying this error.
-  fileprivate static var hresultValue: HRESULT {
+  fileprivate var hresultValue: HRESULT {
     switch self {
     case let .queryInterfaceFailed(_, result),
       let .comObjectCreationFailed(_, result),
