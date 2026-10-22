@@ -192,6 +192,12 @@ struct TestCaseIterationTests {
       /Testing Library Version: .*/,
     ]
 
+    if Testing.testingLibraryCommit != nil {
+      result += [
+        /Testing Library Commit: .*/,
+      ]
+    }
+
     if Testing.targetTriple != nil {
       result += [
         /Target Platform: .*/,
