@@ -13,7 +13,13 @@
 
 @Suite("Test.Snapshot tests")
 struct Test_SnapshotTests {
-  @Test("Codable")
+  /// A doc comment that becomes a Comment trait.
+  @Test(
+    "Codable",
+    .tags(.testTag),
+    .timeLimit(.minutes(1)),
+    bug
+  )
   func codable() throws {
     let test = try #require(Test.current)
     let snapshot = Test.Snapshot(snapshotting: test)
@@ -23,8 +29,15 @@ struct Test_SnapshotTests {
     #expect(decoded.name == snapshot.name)
     #expect(decoded.displayName == snapshot.displayName)
     #expect(decoded.sourceLocation == snapshot.sourceLocation)
-    // FIXME: Compare traits as well, once they are included.
     #expect(decoded.parameters == snapshot.parameters)
+    #expect(!decoded.comments.isEmpty)
+    #expect(decoded.comments == snapshot.comments)
+    #expect(decoded.tags == [Tag.testTag])
+    #expect(decoded.tags == snapshot.tags)
+    #expect(decoded.associatedBugs == [Self.bug])
+    #expect(decoded.associatedBugs == snapshot.associatedBugs)
+    #expect(decoded.timeLimit == .seconds(60))
+    #expect(decoded.timeLimit == snapshot.timeLimit)
   }
 
   @Test("isParameterized property")
