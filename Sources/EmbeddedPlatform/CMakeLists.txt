@@ -9,7 +9,11 @@
 set(CMAKE_CXX_SCAN_FOR_MODULES 0)
 
 # Copy the Platform Abstraction Layer annex header to /usr/include/swift.
-add_custom_command(
-    OUTPUT "${SwiftTesting_INSTALL_INCLUDEDIR}/swift/EmbeddedPlatform+Testing.h"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/EmbeddedPlatform+Testing.h"
-    COMMAND "${CMAKE_COMMAND}" "-E" "copy" "${CMAKE_CURRENT_SOURCE_DIR}/include/EmbeddedPlatform+Testing.h" "${SwiftTesting_INSTALL_INCLUDEDIR}/swift")
+
+add_custom_target(EmbeddedPlatformTestingAnnex
+  BYPRODUCTS "${SwiftTesting_INSTALL_INCLUDEDIR}/EmbeddedPlatform+Testing.h"
+  COMMAND "${CMAKE_COMMAND}" "-E" "copy" "${CMAKE_CURRENT_SOURCE_DIR}/../_TestingInternals/include/EmbeddedPlatform+Testing.h" "${SwiftTesting_INSTALL_INCLUDEDIR}"
+  COMMENT "Copying Embedded Swift platform header (testing annex) to ${SwiftTesting_INSTALL_INCLUDEDIR}")
+
+add_dependencies(Testing
+  EmbeddedPlatformTestingAnnex)
