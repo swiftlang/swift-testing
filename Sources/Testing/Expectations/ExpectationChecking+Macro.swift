@@ -89,7 +89,7 @@ public func __checkValue(
     if let expressionWithCapturedRuntimeValues = expressionWithCapturedRuntimeValues() {
       expression = expressionWithCapturedRuntimeValues
     }
-    if expression.runtimeValue == nil {
+    if expression.isNegated || expression.runtimeValue == nil {
       expression = expression.capturingRuntimeValues(condition)
     }
   }
