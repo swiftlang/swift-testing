@@ -1370,6 +1370,7 @@ final class IssueTests: XCTestCase {
       }
       XCTAssertNotNil(expectation.evaluatedExpression.runtimeValue)
       XCTAssertTrue(expectation.evaluatedExpression.runtimeValue!.typeInfo.describes(Bool.self))
+      XCTAssertEqual(expectation.evaluatedExpression.runtimeValue!.description, "false")
       guard expectation.evaluatedExpression.isNegated,
             let subexpression = expectation.evaluatedExpression.subexpressions.first else {
         XCTFail("Expected expression was negated and had one subexpression")
@@ -1377,6 +1378,7 @@ final class IssueTests: XCTestCase {
       }
       XCTAssertNotNil(subexpression.runtimeValue)
       XCTAssertTrue(subexpression.runtimeValue!.typeInfo.describes(Bool.self))
+      XCTAssertEqual(subexpression.runtimeValue!.description, "true")
     }
 
     @Sendable func g() -> Int { 1 }
