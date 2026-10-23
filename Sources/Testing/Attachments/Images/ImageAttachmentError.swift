@@ -8,11 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if os(Windows)
-package import _TestingInternals
-#else
 private import _TestingInternals
-#endif
 
 /// A type representing an error that can occur when attaching an image.
 #if SWT_NO_IMAGE_ATTACHMENTS
@@ -33,19 +29,19 @@ package enum ImageAttachmentError: Error {
   case unsupportedImageFormat(_ typeIdentifier: String)
 #elseif os(Windows)
   /// A call to `QueryInterface()` failed.
-  case queryInterfaceFailed(Any.Type, HRESULT)
+  case queryInterfaceFailed(Any.Type, CLong)
 
   /// The testing library failed to create a COM object.
-  case comObjectCreationFailed(Any.Type, HRESULT)
+  case comObjectCreationFailed(Any.Type, CLong)
 
   /// An image could not be written.
-  case imageWritingFailed(HRESULT)
+  case imageWritingFailed(CLong)
 
   /// The testing library failed to get an in-memory stream's underlying buffer.
-  case globalFromStreamFailed(HRESULT)
+  case globalFromStreamFailed(CLong)
 
   /// A property could not be written to a property bag.
-  case propertyBagWritingFailed(String, HRESULT)
+  case propertyBagWritingFailed(String, CLong)
 
   /// The `HRESULT` value underlying this error.
   fileprivate var hresultValue: HRESULT {
