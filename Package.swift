@@ -619,7 +619,7 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_DYNAMIC_LINKING": (platforms: [.wasi], embedded: true),
       "SWT_NO_PIPES": (platforms: [.wasi], embedded: true),
       "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .nonApplePlatforms, embedded: true),
-      "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
+      "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: false),
       "SWT_NO_FILE_IO": (platforms: .none, embedded: true),
       "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
       "SWT_NO_ABI_ENTRY_POINT": (platforms: .none, embedded: true),
