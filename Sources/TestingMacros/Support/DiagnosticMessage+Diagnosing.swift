@@ -160,6 +160,7 @@ private func _diagnoseIssuesWithParallelizationTrait(_ traitExpr: MemberAccessEx
 ///   - lexicalContext: The single lexical context to inspect.
 ///   - decl: The declaration to inspect.
 ///   - attribute: The `@Test` or `@Suite` attribute applied to `decl`.
+///   - context: The macro context in which the expression is being parsed.
 ///
 /// - Returns: An array of zero or more diagnostic messages related to the
 ///   lexical context containing `decl`.
@@ -171,7 +172,8 @@ private func _diagnoseIssuesWithParallelizationTrait(_ traitExpr: MemberAccessEx
 func diagnoseIssuesWithLexicalContext(
   _ lexicalContext: some SyntaxProtocol,
   containing decl: some DeclSyntaxProtocol,
-  attribute: AttributeSyntax
+  attribute: AttributeSyntax,
+  in context: some MacroExpansionContext
 ) -> [DiagnosticMessage] {
   var diagnostics = [DiagnosticMessage]()
 
@@ -204,6 +206,13 @@ func diagnoseIssuesWithLexicalContext(
     }
   }
 
+  // Suites cannot be extensions in Embedded Swift because we cannot construct
+  // the fully-qualified type name for them (e.g. they may be typealiases or in
+  // different modules).
+  if let extensionDecl = lexicalContext.as(ExtensionDeclSyntax.self), context.isTargetEmbedded {
+    diagnostics.append(.containingNodeUnsupported(extensionDecl, whenUsing: attribute, inEmbedded: true, on: decl))
+  }
+
   // Check other attributes on the declaration. Note that it should be
   // impossible to reach this point if the declaration can't have attributes.
   if let attributedDecl = lexicalContext.asProtocol((any WithAttributesSyntax).self) {
@@ -231,16 +240,18 @@ func diagnoseIssuesWithLexicalContext(
 ///   - lexicalContext: The lexical context to inspect.
 ///   - decl: The declaration to inspect.
 ///   - attribute: The `@Test` or `@Suite` attribute applied to `decl`.
+///   - context: The macro context in which the expression is being parsed.
 ///
 /// - Returns: An array of zero or more diagnostic messages related to the
 ///   lexical context containing `decl`.
 func diagnoseIssuesWithLexicalContext(
   _ lexicalContext: [Syntax],
   containing decl: some DeclSyntaxProtocol,
-  attribute: AttributeSyntax
+  attribute: AttributeSyntax,
+  in context: some MacroExpansionContext
 ) -> [DiagnosticMessage] {
   lexicalContext.lazy
-    .map { diagnoseIssuesWithLexicalContext($0, containing: decl, attribute: attribute) }
+    .map { diagnoseIssuesWithLexicalContext($0, containing: decl, attribute: attribute, in: context) }
     .reduce(into: [], +=)
 }
 

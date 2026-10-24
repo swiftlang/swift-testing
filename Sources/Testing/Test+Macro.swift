@@ -8,8 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
-
 #if _runtime(_ObjC)
 public import ObjectiveC
 
@@ -59,6 +57,35 @@ public typealias __TraitArray<T> = [T]
 public typealias __TraitArray<T> = [any Trait]
 #endif
 
+extension TypeInfo {
+  /// Construct an instance of this type to describe a test suite based on the
+  /// given `__TypeInfo` instance.
+  ///
+  /// - Parameters:
+  ///   - suiteType: A value describing the suite type.
+  ///   - sourceBounds: Some instance of `__SourceBounds` relevant to the Swift
+  ///     source file in which `suiteType` was used.
+  ///
+  /// Use this initializer to abstract over differences between how Embedded and
+  /// non-Embedded Swift represent suite types at macro expansion time. This
+  /// initializer assumes that, in Embedded Swift, `suiteType` does not include
+  /// the suite type's module name and gathers it from `sourceBounds` instead.
+  /// As such, this initializer may not be suitable for other uses of
+  /// `__TypeInfo` (e.g. in the expansion of the ``Tag`` macro).
+  ///
+  /// In non-Embedded Swift, the `sourceBounds` argument is ignored.
+  @inline(always)
+  fileprivate init<S>(_ suiteType: __TypeInfo<S>, sourceBounds: __SourceBounds) where S: ~Copyable & ~Escapable {
+#if !hasFeature(Embedded)
+    self.init(describing: suiteType)
+#else
+    let moduleName = sourceBounds.lowerBound.moduleName
+    let fullyQualifiedTypeName = "\(moduleName).\(suiteType.fullyQualifiedName)"
+    self.init(fullyQualifiedName: fullyQualifiedTypeName, mangledName: nil)
+#endif
+  }
+}
+
 // MARK: - @Suite
 
 /// Declare a test suite.
@@ -79,7 +106,6 @@ public typealias __TraitArray<T> = [any Trait]
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
-@_unavailableInEmbedded
 @attached(peer)
 @_documentation(visibility: private)
 public macro Suite(
@@ -107,29 +133,26 @@ public macro Suite(
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
-@_unavailableInEmbedded
 @attached(peer) public macro Suite(
   _ displayName: _const String? = nil,
   _ traits: any SuiteTrait...
 ) = #externalMacro(module: "TestingMacros", type: "SuiteDeclarationMacro")
 
-#if !hasFeature(Embedded)
 extension Test {
   /// Create an instance of ``Test`` for a suite type.
   ///
   /// - Warning: This function is used to implement the `@Suite` macro. Do not
   ///   call it directly.
   public static func __type<S>(
-    _ containingType: S.Type,
+    _ containingType: __TypeInfo<S>,
     displayName: String? = nil,
     traits: __TraitArray<any SuiteTrait>,
     sourceBounds: __SourceBounds
   ) -> Self where S: ~Copyable & ~Escapable {
-    let containingTypeInfo = TypeInfo(describing: containingType)
+    let containingTypeInfo = TypeInfo(containingType, sourceBounds: sourceBounds)
     return Self(displayName: displayName, traits: traits, sourceLocation: sourceBounds.lowerBound, containingTypeInfo: containingTypeInfo)
   }
 }
-#endif
 
 // MARK: - @Test
 
@@ -178,7 +201,7 @@ extension Test {
   ///   call it directly.
   public static func __function<S>(
     named testFunctionName: String,
-    in containingType: S.Type?,
+    in containingType: __TypeInfo<S>?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
@@ -186,12 +209,13 @@ extension Test {
     parameters: [__Parameter] = [],
     testFunction: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable {
-    Self(
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
+    return Self(
       name: testFunctionName,
       displayName: displayName,
       traits: traits,
       sourceBounds: sourceBounds,
-      in: containingType,
+      containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCases: { @Sendable in Case.Generator(testFunction: testFunction) },
       parameters: []
@@ -268,7 +292,7 @@ extension Test {
   ///   call it directly.
   public static func __function<S, C>(
     named testFunctionName: String,
-    in containingType: S.Type?,
+    in containingType: __TypeInfo<S>?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
@@ -277,13 +301,14 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element: Sendable {
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters
     return Self(
       name: testFunctionName,
       displayName: displayName,
       traits: traits,
       sourceBounds: sourceBounds,
-      in: containingType,
+      containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCases: { Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) },
       parameters: parameters
@@ -300,7 +325,7 @@ extension Test {
   ///   call it directly.
   public static func __function<S, C>(
     named testFunctionName: String,
-    in containingType: S.Type?,
+    in containingType: __TypeInfo<S>?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
@@ -309,13 +334,14 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element: Sendable & CustomTestStringConvertible {
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters
     return Self(
       name: testFunctionName,
       displayName: displayName,
       traits: traits,
       sourceBounds: sourceBounds,
-      in: containingType,
+      containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCases: {
         Case.Generator(
@@ -458,7 +484,7 @@ extension Test {
   ///   call it directly.
   public static func __function<S, C1, C2>(
     named testFunctionName: String,
-    in containingType: S.Type?,
+    in containingType: __TypeInfo<S>?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
@@ -467,13 +493,14 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters
     return Self(
       name: testFunctionName,
       displayName: displayName,
       traits: traits,
       sourceBounds: sourceBounds,
-      in: containingType,
+      containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCases: { try await Case.Generator(arguments: collection1(), collection2(), parameters: parameters, testFunction: testFunction) },
       parameters: parameters
@@ -490,7 +517,7 @@ extension Test {
   ///   call it directly.
   public static func __function<S, C1, C2>(
     named testFunctionName: String,
-    in containingType: S.Type?,
+    in containingType: __TypeInfo<S>?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
@@ -499,13 +526,14 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable & CustomTestStringConvertible, C2: Collection & Sendable, C2.Element: Sendable & CustomTestStringConvertible {
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters
     return Self(
       name: testFunctionName,
       displayName: displayName,
       traits: traits,
       sourceBounds: sourceBounds,
-      in: containingType,
+      containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCases: {
         try await Case.Generator(
@@ -529,7 +557,7 @@ extension Test {
   ///   call it directly.
   public static func __function<S, C, E1, E2>(
     named testFunctionName: String,
-    in containingType: S.Type?,
+    in containingType: __TypeInfo<S>?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
@@ -538,13 +566,14 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters
     return Self(
       name: testFunctionName,
       displayName: displayName,
       traits: traits,
       sourceBounds: sourceBounds,
-      in: containingType,
+      containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCases: { Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) },
       parameters: parameters
@@ -564,7 +593,7 @@ extension Test {
   ///   call it directly.
   public static func __function<S, C, E1, E2>(
     named testFunctionName: String,
-    in containingType: S.Type?,
+    in containingType: __TypeInfo<S>?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
@@ -573,13 +602,14 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable & CustomTestStringConvertible, E2: Sendable & CustomTestStringConvertible {
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters
     return Self(
       name: testFunctionName,
       displayName: displayName,
       traits: traits,
       sourceBounds: sourceBounds,
-      in: containingType,
+      containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCases: {
         Case.Generator(
@@ -606,7 +636,7 @@ extension Test {
   ///   call it directly.
   public static func __function<S, C>(
     named testFunctionName: String,
-    in containingType: S.Type?,
+    in containingType: __TypeInfo<S>?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
@@ -615,13 +645,14 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: ExpressibleByDictionaryLiteral & Collection & Sendable, C.Element == (key: C.Key, value: C.Value), C.Key: Sendable, C.Value: Sendable {
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters
     return Self(
       name: testFunctionName,
       displayName: displayName,
       traits: traits,
       sourceBounds: sourceBounds,
-      in: containingType,
+      containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCases: { Case.Generator(arguments: try await dictionary(), parameters: parameters, testFunction: testFunction) },
       parameters: parameters
@@ -644,7 +675,7 @@ extension Test {
   ///   call it directly.
   public static func __function<S, C>(
     named testFunctionName: String,
-    in containingType: S.Type?,
+    in containingType: __TypeInfo<S>?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
@@ -653,13 +684,14 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: ExpressibleByDictionaryLiteral & Collection & Sendable, C.Element == (key: C.Key, value: C.Value), C.Key: Sendable & CustomTestStringConvertible, C.Value: Sendable & CustomTestStringConvertible {
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters
     return Self(
       name: testFunctionName,
       displayName: displayName,
       traits: traits,
       sourceBounds: sourceBounds,
-      in: containingType,
+      containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCases: {
         Case.Generator(
@@ -680,7 +712,7 @@ extension Test {
   ///   call it directly.
   public static func __function<S, C1, C2>(
     named testFunctionName: String,
-    in containingType: S.Type?,
+    in containingType: __TypeInfo<S>?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
@@ -689,13 +721,14 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters
     return Self(
       name: testFunctionName,
       displayName: displayName,
       traits: traits,
       sourceBounds: sourceBounds,
-      in: containingType,
+      containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCases: {
         Case.Generator(arguments: try await zippedCollections(), parameters: parameters, testFunction: testFunction)
@@ -714,7 +747,7 @@ extension Test {
   ///   call it directly.
   public static func __function<S, C1, C2>(
     named testFunctionName: String,
-    in containingType: S.Type?,
+    in containingType: __TypeInfo<S>?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
@@ -723,13 +756,14 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable & CustomTestStringConvertible, C2: Collection & Sendable, C2.Element: Sendable & CustomTestStringConvertible {
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters
     return Self(
       name: testFunctionName,
       displayName: displayName,
       traits: traits,
       sourceBounds: sourceBounds,
-      in: containingType,
+      containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCases: {
         Case.Generator(
