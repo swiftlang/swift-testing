@@ -71,6 +71,7 @@ add_library(Testing
   Parameterization/Test.Case.ID.swift
   Parameterization/Test.Case.swift
   Parameterization/TypeInfo.swift
+  Parameterization/TypeInfo+Macro.swift
   Running/Configuration.swift
   Running/Configuration.TestFilter.swift
   Running/Configuration+EventHandling.swift

@@ -374,9 +374,8 @@ struct TestDeclarationMacroTests {
 
   @Test("Error diagnostics emitted dependent on Embedded Swift",
     arguments: [
-      ("@Suite struct S { @Test func f() {} }", "Attribute 'Test' cannot be applied to a function within structure 'S' in Embedded Swift"),
-      ("struct S { @Test func f() {} }", "Attribute 'Test' cannot be applied to a function within structure 'S' in Embedded Swift"),
-      ("extension S1 { struct S2 { @Test func f() {} } }", "Attribute 'Test' cannot be applied to a function within structure 'S2' in Embedded Swift"),
+      ("extension S { @Test func f() {} }", "Attribute 'Test' cannot be applied to a function within an extension to type 'S' in Embedded Swift"),
+      ("extension S1 { struct S2 { @Test func f() {} } }", "Attribute 'Test' cannot be applied to a function within an extension to type 'S1' in Embedded Swift"),
     ]
   )
   func embeddedSwiftDependentDiagnostics(input: String, expectedMessage: String) throws {

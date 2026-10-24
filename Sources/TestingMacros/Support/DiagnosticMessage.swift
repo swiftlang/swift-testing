@@ -275,13 +275,19 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///
   /// - Parameters:
   ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///   - inEmbedded: Whether or not the constraint applies specifically to
+  ///     Embedded Swift.
   ///   - decl: The declaration in question.
   ///
   /// - Returns: A diagnostic message.
-  static func attributeNotSupported(_ attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
-    Self(
+  static func attributeNotSupported(_ attribute: AttributeSyntax, inEmbedded: Bool = false, on decl: some SyntaxProtocol) -> Self {
+    var message = "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true))"
+    if inEmbedded {
+      message += " in Embedded Swift"
+    }
+    return Self(
       syntax: Syntax(decl),
-      message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true))",
+      message: message,
       severity: .error
     )
   }

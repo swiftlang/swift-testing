@@ -21,17 +21,28 @@ extension Tag {
   ///
   /// - Warning: This function is used to implement the `@Tag` macro. Do not
   ///   call it directly.
+  public static func __fromStaticMember<T>(of type: __TypeInfo<T>, _ name: _const String) -> Self where T: ~Copyable & ~Escapable {
 #if !hasFeature(Embedded)
-  public static func __fromStaticMember(of type: Any.Type, _ name: _const String) -> Self {
+    let typeInfo = TypeInfo(describing: type)
+#else
+    let typeInfo = TypeInfo(fullyQualifiedName: "\(type.fullyQualifiedName)", mangledName: nil)
+#endif
+
     // Split up the supplied type name into its fully-qualified components. We
     // will use this string array to reconstruct the fully-qualified name of the
     // described static member.
-    var fullyQualifiedMemberNameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
+    var fullyQualifiedMemberNameComponents = typeInfo.fullyQualifiedNameComponents[...]
 
     // Strip off the "Testing" and "Tag" components of the fully-qualified name
-    // since they're redundant. Macro expansion will have already checked that
-    // the type is nested inside `Tag`.
-    fullyQualifiedMemberNameComponents = Array(fullyQualifiedMemberNameComponents.dropFirst(2))
+    // since they're redundant. (Note that in Embedded Swift, we may not have
+    // both tokens depending on how the test author declared the tag, so we are
+    // lenient here removing the prefix).
+    if fullyQualifiedMemberNameComponents.first == "Testing" {
+      fullyQualifiedMemberNameComponents = fullyQualifiedMemberNameComponents.dropFirst()
+    }
+    if fullyQualifiedMemberNameComponents.first == "Tag" {
+      fullyQualifiedMemberNameComponents = fullyQualifiedMemberNameComponents.dropFirst()
+    }
 
     // Add the specified tag name to the fully-qualified name and reconstruct
     // its string representation.
@@ -40,11 +51,6 @@ extension Tag {
 
     return Self(kind: .staticMember(fullyQualifiedMemberName))
   }
-#else
-  public static func __fromStaticMember(_ name: _const String) -> Self {
-    Self(kind: .staticMember(name))
-  }
-#endif
 }
 
 /// Declare a tag that can be applied to a test function or test suite.
