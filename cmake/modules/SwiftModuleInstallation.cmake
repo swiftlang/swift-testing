@@ -12,6 +12,7 @@ function(_swift_testing_install_target module)
   install(TARGETS ${module}
     ARCHIVE DESTINATION "${SwiftTesting_INSTALL_LIBDIR}"
     LIBRARY DESTINATION "${SwiftTesting_INSTALL_LIBDIR}"
+    PUBLIC_HEADER DESTINATION "${SwiftTesting_INSTALL_INCLUDEDIR}"
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
   get_target_property(type ${module} TYPE)

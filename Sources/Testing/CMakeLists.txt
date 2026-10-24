@@ -176,6 +176,13 @@ target_compile_options(Testing PRIVATE
   -enable-library-evolution
   -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:Testing,Swift_MODULE_DIRECTORY>/Testing.swiftinterface)
 
+# Install PAL Annex header
+if(SwiftTesting_BuildPALAnnexComponents)
+  message(STATUS "Building PAL Annex components...")
+  set_target_properties(Testing PROPERTIES
+    PUBLIC_HEADER "../_TestingInternals/include/EmbeddedPlatform+Testing.h")
+endif()
+
 _swift_testing_install_target(Testing)
 
 # Install the Swift cross-import overlay directory.
