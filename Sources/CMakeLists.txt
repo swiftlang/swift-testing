@@ -101,6 +101,10 @@ elseif(SwiftTesting_MACRO_PATH)
   endif()
 endif()
 
+if(NOT SwiftTesting_BuildPALAnnexComponents)
+  set(SwiftTesting_BuildPALAnnexComponents 1)
+endif()
+
 include(AvailabilityDefinitions)
 include(CompilerSettings)
 add_subdirectory(_TestDiscovery)
@@ -108,3 +112,6 @@ add_subdirectory(_TestingInterop)
 add_subdirectory(_TestingInternals)
 add_subdirectory(Overlays)
 add_subdirectory(Testing)
+
+# Embedded Swift (must come after Testing)
+add_subdirectory(EmbeddedPlatform)
