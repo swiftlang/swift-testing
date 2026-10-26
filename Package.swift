@@ -125,6 +125,28 @@ let package = Package(
       ),
     ]
 
+    // Declare products for the Platform Abstraction Layer annex implementations
+    // we provide so that they can be used as package dependencies.
+    if buildingForEmbedded {
+      result += [
+        .library(
+          name: "EmbeddedPlatformPOSIX+Testing",
+          type: .static,
+          targets: ["EmbeddedPlatformPOSIX+Testing"]
+        ),
+        .library(
+          name: "EmbeddedPlatformWASI+Testing",
+          type: .static,
+          targets: ["EmbeddedPlatformWASI+Testing"]
+        ),
+        .library(
+          name: "EmbeddedPlatformPicoSDK+Testing",
+          type: .static,
+          targets: ["EmbeddedPlatformPicoSDK+Testing"]
+        ),
+      ]
+    }
+
     return result
   }(),
 
