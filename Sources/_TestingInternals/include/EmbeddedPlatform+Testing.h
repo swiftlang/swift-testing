@@ -378,7 +378,7 @@ typedef struct swift_testing_console_capabilities_t {
   ///
   /// - ``Event/ConsoleOutputRecorder/Options/ansiColorBitDepth``
   unsigned int ansiColorBitDepth : 5;
-} swift_testing_console_capabilities_t;
+} swift_testing_console_capabilities_t SWIFT_TESTING_SENDABLE;
 
 /// Get the capabilities of the current system's console output.
 ///
@@ -543,7 +543,7 @@ typedef struct swift_testing_duration_t {
   ///
   /// The value of this field should be less than `1000000000`.
   uint32_t nanoseconds : 30;
-} swift_testing_duration_t;
+} swift_testing_duration_t SWIFT_TESTING_SENDABLE;
 
 /// Get the amount of time that has passed since the system's epoch.
 ///
