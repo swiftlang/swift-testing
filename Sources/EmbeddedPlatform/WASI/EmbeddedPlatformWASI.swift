@@ -48,12 +48,4 @@ private let _argcArgv: swift_testing_argc_argv_t = {
   return true
 }
 #endif
-
-@c @implementation func _swift_testing_getEmbeddedTargetInfo(_ outEmbeddedTargetInfo: UnsafeMutablePointer<UnsafePointer<CChar>?>) -> CBool {
-  false
-}
-
-@c @implementation func _swift_testing_getConsoleCapabilities(_ outConsoleCapabilities: UnsafeMutablePointer<swift_testing_console_capabilities_t>) -> CBool {
-  false
-}
 #endif

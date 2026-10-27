@@ -35,7 +35,7 @@ static inline uint64_t swt_getSwiftCompilerVersion(void) {
 /// - Returns: Whether or not we were able to get the GNU C Library version. If
 ///   `false`, we were not building against it in the first place.
 static inline bool swt_getGNUCLibraryVersion(int *outMajor, int *outMinor) {
-#if !SWT_EMBEDDED && __is_target_environment(gnu)
+#if !defined(SWT_EMBEDDED) && __is_target_environment(gnu)
 
   const char *strVersion = gnu_get_libc_version();
   if (strVersion) {
