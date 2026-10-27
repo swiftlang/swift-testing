@@ -80,9 +80,9 @@ extension Event.Metadata {
       append(_swiftStandardLibraryVersionName, swiftStandardLibraryVersion)
     }
     append(_swiftCompilerVersionName, swiftCompilerVersion)
-#if os(Linux) && canImport(Glibc)
-    append(_gnuCLibraryVersionName, glibcVersion)
-#endif
+    if let glibcVersion {
+      append(_gnuCLibraryVersionName, glibcVersion)
+    }
     append(_testingLibraryVersionName, testingLibraryVersion)
     if let targetTriple {
       append(_targetPlatformName, targetTriple)

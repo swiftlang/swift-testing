@@ -155,14 +155,12 @@ func spawnExecutable(
             // standardized in POSIX.1-2024 (see https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn_file_actions_adddup2.html
             // and https://www.austingroupbugs.net/view.php?id=411).
             _ = posix_spawn_file_actions_adddup2(fileActions, fd, fd)
-#if os(Linux) && canImport(Glibc)
-            if _slowPath(glibcVersion < VersionNumber(2, 29)) {
+            if let glibcVersion, _slowPath(glibcVersion < VersionNumber(2, 29)) {
               // This system is using an older version of glibc that does not
               // implement FD_CLOEXEC clearing in posix_spawn_file_actions_adddup2(),
               // so we must clear it here in the parent process.
               try setFD_CLOEXEC(false, onFileDescriptor: fd)
             }
-#endif
 #endif
             highestFD = max(highestFD, fd)
           }

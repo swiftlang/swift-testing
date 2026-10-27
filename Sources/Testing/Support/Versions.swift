@@ -232,31 +232,17 @@ var swiftCompilerVersion: VersionNumber {
   )
 }
 
-#if os(Linux) && canImport(Glibc)
 /// The (runtime, not compile-time) version of glibc in use on this system.
 ///
 /// This value is not part of the public interface of the testing library.
-let glibcVersion: VersionNumber = {
-  // Default to the statically available version number if the function call
-  // fails for some reason.
-  var major = Int(clamping: __GLIBC__)
-  var minor = Int(clamping: __GLIBC_MINOR__)
-
-#if !hasFeature(Embedded)
-  if let strVersion = gnu_get_libc_version() {
-    withUnsafeMutablePointer(to: &major) { major in
-      withUnsafeMutablePointer(to: &minor) { minor in
-        withVaList([major, minor]) { args in
-          _ = vsscanf(strVersion, "%zd.%zd", args)
-        }
-      }
-    }
+let glibcVersion: VersionNumber? = {
+  var major = CInt(0)
+  var minor = CInt(0)
+  guard swt_getGNUCLibraryVersion(&major, &minor) else {
+    return nil
   }
-#endif
-
   return VersionNumber(majorComponent: .init(clamping: major), minorComponent: .init(clamping: minor))
 }()
-#endif
 
 // MARK: - sysctlbyname() Wrapper
 
