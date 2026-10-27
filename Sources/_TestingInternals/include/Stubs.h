@@ -70,18 +70,6 @@ static int swt_errno(void) {
 SWT_IMPORT_FROM_STDLIB void *_Nullable memmem(const void *haystack, size_t hsize, const void *needle, size_t nsize);
 #endif
 
-/// Check whether or not the target platform uses the GNU C Library.
-///
-/// This function is provided because Swift cannot check if a C macro is defined
-/// at compile time.
-static bool swt_isGNUCLibrary(void) {
-#if defined(__GLIBC__)
-  return true;
-#else
-  return false;
-#endif
-}
-
 #if !SWT_NO_FILE_IO
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)
@@ -219,15 +207,7 @@ static const IMAGE_SECTION_HEADER *_Null_unspecified swt_IMAGE_FIRST_SECTION(con
 ///
 /// By POSIX convention, the environment block variable is declared in client
 /// code rather than in a header.
-SWT_EXTERN char *_Nullable *_Null_unspecified environ;
-
-/// Get the environment block.
-///
-/// This function is provided because directly accessing `environ` from Swift
-/// triggers concurrency warnings about accessing shared mutable state.
-static char *_Nullable *_Null_unspecified swt_environ(void) {
-  return environ;
-}
+SWT_EXTERN char *_Nullable *_Null_unspecified environ SWT_NONISOLATED_UNSAFE;
 #endif
 
 #if defined(__ELF__) && defined(__swift__)

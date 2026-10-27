@@ -30,6 +30,36 @@ static inline uint64_t swt_getSwiftCompilerVersion(void) {
 #endif
 }
 
+/// Get the GNU C Library version.
+///
+/// - Returns: Whether or not we were able to get the GNU C Library version. If
+///   `false`, we were not building against it in the first place.
+static inline bool swt_getGNUCLibraryVersion(int *outMajor, int *outMinor) {
+#if !SWT_EMBEDDED && __is_target_environment(gnu)
+
+  const char *strVersion = gnu_get_libc_version();
+  if (strVersion) {
+    int scanCount = sscanf(strVersion, "%d.%d", outMajor, outMinor);
+    if (scanCount == 2) {
+      return true;
+    }
+  }
+
+  // Default to the statically available version number if the function call
+  // fails for some reason.
+#if defined(__GLIBC__) && defined(__GLIBC_MINOR__)
+  *outMajor = __GLIBC__;
+  *outMinor = __GLIBC_MINOR__;
+  return true;
+#else
+#warning __GLIBC__ or __GLIBC_MINOR__ not defined in target environment "gnu": GNU C Library version is unavailable
+  return false;
+#endif
+#else
+  return false;
+#endif
+}
+
 /// Get the human-readable version of the testing library.
 ///
 /// - Returns: A human-readable string describing the version of the testing
