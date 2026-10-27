@@ -296,7 +296,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments collection: @escaping @Sendable () async throws -> C,
+    arguments collection: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
@@ -310,51 +310,10 @@ extension Test {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: { Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) },
+      testCases: { Case.Generator(argumentList: try await collection(), parameters: parameters, testFunction: testFunction) },
       parameters: parameters
     )
   }
-
-#if hasFeature(Embedded)
-  /// Create an instance of ``Test`` for a parameterized function.
-  ///
-  /// This overload takes collections whose elements conform to
-  /// ``CustomTestStringConvertible``.
-  ///
-  /// - Warning: This function is used to implement the `@Test` macro. Do not
-  ///   call it directly.
-  public static func __function<S, C>(
-    named testFunctionName: String,
-    in containingType: __TypeInfo<S>?,
-    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
-    displayName: String? = nil,
-    traits: __TraitArray<any TestTrait>,
-    arguments collection: @escaping @Sendable () async throws -> C,
-    sourceBounds: __SourceBounds,
-    parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
-  ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element: Sendable & CustomTestStringConvertible {
-    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
-    let parameters = paramTuples.parameters
-    return Self(
-      name: testFunctionName,
-      displayName: displayName,
-      traits: traits,
-      sourceBounds: sourceBounds,
-      containingTypeInfo: containingTypeInfo,
-      xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: {
-        Case.Generator(
-          arguments: try await collection(),
-          makingArgumentValueWith: { .init($0) },
-          parameters: parameters,
-          testFunction: testFunction
-        )
-      },
-      parameters: parameters
-    )
-  }
-#endif
 }
 
 // MARK: - @Test(arguments:_:)
@@ -488,7 +447,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments collection1: @escaping @Sendable () async throws -> C1, _ collection2: @escaping @Sendable () async throws -> C2,
+    arguments collection1: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C1>, _ collection2: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C2>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
@@ -502,209 +461,10 @@ extension Test {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: { try await Case.Generator(arguments: collection1(), collection2(), parameters: parameters, testFunction: testFunction) },
+      testCases: { try await Case.Generator(argumentLists: collection1(), collection2(), parameters: parameters, testFunction: testFunction) },
       parameters: parameters
     )
   }
-
-#if hasFeature(Embedded)
-  /// Create an instance of ``Test`` for a parameterized function.
-  ///
-  /// This overload takes collections whose elements conform to
-  /// ``CustomTestStringConvertible``.
-  ///
-  /// - Warning: This function is used to implement the `@Test` macro. Do not
-  ///   call it directly.
-  public static func __function<S, C1, C2>(
-    named testFunctionName: String,
-    in containingType: __TypeInfo<S>?,
-    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
-    displayName: String? = nil,
-    traits: __TraitArray<any TestTrait>,
-    arguments collection1: @escaping @Sendable () async throws -> C1, _ collection2: @escaping @Sendable () async throws -> C2,
-    sourceBounds: __SourceBounds,
-    parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-  ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable & CustomTestStringConvertible, C2: Collection & Sendable, C2.Element: Sendable & CustomTestStringConvertible {
-    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
-    let parameters = paramTuples.parameters
-    return Self(
-      name: testFunctionName,
-      displayName: displayName,
-      traits: traits,
-      sourceBounds: sourceBounds,
-      containingTypeInfo: containingTypeInfo,
-      xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: {
-        try await Case.Generator(
-          arguments: collection1(), collection2(),
-          makingArgumentValuesWith: Test.Case.Argument.Value.makeArgumentValues(for: parameters),
-          parameters: parameters,
-          testFunction: testFunction
-        )
-      },
-      parameters: parameters
-    )
-  }
-#endif
-
-  /// Create an instance of ``Test`` for a parameterized function.
-  ///
-  /// This initializer overload is specialized for collections of 2-tuples to
-  /// efficiently de-structure their elements when appropriate.
-  ///
-  /// - Warning: This function is used to implement the `@Test` macro. Do not
-  ///   call it directly.
-  public static func __function<S, C, E1, E2>(
-    named testFunctionName: String,
-    in containingType: __TypeInfo<S>?,
-    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
-    displayName: String? = nil,
-    traits: __TraitArray<any TestTrait>,
-    arguments collection: @escaping @Sendable () async throws -> C,
-    sourceBounds: __SourceBounds,
-    parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
-  ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
-    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
-    let parameters = paramTuples.parameters
-    return Self(
-      name: testFunctionName,
-      displayName: displayName,
-      traits: traits,
-      sourceBounds: sourceBounds,
-      containingTypeInfo: containingTypeInfo,
-      xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: { Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) },
-      parameters: parameters
-    )
-  }
-
-#if hasFeature(Embedded)
-  /// Create an instance of ``Test`` for a parameterized function.
-  ///
-  /// This initializer overload is specialized for collections of 2-tuples to
-  /// efficiently de-structure their elements when appropriate.
-  ///
-  /// This overload takes collections whose elements conform to
-  /// ``CustomTestStringConvertible``.
-  ///
-  /// - Warning: This function is used to implement the `@Test` macro. Do not
-  ///   call it directly.
-  public static func __function<S, C, E1, E2>(
-    named testFunctionName: String,
-    in containingType: __TypeInfo<S>?,
-    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
-    displayName: String? = nil,
-    traits: __TraitArray<any TestTrait>,
-    arguments collection: @escaping @Sendable () async throws -> C,
-    sourceBounds: __SourceBounds,
-    parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
-  ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable & CustomTestStringConvertible, E2: Sendable & CustomTestStringConvertible {
-    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
-    let parameters = paramTuples.parameters
-    return Self(
-      name: testFunctionName,
-      displayName: displayName,
-      traits: traits,
-      sourceBounds: sourceBounds,
-      containingTypeInfo: containingTypeInfo,
-      xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: {
-        Case.Generator(
-          arguments: try await collection(),
-          makingArgumentValuesWith: Test.Case.Argument.Value.makeArgumentValues(for: parameters),
-          parameters: parameters,
-          testFunction: testFunction
-        )
-      },
-      parameters: parameters
-    )
-  }
-#endif
-
-  /// Create an instance of ``Test`` for a parameterized function.
-  ///
-  /// This initializer overload is specialized for dictionary-like collections
-  /// to efficiently de-structure their elements (which are known to be
-  /// 2-tuples) when appropriate. This overload is distinct from those for other
-  /// collections of 2-tuples because the `Element` tuple type for these kinds
-  /// of collections includes labels (`(key: Key, value: Value)`).
-  ///
-  /// - Warning: This function is used to implement the `@Test` macro. Do not
-  ///   call it directly.
-  public static func __function<S, C>(
-    named testFunctionName: String,
-    in containingType: __TypeInfo<S>?,
-    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
-    displayName: String? = nil,
-    traits: __TraitArray<any TestTrait>,
-    arguments dictionary: @escaping @Sendable () async throws -> C,
-    sourceBounds: __SourceBounds,
-    parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
-  ) -> Self where S: ~Copyable & ~Escapable, C: ExpressibleByDictionaryLiteral & Collection & Sendable, C.Element == (key: C.Key, value: C.Value), C.Key: Sendable, C.Value: Sendable {
-    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
-    let parameters = paramTuples.parameters
-    return Self(
-      name: testFunctionName,
-      displayName: displayName,
-      traits: traits,
-      sourceBounds: sourceBounds,
-      containingTypeInfo: containingTypeInfo,
-      xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: { Case.Generator(arguments: try await dictionary(), parameters: parameters, testFunction: testFunction) },
-      parameters: parameters
-    )
-  }
-
-#if hasFeature(Embedded)
-  /// Create an instance of ``Test`` for a parameterized function.
-  ///
-  /// This initializer overload is specialized for dictionary-like collections
-  /// to efficiently de-structure their elements (which are known to be
-  /// 2-tuples) when appropriate. This overload is distinct from those for other
-  /// collections of 2-tuples because the `Element` tuple type for these kinds
-  /// of collections includes labels (`(key: Key, value: Value)`).
-  ///
-  /// This overload takes collections whose elements conform to
-  /// ``CustomTestStringConvertible``.
-  ///
-  /// - Warning: This function is used to implement the `@Test` macro. Do not
-  ///   call it directly.
-  public static func __function<S, C>(
-    named testFunctionName: String,
-    in containingType: __TypeInfo<S>?,
-    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
-    displayName: String? = nil,
-    traits: __TraitArray<any TestTrait>,
-    arguments dictionary: @escaping @Sendable () async throws -> C,
-    sourceBounds: __SourceBounds,
-    parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
-  ) -> Self where S: ~Copyable & ~Escapable, C: ExpressibleByDictionaryLiteral & Collection & Sendable, C.Element == (key: C.Key, value: C.Value), C.Key: Sendable & CustomTestStringConvertible, C.Value: Sendable & CustomTestStringConvertible {
-    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
-    let parameters = paramTuples.parameters
-    return Self(
-      name: testFunctionName,
-      displayName: displayName,
-      traits: traits,
-      sourceBounds: sourceBounds,
-      containingTypeInfo: containingTypeInfo,
-      xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: {
-        Case.Generator(
-          arguments: try await dictionary(),
-          makingArgumentValuesWith: Test.Case.Argument.Value.makeArgumentValues(for: parameters),
-          parameters: parameters,
-          testFunction: testFunction
-        )
-      },
-      parameters: parameters
-    )
-  }
-#endif
 
   /// Create an instance of ``Test`` for a parameterized function.
   ///
@@ -716,7 +476,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments zippedCollections: @escaping @Sendable () async throws -> Zip2Sequence<C1, C2>,
+    arguments zippedCollections: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<Zip2Sequence<C1, C2>>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
@@ -731,52 +491,11 @@ extension Test {
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCases: {
-        Case.Generator(arguments: try await zippedCollections(), parameters: parameters, testFunction: testFunction)
+        Case.Generator(argumentList: try await zippedCollections(), parameters: parameters, testFunction: testFunction)
       },
       parameters: parameters
     )
   }
-
-#if hasFeature(Embedded)
-  /// Create an instance of ``Test`` for a parameterized function.
-  ///
-  /// This overload takes collections whose elements conform to
-  /// ``CustomTestStringConvertible``.
-  ///
-  /// - Warning: This function is used to implement the `@Test` macro. Do not
-  ///   call it directly.
-  public static func __function<S, C1, C2>(
-    named testFunctionName: String,
-    in containingType: __TypeInfo<S>?,
-    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
-    displayName: String? = nil,
-    traits: __TraitArray<any TestTrait>,
-    arguments zippedCollections: @escaping @Sendable () async throws -> Zip2Sequence<C1, C2>,
-    sourceBounds: __SourceBounds,
-    parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-  ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable & CustomTestStringConvertible, C2: Collection & Sendable, C2.Element: Sendable & CustomTestStringConvertible {
-    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
-    let parameters = paramTuples.parameters
-    return Self(
-      name: testFunctionName,
-      displayName: displayName,
-      traits: traits,
-      sourceBounds: sourceBounds,
-      containingTypeInfo: containingTypeInfo,
-      xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: {
-        Case.Generator(
-          arguments: try await zippedCollections(),
-          makingArgumentValuesWith: Test.Case.Argument.Value.makeArgumentValues(for: parameters),
-          parameters: parameters,
-          testFunction: testFunction
-        )
-      },
-      parameters: parameters
-    )
-  }
-#endif
 }
 
 // MARK: - Test pragmas
