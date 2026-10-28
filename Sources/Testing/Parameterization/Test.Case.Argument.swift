@@ -34,7 +34,7 @@ extension Test.Case {
       ///
       /// - Parameters:
       ///   - value: This instance of ``Value``.
-      private(set) var _testDescription: @Sendable (_ value: borrowing Value) -> String
+      private var _testDescription: @Sendable (_ value: borrowing Value) -> String
 
       init<W>(_ wrappedValue: W, testDescription: String? = nil) where W: Sendable {
         self.wrappedValue = wrappedValue
