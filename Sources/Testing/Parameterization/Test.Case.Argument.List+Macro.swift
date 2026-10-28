@@ -54,7 +54,7 @@ extension Test.Case {
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @_disfavoredOverload
-public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S: Collection {
+public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> {
   Test.Case.__ArgumentList(arguments) { element in
     var testDescription: String?
 #if !hasFeature(Embedded)
@@ -99,7 +99,7 @@ public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Te
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S: Collection, S.Element == (E1, E2) {
+public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S.Element == (E1, E2) {
   Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
       return [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
@@ -131,7 +131,7 @@ public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S: Collection & ExpressibleByDictionaryLiteral, S.Element == (key: K, value: V) {
+public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S: ExpressibleByDictionaryLiteral, S.Element == (key: K, value: V) {
   Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
       return [Test.Case.Argument.Value(element.key), Test.Case.Argument.Value(element.value)]
@@ -147,7 +147,7 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
 }
 
 #if hasFeature(Embedded)
-public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S: Collection, S.Element: CustomTestStringConvertible {
+public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S.Element: CustomTestStringConvertible {
   Test.Case.__ArgumentList(arguments) { element in
     // We can't break down the tuple in Embedded Swift, but we can at
     // least present the correct number of arguments.
@@ -159,7 +159,7 @@ public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Te
   }
 }
 
-public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S: Collection, S.Element == (E1, E2), E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
+public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S.Element == (E1, E2), E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
   Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
       return [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
@@ -170,7 +170,7 @@ public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 
   }
 }
 
-public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S: Collection & ExpressibleByDictionaryLiteral, S.Element == (key: K, value: V), K: CustomTestStringConvertible, V: CustomTestStringConvertible {
+public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S: ExpressibleByDictionaryLiteral, S.Element == (key: K, value: V), K: CustomTestStringConvertible, V: CustomTestStringConvertible {
   Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
       return [Test.Case.Argument.Value(element.key), Test.Case.Argument.Value(element.value)]
