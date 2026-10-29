@@ -48,6 +48,19 @@ extension ABI {
     /// - Warning: Attachments' preferred names are not yet part of the JSON
     ///   schema.
     var _preferredName: String?
+
+#if !SWT_NO_FILE_IO
+    /// Storage for the result of ``bytes(for:)`` when mapped from a file.
+    ///
+    /// We do not need to cache this value if yield-once functions are added to
+    /// the language.
+#if !SWT_NO_FOUNDATION
+    private var _cachedBytes = Allocated(Mutex<Data?>())
+#else
+    private var _cachedBytes = Allocated(Mutex<[UInt8]?>())
+#endif
+#endif
+
   }
 }
 
@@ -180,6 +193,7 @@ extension ABI.EncodedAttachment: Attachable {
   /// a request for the underlying attachment's bytes.
   fileprivate struct BytesUnavailableError: Error {}
 
+  @available(swift, deprecated: 100000.0, message: "Use 'bytes(for:)' instead of 'withUnsafeBytes(for:_:)'.")
   public borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     switch kind {
     case let .savedAtPath(path):
@@ -201,6 +215,42 @@ extension ABI.EncodedAttachment: Attachable {
       return try bytes.withUnsafeBytes(body)
     case let .abstract(attachment):
       return try attachment.withUnsafeBytes(body)
+    case let .error(error):
+      throw error
+    }
+  }
+
+  @available(anyAppleOS 27, *)
+  @_lifetime(borrow self, borrow attachment)
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> RawSpan {
+    switch kind {
+    case let .savedAtPath(path):
+#if !SWT_NO_FILE_IO
+      if let cachedBytes = _cachedBytes.value.rawValue {
+        return _overrideLifetime(cachedBytes.span.bytes, borrowing: self)
+      }
+#if !SWT_NO_FOUNDATION
+      // Leverage Foundation's file-mapping logic since we're using Data anyway.
+      let url = URL(fileURLWithPath: path, isDirectory: false)
+      let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])
+#else
+      let fileHandle = try FileHandle(forReadingAtPath: path)
+      let bytes = try fileHandle.readToEnd()
+#endif
+      let cachedBytes = _cachedBytes.value.withLock { cachedBytes in
+        cachedBytes = cachedBytes ?? bytes
+        return cachedBytes!
+      }
+      return _overrideLifetime(cachedBytes.span.bytes, borrowing: self)
+#else
+      // Cannot read the attachment from disk on this platform.
+      throw BytesUnavailableError()
+#endif
+    case let .inMemory(bytes):
+      return _overrideLifetime(bytes.span.bytes, borrowing: self)
+    case let .abstract(attachment):
+      let bytes = try attachment.bytes()
+      return _overrideLifetime(bytes, borrowing: self)
     case let .error(error):
       throw error
     }

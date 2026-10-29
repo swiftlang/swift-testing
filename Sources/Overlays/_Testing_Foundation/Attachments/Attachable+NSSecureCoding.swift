@@ -57,9 +57,15 @@ extension Attachable where Self: NSSecureCoding {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
+  @available(swift, deprecated: 100000.0, message: "Use 'bytes(for:)' instead of 'withUnsafeBytes(for:_:)'.")
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     let attachment = try Attachment(encoding: self, named: attachment.preferredName, sourceLocation: attachment.sourceLocation)
     return try attachment.withUnsafeBytes(body)
+  }
+
+  @_lifetime(borrow self, borrow attachment)
+  public func bytes(for attachment: borrowing Attachment<Self>) throws -> RawSpan {
+    throw BytesUnavailableError()
   }
 }
 #endif

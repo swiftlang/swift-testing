@@ -214,6 +214,11 @@ struct AttachmentTests {
         return try Array<UInt8>().withUnsafeBytes(body)
       }
 
+      @_lifetime(borrow self, borrow attachment)
+      func bytes(for attachment: borrowing Attachment<Self>) throws -> RawSpan {
+        throw BytesUnavailableError()
+      }
+
       var cloneCalled: Confirmation
 
       func clone(toFileAtPath filePath: String) -> Bool {
@@ -1171,6 +1176,11 @@ struct MyAttachable: Attachable, ~Copyable {
       try body(.init(buffer))
     }
   }
+
+  @_lifetime(borrow self, borrow attachment)
+  func bytes(for attachment: borrowing Attachment<Self>) throws -> RawSpan {
+    string.utf8Span.span.bytes
+  }
 }
 
 @available(*, unavailable)
@@ -1186,6 +1196,11 @@ struct MySendableAttachable: Attachable, Sendable {
       try body(.init(buffer))
     }
   }
+
+  @_lifetime(borrow self, borrow attachment)
+  func bytes(for attachment: borrowing Attachment<Self>) throws -> RawSpan {
+    throw BytesUnavailableError()
+  }
 }
 
 struct MySendableAttachableWithDefaultByteCount: Attachable, Sendable {
@@ -1196,6 +1211,11 @@ struct MySendableAttachableWithDefaultByteCount: Attachable, Sendable {
     return try string.withUTF8 { buffer in
       try body(.init(buffer))
     }
+  }
+
+  @_lifetime(borrow self, borrow attachment)
+  func bytes(for attachment: borrowing Attachment<Self>) throws -> RawSpan {
+    throw BytesUnavailableError()
   }
 }
 

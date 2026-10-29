@@ -45,6 +45,7 @@ extension _AttachableNSSecureCodingWrapper: AttachableWrapper {
     _encodableValue
   }
 
+  @available(swift, deprecated: 100000.0, message: "Use 'bytes(for:)' instead of 'withUnsafeBytes(for:_:)'.")
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableNSSecureCodingWrapper>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var data = try NSKeyedArchiver.archivedData(withRootObject: _encodableValue, requiringSecureCoding: true)
 
@@ -59,6 +60,11 @@ extension _AttachableNSSecureCodingWrapper: AttachableWrapper {
     }
 
     return try data.withUnsafeBytes(body)
+  }
+
+  @_lifetime(borrow self, borrow attachment)
+  public func bytes(for attachment: borrowing Attachment<_AttachableNSSecureCodingWrapper>) throws -> RawSpan {
+    throw BytesUnavailableError()
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<_AttachableNSSecureCodingWrapper>, basedOn suggestedName: String) -> String {

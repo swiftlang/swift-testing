@@ -54,9 +54,15 @@ extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: At
   ///   @Available(Swift, introduced: 6.3)
   ///   @Available(Xcode, introduced: 26.4)
   /// }
+  @available(swift, deprecated: 100000.0, message: "Use 'bytes(for:)' instead of 'withUnsafeBytes(for:_:)'.")
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableImageWrapper>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     let imageFormat = _imageFormat(forPreferredName: attachment.preferredName)
     return try wrappedValue.withUnsafeBytes(as: imageFormat, body)
+  }
+
+  @_lifetime(borrow self, borrow attachment)
+  public func bytes(for attachment: borrowing Attachment<_AttachableImageWrapper>) throws -> RawSpan {
+    throw BytesUnavailableError()
   }
 
   /// @Metadata {

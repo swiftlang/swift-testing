@@ -78,7 +78,15 @@ public protocol Attachable: ~Copyable {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
+  @available(swift, deprecated: 100000.0, message: "Implement or use 'bytes(for:)' instead of 'withUnsafeBytes(for:_:)'.")
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
+
+  @available(anyAppleOS 27, *)
+  associatedtype AttachableBytesError: Error = any Error
+
+  @available(anyAppleOS 27, *)
+  @_lifetime(borrow self, borrow attachment)
+  borrowing func bytes(for attachment: borrowing Attachment<Self>) throws(AttachableBytesError) -> RawSpan
 
   /// Generate a preferred name for the given attachment.
   ///
@@ -150,6 +158,29 @@ extension Attachable where Self: ~Copyable {
   }
 }
 
+package struct BytesUnavailableError: Error, CustomStringConvertible {
+  package init() {}
+
+  package var description: String {
+    "The attachment's bytes were unavailable."
+  }
+}
+
+extension Attachable where Self: ~Copyable {
+  @available(anyAppleOS 27, *)
+  public borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    let bytes = try bytes(for: attachment)
+    return try bytes.withUnsafeBytes(body)
+  }
+
+  @available(anyAppleOS 27, *)
+  @available(swift, deprecated: 6.5, message: "Implement 'bytes(for:)' instead of 'withUnsafeBytes(for:_:)'.")
+  @_lifetime(borrow self, borrow attachment)
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> RawSpan {
+    throw BytesUnavailableError()
+  }
+}
+
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
@@ -213,6 +244,12 @@ extension Array<UInt8>: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
+
+  @available(anyAppleOS 27, *)
+  @_lifetime(borrow self, borrow attachment)
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) -> RawSpan {
+    span.bytes
+  }
 }
 
 /// @Metadata {
@@ -227,6 +264,12 @@ extension ContiguousArray<UInt8>: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
+
+  @available(anyAppleOS 27, *)
+  @_lifetime(borrow self, borrow attachment)
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) -> RawSpan {
+    span.bytes
+  }
 }
 
 /// @Metadata {
@@ -240,6 +283,12 @@ extension ArraySlice<UInt8>: Attachable {
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
+  }
+
+  @available(anyAppleOS 27, *)
+  @_lifetime(borrow self, borrow attachment)
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) -> RawSpan {
+    span.bytes
   }
 }
 
@@ -258,6 +307,12 @@ extension String: Attachable {
       try body(UnsafeRawBufferPointer(utf8))
     }
   }
+
+  @available(anyAppleOS 27, *)
+  @_lifetime(borrow self, borrow attachment)
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) -> RawSpan {
+    utf8Span.span.bytes
+  }
 }
 
 /// @Metadata {
@@ -274,5 +329,11 @@ extension Substring: Attachable {
     return try selfCopy.withUTF8 { utf8 in
       try body(UnsafeRawBufferPointer(utf8))
     }
+  }
+
+  @available(anyAppleOS 27, *)
+  @_lifetime(borrow self, borrow attachment)
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) -> RawSpan {
+    utf8Span.span.bytes
   }
 }

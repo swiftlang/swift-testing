@@ -84,8 +84,14 @@ extension _AttachableURLWrapper: AttachableWrapper {
     data.count
   }
 
+  @available(swift, deprecated: 100000.0, message: "Use 'bytes(for:)' instead of 'withUnsafeBytes(for:_:)'.")
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try data.withUnsafeBytes(body)
+  }
+
+  @_lifetime(borrow self, borrow attachment)
+  public func bytes(for attachment: borrowing Attachment<_AttachableURLWrapper>) -> RawSpan {
+    data.bytes
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {

@@ -31,6 +31,8 @@ public struct Attachment<AttachableValue> where AttachableValue: Attachable & ~C
   /// Storage for ``attachableValue-7dyjv``.
   private var _storage: Allocated<AttachableValue>
 
+  private var _cachedBytesResult: Allocated<Mutex<Result<[UInt8], any Error>?>>
+
   /// The path to which the this attachment was saved, if any.
   ///
   /// If a developer sets the ``Configuration/attachmentsPath`` property of the
@@ -109,9 +111,42 @@ extension Attachment where AttachableValue: ~Copyable {
   /// }
   public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #Testing::sourceLocation) {
     self._storage = Allocated(attachableValue)
+    self._cachedBytesResult = Allocated(Mutex(nil))
     self._preferredName = preferredName
     self.sourceLocation = sourceLocation
   }
+}
+
+/// A protocol that supports type-erased attachments stored in instances of
+/// ``AnyAttachable``.
+///
+/// This protocol mirrors several of the requirements of ``Attachable``, but
+/// does not refine that protocol so that ``Attachment`` does not become a
+/// conforming type thereof.
+private protocol _AttachmentProtocol {
+  var estimatedAttachmentByteCount: Int? { get }
+  func preferredName(basedOn suggestedName: String) -> String
+  func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
+  @available(anyAppleOS 27, *) @_lifetime(borrow self) func bytes() throws -> RawSpan
+#if !SWT_NO_FILE_CLONING
+  func clone(toFileAtPath filePath: String) -> Bool
+#endif
+}
+
+extension Attachment: _AttachmentProtocol where AttachableValue: ~Copyable {
+  fileprivate var estimatedAttachmentByteCount: Int? {
+    attachableValue.estimatedAttachmentByteCount
+  }
+
+  fileprivate func preferredName(basedOn suggestedName: String) -> String {
+    attachableValue.preferredName(for: self, basedOn: suggestedName)
+  }
+
+#if !SWT_NO_FILE_CLONING
+  fileprivate func clone(toFileAtPath filePath: String) -> Bool {
+    attachableValue.clone(toFileAtPath: filePath, for: self)
+  }
+#endif
 }
 
 /// A type-erased wrapper type that represents any attachable value.
@@ -133,50 +168,35 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
     Wrapped()
   }
 
-  init<A>(_ attachment: Attachment<A>) where A: Attachable & Sendable & ~Copyable {
-    _estimatedAttachmentByteCount = { attachment.attachableValue.estimatedAttachmentByteCount }
-    _withUnsafeBytes = { try attachment.withUnsafeBytes($0) }
-    _preferredName = { attachment.attachableValue.preferredName(for: attachment, basedOn: $0) }
-#if !SWT_NO_FILE_CLONING
-    _clone = { attachment.attachableValue.clone(toFileAtPath: $0, for: attachment) }
-#endif
-  }
+  private var _attachment: any _AttachmentProtocol & Sendable
 
-  /// The implementation of ``estimatedAttachmentByteCount`` borrowed from the
-  /// original attachment.
-  private var _estimatedAttachmentByteCount: @Sendable () -> Int?
+  init<A>(_ attachment: Attachment<A>) where A: Attachable & Sendable & ~Copyable {
+    _attachment = attachment
+  }
 
   public var estimatedAttachmentByteCount: Int? {
-    _estimatedAttachmentByteCount()
+    _attachment.estimatedAttachmentByteCount
   }
-
-  /// The implementation of ``withUnsafeBytes(for:_:)`` borrowed from the
-  /// original attachment.
-  private var _withUnsafeBytes: @Sendable ((UnsafeRawBufferPointer) throws -> Void) throws -> Void
 
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    var result: R!
-    try _withUnsafeBytes { bytes in
-      result = try body(bytes)
-    }
-    return result
+    try _attachment.withUnsafeBytes(body)
   }
 
-  /// The implementation of ``preferredName(for:basedOn:)`` borrowed from the
-  /// original attachment.
-  private var _preferredName: @Sendable (String) -> String
+  @available(anyAppleOS 27, *)
+  @_lifetime(borrow self, borrow attachment)
+  public borrowing func bytes(for attachment: borrowing Attachment<AnyAttachable>) throws -> RawSpan {
+    let attachment = _attachment
+    let bytes = try attachment.bytes()
+    return _overrideLifetime(bytes, borrowing: self)
+  }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
-    _preferredName(suggestedName)
+    _attachment.preferredName(basedOn: suggestedName)
   }
 
 #if !SWT_NO_FILE_CLONING
-  /// The implementation of ``clone(toFileAtPath:)`` borrowed from the original
-  /// attachment.
-  private var _clone: @Sendable (String) -> Bool
-
   package func clone(toFileAtPath filePath: String) -> Bool {
-    _clone(filePath)
+    _attachment.clone(toFileAtPath: filePath)
   }
 #endif
 }
@@ -336,6 +356,7 @@ extension Attachment where AttachableValue: ~Copyable {
   /// }
   public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #Testing::sourceLocation) {
     do {
+      @diagnose(DeprecatedDeclaration, as: ignored)
       let bufferCopy = try attachment.withUnsafeBytes { Array($0) }
       Attachment<Array>.record(bufferCopy, sourceLocation: sourceLocation)
     } catch {
@@ -396,8 +417,15 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
+  @available(swift, deprecated: 100000.0, message: "Use 'bytes(for:)' instead of 'withUnsafeBytes(for:_:)'.")
   @inlinable public borrowing func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try attachableValue.withUnsafeBytes(for: self, body)
+  }
+
+  @available(anyAppleOS 27, *)
+  @_lifetime(borrow self)
+  public func bytes() throws -> RawSpan {
+    try _storage.value.bytes(for: self)
   }
 }
 

@@ -85,12 +85,18 @@ extension _AttachableEncodableWrapper: AttachableWrapper {
     _encodableValue
   }
 
+  @available(swift, deprecated: 100000.0, message: "Use 'bytes(for:)' instead of 'withUnsafeBytes(for:_:)'.")
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableEncodableWrapper>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var result: R!
     try _encode(_encodableValue) { buffer in
       result = try body(buffer)
     }
     return result
+  }
+
+  @_lifetime(borrow self, borrow attachment)
+  public func bytes(for attachment: borrowing Attachment<_AttachableEncodableWrapper>) throws -> RawSpan {
+    throw BytesUnavailableError()
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<_AttachableEncodableWrapper>, basedOn suggestedName: String) -> String {
