@@ -207,7 +207,6 @@ struct TestCaseIterationTests {
   ) async {
     let events = await encodedEvents(for: test, encodeMessagesField: true)
     let messages = events.flatMap(\.messages).map(\.text)
-    print("MESSAGES: \(messages.joined(separator: "\n"))")
 
     #expect(messages.count == expected.count, sourceLocation: sourceLocation)
     for (actual, expected) in zip(messages, expected) {
