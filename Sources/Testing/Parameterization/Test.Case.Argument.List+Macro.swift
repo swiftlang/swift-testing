@@ -12,10 +12,10 @@ extension Test.Case {
   /// A type representing a sequence of arguments passed to a test function.
   ///
   /// An argument list's underlying sequence _must_ be iterable multiple times.
-  /// Hence, factory functions accept only _collections_, not sequences. The
-  /// constraint here is only to `Sequence` to allow the storage of computed
-  /// sequences over collections (such as `CartesianProduct` or `Zip2Sequence`)
-  /// that are safe to iterate multiple times.
+  /// Hence, ``Test``'s factory functions accept only _collections_, not
+  /// sequences. The constraint here is only to `Sequence` to allow the storage
+  /// of computed sequences over collections (such as `CartesianProduct` or
+  /// `Zip2Sequence`) that are safe to iterate multiple times.
   ///
   /// - Warning: This type is used to implement the `@Test` macro. Do not use it
   ///   directly.
