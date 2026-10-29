@@ -6,7 +6,7 @@ on:
 jobs:
   tests:
     name: Test on FreeBSD
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.15
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.16
     with:
       enable_freebsd_checks: true
       freebsd_swift_versions: '["nightly-main"]'

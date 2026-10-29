@@ -10,6 +10,7 @@
 
 #if defined(SWT_EMBEDDED) && __has_include("pico/stdlib.h")
 // C Standard Library headers
+#include <errno.h>
 #include <malloc.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -35,7 +36,9 @@
 // The minal implementations below satisfy the Platform Abstraction Layer's
 // requirements, but may not implement all the functionality specified by POSIX.
 
-int __error = 0;
+int *__error(void) {
+  return &errno;
+}
 
 int clock_gettime(clockid_t clockid, struct timespec *tp) {
   uint64_t us = time_us_64();

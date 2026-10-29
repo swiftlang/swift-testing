@@ -137,10 +137,8 @@ package enum Environment {
   static var unsafeAddress: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>? {
 #if !SWT_NO_ENVIRONMENT_VARIABLES
 #if !hasFeature(Embedded)
-#if SWT_TARGET_OS_APPLE
-    _NSGetEnviron()?.pointee
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
-    swt_environ()
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+    environ
 #elseif os(WASI)
     __wasilibc_get_environ()
 #elseif os(Windows)

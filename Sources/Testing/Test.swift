@@ -93,15 +93,11 @@ public struct Test: Sendable {
       // Prevent programmatically adding suite traits to test functions or test
       // traits to test suites.
       func traitsAreCorrectlyTyped() -> Bool {
-#if !hasFeature(Embedded)
         if isSuite {
-          return newValue.allSatisfy { $0 is any SuiteTrait }
+          return newValue.allSatisfy { $0.__as((any SuiteTrait).self) != nil }
         } else {
-          return newValue.allSatisfy { $0 is any TestTrait }
+          return newValue.allSatisfy { $0.__as((any TestTrait).self) != nil }
         }
-#else
-        return newValue.allSatisfy { $0.__as((any TestTrait).self) != nil }
-#endif
       }
       precondition(traitsAreCorrectlyTyped(), "Programmatically added an inapplicable trait to test \(self)")
       _setValue(newValue, forKeyPath: \.traits)
@@ -365,34 +361,6 @@ public struct Test: Sendable {
       isSynthesized: false
     )
     _properties = Allocated(properties)
-  }
-
-  /// Initialize an instance of this type representing a test function.
-  init<Suite, S>(
-    name: String,
-    displayName: String? = nil,
-    traits: [any Trait],
-    sourceBounds: __SourceBounds,
-    in containingType: Suite.Type?,
-    xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
-    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
-    parameters: [Parameter]
-  ) where Suite: ~Copyable & ~Escapable {
-#if !hasFeature(Embedded)
-    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
-#else
-    let containingTypeInfo: TypeInfo? = nil
-#endif
-    self.init(
-      name: name,
-      displayName: displayName,
-      traits: traits,
-      sourceBounds: sourceBounds,
-      containingTypeInfo: containingTypeInfo,
-      xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: testCases,
-      parameters: parameters
-    )
   }
 
   /// Initialize an instance of this type representing a test function.

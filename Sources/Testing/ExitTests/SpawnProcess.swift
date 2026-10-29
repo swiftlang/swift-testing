@@ -155,14 +155,12 @@ func spawnExecutable(
             // standardized in POSIX.1-2024 (see https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn_file_actions_adddup2.html
             // and https://www.austingroupbugs.net/view.php?id=411).
             _ = posix_spawn_file_actions_adddup2(fileActions, fd, fd)
-#if os(Linux) && canImport(Glibc)
-            if _slowPath(glibcVersion < VersionNumber(2, 29)) {
+            if let glibcVersion, _slowPath(glibcVersion < VersionNumber(2, 29)) {
               // This system is using an older version of glibc that does not
               // implement FD_CLOEXEC clearing in posix_spawn_file_actions_adddup2(),
               // so we must clear it here in the parent process.
               try setFD_CLOEXEC(false, onFileDescriptor: fd)
             }
-#endif
 #endif
             highestFD = max(highestFD, fd)
           }
@@ -215,6 +213,17 @@ func spawnExecutable(
       // "SWT_START_CHILD_PROCESSES_SUSPENDED" environment variable isn't set so that
       // the debugger has a chance to attach to the child.
       flags |= CShort(POSIX_SPAWN_START_SUSPENDED)
+
+      // On Apple platforms, prefer to use the same CPU type/subtype as in the
+      // parent process. This ensures that, for example, we don't accidentally
+      // spawn a child process as arm64e when the test target it needs to load
+      // was only built for arm64 (this is particularly relevant to exit tests).
+      if let mh = _NSGetMachExecuteHeader() {
+        var types = [mh.pointee.cputype, CPU_TYPE_ANY]
+        var subtypes = [mh.pointee.cpusubtype, CPU_SUBTYPE_ANY]
+        assert(types.count == subtypes.count, "CPU type list \(types) has \(types.count) entries, but CPU subtype list \(subtypes) has \(subtypes.count) entries. \(fileABugMessage)")
+        posix_spawnattr_setarchpref_np(attrs, types.count, &types, &subtypes, nil)
+      }
 #endif
 
       // Set flags; make sure to keep this call below any code that might modify

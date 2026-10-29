@@ -87,6 +87,10 @@
 #include <sys/utsname.h>
 #endif
 
+#if __has_include(<sys/uio.h>)
+#include <sys/uio.h>
+#endif
+
 #if __has_include(<execinfo.h>)
 #include <execinfo.h>
 #endif

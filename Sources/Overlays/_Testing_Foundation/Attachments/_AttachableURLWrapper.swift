@@ -121,7 +121,7 @@ extension _AttachableURLWrapper: FileClonable {
   private static let _freeBSDVersion = getosreldate()
 #endif
 
-  public borrowing func clone(toFileAtPath filePath: String) -> Bool {
+  package borrowing func clone(toFileAtPath filePath: String) -> Bool {
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
     guard let srcFD = _fileHandle?.fileDescriptor else {
       return false

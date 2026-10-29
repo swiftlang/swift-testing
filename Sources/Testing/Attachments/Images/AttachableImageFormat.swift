@@ -31,7 +31,6 @@
 ///   @Available(Xcode, introduced: 26.4)
 /// }
 #if SWT_NO_IMAGE_ATTACHMENTS
-@_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 @available(_uttypesAPI, *) // For DocC
@@ -97,14 +96,12 @@ public struct AttachableImageFormat: Sendable {
 ///   @Available(Xcode, introduced: 26.4)
 /// }
 #if SWT_NO_IMAGE_ATTACHMENTS
-@_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 @available(_uttypesAPI, *) // For DocC
 extension AttachableImageFormat: Equatable, Hashable {}
 
 #if SWT_NO_IMAGE_ATTACHMENTS
-@_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 extension AttachableImageFormat.Kind: Equatable, Hashable {
@@ -112,13 +109,11 @@ extension AttachableImageFormat.Kind: Equatable, Hashable {
     switch (lhs, rhs) {
     case (.png, .png), (.jpeg, .jpeg):
       return true
-#if !hasFeature(Embedded)
     case let (.systemValue(lhs), .systemValue(rhs)):
       func open<T>(_ lhs: T) -> Bool where T: Equatable {
         lhs == (rhs as? T)
       }
       return open(lhs)
-#endif
     default:
       return false
     }
@@ -130,10 +125,8 @@ extension AttachableImageFormat.Kind: Equatable, Hashable {
       hasher.combine("png")
     case .jpeg:
       hasher.combine("jpeg")
-#if !hasFeature(Embedded)
     case let .systemValue(systemValue):
       hasher.combine(systemValue)
-#endif
     }
   }
 }
@@ -145,7 +138,6 @@ extension AttachableImageFormat.Kind: Equatable, Hashable {
 ///   @Available(Xcode, introduced: 26.4)
 /// }
 #if SWT_NO_IMAGE_ATTACHMENTS
-@_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 @available(_uttypesAPI, *) // For DocC
@@ -167,7 +159,11 @@ extension AttachableImageFormat: CustomStringConvertible, CustomDebugStringConve
   ///   @Available(Xcode, introduced: 26.4)
   /// }
   public var debugDescription: String {
+#if !hasFeature(Embedded)
     let kindDescription = String(reflecting: kind)
+#else
+    let kindDescription = kind.debugDescription // BUG: swift-#93531
+#endif
     return "\(kindDescription) at quality \(encodingQuality)"
   }
 }
@@ -175,7 +171,7 @@ extension AttachableImageFormat: CustomStringConvertible, CustomDebugStringConve
 #if hasFeature(Embedded) && !SWT_NO_IMAGE_ATTACHMENTS
 // NOTE: In non-Embedded Swift, conformance to CustomStringConvertible is
 // provided by platform-specific cross-import overlays.
-extension AttachableImageFormat.Kind: CustomStringConvertible {
+extension AttachableImageFormat.Kind: CustomStringConvertible, CustomDebugStringConvertible {
   package var description: String {
     switch self {
     case .png:
@@ -183,6 +179,10 @@ extension AttachableImageFormat.Kind: CustomStringConvertible {
     case .jpeg:
       "JPEG image"
     }
+  }
+
+  package var debugDescription: String {
+    description
   }
 }
 #endif
@@ -194,7 +194,6 @@ extension AttachableImageFormat.Kind: CustomStringConvertible {
 ///   @Available(Xcode, introduced: 26.4)
 /// }
 #if SWT_NO_IMAGE_ATTACHMENTS
-@_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 @available(_uttypesAPI, *) // For DocC

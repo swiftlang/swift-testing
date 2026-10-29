@@ -10,7 +10,6 @@
 
 /// A wrapper type for images that can be indirectly attached to a test.
 #if SWT_NO_IMAGE_ATTACHMENTS
-@_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 public final class _AttachableImageWrapper<Image>: Sendable where Image: AttachableAsImage {
