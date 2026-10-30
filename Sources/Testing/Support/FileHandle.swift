@@ -156,8 +156,8 @@ struct FileHandle: ~Copyable, Sendable {
     }
 
     // Windows deprecates fopen() as insecure, so call _wfopen_s() instead.
-    let fileHandle = try path.withCString(encodedAs: UTF16.self) { path in
-      try options.stringValue.withCString(encodedAs: UTF16.self) { mode in
+    let fileHandle = try path.withCString(encodedAs: UTF16.self) { path throws(CError) in
+      try options.stringValue.withCString(encodedAs: UTF16.self) { mode throws(CError) in
         var file: SWT_FILEHandle?
         let result = _wfopen_s(&file, path, mode)
         guard let file, result == 0 else {
@@ -377,7 +377,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// `FILE *` representation. If the file handle cannot be converted to a
   /// Windows handle, `nil` is passed to `body`.
   borrowing func withUnsafeWindowsHANDLE<R, E>(_ body: (borrowing HANDLE?) throws(E) -> R) throws(E) -> R {
-    try withUnsafePOSIXFileDescriptor { fd in
+    try withUnsafePOSIXFileDescriptor { fd throws(E) in
       guard let fd else {
         return try body(nil)
       }

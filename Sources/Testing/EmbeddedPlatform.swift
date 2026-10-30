@@ -106,7 +106,7 @@ extension JSON {
       }
 #else
       if let jsonBaseAddress = json.baseAddress {
-        _path.withCString { path throws(CError) in
+        _path.withCString { path in
           if var terminator {
             _swift_testing_writeJSON(path, jsonBaseAddress, json.count, &terminator)
           } else {
