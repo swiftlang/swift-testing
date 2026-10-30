@@ -532,6 +532,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("AvailabilityMacro=_transferableAPI:macOS 15.2, iOS 18.2, watchOS 11.2, tvOS 18.2, visionOS 2.2"),
       .enableExperimentalFeature("AvailabilityMacro=_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
       .enableExperimentalFeature("AvailabilityMacro=_objcCopyImageHeadersAPI:anyAppleOS 27.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_cancellationErrorReasonAPI:anyAppleOS 9999.0"),
 
       .enableExperimentalFeature("AvailabilityMacro=_distantFuture:anyAppleOS 99.0"),
     ]
