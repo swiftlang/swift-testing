@@ -11,7 +11,7 @@
 #if !SWT_NO_PROCESS_SPAWNING
 internal import _TestingInternals
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD)
 /// Block the calling thread, wait for the target process to exit, and return
 /// a value describing the conditions under which it exited.
 ///
@@ -42,7 +42,7 @@ private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
 }
 #endif
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_LIBDISPATCH
+#if os(anyAppleOS) && !SWT_NO_LIBDISPATCH
 /// Asynchronously wait for a process to terminate using a dispatch source.
 ///
 /// - Parameters:
@@ -78,7 +78,7 @@ func wait(for pid: consuming pid_t) async throws -> ExitStatus {
 
   return try _blockAndWait(for: pid)
 }
-#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#elseif os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
 private nonisolated(unsafe) let _childProcessContinuations = {
   let result = ManagedBuffer<[pid_t: CheckedContinuation<ExitStatus, any Error>], pthread_mutex_t>.create(
@@ -178,7 +178,7 @@ private let _createWaitThread: Void = {
 
   // Create the thread. It will run immediately; because it runs in an infinite
   // loop, we aren't worried about detaching or joining it.
-#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || os(FreeBSD) || os(OpenBSD)
   var thread: pthread_t?
 #else
   var thread = pthread_t()
@@ -191,7 +191,7 @@ private let _createWaitThread: Void = {
       // platforms support different thread name lengths. See MAXTHREADNAMESIZE
       // on Darwin, TASK_COMM_LEN on Linux, MAXCOMLEN on FreeBSD, and _MAXCOMLEN
       // on OpenBSD. We try to maximize legibility in the available space.
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
       _ = pthread_setname_np("Swift Testing subprocess monitor")
 #elseif os(Linux)
 #if !SWT_NO_DYNAMIC_LINKING

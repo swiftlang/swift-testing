@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+#if !os(anyAppleOS) && canImport(Synchronization)
 import Synchronization
 #endif
 #if canImport(XCTest)
@@ -636,7 +636,7 @@ final class RunnerTests: XCTestCase {
       func f() {}
     }
 
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     @Test(.hidden)
     @available(macOS 999.0, iOS 999.0, watchOS 999.0, tvOS 999.0, visionOS 999.0, *)
     func futureAvailable() {}
@@ -684,7 +684,7 @@ final class RunnerTests: XCTestCase {
   func testUnavailableTestsAreSkipped() async throws {
     let testStarted = expectation(description: "Test started")
     let testSkipped = expectation(description: "Test skipped")
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     testStarted.expectedFulfillmentCount = 5
     testSkipped.expectedFulfillmentCount = 8
 #else
@@ -703,7 +703,7 @@ final class RunnerTests: XCTestCase {
     await fulfillment(of: [testStarted, testSkipped], timeout: 0.0)
   }
 
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
   @Suite(.hidden) struct ObsoletedTests {
     @Test(.hidden)
     @available(macOS, introduced: 1.0, obsoleted: 999.0)
@@ -734,7 +734,7 @@ final class RunnerTests: XCTestCase {
     @available(*, unavailable, message: "Expected Message")
     func unavailable() {}
 
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     @Test(.hidden)
     @available(macOS, unavailable, message: "Expected Message")
     @available(iOS, unavailable, message: "Expected Message")
@@ -909,7 +909,7 @@ final class RunnerTests: XCTestCase {
       deprecatedWithMessageCallee()
     }
 
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     @available(macOS, deprecated: 1.0)
     @available(iOS, deprecated: 1.0)
     @available(watchOS, deprecated: 1.0)
@@ -932,7 +932,7 @@ final class RunnerTests: XCTestCase {
   func testDeprecated() async throws {
     let testStarted = expectation(description: "Test started")
     let testSkipped = expectation(description: "Test skipped")
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     testStarted.expectedFulfillmentCount = 5
 #else
     testStarted.expectedFulfillmentCount = 4

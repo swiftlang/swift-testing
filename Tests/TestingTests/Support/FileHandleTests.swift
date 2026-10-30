@@ -89,7 +89,7 @@ struct FileHandleTests {
   }
 #endif
 
-#if SWT_TARGET_OS_APPLE || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
   @Test("close() function")
   func closeFunction() async throws {
     try await confirmation("File handle closed") { closed in
@@ -185,7 +185,7 @@ struct FileHandleTests {
     #expect(writeEnd.isPipe as Bool)
   }
 
-#if SWT_TARGET_OS_APPLE || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
   @Test("Can close ends of a pipe")
   func closeEndsOfPipe() async throws {
     try await confirmation("File handle closed", expectedCount: 2) { closed in
@@ -285,7 +285,7 @@ func withTemporaryPath<R>(_ body: (_ path: String) throws -> R) throws -> R {
 }
 
 func temporaryDirectory() throws -> String {
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
   try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX)) { buffer in
     if 0 != confstr(_CS_DARWIN_USER_TEMP_DIR, buffer.baseAddress, buffer.count) {
       return String(cString: buffer.baseAddress!)
@@ -307,7 +307,7 @@ func temporaryDirectory() throws -> String {
 #endif
 }
 
-#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || os(FreeBSD) || os(OpenBSD)
 func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> FileHandle {
   let context = Unmanaged.passRetained(confirmation as AnyObject).toOpaque()
   let file = try #require(

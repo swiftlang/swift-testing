@@ -499,8 +499,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // When building as a package, the macro plugin always builds as an
       // executable rather than a library.
       .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
-
-      .define("SWT_TARGET_OS_APPLE", .whenApple()),
     ]
 
     result.appendFeatureFlags()

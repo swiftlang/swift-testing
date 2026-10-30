@@ -104,7 +104,7 @@ package enum Environment {
   static let simulatedEnvironment = Mutex<[String: String]>()
 #endif
 
-#if !hasFeature(Embedded) && SWT_TARGET_OS_APPLE && !SWT_NO_ENVIRONMENT_VARIABLES && !SWT_NO_DYNAMIC_LINKING
+#if !hasFeature(Embedded) && os(anyAppleOS) && !SWT_NO_ENVIRONMENT_VARIABLES && !SWT_NO_DYNAMIC_LINKING
   /// A non-POSIX/non-portable function that locks for access to `environ`.
   ///
   /// If the `environ_lock_np()` function is not available on the current
@@ -137,7 +137,7 @@ package enum Environment {
   static var unsafeAddress: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>? {
 #if !SWT_NO_ENVIRONMENT_VARIABLES
 #if !hasFeature(Embedded)
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     environ
 #elseif os(WASI)
     __wasilibc_get_environ()
@@ -161,8 +161,8 @@ package enum Environment {
   package static func get() -> [String: String] {
 #if !SWT_NO_ENVIRONMENT_VARIABLES
 #if !hasFeature(Embedded)
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
-#if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if os(anyAppleOS) && !SWT_NO_DYNAMIC_LINKING
     _environ_lock_np?()
     defer {
       _environ_unlock_np?()
@@ -211,8 +211,8 @@ package enum Environment {
   package static func variable(named name: String) -> String? {
 #if !SWT_NO_ENVIRONMENT_VARIABLES
 #if !hasFeature(Embedded)
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
-#if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if os(anyAppleOS) && !SWT_NO_DYNAMIC_LINKING
     // Acquire the `environ` lock if possible, then look for the right variable
     // in the block. This ensures we still hold the lock when we convert the
     // found C string to a Swift string, which we can't do with getenv(). If the
@@ -310,7 +310,7 @@ extension Environment {
   package static func setVariable(_ value: String?, named name: String) -> Bool {
 #if !SWT_NO_ENVIRONMENT_VARIABLES
 #if !hasFeature(Embedded)
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
     if let value {
       return 0 == setenv(name, value, 1)
     }
