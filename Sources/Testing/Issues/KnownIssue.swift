@@ -80,7 +80,7 @@ struct KnownIssueScope: Sendable {
 ///     function.
 ///   - sourceLocation: The source location to which the issue should be
 ///     attributed.
-private func _matchError(_ error: any Error, in scope: KnownIssueScope, comment: Comment?, sourceLocation: SourceLocation) throws {
+private func _matchError<E>(_ error: E, in scope: KnownIssueScope, comment: Comment?, sourceLocation: SourceLocation) throws(E) {
   // ExpectationFailedError is thrown by expectation checking functions to
   // indicate a condition evaluated to `false`. Those functions record their
   // own issue, so we don't need to create a new issue and attempt to match it.
@@ -163,11 +163,11 @@ public typealias KnownIssueMatcher = @Sendable (_ issue: Issue) -> Bool
 /// ## See Also
 ///
 /// - <doc:known-issues>
-public func withKnownIssue(
+public func withKnownIssue<E>(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
   sourceLocation: SourceLocation = #Testing::sourceLocation,
-  _ body: () throws -> Void
+  _ body: () throws(E) -> Void
 ) {
   try? withKnownIssue(comment, isIntermittent: isIntermittent, sourceLocation: sourceLocation, body, matching: { _ in true })
 }
@@ -220,14 +220,14 @@ public func withKnownIssue(
 /// ## See Also
 ///
 /// - <doc:known-issues>
-public func withKnownIssue(
+public func withKnownIssue<E>(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
   sourceLocation: SourceLocation = #Testing::sourceLocation,
-  _ body: () throws -> Void,
+  _ body: () throws(E) -> Void,
   when precondition: () -> Bool = { true },
   matching issueMatcher: @escaping KnownIssueMatcher = { _ in true }
-) rethrows {
+) throws(E) {
   guard precondition() else {
     return try body()
   }
@@ -279,12 +279,12 @@ public func withKnownIssue(
 /// ## See Also
 ///
 /// - <doc:known-issues>
-public func withKnownIssue(
+public func withKnownIssue<E>(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #Testing::sourceLocation,
-  _ body: () async throws -> Void
+  _ body: () async throws(E) -> Void
 ) async {
   try? await withKnownIssue(comment, isIntermittent: isIntermittent, isolation: isolation, sourceLocation: sourceLocation, body, matching: { _ in true })
 }
@@ -338,15 +338,15 @@ public func withKnownIssue(
 /// ## See Also
 ///
 /// - <doc:known-issues>
-public func withKnownIssue(
+public func withKnownIssue<E>(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #Testing::sourceLocation,
-  _ body: () async throws -> Void,
+  _ body: () async throws(E) -> Void,
   when precondition: () async -> Bool = { true },
   matching issueMatcher: @escaping KnownIssueMatcher = { _ in true }
-) async rethrows {
+) async throws(E) {
   guard await precondition() else {
     return try await body()
   }
