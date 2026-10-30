@@ -208,13 +208,13 @@ struct TestCaseIterationTests {
     let events = await encodedEvents(for: test, encodeMessagesField: true)
     let messages = events.flatMap(\.messages).map(\.text)
 
-    #expect(messages.count == expected.count, sourceLocation: sourceLocation)
+    #expect(messages.count == expected.count, "\(messages.joined(separator: "\n"))", sourceLocation: sourceLocation)
     for (actual, expected) in zip(messages, expected) {
       #expect(throws: Never.self, sourceLocation: sourceLocation) {
-        try #expect(expected.wholeMatch(in: actual) != nil, sourceLocation: sourceLocation)
+        try #expect(expected.wholeMatch(in: actual) != nil, "\(actual)", sourceLocation: sourceLocation)
       }
     }
-}
+  }
 #endif
 
   @Test
