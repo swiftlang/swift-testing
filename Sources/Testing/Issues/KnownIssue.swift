@@ -237,11 +237,13 @@ public func withKnownIssue<E>(
       _handleMiscount(by: scope.matchCounter, comment: comment, sourceLocation: sourceLocation)
     }
   }
-  try KnownIssueScope.$current.withValue(scope) {
-    do {
-      try body()
-    } catch {
-      try _matchError(error, in: scope, comment: comment, sourceLocation: sourceLocation)
+  try withUnsafeTypedThrows(throwing: E.self) {
+    try KnownIssueScope.$current.withValue(scope) {
+      do {
+        try body()
+      } catch {
+        try _matchError(error, in: scope, comment: comment, sourceLocation: sourceLocation)
+      }
     }
   }
 }
@@ -356,11 +358,13 @@ public func withKnownIssue<E>(
       _handleMiscount(by: scope.matchCounter, comment: comment, sourceLocation: sourceLocation)
     }
   }
-  try await KnownIssueScope.$current.withValue(scope) {
-    do {
-      try await body()
-    } catch {
-      try _matchError(error, in: scope, comment: comment, sourceLocation: sourceLocation)
+  try await withUnsafeTypedThrows(throwing: E.self) {
+    try await KnownIssueScope.$current.withValue(scope) {
+      do {
+        try await body()
+      } catch {
+        try _matchError(error, in: scope, comment: comment, sourceLocation: sourceLocation)
+      }
     }
   }
 }
