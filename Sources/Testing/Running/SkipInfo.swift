@@ -74,7 +74,7 @@ extension SkipInfo {
       let backtrace = Backtrace(forFirstThrowOf: error)
       let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: nil)
       self.init(comment: nil, sourceContext: sourceContext)
-#if compiler(>=6.5)
+#if compiler(>=6.5.1)
       if #available(_cancellationErrorReasonAPI, *) {
         switch cancellationError.reason {
         case .unspecified:
