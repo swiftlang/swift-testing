@@ -25,7 +25,7 @@ static inline void swt_unreachable(void) {
   __builtin_unreachable();
 }
 
-#if !SWT_NO_FILE_IO
+#if !defined(SWT_NO_FILE_IO)
 /// The C file handle type.
 ///
 /// This typedef is necessary because `FILE *` may be imported into Swift as
@@ -70,7 +70,7 @@ static int swt_errno(void) {
 SWT_IMPORT_FROM_STDLIB void *_Nullable memmem(const void *haystack, size_t hsize, const void *needle, size_t nsize);
 #endif
 
-#if !SWT_NO_FILE_IO
+#if !defined(SWT_NO_FILE_IO)
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)
 ///
@@ -83,7 +83,7 @@ static bool swt_S_ISFIFO(mode_t mode) {
 #endif
 #endif
 
-#if defined(__APPLE__) && !SWT_NO_MACH_PORTS
+#if defined(__APPLE__) && !defined(SWT_NO_MACH_PORTS)
 /// Get a Mach port representing the current task (process.)
 ///
 /// This function is provided because `mach_task_self()` is a complex macro, but
@@ -94,7 +94,7 @@ static mach_port_t swt_mach_task_self(void) {
 }
 #endif
 
-#if defined(__APPLE__) && defined(__OBJC2__) && !SWT_NO_DYNAMIC_LINKING
+#if defined(__APPLE__) && defined(__OBJC2__) && !defined(SWT_NO_DYNAMIC_LINKING)
 /// Get an array of Mach headers that are loaded into the current process and
 /// contain Objective-C or Swift code.
 ///
@@ -128,7 +128,7 @@ static const char *_Nonnull *_Nullable swt_objc_copyImageNames(unsigned int *_Nu
     return 0;
   }
 
-#if !SWT_NO_ENVIRONMENT_VARIABLES
+#if !defined(SWT_NO_ENVIRONMENT_VARIABLES)
   if (getenv("XCODE_RUNNING_FOR_PLAYGROUNDS") != 0) {
     // XOJIT appears to be enabled.
     return 0;
@@ -377,7 +377,7 @@ static const char *_Nullable swt_getExitCodeName(int exitCode) {
 #undef SWT_SYSEXIT_CODE
 };
 
-#if !SWT_NO_INTEROP
+#if !defined(SWT_NO_INTEROP)
 
 /// A type describing a fallback event handler that testing API can invoke as an
 /// alternate method of reporting test events to the current test runner.
