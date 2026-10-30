@@ -32,7 +32,7 @@ private let exit = Testing.exit
 
   @Test("Signal names are reported (where supported)") func signalName() {
     var hasSignalNames = false
-#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Android)
+#if os(anyAppleOS) || os(FreeBSD) || os(OpenBSD) || os(Android)
 #if !SWT_NO_SYS_SIGNAME
     hasSignalNames = true
 #endif

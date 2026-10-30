@@ -28,9 +28,6 @@ add_compile_options(
 add_compile_definitions("SWT_BUILDING_SWIFT_TESTING_CONTENT")
 
 # Platform-specific definitions.
-if(APPLE)
-  add_compile_definitions("SWT_TARGET_OS_APPLE")
-endif()
 set(SWT_NO_EXIT_TESTS_LIST "iOS" "watchOS" "tvOS" "visionOS" "WASI" "Android")
 if(CMAKE_SYSTEM_NAME IN_LIST SWT_NO_EXIT_TESTS_LIST)
   add_compile_definitions("SWT_NO_EXIT_TESTS")
