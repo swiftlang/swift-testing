@@ -55,3 +55,51 @@ extension Result {
     return result
   }
 }
+
+// MARK: - Unsafe typed throws adoption
+
+/// Convert a throwing function to use typed throws.
+///
+/// - Parameters:
+///   - errorType: The expected type of error thrown by `body`.
+///   - body: The function to invoke.
+///
+/// - Returns: Whatever is returned by `body`.
+///
+/// - Throws: Whatever is thrown by `body`. If `body` throws an error of any
+///   type other than `errorType`, this function calls `fatalError()`.
+///
+/// This function helps work around missing typed throws adoption in other parts
+/// of the Swift toolchain.
+func withUnsafeTypedThrows<R, E>(throwing errorType: E.Type = E.self, _ body: () throws -> R) throws(E) -> R {
+  do {
+    return try body()
+  } catch let error as E {
+    throw error
+  } catch {
+    fatalError("Unexpectedly caught error '\(String(describingForTest: error))' when expecting an error of type \(String(describingForTest: errorType)). \(fileABugMessage)")
+  }
+}
+
+/// Convert a throwing function to use typed throws.
+///
+/// - Parameters:
+///   - errorType: The expected type of error thrown by `body`.
+///   - body: The function to invoke.
+///
+/// - Returns: Whatever is returned by `body`.
+///
+/// - Throws: Whatever is thrown by `body`. If `body` throws an error of any
+///   type other than `errorType`, this function calls `fatalError()`.
+///
+/// This function helps work around missing typed throws adoption in other parts
+/// of the Swift toolchain.
+nonisolated(nonsending) func withUnsafeTypedThrows<R, E>(throwing errorType: E.Type = E.self, _ body: nonisolated(nonsending) () async throws -> R) async throws(E) -> R {
+  do {
+    return try await body()
+  } catch let error as E {
+    throw error
+  } catch {
+    fatalError("Unexpectedly caught error '\(String(describingForTest: error))' when expecting an error of type \(String(describingForTest: errorType)). \(fileABugMessage)")
+  }
+}
