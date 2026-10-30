@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if SWT_TARGET_OS_APPLE // other platforms use Synchronization
+#if os(anyAppleOS) // other platforms use Synchronization
 @testable import Testing
 
 final class `Mutex tests`: Sendable {

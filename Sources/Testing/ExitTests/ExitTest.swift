@@ -15,7 +15,7 @@ private import _TestingInternals
 private import Synchronization
 #endif
 
-#if SWT_TARGET_OS_APPLE && canImport(CrashReporterSupport)
+#if os(anyAppleOS) && canImport(CrashReporterSupport)
 private import CrashReporterSupport // NOTE: depends on Core Foundation!
 #endif
 
@@ -204,7 +204,7 @@ extension ExitTest {
   /// Disable crash reporting, crash logging, or core dumps for the current
   /// process.
   private static func _disableCrashReporting() {
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
 #if !SWT_NO_MACH_PORTS
     // We don't need to create a crash log (a "corpse notification") for an exit
     // test. In the future, we might want to investigate actually setting up a
@@ -680,7 +680,7 @@ extension ExitTest {
     // Erase the environment variable so that it cannot accidentally be opened
     // twice (nor, in theory, affect the code of the exit test.)
     Environment.setVariable(nil, named: name)
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD)
     guard let fd = CInt(environmentVariable), fd >= 0 else {
       return nil
     }
@@ -704,7 +704,7 @@ extension ExitTest {
   ///   back to a (new) file handle with `_makeFileHandle()`, or `nil` if the
   ///   file handle could not be converted to a string.
   private static func _makeEnvironmentVariable(for fileHandle: borrowing FileHandle) -> String? {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD)
     return fileHandle.withUnsafePOSIXFileDescriptor { fd in
       fd.map(String.init(describing:))
     }
@@ -812,7 +812,7 @@ extension ExitTest {
       var result = [String]()
 
       let parentArguments = CommandLine.arguments
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
       lazy var xctestTargetPath = Environment.variable(named: "XCTestBundlePath")
         ?? parentArguments.dropFirst().last
       // If the running executable appears to be the XCTest runner executable in
@@ -861,7 +861,7 @@ extension ExitTest {
       // Inherit the environment from the parent process and make any necessary
       // platform-specific changes.
       var childEnvironment = Environment.get()
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
       // If XCTest is hosting tests in an app, it uses DYLD_INSERT_LIBRARIES to
       // inject its startup code, then strips the injected library path from the
       // environment variable so as not to affect child processes. We want to

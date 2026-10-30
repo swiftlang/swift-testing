@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if SWT_TARGET_OS_APPLE && canImport(CoreGraphics)
+#if os(anyAppleOS) && canImport(CoreGraphics)
 private import CoreGraphics
 
 private import UniformTypeIdentifiers

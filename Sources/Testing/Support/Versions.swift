@@ -20,7 +20,7 @@ private import SwiftShims
 ///
 /// This value is not part of the public interface of the testing library.
 let operatingSystemVersion: String = {
-#if !SWT_NO_SYSCTL && SWT_TARGET_OS_APPLE
+#if !SWT_NO_SYSCTL && os(anyAppleOS)
   let productVersion = sysctlbyname("kern.osproductversion", as: String.self) ?? ""
   let buildNumber = sysctlbyname("kern.osversion", as: String.self) ?? ""
   switch (productVersion, buildNumber) {
@@ -33,7 +33,7 @@ let operatingSystemVersion: String = {
   default:
     return "\(productVersion) (\(buildNumber))"
   }
-#elseif !SWT_NO_UNAME && (SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD))
+#elseif !SWT_NO_UNAME && (os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD))
   var name = utsname()
   if 0 == uname(&name) {
     let release = withUnsafeBytes(of: name.release) { release in
@@ -246,7 +246,7 @@ let glibcVersion: VersionNumber? = {
 
 // MARK: - sysctlbyname() Wrapper
 
-#if !hasFeature(Embedded) && !SWT_NO_SYSCTL && SWT_TARGET_OS_APPLE
+#if !hasFeature(Embedded) && !SWT_NO_SYSCTL && os(anyAppleOS)
 /// Get a string value by calling `sysctlbyname()`.
 ///
 /// - Parameters:

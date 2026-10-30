@@ -41,7 +41,7 @@ enum CommandLine {
 #endif
 
 extension CommandLine {
-#if !hasFeature(Embedded) && !os(WASI) && !SWT_TARGET_OS_APPLE
+#if !hasFeature(Embedded) && !os(WASI) && !os(anyAppleOS)
 #if os(Windows)
   private typealias FPEncoding = UTF16
   private typealias FPCodeUnit = UTF16.CodeUnit
@@ -62,7 +62,7 @@ extension CommandLine {
       // Embedded Swift and WASI do not currently support getting the executable
       // path via the standard library.
       throw SystemError(description: "The current executable path is not available on this platform.")
-#elseif SWT_TARGET_OS_APPLE
+#elseif os(anyAppleOS)
       var result: String?
 #if DEBUG
       var bufferCount = UInt32(1) // force looping

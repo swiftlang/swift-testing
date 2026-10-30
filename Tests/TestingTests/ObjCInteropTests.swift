@@ -27,7 +27,7 @@ class IndirectXCTestCase: XCTestCase {}
 
 @Suite(.hidden, .enabled(if: ObjCAndXCTestInteropTests.areObjCClassTestsEnabled))
 final class ObjCClassTests: IndirectXCTestCase {
-#if !SWT_TARGET_OS_APPLE
+#if !os(anyAppleOS)
   convenience init() {
     self.init(name: "") { _ in }
   }
