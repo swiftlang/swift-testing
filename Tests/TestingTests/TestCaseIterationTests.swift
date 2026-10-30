@@ -171,7 +171,15 @@ struct TestCaseIterationTests {
     }
     configuration.repetitionPolicy = .repeating(maximumIterationCount: 2)
 
-    await test.run(configuration: configuration)
+    // We don't want configureEventHandlerRuntimeState() to pop us back up to
+    // the "real" configuration because it may have non-default verbosity and
+    // the tests that call this function are expressly interested in the content
+    // of messages matching patterns that may not match with increased/decreased
+    // verbosity. So we push the local configuration before calling `run()` so
+    // it pops back to itself.
+    await Configuration.withCurrent(configuration) {
+      await test.run(configuration: configuration)
+    }
     return events.rawValue
   }
 
