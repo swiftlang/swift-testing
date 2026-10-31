@@ -11,11 +11,11 @@
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
-#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+#if !os(anyAppleOS) && canImport(Synchronization)
 import Synchronization
 #endif
 
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
 // Xcode already installs a handler, so the preconditions for this suite may not be met
 let interopHandlerMayBeInstalled = Environment.variable(named: "XCTestSessionIdentifier") != nil
 #else

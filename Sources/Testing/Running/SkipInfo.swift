@@ -69,11 +69,27 @@ extension SkipInfo {
   init?(_ error: any Error) {
     if let skipInfo = error as? Self {
       self = skipInfo
-    } else if error is CancellationError, Task.isCancelled {
+    } else if let cancellationError = error as? CancellationError, Task.isCancelled {
       // Synthesize skip info for this cancellation error.
       let backtrace = Backtrace(forFirstThrowOf: error)
       let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: nil)
       self.init(comment: nil, sourceContext: sourceContext)
+#if compiler(>=6.5.1)
+      if #available(_cancellationErrorReasonAPI, *) {
+        switch cancellationError.reason {
+        case .unspecified:
+          break
+        case .deadlineExpired:
+          comment = "Deadline expired."
+        @unknown default:
+#if !hasFeature(Embedded)
+          comment = Comment(rawValue: String(describingForTest: cancellationError.reason))
+#else
+          break
+#endif
+        }
+      }
+#endif
     } else {
       return nil
     }

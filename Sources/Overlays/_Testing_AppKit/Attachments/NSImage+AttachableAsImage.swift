@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if SWT_TARGET_OS_APPLE && canImport(AppKit)
+#if os(anyAppleOS) && canImport(AppKit)
 public import AppKit
 public import _Testing_CoreGraphics
 

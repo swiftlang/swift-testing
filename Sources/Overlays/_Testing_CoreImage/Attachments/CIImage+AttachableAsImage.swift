@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if SWT_TARGET_OS_APPLE && canImport(CoreImage)
+#if os(anyAppleOS) && canImport(CoreImage)
 public import CoreImage
 public import _Testing_CoreGraphics
 
