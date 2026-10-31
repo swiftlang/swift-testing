@@ -26,10 +26,27 @@
 #define SWT_IMPORT_FROM_STDLIB SWT_EXTERN
 #endif
 
+/// A macro that helps when concatenating two parts of a symbol name.
+#define __SWT_CONCAT(A, B) A ## B
+#define SWT_CONCAT(A, B) __SWT_CONCAT(A, B)
+
 /// An attribute that marks some value as being `Sendable` in Swift.
 #define SWT_SENDABLE __attribute__((swift_attr("@Sendable")))
 
+/// An attribute that marks some value as being `nonisolated(unsafe)` in Swift.
+#define SWT_NONISOLATED_UNSAFE __attribute__((__swift_attr__("nonisolated(unsafe)")))
+
 /// An attribute that renames a C symbol in Swift.
 #define SWT_SWIFT_NAME(name) __attribute__((swift_name(#name)))
+
+#if __has_include(<_newlib_version.h>)
+// Some of the headers in newlib use `__block` as an argument name. This name
+// conflicts with clang's use of `__block` as an attribute on block-scoped
+// mutable variables in C, C++, and Objective-C. When building with clang
+// against newlib (as evidenced by the presence of the above header), redefine
+// `__block` to something benign to avoid the conflict.
+#undef __block
+#define __block __newlib_block
+#endif
 
 #endif // SWT_DEFINES_H

@@ -21,11 +21,8 @@ extension Issue {
   func record(configuration: Configuration? = nil) -> Self {
     // If this issue is a caught error that has a custom issue representation,
     // perform that customization now.
-    if case let .errorCaught(error) = kind {
-      if let error = error as? any CustomIssueRepresentable {
-        let selfCopy = error.customize(self)
-        return selfCopy.record(configuration: configuration)
-      }
+    if let selfCopy = customizeIssueIfNeeded(self) {
+      return selfCopy.record(configuration: configuration)
     }
 
     // If this issue matches via the known issue matcher, set a copy of it to be
@@ -63,11 +60,10 @@ extension Issue {
   /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
   /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
   @_disfavoredOverload
-  @_documentation(visibility: private)
   @available(*, deprecated, message: "Use record(_:severity:sourceLocation:) instead.")
   @discardableResult public static func record(
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     record(comment, severity: .error, sourceLocation: sourceLocation)
   }
@@ -90,11 +86,12 @@ extension Issue {
   /// 
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   @discardableResult public static func record(
     _ comment: Comment? = nil,
     severity: Severity = .error,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
     let issue = Issue(kind: .unconditional, severity: severity, comments: Array(comment), sourceContext: sourceContext)
@@ -122,7 +119,7 @@ extension Issue {
   @discardableResult public static func record(
     _ error: any Error,
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     record(error, comment, severity: .error, sourceLocation: sourceLocation)
   }
@@ -147,11 +144,54 @@ extension Issue {
     _ error: any Error,
     _ comment: Comment? = nil,
     severity: Severity,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     let backtrace = Backtrace(forFirstThrowOf: error) ?? Backtrace.current()
     let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
     let issue = Issue(kind: .errorCaught(error), severity: severity, comments: Array(comment), sourceContext: sourceContext)
+    return issue.record()
+  }
+
+  /// Records an issue by explicitly providing all information up-front.
+  ///
+  /// - Parameters:
+  ///   - comments: All comments that should be attached to the issue.
+  ///   - severity: The severity of the issue being recorded.
+  ///   - sourceContext: The context in which this issue was originally
+  ///   recorded.
+  ///
+  /// - Returns: The issue that was recorded.
+  /// - Note: This is only intended for use in interoperability.
+  @_spi(ForToolsIntegrationOnly)
+  @discardableResult public static func record(
+    comments: [Comment],
+    severity: Severity,
+    sourceContext: SourceContext
+  ) -> Self {
+    let issue = Issue(kind: .unconditional, severity: severity, comments: comments, sourceContext: sourceContext)
+    return issue.record()
+  }
+
+  /// Records an issue by explicitly providing all information up-front when a
+  /// running test unexpectedly catches an error.
+  ///
+  /// - Parameters:
+  ///   - comments: All comments that should be attached to the issue.
+  ///   - error: An error that was caught and produced this issue.
+  ///   - severity: The severity of the issue being recorded.
+  ///   - sourceContext: The context in which this issue was originally
+  ///   recorded.
+  ///
+  /// - Returns: The issue that was recorded.
+  /// - Note: This is only intended for use in interoperability.
+  @_spi(ForToolsIntegrationOnly)
+  @discardableResult public static func record(
+    comments: [Comment],
+    error: (any Error),
+    severity: Severity,
+    sourceContext: SourceContext
+  ) -> Self {
+    let issue = Issue(kind: .errorCaught(error), severity: severity, comments: comments, sourceContext: sourceContext)
     return issue.record()
   }
 
@@ -173,12 +213,14 @@ extension Issue {
     configuration: Configuration? = nil,
     _ body: () throws -> Void
   ) -> (any Error)? {
+#if !hasFeature(Embedded)
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
     Backtrace.startCachingForThrownErrors()
     defer {
       Backtrace.flushThrownErrorCache()
     }
+#endif
 
     do {
       try body()
@@ -218,12 +260,14 @@ extension Issue {
     isolation: isolated (any Actor)? = #isolation,
     _ body: () async throws -> Void
   ) async -> (any Error)? {
+#if !hasFeature(Embedded)
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
     Backtrace.startCachingForThrownErrors()
     defer {
       Backtrace.flushThrownErrorCache()
     }
+#endif
 
     do {
       try await body()

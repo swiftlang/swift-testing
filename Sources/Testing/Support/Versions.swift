@@ -11,6 +11,7 @@
 private import _TestingInternals
 private import SwiftShims
 
+#if !hasFeature(Embedded)
 /// A human-readable string describing the current operating system's version.
 ///
 /// This value's format is platform-specific and is not meant to be
@@ -19,7 +20,7 @@ private import SwiftShims
 ///
 /// This value is not part of the public interface of the testing library.
 let operatingSystemVersion: String = {
-#if !SWT_NO_SYSCTL && SWT_TARGET_OS_APPLE
+#if !SWT_NO_SYSCTL && os(anyAppleOS)
   let productVersion = sysctlbyname("kern.osproductversion", as: String.self) ?? ""
   let buildNumber = sysctlbyname("kern.osversion", as: String.self) ?? ""
   switch (productVersion, buildNumber) {
@@ -32,7 +33,7 @@ let operatingSystemVersion: String = {
   default:
     return "\(productVersion) (\(buildNumber))"
   }
-#elseif !SWT_NO_UNAME && (SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD))
+#elseif !SWT_NO_UNAME && (os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD))
   var name = utsname()
   if 0 == uname(&name) {
     let release = withUnsafeBytes(of: name.release) { release in
@@ -77,7 +78,7 @@ let operatingSystemVersion: String = {
       // Include Service Pack details if available.
       if versionInfo.szCSDVersion.0 != 0 {
         withUnsafeBytes(of: versionInfo.szCSDVersion) { szCSDVersion in
-          szCSDVersion.withMemoryRebound(to: wchar_t.self) { szCSDVersion in
+          szCSDVersion.withMemoryRebound(to: CWideChar.self) { szCSDVersion in
             if let szCSDVersion = String.decodeCString(szCSDVersion.baseAddress!, as: UTF16.self)?.result {
               result += " (\(szCSDVersion))"
             }
@@ -89,9 +90,8 @@ let operatingSystemVersion: String = {
     }
   }
 #elseif os(WASI)
-  if let version = swt_getWASIVersion().flatMap(String.init(validatingCString:)) {
-    return version
-  }
+  // WASI does not have an API to get the current WASI or Wasm version.
+  // wasi-libc does have uname(3), but it's stubbed out.
 #else
 #warning("Platform-specific implementation missing: OS version unavailable")
 #endif
@@ -119,6 +119,46 @@ let simulatorVersion: String = {
   default:
     return "\(productVersion) (\(buildNumber))"
   }
+}()
+#endif
+#else
+/// A human-readable C string describing the current Embedded Swift target.
+///
+/// We keep a reference directly to the C string in order to avoid an apparent
+/// memory leak if the implementation heap-allocates it.
+///
+/// For more information, see ``embeddedTargetInfo``.
+private nonisolated(unsafe) let _embeddedTargetInfoCString: UnsafePointer<CChar>? = {
+  var result: UnsafePointer<CChar>?
+  guard _swift_testing_getEmbeddedTargetInfo(&result) else {
+    return nil
+  }
+  return result
+}()
+
+/// A human-readable string describing the current Embedded Swift target.
+///
+/// This value's format is platform-specific and is not meant to be
+/// machine-readable. It is added to the output of a test run when using
+/// an event writer.
+///
+/// This value is not part of the public interface of the testing library.
+var embeddedTargetInfo: String? {
+  _embeddedTargetInfoCString.flatMap(String.init(validatingCString:))
+}
+#endif
+
+#if os(Android)
+/// A human-readable string describing the current device's supported Android
+/// API level.
+///
+/// This value's format is platform-specific and is not meant to be
+/// machine-readable. It is added to the output of a test run when using
+/// an event writer.
+///
+/// This value is not part of the public interface of the testing library.
+let apiLevel: String = {
+  systemProperty(named: "ro.build.version.sdk") ?? "unknown"
 }()
 #endif
 
@@ -159,14 +199,8 @@ var targetTriple: String? {
 
 /// A human-readable string describing the Swift Standard Library's version.
 ///
-/// This value is unavailable on some earlier Apple runtime targets. On those
-/// targets, this property has a value of `5.0.0`.
-///
 /// This value is not part of the public interface of the testing library.
 let swiftStandardLibraryVersion: VersionNumber? = {
-  guard #available(_swiftVersionAPI, *) else {
-    return VersionNumber(5, 0)
-  }
   let packedValue = _SwiftStdlibVersion.current._value
   return VersionNumber(
     majorComponent: .init((packedValue & 0xFFFF0000) >> 16),
@@ -198,33 +232,21 @@ var swiftCompilerVersion: VersionNumber {
   )
 }
 
-#if canImport(Glibc) && !os(FreeBSD) && !os(OpenBSD)
 /// The (runtime, not compile-time) version of glibc in use on this system.
 ///
 /// This value is not part of the public interface of the testing library.
-let glibcVersion: VersionNumber = {
-  // Default to the statically available version number if the function call
-  // fails for some reason.
-  var major = Int(clamping: __GLIBC__)
-  var minor = Int(clamping: __GLIBC_MINOR__)
-
-  if let strVersion = gnu_get_libc_version() {
-    withUnsafeMutablePointer(to: &major) { major in
-      withUnsafeMutablePointer(to: &minor) { minor in
-        withVaList([major, minor]) { args in
-          _ = vsscanf(strVersion, "%zd.%zd", args)
-        }
-      }
-    }
+let glibcVersion: VersionNumber? = {
+  var major = CInt(0)
+  var minor = CInt(0)
+  guard swt_getGNUCLibraryVersion(&major, &minor) else {
+    return nil
   }
-
   return VersionNumber(majorComponent: .init(clamping: major), minorComponent: .init(clamping: minor))
 }()
-#endif
 
 // MARK: - sysctlbyname() Wrapper
 
-#if !SWT_NO_SYSCTL && SWT_TARGET_OS_APPLE
+#if !hasFeature(Embedded) && !SWT_NO_SYSCTL && os(anyAppleOS)
 /// Get a string value by calling `sysctlbyname()`.
 ///
 /// - Parameters:

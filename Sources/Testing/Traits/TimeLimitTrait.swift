@@ -13,7 +13,8 @@ private import _TestingInternals
 /// A type that defines a time limit to apply to a test.
 ///
 /// To add this trait to a test, use ``Trait/timeLimit(_:)-4kzjp``.
-@available(_clockAPI, *)
+@_unavailableInEmbedded
+@available(_clockAPI, *) // For DocC
 public struct TimeLimitTrait: TestTrait, SuiteTrait {
   /// A type representing the duration of a time limit applied to a test.
   ///
@@ -52,7 +53,8 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
 
 // MARK: -
 
-@available(_clockAPI, *)
+@_unavailableInEmbedded
+@available(_clockAPI, *) // For DocC
 extension Trait where Self == TimeLimitTrait {
   /// Construct a time limit trait that causes a test to time out if it runs for
   /// too long.
@@ -135,7 +137,8 @@ extension Trait where Self == TimeLimitTrait {
   }
 }
 
-@available(_clockAPI, *)
+@_unavailableInEmbedded
+@available(_clockAPI, *) // For DocC
 extension TimeLimitTrait.Duration {
   /// Construct a time limit duration given a number of seconds.
   ///
@@ -196,7 +199,8 @@ extension TimeLimitTrait.Duration {
 
 // MARK: -
 
-@available(_clockAPI, *)
+@_unavailableInEmbedded
+@available(_clockAPI, *) // For DocC
 extension Test {
   /// The maximum amount of time this test's cases may run for.
   ///
@@ -208,7 +212,7 @@ extension Test {
   public var timeLimit: Duration? {
     traits.lazy
       .compactMap { $0 as? TimeLimitTrait }
-      .map(\.timeLimit)
+      .map { $0.timeLimit }
       .min()
   }
 
@@ -222,6 +226,7 @@ extension Test {
   ///   or `nil` if the test may run indefinitely.
   @_spi(ForToolsIntegrationOnly)
   public func adjustedTimeLimit(configuration: Configuration) -> Duration? {
+#if !hasFeature(Embedded)
     // If this instance doesn't have a time limit configured, use the default
     // specified by the configuration.
     var timeLimit = timeLimit ?? configuration.defaultTestTimeLimit
@@ -240,24 +245,14 @@ extension Test {
         min(timeLimit, maximumTestTimeLimit)
       } ?? maximumTestTimeLimit
     }
+#endif
 
     return timeLimit
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: -
-
-/// An error that is reported when a test times out.
-///
-/// This type is not part of the public interface of the testing library.
-struct TimeoutError: Error, CustomStringConvertible {
-  /// The time limit exceeded by the test that timed out.
-  var timeLimit: TimeValue
-
-  var description: String {
-    "Timed out after \(timeLimit) seconds."
-  }
-}
 
 #if !SWT_NO_UNSTRUCTURED_TASKS
 /// Invoke a function with a timeout.
@@ -275,7 +270,6 @@ struct TimeoutError: Error, CustomStringConvertible {
 /// and `body` is cancelled.
 ///
 /// This function is not part of the public interface of the testing library.
-@available(_clockAPI, *)
 func withTimeLimit(
   _ timeLimit: Duration,
   taskName: String? = nil,
@@ -287,7 +281,7 @@ func withTimeLimit(
       // If sleep() returns instead of throwing a CancellationError, that means
       // the timeout was reached before this task could be cancelled, so call
       // the timeout handler.
-      try await Test.Clock.sleep(for: timeLimit)
+      try await Test.Clock().sleep(for: timeLimit)
       timeoutHandler()
     }
     group.addTask(name: decorateTaskName(taskName, withAction: "running"), operation: body)
@@ -321,29 +315,29 @@ func withTimeLimit(
   for test: Test,
   configuration: Configuration,
   _ body: @escaping @Sendable () async throws -> Void,
-  timeoutHandler: @escaping @Sendable (_ timeLimit: (seconds: Int64, attoseconds: Int64)) -> Void
+  timeoutHandler: @escaping @Sendable (_ timeLimit: Duration) -> Void
 ) async throws {
-  if #available(_clockAPI, *),
-     let timeLimit = test.adjustedTimeLimit(configuration: configuration) {
-#if SWT_NO_UNSTRUCTURED_TASKS
+  if let timeLimit = test.adjustedTimeLimit(configuration: configuration) {
+#if !SWT_NO_UNSTRUCTURED_TASKS
+    return try await withTimeLimit(timeLimit) {
+      try await body()
+    } timeoutHandler: {
+      timeoutHandler(timeLimit)
+    }
+#else
     // This environment may not support full concurrency, so check if the body
     // closure timed out after it returns. This won't help us catch hangs, but
     // it will at least report tests that run longer than expected.
     let start = Test.Clock.Instant.now
     defer {
       if start.duration(to: .now) > timeLimit {
-        timeoutHandler(timeLimit.components)
+        timeoutHandler(timeLimit)
       }
     }
-    try await body()
-#else
-    return try await withTimeLimit(timeLimit) {
-      try await body()
-    } timeoutHandler: {
-      timeoutHandler(timeLimit.components)
-    }
+    return try await body()
 #endif
   }
 
   try await body()
 }
+#endif

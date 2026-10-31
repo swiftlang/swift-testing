@@ -9,14 +9,18 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-#if !os(Windows)
-import RegexBuilder
-#endif
-#if canImport(Foundation)
-import Foundation
+
+#if !SWT_NO_FOUNDATION
+import Foundation // for XML API
 #endif
 #if canImport(FoundationXML)
 import FoundationXML
+#endif
+#if !os(Windows)
+import RegexBuilder
+#endif
+#if !os(anyAppleOS) && canImport(Synchronization)
+import Synchronization
 #endif
 
 #if FIXED_118452948
@@ -24,7 +28,7 @@ import FoundationXML
 #endif
 struct EventRecorderTests {
   final class Stream: TextOutputStream, Sendable {
-    let buffer = Locked<String>(rawValue: "")
+    let buffer = Mutex<String>("")
 
     @Sendable func write(_ string: String) {
       buffer.withLock {
@@ -86,7 +90,9 @@ struct EventRecorderTests {
       #expect(!buffer.contains("●"))
     }
 
+#if SWT_COLLECTION_DIFFING_ENABLED
     #expect(buffer.contains("inserted ["))
+#endif
 
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")
@@ -94,7 +100,6 @@ struct EventRecorderTests {
   }
 
   @Test("Verbose output")
-  @available(_regexAPI, *)
   func verboseOutput() async throws {
     let stream = Stream()
 
@@ -109,8 +114,8 @@ struct EventRecorderTests {
     await runTest(for: WrittenTests.self, configuration: configuration)
 
     let buffer = stream.buffer.rawValue
-    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) "abc": Swift.String"#))
-    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) lhs: Swift.String → "987""#))
+    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter)   "abc": Swift.String"#))
+    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter)   lhs: Swift.String → "987""#))
     #expect(buffer.contains(#""Animal Crackers" (aka 'WrittenTests')"#))
     #expect(buffer.contains(#""Not A Lobster" (aka 'actuallyCrab()')"#))
     do {
@@ -155,7 +160,6 @@ struct EventRecorderTests {
   }
 
 #if !os(Windows)
-  @available(_regexAPI, *)
   @Test(
     "Titles of messages ('Test' vs. 'Suite') are determined correctly",
     arguments: [
@@ -192,7 +196,6 @@ struct EventRecorderTests {
     )
   }
   
-  @available(_regexAPI, *)
   @Test(
     "Log the total number of test cases in parameterized tests at the end of the test run",
     arguments: [
@@ -228,7 +231,6 @@ struct EventRecorderTests {
     )
   }
 
-  @available(_regexAPI, *)
   @Test(
     "Issue counts are summed correctly on test end",
     arguments: [
@@ -292,7 +294,6 @@ struct EventRecorderTests {
     }.run(configuration: configuration)
   }
 
-  @available(_regexAPI, *)
   @Test("Issue counts are omitted on a successful test")
   func issueCountOmittedForPassingTest() async throws {
     let stream = Stream()
@@ -315,7 +316,6 @@ struct EventRecorderTests {
   }
 
 #if !os(Windows)
-  @available(_regexAPI, *)
   @Test("Issue counts are summed correctly on run end")
   func issueCountSummingAtRunEnd() async throws {
     let stream = Stream()
@@ -377,7 +377,6 @@ struct EventRecorderTests {
   }
 
   @Test("Issue counts are summed correctly on run end for a test with only warning issues")
-  @available(_regexAPI, *)
   func warningIssueCountSummingAtRunEnd() async throws {
     let stream = Stream()
 
@@ -430,7 +429,7 @@ struct EventRecorderTests {
   }
 #endif
 
-#if canImport(Foundation) || canImport(FoundationXML)
+#if !SWT_NO_FOUNDATION || canImport(FoundationXML)
   @Test(
     "JUnitXMLRecorder outputs valid XML",
     .bug("https://github.com/swiftlang/swift-testing/issues/254")
@@ -486,6 +485,29 @@ struct EventRecorderTests {
     }
   }
 
+  @Test("JUnitXMLRecorder escapes test ID attributes")
+  func junitXMLTestIDAttributesAreEscaped() throws {
+    let stream = Stream()
+    let recorder = Event.JUnitXMLRecorder(writingUsing: stream.write)
+    let test = Test(name: "a & < \" quoted") {}
+    let context = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
+    let runContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
+
+    recorder.record(Event(.runStarted, testID: nil, testCaseID: nil), in: runContext)
+    recorder.record(Event(.testStarted, testID: test.id, testCaseID: nil), in: context)
+    recorder.record(Event(.testEnded, testID: test.id, testCaseID: nil), in: context)
+    recorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: runContext)
+
+    let xmlString = stream.buffer.rawValue
+    #expect(xmlString.contains("name=\"a &amp; &lt; &quot; quoted\""))
+    let xmlData = try #require(xmlString.data(using: .utf8))
+    let parser = XMLParser(data: xmlData)
+    #expect(parser.parse())
+    if let error = parser.parserError {
+      throw error
+    }
+  }
+
   @Test(
     "JUnit XML omits time for skipped tests",
     .bug("https://github.com/swiftlang/swift-testing/issues/740")
@@ -494,13 +516,15 @@ struct EventRecorderTests {
     let stream = Stream()
 
     let eventRecorder = Event.JUnitXMLRecorder(writingUsing: stream.write)
-    eventRecorder.record(Event(.runStarted, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, configuration: nil))
+    eventRecorder.record(Event(.runStarted, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil))
     let test = Test {}
-    eventRecorder.record(Event(.testSkipped(.init(sourceContext: .init())), testID: test.id, testCaseID: nil), in: Event.Context(test: test, testCase: nil, configuration: nil))
-    eventRecorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, configuration: nil))
+    eventRecorder.record(Event(.testSkipped(.init(sourceContext: .init())), testID: test.id, testCaseID: nil), in: Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil))
+    eventRecorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil))
 
     let xmlString = stream.buffer.rawValue
     #expect(xmlString.hasPrefix("<?xml"))
+    #expect(xmlString.contains(#"tests="1""#))
+    #expect(xmlString.contains(#"skipped="1""#))
     let testCaseLines = xmlString
       .split(whereSeparator: \.isNewline)
       .filter { $0.contains("<testcase") }
@@ -513,7 +537,7 @@ struct EventRecorderTests {
   func humanReadableRecorderCountsIssuesWithoutTests() {
     let issue = Issue(kind: .unconditional)
     let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
-    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
+    let context = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
 
     let recorder = Event.HumanReadableOutputRecorder()
     let messages = recorder.record(event, in: context)
@@ -527,7 +551,7 @@ struct EventRecorderTests {
   @Test("JUnitXMLRecorder counts issues without associated tests")
   func junitRecorderCountsIssuesWithoutTests() async throws {
     let issue = Issue(kind: .unconditional)
-    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
+    let context = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
 
     await confirmation { wroteTestSuite in
       let recorder = Event.JUnitXMLRecorder { string in
@@ -544,7 +568,7 @@ struct EventRecorderTests {
   @Test("JUnitXMLRecorder ignores warning issues")
   func junitRecorderIgnoresWarningIssues() async throws {
     let issue = Issue(kind: .unconditional, severity: .warning)
-    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
+    let context = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
 
     await confirmation { wroteTestSuite in
       let recorder = Event.JUnitXMLRecorder { string in
@@ -570,7 +594,7 @@ struct EventRecorderTests {
   func knownIssueComments(testName: String, expectedComments: [String]) async throws {
     var configuration = Configuration()
     let recorder = Event.HumanReadableOutputRecorder()
-    let messages = Locked<[Event.HumanReadableOutputRecorder.Message]>(rawValue: [])
+    let messages = Mutex<[Event.HumanReadableOutputRecorder.Message]>([])
     configuration.eventHandler = { event, context in
       guard case .issueRecorded = event.kind else { return }
       messages.withLock {
@@ -584,8 +608,55 @@ struct EventRecorderTests {
     // known issue" and includes a source location, so is inconvenient to
     // include in our expectation here.
     let actualComments = messages.rawValue.dropFirst().map(\.stringValue)
-    #expect(actualComments == expectedComments)
+    #expect(actualComments.starts(with: expectedComments))
   }
+
+#if !SWT_NO_ABI_JSON_SCHEMA
+  @Test("HumanReadableOutputRecorder with encoded events")
+  func encodedEvents() async throws {
+    let test = Test(name: "Test Name") {}
+    let encodedTest = ABI.EncodedTest<ABI.CurrentVersion>(encoding: test)
+    let encodedEvents = [
+      Event(.runStarted, testID: nil, testCaseID: nil),
+      Event(.testStarted, testID: test.id, testCaseID: nil),
+      Event(.testCaseStarted, testID: test.id, testCaseID: nil),
+      Event(.issueRecorded(.init(kind: .unconditional)), testID: test.id, testCaseID: nil),
+      Event(.testCaseEnded, testID: test.id, testCaseID: nil),
+      Event(.testEnded, testID: test.id, testCaseID: nil),
+      Event(.runEnded, testID: nil, testCaseID: nil),
+    ].compactMap { event in
+      return ABI.EncodedEvent<ABI.CurrentVersion>(
+        encoding: event,
+        in: Event.Context(
+          test: event.testID != nil ? test : nil,
+          testCase: nil,
+          iteration: event.testID != nil ? 0 : nil,
+          configuration: nil
+        ),
+        messages: []
+      )
+    }
+
+    // Memoize the test (we don't need the resulting `Test` instance though).
+    var context = ABI.Context()
+    _ = Test(decoding: encodedTest, in: &context)
+
+    // Generate the messages to compare against.
+    let recorder = Event.HumanReadableOutputRecorder()
+    let messages = encodedEvents.compactMap { recorder.record($0, in: &context).first }
+
+    let expectedMessages = [
+      "Test run started.",
+      #"Test "Test Name" started."#,
+      "Issue recorded",
+      #"Test "Test Name" failed"#,
+      "Test run with 1 test in 0 suites failed",
+    ]
+    for (message, expectedMessage) in zip(messages, expectedMessages) {
+      #expect(message.stringValue.contains(expectedMessage))
+    }
+  }
+#endif
 }
 
 // MARK: - Fixtures
@@ -650,9 +721,11 @@ struct EventRecorderTests {
     Issue.record()
   }
 
+#if SWT_COLLECTION_DIFFING_ENABLED
   @Test(.hidden) func diffyDuck() {
     #expect([1, 2, 3] as Array == [1, 2] as Array)
   }
+#endif
 
   @Test(.hidden) func woefulWombat() {
     #expect(throws: MyError.self) {

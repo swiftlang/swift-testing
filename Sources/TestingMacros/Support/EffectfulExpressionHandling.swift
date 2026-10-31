@@ -106,7 +106,9 @@ func findEffectKeywords(in node: some SyntaxProtocol) -> Set<Keyword> {
 /// - Returns: A set of effectful keywords such as `await` that are present in
 ///   `context` and would apply to an expression macro during its expansion.
 func findEffectKeywords(in context: some MacroExpansionContext) -> Set<Keyword> {
-  let result = context.lexicalContext.reversed().lazy
+  // The lexical context is ordered from innermost to outermost, and we are most
+  // interested in keywords near the macro expansion, so don't use reversed().
+  let result = context.lexicalContext.lazy
     .prefix { _continueKind(for: $0) == .visitChildren }
     .compactMap { $0.as(ExprSyntax.self) }
     .compactMap(_effectKeyword(for:))

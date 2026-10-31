@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type representing a backtrace or stack trace.
 @_spi(ForToolsIntegrationOnly)
 public struct Backtrace: Sendable {
@@ -55,19 +59,18 @@ public struct Backtrace: Sendable {
   /// The number of symbols captured in this backtrace is an implementation
   /// detail.
   public static func current(maximumAddressCount addressCount: Int = 128) -> Self {
+#if !hasFeature(Embedded)
     // NOTE: the exact argument/return types for backtrace() vary across
     // platforms, hence the use of .init() when calling it below.
     withUnsafeTemporaryAllocation(of: UnsafeMutableRawPointer?.self, capacity: addressCount) { addresses in
       var initializedCount = 0
-#if SWT_TARGET_OS_APPLE
-      if #available(_backtraceAsyncAPI, *) {
-        initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
-      } else {
-        initializedCount = .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
-      }
+#if os(anyAppleOS)
+      initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
 #elseif os(Android)
-      initializedCount = addresses.withMemoryRebound(to: UnsafeMutableRawPointer.self) { addresses in
-        .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
+      if #available(Android 33, *) {
+        initializedCount = addresses.withMemoryRebound(to: UnsafeMutableRawPointer.self) { addresses in
+          .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
+        }
       }
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD)
       initializedCount = .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
@@ -93,6 +96,9 @@ public struct Backtrace: Sendable {
       }
 #endif
     }
+#else
+    Self(addresses: EmptyCollection<Address>())
+#endif
   }
 }
 
@@ -100,6 +106,7 @@ public struct Backtrace: Sendable {
 
 extension Backtrace: Equatable, Hashable {}
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 // Explicitly implement Codable support by encoding and decoding the addresses
@@ -115,11 +122,12 @@ extension Backtrace: Codable {
     try addresses.encode(to: encoder)
   }
 }
+#endif
 
 // MARK: - Backtraces for thrown errors
 
-extension Backtrace {
 #if !hasFeature(Embedded)
+extension Backtrace {
   // MARK: - Error cache keys
 
   /// A type used as a cache key that uniquely identifies error existential
@@ -208,13 +216,13 @@ extension Backtrace {
   /// same location.)
   ///
   /// Access to this dictionary is guarded by a lock.
-  private static let _errorMappingCache = Locked<[_ErrorMappingCacheKey: _ErrorMappingCacheEntry]>()
+  private static let _errorMappingCache = Mutex<[_ErrorMappingCacheKey: _ErrorMappingCacheEntry]>()
 
   /// The previous `swift_willThrow` handler, if any.
-  private static let _oldWillThrowHandler = Locked<SWTWillThrowHandler?>()
+  private static let _oldWillThrowHandler = Mutex<SWTWillThrowHandler?>()
 
   /// The previous `swift_willThrowTyped` handler, if any.
-  private static let _oldWillThrowTypedHandler = Locked<SWTWillThrowTypedHandler?>()
+  private static let _oldWillThrowTypedHandler = Mutex<SWTWillThrowTypedHandler?>()
 
   /// Handle a thrown error.
   ///
@@ -322,9 +330,8 @@ extension Backtrace {
     }
     forward(errorType)
   }
-#endif
 
-#if !hasFeature(Embedded) && SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+#if os(anyAppleOS) && !SWT_NO_DYNAMIC_LINKING
   /// A function provided by Core Foundation that copies the captured backtrace
   /// from storage inside `CFError` or `NSError`.
   ///
@@ -356,7 +363,7 @@ extension Backtrace {
   /// - Note: The underlying Foundation function is called (if present) the
   ///   first time the value of this property is read.
   static let isFoundationCaptureEnabled = {
-#if !hasFeature(Embedded) && _runtime(_ObjC) && !SWT_NO_DYNAMIC_LINKING
+#if _runtime(_ObjC) && !SWT_NO_DYNAMIC_LINKING
     // Check the environment variable; if it isn't set, enable if and only if
     // the Core Foundation getter function is implemented.
     let foundationBacktracesEnabled = Environment.flag(named: "SWT_FOUNDATION_ERROR_BACKTRACING_ENABLED")
@@ -372,7 +379,6 @@ extension Backtrace {
     return false
   }()
 
-#if !hasFeature(Embedded)
   /// The implementation of ``Backtrace/startCachingForThrownErrors()``, run
   /// only once.
   ///
@@ -398,7 +404,6 @@ extension Backtrace {
       }
     }
   }()
-#endif
 
   /// Configure the Swift runtime to allow capturing backtraces when errors are
   /// thrown.
@@ -407,9 +412,7 @@ extension Backtrace {
   /// developer-supplied code to ensure that thrown errors' backtraces are
   /// always captured.
   static func startCachingForThrownErrors() {
-#if !hasFeature(Embedded)
     __SWIFT_TESTING_IS_CAPTURING_A_BACKTRACE_FOR_A_THROWN_ERROR__
-#endif
   }
 
   /// Flush stale entries from the error-mapping cache.
@@ -417,11 +420,9 @@ extension Backtrace {
   /// Call this function periodically to ensure that errors do not continue to
   /// take up space in the cache after they have been deinitialized.
   static func flushThrownErrorCache() {
-#if !hasFeature(Embedded)
     _errorMappingCache.withLock { cache in
       cache = cache.filter { $0.value.errorObject != nil }
     }
-#endif
   }
 
   /// Initialize an instance of this type with the previously-cached backtrace
@@ -441,11 +442,10 @@ extension Backtrace {
   ///   initializer cannot be made an instance method or property of `Error`
   ///   because doing so will cause Swift-native errors to be unboxed into
   ///   existential containers with different addresses.
-#if !hasFeature(Embedded)
   @inline(never)
   init?(forFirstThrowOf error: any Error, checkFoundation: Bool = true) {
     if checkFoundation && Self.isFoundationCaptureEnabled {
-#if !hasFeature(Embedded) && SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+#if !hasFeature(Embedded) && os(anyAppleOS) && !SWT_NO_DYNAMIC_LINKING
       if let addresses = Self._CFErrorCopyCallStackReturnAddresses?(error)?.takeRetainedValue() as? [Address] {
         self.init(addresses: addresses)
         return
@@ -469,9 +469,11 @@ extension Backtrace {
       return nil
     }
   }
+}
 #else
-  init?(forFirstThrowOf error: some Error, checkFoundation: Bool = true) {
+extension Backtrace {
+  init?(forFirstThrowOf error: any Error, checkFoundation: Bool = true) {
     return nil
   }
-#endif
 }
+#endif

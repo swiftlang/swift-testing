@@ -14,10 +14,13 @@ internal import _TestingInternals
 #if SWT_NO_FILE_IO
 #error("Platform-specific misconfiguration: support for process spawning requires support for file I/O")
 #endif
+#if SWT_NO_CONTINUATIONS
+#error("Platform-specific misconfiguration: support for process spawning requires support for Swift Concurrency continuations")
+#endif
 
 /// A platform-specific value identifying a process running on the current
 /// system.
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD)
 typealias ProcessID = pid_t
 #elseif os(Windows)
 typealias ProcessID = HANDLE
@@ -37,6 +40,14 @@ private let _posix_spawn_file_actions_addclosefrom_np = symbol(named: "posix_spa
   castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<posix_spawn_file_actions_t>, CInt) -> CInt).self)
 }
 #endif
+
+/// Whether or not to start child processes in an immediately suspended state on
+/// platforms that support doing so.
+///
+/// To resume a child process, send the `SIGCONT` signal to its process ID. On
+/// Windows, call [`ResumeThread()`](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-resumethread)
+/// and pass it a handle to the child process' main thread.
+private let _startChildProcessesSuspended = Environment.flag(named: "SWT_START_CHILD_PROCESSES_SUSPENDED") ?? false
 
 /// Spawn a child process.
 ///
@@ -73,13 +84,13 @@ func spawnExecutable(
 ) throws -> ProcessID {
   // Darwin and Linux differ in their optionality for the posix_spawn types we
   // use, so use this typealias to paper over the differences.
-#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || os(FreeBSD) || os(OpenBSD)
   typealias P<T> = T?
 #elseif os(Linux)
   typealias P<T> = T
 #endif
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD)
   return try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
     let fileActions = fileActions.baseAddress!
     let fileActionsInitialized = posix_spawn_file_actions_init(fileActions)
@@ -113,6 +124,13 @@ func spawnExecutable(
       withUnsafeTemporaryAllocation(of: sigset_t.self, capacity: 1) { allSignals in
         let allSignals = allSignals.baseAddress!
         sigfillset(allSignals)
+#if os(OpenBSD)
+        // On OpenBSD, attempting to set the signal handler for SIGKILL or
+        // SIGSTOP will cause the child process of a call to posix_spawn() to
+        // exit abnormally with exit code 127. See https://man.openbsd.org/sigaction.2#ERRORS
+        sigdelset(allSignals, SIGKILL)
+        sigdelset(allSignals, SIGSTOP)
+#endif
         posix_spawnattr_setsigdefault(attrs, allSignals);
         flags |= CShort(POSIX_SPAWN_SETSIGDEF)
       }
@@ -122,12 +140,12 @@ func spawnExecutable(
       func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws {
         try fileHandle.withUnsafePOSIXFileDescriptor { fd in
           guard let fd else {
-            throw SystemError(description: "A child process cannot inherit a file handle without an associated file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+            throw SystemError(description: "A child process cannot inherit a file handle without an associated file descriptor. \(fileABugMessage)")
           }
           if let standardFD, standardFD != fd {
             _ = posix_spawn_file_actions_adddup2(fileActions, fd, standardFD)
           } else {
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
             _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
 #else
             // posix_spawn_file_actions_adddup2() will automatically clear
@@ -137,14 +155,12 @@ func spawnExecutable(
             // standardized in POSIX.1-2024 (see https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn_file_actions_adddup2.html
             // and https://www.austingroupbugs.net/view.php?id=411).
             _ = posix_spawn_file_actions_adddup2(fileActions, fd, fd)
-#if canImport(Glibc) && !os(FreeBSD) && !os(OpenBSD)
-            if _slowPath(glibcVersion < VersionNumber(2, 29)) {
+            if let glibcVersion, _slowPath(glibcVersion < VersionNumber(2, 29)) {
               // This system is using an older version of glibc that does not
               // implement FD_CLOEXEC clearing in posix_spawn_file_actions_adddup2(),
               // so we must clear it here in the parent process.
               try setFD_CLOEXEC(false, onFileDescriptor: fd)
             }
-#endif
 #endif
             highestFD = max(highestFD, fd)
           }
@@ -166,7 +182,7 @@ func spawnExecutable(
         try inherit(additionalFileHandle.pointee)
       }
 
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
       // Close all other file descriptors open in the parent.
       flags |= CShort(POSIX_SPAWN_CLOEXEC_DEFAULT)
 #elseif os(Linux)
@@ -191,9 +207,23 @@ func spawnExecutable(
 #warning("Platform-specific implementation missing: cannot close unused file descriptors")
 #endif
 
-#if SWT_TARGET_OS_APPLE && DEBUG
-      // Start the process suspended so we can attach a debugger if needed.
+#if os(anyAppleOS)
+      // Start the process suspended so we can attach a debugger if needed. We
+      // always start the child process in a suspended state even if the
+      // "SWT_START_CHILD_PROCESSES_SUSPENDED" environment variable isn't set so that
+      // the debugger has a chance to attach to the child.
       flags |= CShort(POSIX_SPAWN_START_SUSPENDED)
+
+      // On Apple platforms, prefer to use the same CPU type/subtype as in the
+      // parent process. This ensures that, for example, we don't accidentally
+      // spawn a child process as arm64e when the test target it needs to load
+      // was only built for arm64 (this is particularly relevant to exit tests).
+      if let mh = _NSGetMachExecuteHeader() {
+        var types = [mh.pointee.cputype, CPU_TYPE_ANY]
+        var subtypes = [mh.pointee.cpusubtype, CPU_SUBTYPE_ANY]
+        assert(types.count == subtypes.count, "CPU type list \(types) has \(types.count) entries, but CPU subtype list \(subtypes) has \(subtypes.count) entries. \(fileABugMessage)")
+        posix_spawnattr_setarchpref_np(attrs, types.count, &types, &subtypes, nil)
+      }
 #endif
 
       // Set flags; make sure to keep this call below any code that might modify
@@ -222,9 +252,11 @@ func spawnExecutable(
       guard 0 == processSpawned else {
         throw CError(rawValue: processSpawned)
       }
-#if SWT_TARGET_OS_APPLE && DEBUG
-      // Resume the process.
-      _ = kill(pid, SIGCONT) // ignore-unacceptable-language
+#if os(anyAppleOS)
+      if !_startChildProcessesSuspended {
+        // Resume the process.
+        _ = kill(pid, SIGCONT) // ignore-unacceptable-language
+      }
 #endif
       return pid
     }
@@ -234,7 +266,7 @@ func spawnExecutable(
     func inherit(_ fileHandle: borrowing FileHandle) throws -> HANDLE? {
       try fileHandle.withUnsafeWindowsHANDLE { windowsHANDLE in
         guard let windowsHANDLE else {
-          throw SystemError(description: "A child process cannot inherit a file handle without an associated Windows handle. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+          throw SystemError(description: "A child process cannot inherit a file handle without an associated Windows handle. \(fileABugMessage)")
         }
 
         // Ensure the file handle can be inherited by the child process.
@@ -268,7 +300,7 @@ func spawnExecutable(
     for i in 0 ..< additionalFileHandles.count {
       inheritedHandles[i + 3] = try inherit(additionalFileHandles[i].pointee)
     }
-    inheritedHandles = inheritedHandles.compactMap(\.self)
+    inheritedHandles = inheritedHandles.filter { $0 != nil }
 
     return try inheritedHandles.withUnsafeMutableBufferPointer { inheritedHandles in
       _ = UpdateProcThreadAttribute(
@@ -307,10 +339,12 @@ func spawnExecutable(
       let workingDirectoryPath = rootDirectoryPath
 
       var flags = DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT)
-#if DEBUG
-      // Start the process suspended so we can attach a debugger if needed.
+
+      // Start the process suspended so we can attach a debugger if needed. We
+      // always start the child process in a suspended state even if the
+      // "SWT_START_CHILD_PROCESSES_SUSPENDED" environment variable isn't set so that
+      // the debugger has a chance to attach to the child.
       flags |= DWORD(CREATE_SUSPENDED)
-#endif
 
       return try environ.withCString(encodedAs: UTF16.self) { environ in
         try workingDirectoryPath.withCString(encodedAs: UTF16.self) { workingDirectoryPath in
@@ -331,10 +365,10 @@ func spawnExecutable(
             throw Win32Error(rawValue: GetLastError())
           }
 
-#if DEBUG
-          // Resume the process.
-          _ = ResumeThread(processInfo.hThread!)
-#endif
+          if !_startChildProcessesSuspended {
+            // Resume the process.
+            _ = ResumeThread(processInfo.hThread!)
+          }
 
           _ = CloseHandle(processInfo.hThread)
           return processInfo.hProcess!

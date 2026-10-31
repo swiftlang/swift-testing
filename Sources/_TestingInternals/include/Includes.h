@@ -63,6 +63,10 @@
 #include <gnu/libc-version.h>
 #endif
 
+#if __has_include(<sys/param.h>)
+#include <sys/param.h>
+#endif
+
 #if __has_include(<sys/resource.h>) && !defined(__wasi__)
 #include <sys/resource.h>
 #endif
@@ -81,6 +85,10 @@
 
 #if __has_include(<sys/utsname.h>)
 #include <sys/utsname.h>
+#endif
+
+#if __has_include(<sys/uio.h>)
+#include <sys/uio.h>
 #endif
 
 #if __has_include(<execinfo.h>)
@@ -126,22 +134,34 @@
 // MARK: - Platform-specific includes
 
 #if defined(__APPLE__)
-#if !SWT_NO_MACH_PORTS
+#if !defined(SWT_NO_MACH_PORTS)
 #include <mach/mach_init.h>
 #include <mach/task.h>
 #endif
 
-#if !SWT_NO_LIBDISPATCH
+#if !defined(SWT_NO_LIBDISPATCH)
 #include <dispatch/dispatch.h>
 #endif
 
-#if !SWT_NO_DYNAMIC_LINKING
+#if !defined(SWT_NO_DYNAMIC_LINKING)
 #include <mach-o/dyld.h>
 #endif
 
-#if !SWT_NO_OS_UNFAIR_LOCK
+#if !defined(SWT_NO_OS_UNFAIR_LOCK)
 #include <os/lock.h>
 #endif
+
+#if !defined(SWT_NO_FILE_CLONING)
+#include <sys/clonefile.h>
+#endif
+
+#if defined(__OBJC2__)
+#include <objc/runtime.h>
+#endif
+#endif
+
+#if defined(__linux__)
+#include <linux/fs.h>
 #endif
 
 #if defined(__FreeBSD__)
@@ -160,12 +180,12 @@
 #endif
 
 #if defined(__wasi__)
-#if __has_include(<wasi/libc-environ.h>)
-#include <wasi/libc-environ.h>
+#if __has_include(<wasi/api.h>)
+#include <wasi/api.h>
 #endif
 
-#if __has_include(<wasi/version.h>)
-#include <wasi/version.h>
+#if __has_include(<wasi/libc-environ.h>)
+#include <wasi/libc-environ.h>
 #endif
 #endif
 

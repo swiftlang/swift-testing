@@ -13,7 +13,6 @@
 
 @Suite("Runner.Plan.Snapshot tests")
 struct Runner_Plan_SnapshotTests {
-#if canImport(Foundation)
   @Test("Codable")
   func codable() async throws {
     let suite = try #require(await test(for: Runner_Plan_SnapshotFixtures.self))
@@ -46,7 +45,6 @@ struct Runner_Plan_SnapshotTests {
       }
     }
   }
-#endif
 }
 
 // MARK: - Fixture tests

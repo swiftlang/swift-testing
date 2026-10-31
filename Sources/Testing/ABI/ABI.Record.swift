@@ -1,52 +1,95 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI {
   /// A type implementing the JSON encoding of records for the ABI entry point
   /// and event stream output.
   ///
-  /// This type is not part of the public interface of the testing library. It
-  /// assists in converting values to JSON; clients that consume this JSON are
-  /// expected to write their own decoders.
-  struct Record<V>: Sendable where V: ABI.Version {
+  /// You can use this type and its conformance to [`Codable`](https://developer.apple.com/documentation/swift/codable),
+  /// when integrating the testing library with development tools. It is not
+  /// part of the testing library's public interface.
+  public struct Record<V>: Sendable where V: ABI.Version {
     /// An enumeration describing the various kinds of record.
-    enum Kind: Sendable {
+    public enum Kind: Sendable {
       /// A test record.
       case test(EncodedTest<V>)
 
       /// An event record.
       case event(EncodedEvent<V>)
+
+      /// Some metadata regarding the test run, the current environment, etc.
+      ///
+      /// - Warning: Metadata is not yet part of the JSON schema.
+      @_spi(Experimental)
+      case metadata(EncodedMetadata<V>)
     }
 
     /// The kind of record.
-    var kind: Kind
+    public internal(set) var kind: Kind
 
-    init(encoding test: borrowing Test) {
-      kind = .test(EncodedTest(encoding: test))
+    public init(encoding test: borrowing EncodedTest<V>) {
+      kind = .test(copy test)
     }
 
-    init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
-      guard let event = EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) else {
+    public init(encoding event: borrowing EncodedEvent<V>) {
+      kind = .event(copy event)
+    }
+
+    public init?(encoding metadata: borrowing EncodedMetadata<V>) {
+      guard V.includesExperimentalFields else {
+        return nil
+      }
+      kind = .metadata(copy metadata)
+    }
+  }
+}
+
+// MARK: -
+
+extension ABI.Record {
+  init(encoding test: borrowing Test) {
+    let test = ABI.EncodedTest<V>(encoding: test)
+    self.init(encoding: test)
+  }
+
+  init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message] = []) {
+    switch event.kind {
+    case .testDiscovered:
+      guard let test = eventContext.test else {
+        return nil
+      }
+      self.init(encoding: test)
+    case let .metadataRecorded(metadata):
+      self.init(encoding: metadata)
+    default:
+      guard let event = ABI.EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) else {
         return nil
       }
       if !V.includesExperimentalFields && event.kind.rawValue.first == "_" {
         // Don't encode experimental event kinds.
         return nil
       }
-      kind = .event(event)
+      self.init(encoding: event)
     }
+  }
+
+  init?(encoding metadata: borrowing Event.Metadata) {
+    let metadata = ABI.EncodedMetadata<V>(encoding: metadata)
+    self.init(encoding: metadata)
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension ABI.Record: Codable {
   private enum CodingKeys: String, CodingKey {
     case version
@@ -54,24 +97,22 @@ extension ABI.Record: Codable {
     case payload
   }
 
-  func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(V.versionNumber, forKey: .version)
-    switch kind {
-    case let .test(test):
-      try container.encode("test", forKey: .kind)
-      try container.encode(test, forKey: .payload)
-    case let .event(event):
-      try container.encode("event", forKey: .kind)
-      try container.encode(event, forKey: .payload)
-    }
+  public func encode(to encoder: any Encoder) throws {
+    try encoder.encodeJSONEncodableValue(self)
   }
 
-  init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
 
-    let versionNumber = try container.decode(VersionNumber.self, forKey: .version)
-    if versionNumber != V.versionNumber {
+    func validateVersionNumber(_ versionNumber: VersionNumber) throws {
+      if versionNumber == V.versionNumber {
+        return
+      }
+      // Allow for alternate version numbers if they correspond to the expected
+      // record version (e.g. "1.2.3" might map to `v1_2_0` without a problem.)
+      if ABI.version(forVersionNumber: versionNumber) == V.self {
+        return
+      }
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath + CollectionOfOne(CodingKeys.version as any CodingKey),
@@ -79,6 +120,8 @@ extension ABI.Record: Codable {
         )
       )
     }
+    let versionNumber = try container.decode(VersionNumber.self, forKey: .version)
+    try validateVersionNumber(versionNumber)
 
     switch try container.decode(String.self, forKey: .kind) {
     case "test":
@@ -87,6 +130,9 @@ extension ABI.Record: Codable {
     case "event":
       let event = try container.decode(ABI.EncodedEvent<V>.self, forKey: .payload)
       kind = .event(event)
+    case "_metadata" where V.includesExperimentalFields:
+      let metadata = try container.decode(ABI.EncodedMetadata<V>.self, forKey: .payload)
+      kind = .metadata(metadata)
     case let kind:
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
@@ -97,3 +143,28 @@ extension ABI.Record: Codable {
     }
   }
 }
+#endif
+
+extension ABI.Record: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) throws(JSON.EncodingError) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["version"] = V.versionNumber.jsonValue(in: context)
+    switch kind {
+    case let .test(test):
+      result["kind"] = .string("test")
+      result["payload"] = test.jsonValue(in: context)
+    case let .event(event):
+      result["kind"] = .string("event")
+      result["payload"] = try event.jsonValue(in: context)
+    case let .metadata(metadata) where V.includesExperimentalFields:
+      result["kind"] = .string("_metadata")
+      result["payload"] = metadata.jsonValue(in: context)
+    default:
+      throw JSON.EncodingError(description: "Record version \(V.versionNumber) does not support encoding records of kind \(kind).")
+    }
+
+    return .object(result)
+  }
+}
+#endif

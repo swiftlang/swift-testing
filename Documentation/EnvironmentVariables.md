@@ -43,6 +43,7 @@ names prefixed with `SWT_`.
 | Variable Name | Value Type | Notes |
 |-|:-:|-|
 | `SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED` | `Bool` | Used to explicitly enable or disable experimental fields in the JSON event stream. |
+| `SWIFT_TESTING_EVENT_STREAM_MESSAGES_FIELD_ENABLED` | `Bool` | Used to explicitly enable or disable including the `"messages"` field in the JSON event stream. |
 | `SWT_PRETTY_PRINT_JSON` | `Bool` | Used to enable pretty-printed JSON output to the event stream (for debugging purposes). |
 
 ## Exit tests
@@ -53,6 +54,7 @@ names prefixed with `SWT_`.
 | `SWT_CAPTURED_VALUES` | `CInt`/`HANDLE` | A file descriptor (handle on Windows) containing captured values passed to the exit test. |
 | `SWT_CLOSEFROM` | `CInt` | Used on OpenBSD to emulate `posix_spawn_file_actions_addclosefrom_np()`. |
 | `SWT_EXIT_TEST_ID` | `String` (JSON) | Specifies which exit test to run. |
+| `SWT_START_CHILD_PROCESSES_SUSPENDED` | `Bool` | Start child processes (such as those for exit tests) in a suspended state where supported (Apple platforms and Windows). |
 | `XCTestBundlePath`\* | `String` | Used on Apple platforms to determine if Xcode is hosting the test run. |
 
 ## Miscellaneous
@@ -63,4 +65,8 @@ names prefixed with `SWT_`.
 | `HOME`[\*](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html) | `String` | Used to determine the user's home directory. |
 | `SIMULATOR_RUNTIME_BUILD_VERSION`\* | `String` | Used when running in the iOS (etc.) Simulator to determine the simulator's version. |
 | `SIMULATOR_RUNTIME_VERSION`\* | `String` | Used when running in the iOS (etc.) Simulator to determine the simulator's version. |
-| `SWT_USE_LEGACY_TEST_DISCOVERY` | `Bool` | Used to explicitly enable or disable legacy test discovery. |
+| `SWIFT_TESTING_XCTEST_INTEROP_MODE` | `String` | Overrides the behavior for handling XCTest assertion failures recorded during a Swift Testing test. One of `none`, `limited`, `complete`, or `strict`. Explanation of modes can be found in [Migrating a test from XCTest][interop-modes]. |
+| `SWT_EXPERIMENTAL_SERIALIZED_TRAIT_APPLIES_GLOBALLY` | `Bool` | Whether or not `.serialized` applies globally or just to its branch of the test graph. |
+| `SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH` | `Int` | The default parallelization width when parallelized testing is enabled. |
+
+[interop-modes]: https://docs.swift.org/latest/documentation/testing/migratingfromxctest

@@ -9,6 +9,7 @@
 //
 
 import SwiftDiagnostics
+import SwiftIfConfig
 import SwiftParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
@@ -18,6 +19,24 @@ import SwiftSyntaxMacroExpansion
 /// A type describing diagnostic messages emitted by this module's macro during
 /// evaluation.
 struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
+#if DEBUG
+  /// Create a diagnostic message for the given macro stating it cannot be used
+  /// when building the testing library itself.
+  ///
+  /// - Parameters:
+  ///   - macro: The macro that cannot be used.
+  ///   - targetName: The name of the target being built.
+  ///
+  /// - Returns: A diagnostic message.
+  static func macroExpansionNotAllowed(_ macro: some FreestandingMacroExpansionSyntax, inLibraryTargetNamed targetName: String) -> Self {
+    Self(
+      syntax: Syntax(macro),
+      message: "\(_macroName(macro)) cannot be used within the target '\(targetName)' because it will not be available when building the Swift toolchain",
+      severity: .error
+    )
+  }
+#endif
+
   /// Create a diagnostic message for the macro with the specified name
   /// stating that its condition will always pass or fail.
   ///
@@ -76,8 +95,19 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// - Returns: The name of the macro as understood by a developer, such as
   ///   `"'@Test'"`. Include single quotes.
   private static func _macroName(_ attribute: AttributeSyntax) -> String {
+    var attributeName = attribute.attributeName
+    if let type = attributeName.as(IdentifierTypeSyntax.self) {
+      attributeName = TypeSyntax(type.with(\.genericArgumentClause, nil))
+    } else if let type = attributeName.as(MemberTypeSyntax.self) {
+      attributeName = TypeSyntax(type.with(\.genericArgumentClause, nil))
+    }
+    let attributeNameText = attributeName
+      .tokens(viewMode: .fixedUp)
+      .map(\.textWithoutBackticks)
+      .joined()
+
     // SEE: https://github.com/swiftlang/swift/blob/main/docs/Diagnostics.md?plain=1#L44
-    "'\(attribute.attributeNameText)'"
+    return "'\(attributeNameText)'"
   }
 
   /// Get a string corresponding to the specified syntax node (for instance,
@@ -116,10 +146,14 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       result = ("deinitializer", "a")
     case .subscriptDecl:
       result = ("subscript", "a")
+    case .accessorDecl:
+      result = ("accessor", "an")
     case .enumCaseDecl:
       result = ("enumeration case", "an")
     case .typeAliasDecl:
       result = ("typealias", "a")
+    case .associatedTypeDecl:
+      result = ("associated type", "an")
     case .macroDecl:
       result = ("macro", "a")
     case .protocolDecl:
@@ -179,6 +213,39 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     }
   }
 
+  /// Create a diagnostic message stating that the given attribute has an unused
+  /// generic argument clause (e.g. `@Test<T>`).
+  ///
+  /// - Parameters:
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///   - decl: The generic declaration in question.
+  ///   - genericClause: The child node on `attribute` that makes it generic.
+  ///
+  /// - Returns: A diagnostic message.
+  static func genericAttributeNotSupported(_ attribute: AttributeSyntax, on decl: some SyntaxProtocol, becauseOf genericClause: some SyntaxProtocol, languageMode: VersionTuple?) -> Self {
+    let fixIts: [FixIt] = [
+      FixIt(
+        message: MacroExpansionFixItMessage("Remove generic attribute clause from \(_macroName(attribute))"),
+        changes: [.replace(oldNode: Syntax(genericClause), newNode: Syntax("" as ExprSyntax))]
+      ),
+    ]
+    if let languageMode, languageMode >= .init(7, 0) {
+      return Self(
+        syntax: Syntax(genericClause),
+        message: "Generic argument clause of attribute \(_macroName(attribute)) is unsupported",
+        severity: .error,
+        fixIts: fixIts
+      )
+    } else {
+      return Self(
+        syntax: Syntax(genericClause),
+        message: "Generic argument clause of attribute \(_macroName(attribute)) is unsupported; this is an error in the Swift 7 language mode",
+        severity: .warning,
+        fixIts: fixIts
+      )
+    }
+  }
+
   /// Create a diagnostic message stating that the `@Test` or `@Suite` attribute
   /// cannot be applied to a type that also has an availability attribute.
   ///
@@ -208,13 +275,19 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///
   /// - Parameters:
   ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///   - inEmbedded: Whether or not the constraint applies specifically to
+  ///     Embedded Swift.
   ///   - decl: The declaration in question.
   ///
   /// - Returns: A diagnostic message.
-  static func attributeNotSupported(_ attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
-    Self(
+  static func attributeNotSupported(_ attribute: AttributeSyntax, inEmbedded: Bool = false, on decl: some SyntaxProtocol) -> Self {
+    var message = "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true))"
+    if inEmbedded {
+      message += " in Embedded Swift"
+    }
+    return Self(
       syntax: Syntax(decl),
-      message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true))",
+      message: message,
       severity: .error
     )
   }
@@ -326,20 +399,17 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - genericClause: If not `nil`, a syntax node that causes `node` to be
   ///     generic.
   ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///   - inEmbedded: Whether or not the constraint applies specifically to
+  ///     Embedded Swift.
   ///   - decl: The declaration in question (contained in `node`.)
-  ///   - escapableNonConformance: The suppressed conformance to `Escapable` for
-  ///     `decl`, if present.
   ///
   /// - Returns: A diagnostic message.
-  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol, withSuppressedConformanceToEscapable escapableNonConformance: SuppressedTypeSyntax? = nil) -> Self {
+  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, inEmbedded: Bool = false, on decl: some SyntaxProtocol) -> Self {
     // Avoid using a syntax node from a lexical context (it won't have source
     // location information.)
     let syntax: Syntax = if let genericClause, attribute.root == genericClause.root {
       // Prefer the generic clause if available as the root cause.
       genericClause
-    } else if let escapableNonConformance, attribute.root == escapableNonConformance.root {
-      // Then the ~Escapable conformance if present.
-      Syntax(escapableNonConformance)
     } else if attribute.root == node.root {
       // Next best choice is the unsupported containing node.
       Syntax(node)
@@ -366,6 +436,8 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       } else {
         message += " within an extension to type '\(extensionDecl.extendedType.trimmedDescription)'"
       }
+    } else if let type = node.as(TypeSyntax.self) {
+      message += " within\(generic) type '\(type.trimmedDescription)'"
     } else {
       if genericClause != nil {
         message += " within a generic \(_kindString(for: node))"
@@ -373,8 +445,11 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
         message += " within \(_kindString(for: node, includeA: true))"
       }
     }
-    if escapableNonConformance != nil {
-      message += " because its conformance to 'Escapable' has been suppressed"
+    if inEmbedded {
+      message += " in Embedded Swift"
+    }
+    if let decl = node.as(DeclSyntax.self), declarationInheritsFromXCTestClass(decl) == true {
+      message += " because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'"
     }
 
     return Self(syntax: syntax, message: message, severity: .error)
@@ -529,7 +604,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   }
 
   /// Create a diagnostic message stating that `@Test` or `@Suite` is
-  /// incompatible with `XCTestCase` and its subclasses.
+  /// incompatible with `XCTest.XCTest` and its subclasses.
   ///
   /// - Parameters:
   ///   - decl: The expression or declaration referring to the unsupported
@@ -537,10 +612,10 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///
   /// - Returns: A diagnostic message.
-  static func xcTestCaseNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
+  static func xcTestSubclassNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(decl),
-      message: "Attribute \(_macroName(attribute)) cannot be applied to a subclass of 'XCTestCase'",
+      message: "Attribute \(_macroName(attribute)) cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
       severity: .error
     )
   }
@@ -771,7 +846,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - expr: The error type expression.
   ///
   /// - Returns: A diagnostic message.
-  static func requireThrowsNeverIsRedundant(_ expr: ExprSyntax, in macro: some FreestandingMacroExpansionSyntax) -> Self {
+  static func requireThrowsNeverIsRedundant(_ expr: some ExprSyntaxProtocol, in macro: some FreestandingMacroExpansionSyntax) -> Self {
     // We do not provide fix-its because we cannot see the leading "try" keyword
     // so we can't provide a valid fix-it to remove the macro either. We can
     // provide a fix-it to add "as Optional", but only providing that fix-it may

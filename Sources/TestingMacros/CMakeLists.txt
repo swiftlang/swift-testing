@@ -33,7 +33,7 @@ if(SwiftTesting_BuildMacrosAsExecutables)
   set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_d)
   FetchContent_Declare(SwiftSyntax
     GIT_REPOSITORY https://github.com/swiftlang/swift-syntax
-    GIT_TAG 07bf225e198119c23b2b9a0a3432bdb534498873) # 603.0.0-prerelease-2025-08-11
+    GIT_TAG a8b1c535647243d603b6772e7e8306c993a0c188) # 605.0.0-prerelease-2026-06-26
   FetchContent_MakeAvailable(SwiftSyntax)
 endif()
 
@@ -100,6 +100,7 @@ target_sources(TestingMacros PRIVATE
   Support/Argument.swift
   Support/AttributeDiscovery.swift
   Support/AvailabilityGuards.swift
+  Support/BugReporting.swift
   Support/ClosureCaptureListParsing.swift
   Support/CommentParsing.swift
   Support/ConditionArgumentParsing.swift
@@ -110,6 +111,7 @@ target_sources(TestingMacros PRIVATE
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
   Support/TestContentGeneration.swift
+  Support/TestContentKind.swift
   TagMacro.swift
   TestDeclarationMacro.swift
   TestingMacrosMain.swift)
@@ -126,3 +128,8 @@ if(SwiftTesting_BuildMacrosAsExecutables)
   target_link_libraries(TestingMacros PRIVATE
     SwiftSyntax::SwiftCompilerPlugin)
 endif()
+
+# Makes SwiftTesting_MACRO_DIR available after find_package(SwiftTestingMacros)
+file(GENERATE
+  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/cmake/modules/SwiftTestingMacrosConfig.cmake"
+  CONTENT "get_filename_component(SwiftTesting_MACRO_DIR \"$<TARGET_FILE:TestingMacros>\" DIRECTORY)\n")

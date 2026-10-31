@@ -33,6 +33,6 @@ extension Test {
   /// Whether this test is hidden, whether directly or via a trait inherited
   /// from a parent test.
   var isHidden: Bool {
-    traits.contains { $0 is HiddenTrait }
+    traits.contains { ($0 as? HiddenTrait) != nil } // WORKAROUND: rdar://191300065
   }
 }

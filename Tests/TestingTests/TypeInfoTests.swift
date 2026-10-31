@@ -24,7 +24,7 @@ struct TypeInfoTests {
     ),
     (
       [Test].self,
-      TypeInfo(fullyQualifiedName: "Swift.Array<Testing.Test>", unqualifiedName: "Array<Test>", mangledName: "")
+      TypeInfo(fullyQualifiedName: "Swift.Array<\(testingModuleABIName).Test>", unqualifiedName: "Array<Test>", mangledName: "")
     ),
     (
       (key: String, value: Int).self,
@@ -51,30 +51,30 @@ struct TypeInfoTests {
   }
 
   @Test("Splitting raw identifiers",
-    arguments: [
-      ("Foo.Bar", ["Foo", "Bar"]),
-      ("`Foo`.Bar", ["`Foo`", "Bar"]),
-      ("`Foo`.`Bar`", ["`Foo`", "`Bar`"]),
-      ("Foo.`Bar`", ["Foo", "`Bar`"]),
-      ("Foo.`Bar`.Quux", ["Foo", "`Bar`", "Quux"]),
-      ("Foo.`B.ar`.Quux", ["Foo", "`B.ar`", "Quux"]),
+        arguments: [
+          ("Foo.Bar", ["Foo", "Bar"]),
+          ("`Foo`.Bar", ["`Foo`", "Bar"]),
+          ("`Foo`.`Bar`", ["`Foo`", "`Bar`"]),
+          ("Foo.`Bar`", ["Foo", "`Bar`"]),
+          ("Foo.`Bar`.Quux", ["Foo", "`Bar`", "Quux"]),
+          ("Foo.`B.ar`.Quux", ["Foo", "`B.ar`", "Quux"]),
 
-      // These have substrings we intentionally strip out.
-      ("Foo.`B.ar`.(unknown context at $0).Quux", ["Foo", "`B.ar`", "Quux"]),
-      ("(extension in Module):Foo.`B.ar`.(unknown context at $0).Quux", ["Foo", "`B.ar`", "Quux"]),
-      ("(extension in `Module`):Foo.`B.ar`.(unknown context at $0).Quux", ["Foo", "`B.ar`", "Quux"]),
-      ("(extension in `Module`):`Foo`.`B.ar`.(unknown context at $0).Quux", ["`Foo`", "`B.ar`", "Quux"]),
-      ("(extension in `Mo:dule`):`Foo`.`B.ar`.(unknown context at $0).Quux", ["`Foo`", "`B.ar`", "Quux"]),
-      ("(extension in `Module`):`F:oo`.`B.ar`.(unknown context at $0).Quux", ["`F:oo`", "`B.ar`", "Quux"]),
-      ("`(extension in Foo):Bar`.Baz", ["`(extension in Foo):Bar`", "Baz"]),
-      ("(extension in `(extension in Foo2):Bar2`):`(extension in Foo):Bar`.Baz", ["`(extension in Foo):Bar`", "Baz"]),
+          // These have substrings we intentionally strip out.
+          ("Foo.`B.ar`.(unknown context at $0).Quux", ["Foo", "`B.ar`", "Quux"]),
+          ("(extension in Module):Foo.`B.ar`.(unknown context at $0).Quux", ["Foo", "`B.ar`", "Quux"]),
+          ("(extension in `Module`):Foo.`B.ar`.(unknown context at $0).Quux", ["Foo", "`B.ar`", "Quux"]),
+          ("(extension in `Module`):`Foo`.`B.ar`.(unknown context at $0).Quux", ["`Foo`", "`B.ar`", "Quux"]),
+          ("(extension in `Mo:dule`):`Foo`.`B.ar`.(unknown context at $0).Quux", ["`Foo`", "`B.ar`", "Quux"]),
+          ("(extension in `Module`):`F:oo`.`B.ar`.(unknown context at $0).Quux", ["`F:oo`", "`B.ar`", "Quux"]),
+          ("`(extension in Foo):Bar`.Baz", ["`(extension in Foo):Bar`", "Baz"]),
+          ("(extension in `(extension in Foo2):Bar2`):`(extension in Foo):Bar`.Baz", ["`(extension in Foo):Bar`", "Baz"]),
 
-      // These aren't syntactically valid, but we should at least not crash.
-      ("Foo.`B.ar`.Quux.`Alpha`..Beta", ["Foo", "`B.ar`", "Quux", "`Alpha`", "", "Beta"]),
-      ("Foo.`B.ar`.Quux.`Alpha", ["Foo", "`B.ar`", "Quux", "`Alpha"]),
-      ("Foo.`B.ar`.Quux.`Alpha``", ["Foo", "`B.ar`", "Quux", "`Alpha``"]),
-      ("Foo.`B.ar`.Quux.`Alpha...", ["Foo", "`B.ar`", "Quux", "`Alpha..."]),
-    ]
+          // These aren't syntactically valid, but we should at least not crash.
+          ("Foo.`B.ar`.Quux.`Alpha`..Beta", ["Foo", "`B.ar`", "Quux", "`Alpha`", "", "Beta"]),
+          ("Foo.`B.ar`.Quux.`Alpha", ["Foo", "`B.ar`", "Quux", "`Alpha"]),
+          ("Foo.`B.ar`.Quux.`Alpha``", ["Foo", "`B.ar`", "Quux", "`Alpha``"]),
+          ("Foo.`B.ar`.Quux.`Alpha...", ["Foo", "`B.ar`", "Quux", "`Alpha..."]),
+        ]
   )
   func rawIdentifiers(fqn: String, expectedComponents: [String]) throws {
     let actualComponents = TypeInfo.fullyQualifiedNameComponents(ofTypeWithName: fqn)
@@ -83,20 +83,20 @@ struct TypeInfoTests {
 
   // As above, but round-tripping through .fullyQualifiedName.
   @Test("Round-tripping raw identifiers",
-    arguments: [
-      ("Foo.Bar", ["Foo", "Bar"]),
-      ("`Foo`.Bar", ["`Foo`", "Bar"]),
-      ("`Foo`.`Bar`", ["`Foo`", "`Bar`"]),
-      ("Foo.`Bar`", ["Foo", "`Bar`"]),
-      ("Foo.`Bar`.Quux", ["Foo", "`Bar`", "Quux"]),
-      ("Foo.`B.ar`.Quux", ["Foo", "`B.ar`", "Quux"]),
+        arguments: [
+          ("Foo.Bar", ["Foo", "Bar"]),
+          ("`Foo`.Bar", ["`Foo`", "Bar"]),
+          ("`Foo`.`Bar`", ["`Foo`", "`Bar`"]),
+          ("Foo.`Bar`", ["Foo", "`Bar`"]),
+          ("Foo.`Bar`.Quux", ["Foo", "`Bar`", "Quux"]),
+          ("Foo.`B.ar`.Quux", ["Foo", "`B.ar`", "Quux"]),
 
-      // These aren't syntactically valid, but we should at least not crash.
-      ("Foo.`B.ar`.Quux.`Alpha`..Beta", ["Foo", "`B.ar`", "Quux", "`Alpha`", "", "Beta"]),
-      ("Foo.`B.ar`.Quux.`Alpha", ["Foo", "`B.ar`", "Quux", "`Alpha"]),
-      ("Foo.`B.ar`.Quux.`Alpha``", ["Foo", "`B.ar`", "Quux", "`Alpha``"]),
-      ("Foo.`B.ar`.Quux.`Alpha...", ["Foo", "`B.ar`", "Quux", "`Alpha..."]),
-    ]
+          // These aren't syntactically valid, but we should at least not crash.
+          ("Foo.`B.ar`.Quux.`Alpha`..Beta", ["Foo", "`B.ar`", "Quux", "`Alpha`", "", "Beta"]),
+          ("Foo.`B.ar`.Quux.`Alpha", ["Foo", "`B.ar`", "Quux", "`Alpha"]),
+          ("Foo.`B.ar`.Quux.`Alpha``", ["Foo", "`B.ar`", "Quux", "`Alpha``"]),
+          ("Foo.`B.ar`.Quux.`Alpha...", ["Foo", "`B.ar`", "Quux", "`Alpha..."]),
+        ]
   )
   func roundTrippedRawIdentifiers(fqn: String, expectedComponents: [String]) throws {
     let typeInfo = TypeInfo(fullyQualifiedName: fqn, unqualifiedName: "", mangledName: "")
@@ -104,20 +104,23 @@ struct TypeInfoTests {
     #expect(typeInfo.fullyQualifiedNameComponents == expectedComponents)
   }
 
-  @available(_mangledTypeNameAPI, *)
-  @Test func mangledTypeName() {
-    #expect(_mangledTypeName(String.self) == TypeInfo(describing: String.self).mangledName)
-    #expect(_mangledTypeName(String.NestedType.self) == TypeInfo(describing: String.NestedType.self).mangledName)
-    #expect(_mangledTypeName(SomeEnum.self) == TypeInfo(describing: SomeEnum.self).mangledName)
+  @Test(
+    arguments: [
+      String.self,
+      String.NestedType.self,
+      SomeEnum.self,
+    ] as [Any.Type]
+  ) func mangledTypeName(type: Any.Type) throws {
+    let mangledNameFromRuntime = try #require(_mangledTypeName(type))
+    let mangledNameFromRuntimeWithPrefix = "$s\(mangledNameFromRuntime)"
+    #expect(mangledNameFromRuntimeWithPrefix == TypeInfo(describing: type).mangledName)
   }
 
-  @available(_mangledTypeNameAPI, *)
   @Test func isImportedFromC() {
     #expect(!TypeInfo(describing: String.self).isImportedFromC)
     #expect(TypeInfo(describing: SWTTestEnumeration.self).isImportedFromC)
   }
 
-  @available(_mangledTypeNameAPI, *)
   @Test func isSwiftEnumeration() {
     #expect(!TypeInfo(describing: String.self).isSwiftEnumeration)
     #expect(TypeInfo(describing: SomeEnum.self).isSwiftEnumeration)
@@ -126,6 +129,23 @@ struct TypeInfoTests {
   @Test func typeOfMoveOnlyValueIsInferred() {
     let value = MoveOnlyType()
     #expect(TypeInfo(describingTypeOf: value).unqualifiedName == "MoveOnlyType")
+  }
+
+  @Test func typeNameWithGenericClause() {
+    let type = Array<Int>.self
+    let nameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
+    #expect(nameComponents == ["Swift", "Array<Swift.Int>"])
+  }
+
+  @Test func typeNameWithNestedGenericClauses() {
+    let type = Array<Array<Int>>.self
+    let nameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
+    #expect(nameComponents == ["Swift", "Array<Swift.Array<Swift.Int>>"])
+  }
+
+  @Test func typeNameWithGenericClausesAndBackTicks() {
+    let nameComponents = TypeInfo(fullyQualifiedName: "A.`B<C>`<D`>`>.E<`F`.G>", mangledName: nil).fullyQualifiedNameComponents
+    #expect(nameComponents == ["A", "`B<C>`<D`>`>", "E<`F`.G>"])
   }
 }
 

@@ -21,7 +21,11 @@ extension Test: Identifiable {
     ///
     /// The value of this property should be set to `nil` for instances of
     /// ``Test`` that represent test suite types.
-    public var sourceLocation: SourceLocation?
+    public var sourceLocation: SourceLocation? {
+      willSet {
+        precondition(newValue != .unknown, "Cannot set the source location of an instance of 'Test.ID' to '.unknown'. Set to 'nil' instead.")
+      }
+    }
 
     /// Initialize an instance of this type with the specified fully qualified
     /// name components.
@@ -59,9 +63,12 @@ extension Test: Identifiable {
     public init(moduleName: String, nameComponents: [String], sourceLocation: SourceLocation?) {
       self.moduleName = moduleName
       self.nameComponents = nameComponents
-      self.sourceLocation = sourceLocation
+      if let sourceLocation, sourceLocation != .unknown {
+        self.sourceLocation = sourceLocation
+      }
     }
 
+#if !hasFeature(Embedded)
     /// Initialize an instance of this type representing the specified test
     /// suite type.
     ///
@@ -75,6 +82,7 @@ extension Test: Identifiable {
     public init(type: Any.Type) {
       self.init(typeInfo: TypeInfo(describing: type))
     }
+#endif
 
     /// Initialize an instance of this type representing the specified test
     /// suite type info.
@@ -83,7 +91,7 @@ extension Test: Identifiable {
     ///   - typeInfo: The test suite type info.
     ///
     /// This initializer produces a test ID corresponding to the given type info
-    /// as if it described a suite  (regardless of whether the ttype has the
+    /// as if it described a suite  (regardless of whether the type has the
     /// ``Suite(_:_:)`` attribute applied to it.)
     @_spi(ForToolsIntegrationOnly)
     public init(typeInfo: TypeInfo) {
@@ -125,7 +133,9 @@ extension Test: Identifiable {
 
     if !isSuite {
       result.nameComponents.append(name)
-      result.sourceLocation = sourceLocation
+      if sourceLocation != .unknown {
+        result.sourceLocation = sourceLocation
+      }
     }
 
     return result
@@ -148,6 +158,8 @@ extension Test.ID: CustomStringConvertible {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension Test.ID: Codable {}
+#endif

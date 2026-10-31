@@ -1,38 +1,72 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
-private import Foundation
-
+#if !SWT_NO_ABI_JSON_SCHEMA
 extension ABI.Version {
+  public static func eventHandler(
+    forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
+  ) -> Event.Handler {
+    eventHandler(
+      encodingMessagesField: false, // avoid computing twice (here and in callee)
+      forwardingTo: recordHandler
+    )
+  }
+
+  /// Create an event handler that encodes instances of ``Event`` as instances
+  /// of ``ABI/Record`` and forwards them to a handler function.
+  ///
+  /// - Parameters:
+  /// 	- encodingMessagesField: Whether or not to encode the `messages` field
+  ///     in ``ABI/EncodedEvent``. If you do not need these strings, you can
+  ///     reduce CPU and memory usage by passing `false`. This argument is
+  ///     ignored if `Self.alwaysEncodeMessagesField` is `true`.
+  ///   - recordHandler: The record handler to forward events to.
+  ///
+  /// - Returns: An event handler.
+  ///
+  /// You can use this event handler with ``Configuration/eventHandler`` to
+  /// automatically transform instances of ``Event`` to ``ABI/Record``.
   static func eventHandler(
+    encodingMessagesField: Bool,
+    forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
+  ) -> Event.Handler {
+    var humanReadableOutputRecorder: Event.HumanReadableOutputRecorder?
+    if encodingMessagesField || alwaysEncodeMessagesField {
+      humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
+    }
+    return { [humanReadableOutputRecorder] event, context in
+      var messages: [Event.HumanReadableOutputRecorder.Message] = []
+      if let humanReadableOutputRecorder {
+        var configuration = Configuration.current ?? .init()
+        configuration.verbosity = max(configuration.verbosity, 0)
+        messages = humanReadableOutputRecorder.record(event, in: context, configuration: configuration)
+      }
+      if let record = ABI.Record<Self>(encoding: event, in: context, messages: messages) {
+        recordHandler(record)
+      }
+    }
+  }
+
+  public static func eventHandler(
     encodeAsJSONLines: Bool,
-    forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
+    forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
     // Encode as JSON Lines if requested.
-    var eventHandlerCopy = eventHandler
+    var recordHandlerCopy = recordHandler
     if encodeAsJSONLines {
-      eventHandlerCopy = { @Sendable in JSON.asJSONLine($0, eventHandler) }
+      recordHandlerCopy = { @Sendable in JSON.asJSONLine($0, recordHandler) }
     }
 
-    let humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
-    return { [eventHandler = eventHandlerCopy] event, context in
-      if case .testDiscovered = event.kind, let test = context.test {
-        try? JSON.withEncoding(of: ABI.Record<Self>(encoding: test)) { testJSON in
-          eventHandler(testJSON)
-        }
-      } else {
-        let messages = humanReadableOutputRecorder.record(event, in: context, verbosity: 0)
-        if let eventRecord = ABI.Record<Self>(encoding: event, in: context, messages: messages) {
-          try? JSON.withEncoding(of: eventRecord, eventHandler)
-        }
+    return eventHandler { [recordHandler = recordHandlerCopy] record in
+      try? JSON.withEncoding(of: record) { recordJSON in
+        recordHandler(recordJSON)
       }
     }
   }
@@ -43,15 +77,24 @@ extension ABI.Version {
 
 extension ABI.Xcode16 {
   static func eventHandler(
+    forwardingTo recordHandler: @escaping @Sendable (_ record: ABI.Record<Self>) -> Void
+  ) -> Event.Handler {
+    preconditionFailure("Attempted to create an ABI.Record-generating event handler for the Xcode 16 compatibility path.")
+  }
+
+  static func eventHandler(
     encodeAsJSONLines: Bool,
-    forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
+    forwardingTo recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
     return { event, context in
-      if case .testDiscovered = event.kind {
+      switch event.kind {
+      case .testDiscovered, .metadataRecorded:
         // Discard events of this kind rather than forwarding them to avoid a
         // crash in Xcode 16 (which does not expect any events to occur before
         // .runStarted.)
         return
+      default:
+        break
       }
 
       struct EventAndContextSnapshot: Codable {
@@ -63,9 +106,7 @@ extension ABI.Xcode16 {
         eventContext: Event.Context.Snapshot(snapshotting: context)
       )
       try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
-        eventAndContextJSON.withUnsafeBytes { eventAndContextJSON in
-          eventHandler(eventAndContextJSON)
-        }
+        recordHandler(eventAndContextJSON)
       }
     }
   }

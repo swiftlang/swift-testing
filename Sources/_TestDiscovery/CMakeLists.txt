@@ -6,6 +6,7 @@
 # See https://swift.org/LICENSE.txt for license information
 # See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
+include(ModuleABIName)
 add_library(_TestDiscovery STATIC
   Additions/WinSDKAdditions.swift
   DiscoverableAsTestContent.swift
@@ -29,4 +30,7 @@ if(NOT BUILD_SHARED_LIBS)
   # is linked into the main library and does not need to be installed separately.
   install(TARGETS _TestDiscovery
     ARCHIVE DESTINATION "${SwiftTesting_INSTALL_LIBDIR}")
+
+  # _TestDiscovery is a Testing dependency that needs to be exported
+  set_property(GLOBAL APPEND PROPERTY SwiftTesting_EXPORTS _TestDiscovery)
 endif()

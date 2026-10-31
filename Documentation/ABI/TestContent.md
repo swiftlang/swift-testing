@@ -13,11 +13,6 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 This document describes the format and location of test content that the testing
 library emits at compile time and can discover at runtime.
 
-> [!WARNING]
-> The content of this document is subject to change pending efforts to define a
-> Swift-wide standard mechanism for runtime metadata emission and discovery.
-> Treat the information in this document as experimental.
-
 ## Basic format
 
 Swift Testing stores test content records in a dedicated platform-specific
@@ -33,7 +28,13 @@ section in built test products:
 [^windowsPadding]: On Windows, the Swift compiler [emits](https://github.com/swiftlang/swift/blob/main/stdlib/public/runtime/SwiftRT-COFF.cpp)
   leading and trailing padding into this section, both zeroed and of size
   `MemoryLayout<UInt>.stride`. Code that walks this section must skip over this
-  padding.
+  padding. This padding will be removed in a future update to the Swift
+  toolchain ([swift-#87650](https://github.com/swiftlang/swift/issues/87650)).
+
+In Embedded Swift, or when statically linking the standard library and runtime,
+there is a single statically linked test content section. At this time,
+statically-linked test content is supported if you use the Mach-O, ELF, or Wasm
+image format.
 
 ### Record layout
 
@@ -102,8 +103,8 @@ record's kind is a 32-bit unsigned value. The following kinds are defined:
 | `0x65786974` | `'exit'` | Exit test |
 | `0x706c6179` | `'play'` | [Playground](https://github.com/apple/swift-play-experimental) |
 
-<!-- The kind values listed in this table should be a superset of the cases in
-the `TestContentKind` enumeration. -->
+<!-- The kind values listed in this table should be a superset of the constants
+in Sources/_TestDiscovery/TestContentKind.swift. -->
 
 If a test content record's `kind` field equals `0x00000000`, the values of all
 other fields in that record are undefined.
@@ -126,11 +127,6 @@ This argument helps to prevent memory corruption if two copies of Swift Testing
 or a third-party library are inadvertently loaded into the same process. If the
 value at `type` does not match the test content record's expected type, the
 accessor function must return `false` and must not modify `outValue`.
-
-When building for **Embedded Swift**, the value passed as `type` by Swift
-Testing is unspecified because type metadata pointers are not available in that
-environment.
-<!-- TODO: specify what they are instead (FQN type name C strings maybe?) -->
 
 [^mightNotBeSwift]: Although this document primarily deals with Swift, the test
   content record section is generally language-agnostic. The use of languages
@@ -256,14 +252,14 @@ a custom `hint` type for your accessor functions, you can set
 extension FoodTruckDiagnostic: DiscoverableAsTestContent {
   static var testContentKind: TestContentKind { /* Your `kind` value here. */ }
   
-  typealias TestContentContext = UnsafePointer<FoodTruck.Name>
+  typealias TestContentContext = UnsafePointer<FoodTruck.Name>?
   typealias TestContentAccessorHint = String
 }
 ```
 
 If you customize `TestContentContext`, be aware that the type you specify must
 have the same stride as `UInt` and must have an alignment less than or equal to
-that of `UInt`.
+that of `UInt`. The type must also conform to [`ConvertibleFromBytes`](https://developer.apple.com/documentation/swift/convertiblefrombytes).
 
 When you are done configuring your type's protocol conformance, you can then
 enumerate all test content records matching it as instances of

@@ -25,7 +25,7 @@ project(SwiftTesting
   LANGUAGES CXX Swift)
 
 if(NOT APPLE)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
     find_package(dispatch CONFIG)
   endif()
   find_package(Foundation CONFIG)
@@ -59,3 +59,4 @@ set(SwiftTesting_INSTALL_SWIFTMODULEDIR "${CMAKE_INSTALL_LIBDIR}/swift$<$<NOT:$<
 add_compile_options($<$<COMPILE_LANGUAGE:Swift>:-no-toolchain-stdlib-rpath>)
 
 add_subdirectory(Sources)
+add_subdirectory(cmake/modules)

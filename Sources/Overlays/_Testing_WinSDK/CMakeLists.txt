@@ -7,6 +7,7 @@
 # See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  include(ModuleABIName)
   add_library(_Testing_WinSDK
     Attachments/_AttachableImageWrapper+AttachableWrapper.swift
     Attachments/AttachableAsIWICBitmapSource.swift
@@ -15,7 +16,6 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     Attachments/HICON+AttachableAsIWICBitmapSource.swift
     Attachments/IWICBitmapSource+AttachableAsIWICBitmapSource.swift
     Attachments/UnsafeMutablePointer+AttachableAsIWICBitmapSource.swift
-    Support/Additions/GUIDAdditions.swift
     Support/Additions/IPropertyBag2Additions.swift
     Support/Additions/IWICImagingFactoryAdditions.swift
     ReexportTesting.swift)

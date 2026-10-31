@@ -1,14 +1,21 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
+#if !SWT_NO_FOUNDATION
+private import Foundation
+#endif
+internal import _TestingInternals
+
+#if canImport(Synchronization)
+private import Synchronization
+#endif
 
 /// The common implementation of the entry point functions in this package.
 ///
@@ -16,6 +23,8 @@ private import _TestingInternals
 ///   - args: A previously-parsed command-line arguments structure to interpret.
 ///     If `nil`, a new instance is created from the command-line arguments to
 ///     the current process.
+///   - forSwiftPackageManager: Whether or not this function is being called on
+///     behalf of Swift Package Manager (via `__swiftPMEntryPoint()`).
 ///   - eventHandler: An optional event handler. The testing library always
 ///     writes events to the standard error stream in addition to passing them
 ///     to this function.
@@ -25,8 +34,8 @@ private import _TestingInternals
 /// External callers cannot call this function directly. The can use
 /// ``ABI/v0/entryPoint-swift.type.property`` to get a reference to an
 /// ABI-stable version of this function.
-func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
-  let exitCode = Locked(rawValue: EXIT_SUCCESS)
+func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager: Bool = false, eventHandler: Event.Handler?) async -> CInt {
+  let exitCode = Atomic(EXIT_SUCCESS)
 
   do {
 #if !SWT_NO_EXIT_TESTS
@@ -36,50 +45,56 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       }
 #endif
 
-    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
     // Configure the test runner.
+    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
     var configuration = try configurationForEntryPoint(from: args)
 
     // Set up the event handler.
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
       if case let .issueRecorded(issue) = event.kind, issue.isFailure {
-        exitCode.withLock { exitCode in
-          exitCode = EXIT_FAILURE
-        }
+        exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
       }
       oldEventHandler(event, context)
     }
     configuration.verbosity = args.verbosity
 
-#if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
+    let consoleOutputEnabled = Atomic(true)
     if configuration.verbosity > .min {
       // Check for experimental console output flag
-      if Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true {
+      let useExperimentalConsoleOutput = (Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true)
+#if !SWT_NO_ABI_JSON_SCHEMA
+      if useExperimentalConsoleOutput {
         // Use experimental AdvancedConsoleOutputRecorder
         var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>.Options()
-        advancedOptions.base = .for(.stderr)
+        advancedOptions.base = .forCurrentSystemConsole
 
         let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>(options: advancedOptions) { string in
-          try? FileHandle.stderr.write(string)
+          writeToConsole(string)
         }
 
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          eventRecorder.record(event, in: context)
+          if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
+            eventRecorder.record(event, in: context)
+          }
           oldEventHandler(event, context)
         }
-      } else {
+      }
+#endif
+
+      if !useExperimentalConsoleOutput {
         // Use the standard console output recorder (default behavior)
-        let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
-          try? FileHandle.stderr.write(string)
+        let eventRecorder = Event.ConsoleOutputRecorder(options: .forCurrentSystemConsole) { string in
+          writeToConsole(string)
         }
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          eventRecorder.record(event, in: context)
+          if consoleOutputEnabled.load(ordering: .sequentiallyConsistent) {
+            eventRecorder.record(event, in: context)
+          }
           oldEventHandler(event, context)
         }
       }
     }
-#endif
 
     // If the caller specified an alternate event handler, hook it up too.
     if let eventHandler {
@@ -91,7 +106,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
     // The set of matching tests (or, in the case of `swift test list`, the set
     // of all tests.)
-    let tests: [Test]
+    var tests: [Test]
 
     if args.listTests ?? false {
       tests = await Array(Test.all)
@@ -99,23 +114,31 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       if args.verbosity > .min {
         for testID in listTestsForEntryPoint(tests, verbosity: args.verbosity) {
           // Print the test ID to stdout (classical CLI behavior.)
-#if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
-          try? FileHandle.stdout.write("\(testID)\n")
-#else
-          print(testID)
-#endif
+          writeToConsole("\(testID)\n", useStandardOutputIfAvailable: true)
         }
       }
 
+      // Synthesize any missing suites. Note we write to stdout before this
+      // step because we don't emit suites to stdout anyway.
+      tests = Runner.Plan.synthesizeSuites(for: tests)
+
       // Post an event for every discovered test. These events are turned into
       // JSON objects if JSON output is enabled.
-      for test in tests {
+      for test in tests where !test.isHidden {
         Event.post(.testDiscovered, for: (test, nil), configuration: configuration)
       }
     } else {
       // Run the tests.
       let runner = await Runner(configuration: configuration)
       tests = runner.tests
+      if forSwiftPackageManager && tests.isEmpty, args.filter != nil || args.skip != nil {
+        // Swift Package Manager handles "no tests found/run" console output
+        // when the user applies any filtering. Don't bother logging to the
+        // console in this case. Note that if something is consuming the event
+        // stream, we still want to generate .runStarted etc., so we still call
+        // runner.run() for that purpose.
+        consoleOutputEnabled.store(false, ordering: .sequentiallyConsistent)
+      }
       await runner.run()
     }
 
@@ -123,23 +146,18 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // the caller (assumed to be Swift Package Manager) can implement special
     // handling.
     if tests.isEmpty {
-      exitCode.withLock { exitCode in
-        if exitCode == EXIT_SUCCESS {
-          exitCode = EXIT_NO_TESTS_FOUND
-        }
-      }
+      _ = exitCode.compareExchange(
+        expected: EXIT_SUCCESS,
+        desired: EXIT_NO_TESTS_FOUND,
+        ordering: .sequentiallyConsistent
+      )
     }
   } catch {
-#if !SWT_NO_FILE_IO
-    try? FileHandle.stderr.write("\(error)\n")
-#endif
-
-    exitCode.withLock { exitCode in
-      exitCode = EXIT_FAILURE
-    }
+    writeToConsole("\(String(describingForTest: error))\n")
+    exitCode.store(EXIT_FAILURE, ordering: .sequentiallyConsistent)
   }
 
-  return exitCode.rawValue
+  return exitCode.load(ordering: .sequentiallyConsistent)
 }
 
 // MARK: - Listing tests
@@ -164,7 +182,7 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [St
   // Early exit for verbose output (no need to check for ambiguity.)
   if verbosity > 0 {
     return tests.lazy
-      .map(\.id)
+      .map { $0.id }
       .map(String.init(describing:))
       .sorted(by: <)
   }
@@ -173,7 +191,7 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [St
   // components of two tests' IDs are ambiguous, present their source locations
   // to disambiguate.
   let initialGroups = Dictionary(
-    grouping: tests.lazy.map(\.id),
+    grouping: tests.lazy.map { $0.id },
     by: \.nameComponents
   ).values.lazy
     .map { ($0, isAmbiguous: $0.count > 1) }
@@ -209,6 +227,9 @@ public struct __CommandLineArguments_v0: Sendable {
 
   /// The value of the `--parallel` or `--no-parallel` argument.
   public var parallel: Bool?
+
+  /// The maximum number of test tasks to run in parallel.
+  public var experimentalMaximumParallelizationWidth: Int?
 
   /// The value of the `--symbolicate-backtraces` argument.
   public var symbolicateBacktraces: String?
@@ -330,12 +351,14 @@ public struct __CommandLineArguments_v0: Sendable {
   public var attachmentsPath: String?
 }
 
+#if !SWT_NO_CODABLE
 extension __CommandLineArguments_v0: Codable {
   // Explicitly list the coding keys so that storage properties like _verbosity
   // do not end up with leading underscores when encoded.
   enum CodingKeys: String, CodingKey {
     case listTests
     case parallel
+    case experimentalMaximumParallelizationWidth
     case symbolicateBacktraces
     case verbose
     case veryVerbose
@@ -351,6 +374,7 @@ extension __CommandLineArguments_v0: Codable {
     case attachmentsPath
   }
 }
+#endif
 
 /// Initialize this instance given a sequence of command-line arguments passed
 /// from Swift Package Manager.
@@ -364,14 +388,26 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   var result = __CommandLineArguments_v0()
 
   // Do not consider the executable path AKA argv[0].
-  let args = args.dropFirst()
-
-  func isLastArgument(at index: [String].Index) -> Bool {
-    args.index(after: index) >= args.endIndex
-  }
+  let args = try CommandLineArgumentList(
+    parsing: args,
+    describedBy: [
+      .flag("--list-tests"), .subcommand("list"),
+      .option("--configuration-path"), .option("--experimental-configuration-path"),
+      .option("--event-stream-output-path"), .option("--experimental-event-stream-output"),
+      .option("--event-stream-version"), .option("--experimental-event-stream-version"),
+      .option("--xunit-output"),
+      .option("--attachments-path"), .option("--experimental-attachments-path"),
+      .flag("--parallel"), .flag("--no-parallel"),
+      .option("--experimental-maximum-parallelization-width"),
+      .option("--symbolicate-backtraces"),
+      .option("--verbosity"), .flag("--verbose"), .flag("-v"), .flag("--very-verbose"), .flag("--vv"), .flag("--quiet"), .flag("-q"),
+      .option("--filter"), .option("--skip"),
+      .option("--repetitions"), .option("--repeat-until"),
+    ],
+    describingUnrecognizedArgumentWith: { _ in .anonymous }
+  )
 
 #if !SWT_NO_FILE_IO
-#if canImport(Foundation)
   // Configuration for the test run passed in as a JSON file (experimental)
   //
   // This argument should always be the first one we parse.
@@ -379,9 +415,8 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // NOTE: While the output event stream is opened later, it is necessary to
   // open the configuration file early (here) in order to correctly construct
   // the resulting __CommandLineArguments_v0 instance.
-  if let configurationIndex = args.firstIndex(of: "--configuration-path") ?? args.firstIndex(of: "--experimental-configuration-path"),
-     !isLastArgument(at: configurationIndex) {
-    let path = args[args.index(after: configurationIndex)]
+  if let path = args.option(withLabel: "--configuration-path") ?? args.option(withLabel: "--experimental-configuration-path") {
+#if !SWT_NO_CODABLE
     let file = try FileHandle(forReadingAtPath: path)
     let configurationJSON = try file.readToEnd()
     result = try configurationJSON.withUnsafeBufferPointer { configurationJSON in
@@ -391,27 +426,30 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     // NOTE: We don't return early or block other arguments here: a caller is
     // allowed to pass a configuration AND e.g. "--verbose" and they'll both be
     // respected (it should be the least "surprising" outcome of passing both.)
+#else
+    _ = path
+    throw _EntryPointError.featureUnavailable("--configuration-path is not supported on this system.")
+#endif
   }
+#endif
 
   // Event stream output
-  if let eventOutputIndex = args.firstIndex(of: "--event-stream-output-path") ?? args.firstIndex(of: "--experimental-event-stream-output"),
-     !isLastArgument(at: eventOutputIndex) {
-    result.eventStreamOutputPath = args[args.index(after: eventOutputIndex)]
+  if let path = args.option(withLabel: "--event-stream-output-path") ?? args.option(withLabel: "--experimental-event-stream-output") {
+    result.eventStreamOutputPath = path
   }
+
   // Event stream version
   do {
-    var eventOutputVersionIndex: Array<String>.Index?
+    var versionString: String?
     var allowExperimental = false
-    eventOutputVersionIndex = args.firstIndex(of: "--event-stream-version")
-    if eventOutputVersionIndex == nil {
-      eventOutputVersionIndex = args.firstIndex(of: "--experimental-event-stream-version")
-      if eventOutputVersionIndex != nil {
+    versionString = args.option(withLabel: "--event-stream-version")
+    if versionString == nil {
+      versionString = args.option(withLabel: "--experimental-event-stream-version")
+      if versionString != nil {
         allowExperimental = true
       }
     }
-    if let eventOutputVersionIndex, !isLastArgument(at: eventOutputVersionIndex) {
-      let versionString = args[args.index(after: eventOutputVersionIndex)]
-
+    if let versionString {
       // If the caller specified a version that could not be parsed, treat it as
       // an invalid argument.
       guard let eventStreamVersion = VersionNumber(versionString) else {
@@ -429,74 +467,72 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
       result.eventStreamVersionNumber = eventStreamVersion
     }
   }
-#endif
 
   // XML output
-  if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), !isLastArgument(at: xunitOutputIndex) {
-    result.xunitOutput = args[args.index(after: xunitOutputIndex)]
+  if let xunitOutputPath = args.option(withLabel: "--xunit-output") {
+    result.xunitOutput = xunitOutputPath
   }
 
   // Attachment output
-  if let attachmentsPathIndex = args.firstIndex(of: "--attachments-path") ?? args.firstIndex(of: "--experimental-attachments-path"),
-     !isLastArgument(at: attachmentsPathIndex) {
-    result.attachmentsPath = args[args.index(after: attachmentsPathIndex)]
+  if let attachmentsPath = args.option(withLabel: "--attachments-path") ?? args.option(withLabel: "--experimental-attachments-path") {
+    result.attachmentsPath = attachmentsPath
   }
-#endif
 
-  if args.contains("--list-tests") {
+  if args.hasFlag(withLabel: "--list-tests") {
     result.listTests = true
-  } else if args.first == "list" {
+  } else if args.subcommandNames == ["list"] {
     // Allow the "list" subcommand explicitly in place of "--list-tests". This
     // makes invocation from e.g. Wasmtime a bit more intuitive/idiomatic.
     result.listTests = true
   }
 
   // Parallelization (on by default)
-  if args.contains("--no-parallel") {
+  if args.hasFlag(withLabel: "--parallel") == true {
+    result.parallel = true
+  }
+  if args.hasFlag(withLabel: "--no-parallel") == true {
     result.parallel = false
+  }
+  if let maximumParallelizationWidth = args.option(withLabel: "--experimental-maximum-parallelization-width").flatMap(Int.init) {
+    // TODO: decide if we want to repurpose --num-workers for this use case?
+    result.experimentalMaximumParallelizationWidth = maximumParallelizationWidth
   }
 
   // Whether or not to symbolicate backtraces in the event stream.
-  if let symbolicateBacktracesIndex = args.firstIndex(of: "--symbolicate-backtraces"), !isLastArgument(at: symbolicateBacktracesIndex) {
-    result.symbolicateBacktraces = args[args.index(after: symbolicateBacktracesIndex)]
+  if let symbolicateBacktraces = args.option(withLabel: "--symbolicate-backtraces") {
+    result.symbolicateBacktraces = symbolicateBacktraces
   }
 
   // Verbosity
-  if let verbosityIndex = args.firstIndex(of: "--verbosity"), !isLastArgument(at: verbosityIndex),
-     let verbosity = Int(args[args.index(after: verbosityIndex)]) {
+  if let verbosity = args.option(withLabel: "--verbosity").flatMap(Int.init) {
     result.verbosity = verbosity
   }
-  if args.contains("--verbose") || args.contains("-v") {
+  if args.hasFlag(withLabel: "--verbose") == true || args.hasFlag(withLabel: "-v") == true {
     result.verbose = true
   }
-  if args.contains("--very-verbose") || args.contains("--vv") {
+  if args.hasFlag(withLabel: "--very-verbose") == true || args.hasFlag(withLabel: "--vv") == true {
     result.veryVerbose = true
   }
-  if args.contains("--quiet") || args.contains("-q") {
+  if args.hasFlag(withLabel: "--quiet") == true || args.hasFlag(withLabel: "-q") == true {
     result.quiet = true
   }
 
   // Filtering
-  func filterValues(forArgumentsWithLabel label: String) -> [String] {
-    args.indices.lazy
-      .filter { args[$0] == label && $0 < args.endIndex }
-      .map { args[args.index(after: $0)] }
-  }
-  let filter = filterValues(forArgumentsWithLabel: "--filter")
+  let filter = args.options(withLabel: "--filter")
   if !filter.isEmpty {
     result.filter = result.filter.map { $0 + filter } ?? filter
   }
-  let skip = filterValues(forArgumentsWithLabel: "--skip")
+  let skip = args.options(withLabel: "--skip")
   if !skip.isEmpty {
     result.skip = result.skip.map { $0 + skip } ?? skip
   }
 
   // Set up the iteration policy for the test run.
-  if let repetitionsIndex = args.firstIndex(of: "--repetitions"), !isLastArgument(at: repetitionsIndex) {
-    result.repetitions = Int(args[args.index(after: repetitionsIndex)])
+  if let repetitions = args.option(withLabel: "--repetitions").flatMap(Int.init) {
+    result.repetitions = repetitions
   }
-  if let repeatUntilIndex = args.firstIndex(of: "--repeat-until"), !isLastArgument(at: repeatUntilIndex) {
-    result.repeatUntil = args[args.index(after: repeatUntilIndex)]
+  if let repeatUntil = args.option(withLabel: "--repeat-until") {
+    result.repeatUntil = repeatUntil
   }
 
   return result
@@ -507,6 +543,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 ///
 /// - Parameters:
 ///   - args: A previously-parsed command-line arguments structure to interpret.
+///   - emitWarnings: Whether or not to emit validation warnings to `stderr`.
 ///
 /// - Returns: An instance of ``Configuration``. Note that the caller is
 ///   responsible for setting this instance's ``Configuration/eventHandler``
@@ -514,12 +551,28 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 ///
 /// - Throws: If an argument is invalid, such as a malformed regular expression.
 @_spi(ForToolsIntegrationOnly)
-public func configurationForEntryPoint(from args: __CommandLineArguments_v0) throws -> Configuration {
+public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emitWarnings: Bool = true) throws -> Configuration {
   var configuration = Configuration()
 
   // Parallelization (on by default)
-  configuration.isParallelizationEnabled = args.parallel ?? true
+#if !hasFeature(Embedded)
+  if let parallel = args.parallel {
+    configuration.isParallelizationEnabled = parallel
+  } else if let maximumParallelizationWidth = args.experimentalMaximumParallelizationWidth {
+    if maximumParallelizationWidth < 1 {
+      throw _EntryPointError.invalidArgument("--experimental-maximum-parallelization-width", value: String(describing: maximumParallelizationWidth))
+    }
+    configuration.maximumParallelizationWidth = maximumParallelizationWidth
+  }
+#else
+  if args.parallel != nil {
+    throw _EntryPointError.featureUnavailable("'--parallel' and '--no-parallel' are not supported on this platform.")
+  } else if args.experimentalMaximumParallelizationWidth != nil {
+    throw _EntryPointError.featureUnavailable("'--experimental-maximum-parallelization-width' is not supported on this platform.")
+  }
+#endif
 
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
   // Whether or not to symbolicate backtraces in the event stream.
   if let symbolicateBacktraces = args.symbolicateBacktraces {
     switch symbolicateBacktraces.lowercased() {
@@ -532,6 +585,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
     }
   }
+#endif
 
 #if !SWT_NO_FILE_IO
   // XML output
@@ -552,46 +606,122 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
   // Attachment output.
   if let attachmentsPath = args.attachmentsPath {
-    guard fileExists(atPath: attachmentsPath) else {
-      throw _EntryPointError.invalidArgument("---attachments-path", value: attachmentsPath)
-    }
+#if !SWT_NO_FOUNDATION
+      try FileManager().createDirectory(atPath: attachmentsPath, withIntermediateDirectories: true)
+#else
+      guard fileExists(atPath: attachmentsPath) else {
+        throw _EntryPointError.invalidArgument("---attachments-path", value: attachmentsPath)
+      }
+#endif
     configuration.attachmentsPath = attachmentsPath
   }
+#endif
 
-#if canImport(Foundation)
+#if !SWT_NO_ABI_JSON_SCHEMA
   // Event stream output
-  if let eventStreamOutputPath = args.eventStreamOutputPath {
-    let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
-    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
-      _ = try? file.withLock {
-        try file.write(json)
-        try file.write("\n")
+  do {
+    if let eventStreamOutputPath = args.eventStreamOutputPath {
+#if !SWT_NO_FILE_IO || hasFeature(Embedded)
+      let jsonWriter = try JSON.Writer(forWritingAtPath: eventStreamOutputPath)
+      let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
+        try? jsonWriter.write(json, terminatedBy: .asciiNewlineCharacter)
       }
-    }
-    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-      eventHandler(event, context)
-      oldEventHandler(event, context)
+      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+        eventHandler(event, context)
+        oldEventHandler(event, context)
+      }
+#else
+      throw _EntryPointError.featureUnavailable("--event-stream-output-path requires support for file I/O, but Swift Testing has been built without it.")
+#endif
     }
   }
-#endif
 #endif
 
   // Filtering
+
+  // Filters currently come in two flavors: those with a prefix and those
+  // without. Those without a prefix are treated the same as those with an
+  // "id:" prefix.
+  enum FilterPrefix: String, CaseIterable {
+    case id = "id:"
+    case tag = "tag:"
+  }
   var filters = [Configuration.TestFilter]()
-  func testFilter(forRegularExpressions regexes: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
-    guard let regexes, !regexes.isEmpty else {
-      // Return early if empty, even though the `reduce` logic below can handle
-      // this case, in order to avoid the `#available` guard.
-      return .unfiltered
+  func testFilter(forOptionArguments optionArguments: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
+    var tagPatterns = [String]()
+    var idPatterns = [String]()
+
+    // If one of the patterns we encounter is surrounded by backticks, we can
+    // surmise the user intended to express a Swift raw identifier. In that
+    // case, we should alert the user that it's not going to match what the
+    // user expects and strip the backticks for them.
+    func stripBackticksAndReportIfEncountered(string: inout String) {
+      let backtickASCIICharacter = UInt8(ascii: "`")
+      if string.utf8.first == backtickASCIICharacter && string.utf8.last == backtickASCIICharacter {
+        let originalString = string
+        string = String(string.dropFirst().dropLast())
+        if emitWarnings {
+          let warning = Event.ConsoleOutputRecorder.warning(
+            "Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.",
+            options: .forCurrentSystemConsole
+          )
+          writeToConsole("\(warning)\n")
+        }
+      }
     }
 
-    guard #available(_regexAPI, *) else {
-      throw _EntryPointError.featureUnavailable("The `\(label)' option is not supported on this OS version.")
+    // Loop through all the option arguments, separating tags from regex filters
+    for var optionArg in optionArguments ?? [] {
+      if let prefix = FilterPrefix.allCases.first(where: { optionArg.hasPrefix($0.rawValue) }) {
+        // We have encountered a prefix, so trim it off and add the supplied
+        // argument to the appropriate filter list
+        optionArg = String(optionArg.dropFirst(prefix.rawValue.count))
+        stripBackticksAndReportIfEncountered(string: &optionArg)
+        switch prefix {
+          case .id: idPatterns.append(optionArg)
+          case .tag: tagPatterns.append(optionArg)
+        }
+      } else {
+        // No prefix was detected, so we treat this as a regex matching a test ID.
+        stripBackticksAndReportIfEncountered(string: &optionArg)
+        idPatterns.append(optionArg)
+      }
     }
-    return try Configuration.TestFilter(membership: membership, matchingAnyOf: regexes)
+
+    // If we didn't find any tags, the tagFilter should be .unfiltered,
+    // otherwise we construct it with the provided tags
+    let tagFilter: Configuration.TestFilter = if tagPatterns.isEmpty {
+      .unfiltered
+    } else {
+      switch membership {
+        case .including: try Configuration.TestFilter(includingTagsMatching: tagPatterns)
+        case .excluding: try Configuration.TestFilter(excludingTagsMatching: tagPatterns)
+      }
+    }
+
+    // If we didn't find any ID patterns, the idFilter should be .unfiltered
+    // (similar to above). Note that constructing it with an empty array of
+    // patterns is _not_ equivalent to `.unfiltered`.
+    let idFilter: Configuration.TestFilter = if idPatterns.isEmpty {
+      .unfiltered
+    } else {
+      try Configuration.TestFilter(membership: membership, matchingAnyOf: idPatterns)
+    }
+
+    // Passing an option more than once is an "or" operation. A test is included
+    // if it matches any --filter argument, and skipped if it matches any --skip
+    // argument. For --filter, `.or` expresses that directly. For --skip, the
+    // operator we want is `.and`, because an excluding filter keeps the tests
+    // it did _not_ match: by De Morgan's law, !(A || B) is equivalent to
+    // !A && !B, so `.and` skips a test that matches either the tag or the ID.
+    return switch membership {
+      case .including: idFilter.combining(with: tagFilter, using: .or)
+      case .excluding: idFilter.combining(with: tagFilter, using: .and)
+    }
   }
-  filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))
-  filters.append(try testFilter(forRegularExpressions: args.skip, label: "--skip", membership: .excluding))
+
+  filters.append(try testFilter(forOptionArguments: args.filter, label: "--filter", membership: .including))
+  filters.append(try testFilter(forOptionArguments: args.skip, label: "--skip", membership: .excluding))
 
   configuration.testFilter = filters.reduce(.unfiltered) { $0.combining(with: $1) }
   if args.includeHiddenTests == true {
@@ -629,6 +759,11 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
   // Warning issues (experimental).
   switch args.eventStreamVersionNumber {
+#if !SWT_NO_SNAPSHOT_TYPES
+  case .some(ABI.Xcode16.versionNumber):
+    // Xcode 26 and later support warning severity, so leave it enabled.
+    break
+#endif
   case .some(..<ABI.v6_3.versionNumber):
     // If the event stream version was explicitly specified to a value < 6.3,
     // disable the warning issue event to maintain legacy behavior.
@@ -642,7 +777,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   return configuration
 }
 
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
+#if !SWT_NO_ABI_JSON_SCHEMA
 /// Create an event handler that streams events to the given file using the
 /// specified ABI version.
 ///
@@ -673,8 +808,40 @@ func eventHandlerForStreamingEvents(
 // MARK: - Command-line interface options
 
 extension Event.ConsoleOutputRecorder.Options {
+  /// The set of options to use when writing to the current system's console.
+  ///
+  /// On non-Embedded Swift targets that support file I/O, the testing library
+  /// uses the standard error stream as the console, and this property's value
+  /// is equivalent to the result of calling `.for(.stderr)`.
+  static var forCurrentSystemConsole: Self {
+#if !hasFeature(Embedded)
 #if !SWT_NO_FILE_IO
-  /// The set of options to use when writing to the standard error stream.
+    .for(.stderr)
+#else
+    Self()
+#endif
+#else
+    var result = Self()
+
+    var consoleCapabilities = swift_testing_console_capabilities_t()
+    if _swift_testing_getConsoleCapabilities(&consoleCapabilities) {
+      result.useANSIEscapeCodes = consoleCapabilities.useANSIEscapeCodes != 0
+      result.ansiColorBitDepth = Int8(clamping: consoleCapabilities.ansiColorBitDepth)
+    }
+
+    return result
+#endif
+  }
+
+#if !SWT_NO_FILE_IO
+  /// The set of options to use when writing to the given file handle.
+  ///
+  /// - Parameters:
+  ///   - fileHandle: The file handle for which options are needed.
+  ///     Platform-specific API is used to derive options from this file handle.
+  ///
+  /// - Returns: An instance of this type representing the appropriate options
+  ///   to use when writing to `fileHandle`.
   static func `for`(_ fileHandle: borrowing FileHandle) -> Self {
     var result = Self()
 
@@ -708,10 +875,8 @@ extension Event.ConsoleOutputRecorder.Options {
 
     // If color output is enabled, load tag colors from user/package preferences
     // on disk.
-    if result.useANSIEscapeCodes && result.ansiColorBitDepth > 1 {
-      if let tagColors = try? loadTagColors() {
-        result.tagColors = tagColors
-      }
+    if result.useColorANSIEscapeCodes, let tagColors = try? loadTagColors() {
+      result.tagColors = tagColors
     }
 
     return result
@@ -741,7 +906,7 @@ extension Event.ConsoleOutputRecorder.Options {
   /// Whether or not the system terminal claims to support 16-color ANSI escape
   /// codes.
   private static var _terminalSupports16ColorANSIEscapeCodes: Bool {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     if let termVariable = Environment.variable(named: "TERM") {
       return termVariable != "dumb"
     }
@@ -763,7 +928,7 @@ extension Event.ConsoleOutputRecorder.Options {
   /// Whether or not the system terminal claims to support 256-color ANSI escape
   /// codes.
   private static var _terminalSupports256ColorANSIEscapeCodes: Bool {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     if let termVariable = Environment.variable(named: "TERM") {
       return strstr(termVariable, "256") != nil
     }
@@ -785,7 +950,7 @@ extension Event.ConsoleOutputRecorder.Options {
   /// Whether or not the system terminal claims to support true-color ANSI
   /// escape codes.
   private static var _terminalSupportsTrueColorANSIEscapeCodes: Bool {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     if let colortermVariable = Environment.variable(named: "COLORTERM") {
       return strstr(colortermVariable, "truecolor") != nil
     }
@@ -805,6 +970,33 @@ extension Event.ConsoleOutputRecorder.Options {
   }
 #endif
 }
+
+#if hasFeature(Embedded) && !SWT_NO_FILE_IO
+/// Get the console capabilities for the given file handle.
+///
+/// - Parameters:
+///   - fileHandle: The C file handle for which capabilities are needed.
+///   - outConsoleCapabilities: On return, the capabilities for `fileHandle`.
+///
+/// - Returns: Whether or not `outConsoleCapabilities` was initialized.
+///
+/// This function is provided for our reference implementations of the Platform
+/// Abstraction Layer annex.
+@export(interface) @c func _swift_testing_getConsoleCapabilitiesForFILE(
+  _ fileHandle: SWT_FILEHandle,
+  _ outConsoleCapabilities: UnsafeMutablePointer<swift_testing_console_capabilities_t>
+) -> CBool {
+  let fileHandle = FileHandle(unsafeCFILEHandle: fileHandle, closeWhenDone: false)
+  let options = Event.ConsoleOutputRecorder.Options.for(fileHandle)
+  outConsoleCapabilities.initialize(
+    to: swift_testing_console_capabilities_t(
+      useANSIEscapeCodes: options.useANSIEscapeCodes ? 1 : 0,
+      ansiColorBitDepth: CUnsignedInt(options.ansiColorBitDepth)
+    )
+  )
+  return true
+}
+#endif
 
 // MARK: - Error reporting
 
@@ -829,6 +1021,12 @@ private enum _EntryPointError: Error {
   /// - Parameters:
   ///   - versionNumber: The experimental ABI version number.
   case experimentalABIVersion(_ versionNumber: VersionNumber)
+
+  /// A failure occurred while parsing the command line arguments list.
+  ///
+  /// - Parameters:
+  ///   - error: The underlying error that occurred.
+  case commandLineParsingFailed(_ error: CommandLineArgumentList.ParseError)
 }
 
 extension _EntryPointError: CustomStringConvertible {
@@ -840,20 +1038,24 @@ extension _EntryPointError: CustomStringConvertible {
       #"Invalid value "\#(value)" for argument \#(name)"#
     case let .experimentalABIVersion(versionNumber):
       "Event stream version \(versionNumber) is experimental. Use --experimental-event-stream-version to enable it."
+    case let .commandLineParsingFailed(error):
+      String(describing: error)
     }
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Deprecated
 
 extension __CommandLineArguments_v0 {
   @available(*, deprecated, message: "Use eventStreamSchemaVersion instead.")
   public var eventStreamVersion: Int? {
     get {
-      eventStreamVersionNumber.map(\.majorComponent).map(Int.init)
+      eventStreamVersionNumber.map { $0.majorComponent }.map(Int.init)
     }
     set {
       eventStreamVersionNumber = newValue.map { VersionNumber(majorComponent: .init(clamping: $0), minorComponent: 0) }
     }
   }
 }
+#endif

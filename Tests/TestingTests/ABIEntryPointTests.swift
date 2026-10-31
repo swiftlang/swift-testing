@@ -8,13 +8,13 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
+#if !SWT_NO_ABI_ENTRY_POINT && !SWT_NO_CODABLE
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-
-#if canImport(Foundation)
-private import Foundation
-#endif
 private import _TestingInternals
+
+#if !os(anyAppleOS) && canImport(Synchronization)
+import Synchronization
+#endif
 
 @Suite("ABI entry point tests")
 struct ABIEntryPointTests {
@@ -63,16 +63,60 @@ struct ABIEntryPointTests {
     }
   }
 
+  @Test("v0 entry point listing and decoding test records")
+  func v0_listingAndDecodingTests() async throws {
+    var arguments = __CommandLineArguments_v0()
+    arguments.listTests = true
+    arguments.eventStreamSchemaVersion = "0"
+    arguments.verbosity = .min
+    arguments.filter = ["ABIEntryPointTests"]
+
+    let testIDs = Mutex<[Test.ID]>()
+
+    _ = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
+      #expect(throws: Never.self) {
+        let record = try JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
+        guard case let .test(encodedTest) = record.kind else {
+          Issue.record("Unexpected record \(record)")
+          return
+        }
+        let test = try #require(Test(decoding: encodedTest))
+        testIDs.withLock { $0.append(test.id) }
+        #expect(test.id.moduleName.hasSuffix("Tests"))
+        #expect(!test.id.nameComponents.isEmpty)
+        if !test.isSuite {
+          let functionName = try #require(test.id.nameComponents.last)
+          #expect(functionName == test.name)
+          #expect(test.id.sourceLocation != nil)
+          if test.isParameterized {
+            let parameters = try #require(test.parameters)
+            #expect(parameters.count > 0)
+          }
+        }
+      }
+    }
+
+    // The set of tests reported by `swift test list` will include some of our
+    // fixture suites that are intentionally not annotated `@Suite(.hidden)`, so
+    // we can't just compare the two sets of IDs for equality. This doesn't
+    // affect external test targets that can't use `.hidden` anyway.
+    let idsFromEntryPoint = Set(testIDs.rawValue)
+    let idsFromAll = await Test.all.filter { !$0.isHidden }.map(\.id)
+    for id in idsFromAll {
+      #expect(idsFromEntryPoint.contains(id))
+    }
+  }
+
   private func _invokeEntryPointV0(
     passing arguments: __CommandLineArguments_v0,
     recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }
   ) async throws -> Bool {
-#if !os(Linux) && !os(FreeBSD) && !os(Android) && !SWT_NO_DYNAMIC_LINKING
+#if !(os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)) && !SWT_NO_DYNAMIC_LINKING
     // Get the ABI entry point by dynamically looking it up at runtime.
     //
-    // NOTE: The standard Linux linker does not allow exporting symbols from
-    // executables, so dlsym() does not let us find this function on that
-    // platform when built as an executable rather than a dynamic library.
+    // NOTE: The standard linkers on these platforms do not export symbols from
+    // executables, so dlsym() does not let us find this function on these
+    // platforms when built as an executable rather than a dynamic library.
     let abiv0_getEntryPoint = try withTestingLibraryImageAddress { testingLibrary in
       try #require(
         symbol(in: testingLibrary, named: "swt_abiv0_getEntryPoint").map {
@@ -96,7 +140,6 @@ struct ABIEntryPointTests {
     return try await abiEntryPoint(.init(argumentsJSON), recordHandler)
   }
 
-#if canImport(Foundation)
   @Test func decodeEmptyConfiguration() throws {
     let emptyBuffer = UnsafeRawBufferPointer(start: nil, count: 0)
     #expect(throws: DecodingError.self) {
@@ -136,7 +179,6 @@ struct ABIEntryPointTests {
       }
     }
   }
-#endif
 
   @Test(arguments: [
     (VersionNumber(-1, 0), "-1"),
@@ -152,6 +194,16 @@ struct ABIEntryPointTests {
 
   @Test func badABIVersionString() {
     let version = VersionNumber("not.valid")
+    #expect(version == nil)
+  }
+
+  @Test func overflowingABIVersionString() {
+    let version = VersionNumber("\(CUnsignedLongLong.max).\(CUnsignedLongLong.max)")
+    #expect(version == nil)
+  }
+
+  @Test func abiVersionStringWithInvalidCharacters() {
+    let version = VersionNumber("123qqq.0")
     #expect(version == nil)
   }
 
@@ -171,6 +223,35 @@ struct ABIEntryPointTests {
     }
     #expect(versions == versions.shuffled().sorted())
   }
+
+#if !SWT_NO_FILE_IO
+  @Test func experimentalVersionIsAccepted() {
+    #expect(throws: Never.self) {
+      try withTemporaryPath { path in
+        var args = __CommandLineArguments_v0()
+        args.eventStreamVersionNumber = ABI.ExperimentalVersion.versionNumber
+        args.eventStreamOutputPath = path
+        _ = try configurationForEntryPoint(from: args)
+      }
+    }
+  }
+#endif
+
+  func decodeMetadataValue<T>(forKey key: String, ofType type: T.Type) throws -> T where T: Decodable {
+    let cString = try #require(_swift_testing_copyMetadataValue(key, 0))
+    defer {
+      free(cString)
+    }
+    let byteCount = strlen(cString)
+    return try JSON.decode(type, from: UnsafeRawBufferPointer(start: cString, count: byteCount))
+  }
+
+  @Test func copyMetadataValue() throws {
+    let lowerBound = try decodeMetadataValue(forKey: "_minimumSupportedABIVersion", ofType: ABI.VersionNumber.self)
+    #expect(lowerBound == ABI.v0.versionNumber)
+    let upperBound = try decodeMetadataValue(forKey: "_maximumSupportedABIVersion", ofType: ABI.VersionNumber.self)
+    #expect(upperBound == ABI.CurrentVersion.versionNumber)
+  }
 }
 
 #if !SWT_NO_DYNAMIC_LINKING
@@ -178,7 +259,7 @@ private func withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws ->
   let addressInTestingLibrary = unsafeBitCast(ABI.v0.entryPoint, to: UnsafeRawPointer.self)
 
   var testingLibraryAddress: ImageAddress?
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
   var info = Dl_info()
   try #require(0 != dladdr(addressInTestingLibrary, &info))
 
@@ -187,11 +268,12 @@ private func withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws ->
   defer {
     dlclose(testingLibraryAddress)
   }
-#elseif os(Linux) || os(FreeBSD) || os(Android)
-  // When using glibc, dladdr() is only available if __USE_GNU is specified.
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+  // We can't dynamically look up a function linked into the test executable on
+  // ELF-based platforms.
 #elseif os(Windows)
   let flags = DWORD(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS)
-  try addressInTestingLibrary.withMemoryRebound(to: wchar_t.self, capacity: MemoryLayout<UnsafeRawPointer>.stride / MemoryLayout<wchar_t>.stride) { addressInTestingLibrary in
+  try addressInTestingLibrary.withMemoryRebound(to: CWideChar.self, capacity: MemoryLayout<UnsafeRawPointer>.stride / MemoryLayout<CWideChar>.stride) { addressInTestingLibrary in
     try #require(GetModuleHandleExW(flags, addressInTestingLibrary, &testingLibraryAddress))
   }
   defer {

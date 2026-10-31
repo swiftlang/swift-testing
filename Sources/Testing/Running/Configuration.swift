@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A type containing settings for preparing and running tests.
 @_spi(ForToolsIntegrationOnly)
 public struct Configuration: Sendable {
@@ -15,11 +17,44 @@ public struct Configuration: Sendable {
   /// configuration.
   public init() {}
 
+#if !hasFeature(Embedded)
   // MARK: - Parallelization
 
   /// Whether or not to parallelize the execution of tests and test cases.
-  public var isParallelizationEnabled: Bool = true
+  ///
+  /// - Note: Setting the value of this property implicitly sets the value of
+  ///   the experimental ``maximumParallelizationWidth`` property.
+  public var isParallelizationEnabled: Bool {
+    get {
+      maximumParallelizationWidth > 1
+    }
+    set {
+      if newValue {
+        maximumParallelizationWidth = max(maximumParallelizationWidth, defaultParallelizationWidth)
+      } else {
+        maximumParallelizationWidth = 1
+      }
+    }
+  }
 
+  /// The maximum width of parallelization.
+  ///
+  /// The value of this property determines how many tests (or rather, test
+  /// cases) will run in parallel.
+  ///
+  /// @Comment {
+  ///   The default value of this property is equal to twice the number of CPU
+  ///   cores reported by the operating system, or `Int.max` if that value is
+  ///   not available.
+  /// }
+  ///
+  /// - Note: Setting the value of this property implicitly sets the value of
+  ///   the ``isParallelizationEnabled`` property.
+  @_spi(Experimental)
+  public var maximumParallelizationWidth: Int = defaultParallelizationWidth
+#endif
+
+#if !SWT_NO_BACKTRACE_SYMBOLICATION
   /// How to symbolicate backtraces captured during a test run.
   ///
   /// If the value of this property is not `nil`, symbolication will be
@@ -29,8 +64,9 @@ public struct Configuration: Sendable {
   /// Swift in-process. When handling a backtrace in Swift, use its
   /// ``Backtrace/symbolicate(_:)`` function to symbolicate it.
   public var backtraceSymbolicationMode: Backtrace.SymbolicationMode?
+#endif
 
-  /// A type describing whether or not, and how, to iterate a test plan
+  /// A type describing whether or not, and how, to iterate a test case
   /// repeatedly.
   ///
   /// When a ``Runner`` is run, it will run all tests in its corresponding
@@ -42,9 +78,9 @@ public struct Configuration: Sendable {
   /// .repeating(.untilIssueRecorded, count: 10)
   /// ```
   ///
-  /// The entire test plan will be run repeatedly, up to 10 times. If an issue
+  /// All test cases will be run repeatedly, up to 10 times. If an issue
   /// is recorded, the current iteration will complete, but no further
-  /// iterations will be attempted.
+  /// iterations of that test case will be attempted.
   ///
   /// If the value of an instance's ``maximumIterationCount`` property is `1`,
   /// the value of its ``continuationCondition-swift.property`` property has no
@@ -53,7 +89,7 @@ public struct Configuration: Sendable {
     /// An enumeration describing the conditions under which test iterations
     /// should continue.
     public enum ContinuationCondition: Sendable {
-      /// The test plan should continue iterating until an unknown issue is
+      /// The test case should continue iterating until an unknown issue is
       /// recorded.
       ///
       /// When this continuation condition is used and an issue is recorded, the
@@ -61,19 +97,19 @@ public struct Configuration: Sendable {
       /// attempted.
       case untilIssueRecorded
 
-      /// The test plan should continue iterating until an iteration completes
+      /// The test case should continue iterating until an iteration completes
       /// with no unknown issues recorded.
       case whileIssueRecorded
     }
 
     /// The conditions under which test iterations should continue.
     ///
-    /// If the value of this property is `nil`, a test plan will be run
+    /// If the value of this property is `nil`, a test case will be run
     /// ``maximumIterationCount`` times regardless of whether or not issues are
     /// encountered while running.
     public var continuationCondition: ContinuationCondition?
 
-    /// The maximum number of times the test run should iterate.
+    /// The maximum number of times test cases should iterate.
     ///
     /// - Precondition: The value of this property must be greater than `0`.
     public var maximumIterationCount: Int {
@@ -88,8 +124,8 @@ public struct Configuration: Sendable {
     ///   - continuationCondition: The conditions under which test iterations
     ///     should continue. If `nil`, the iterations should continue
     ///     unconditionally `count` times.
-    ///   - maximumIterationCount: The maximum number of times the test run
-    ///     should iterate.
+    ///   - maximumIterationCount: The maximum number of times repeated test
+    ///     cases should iterate.
     public static func repeating(_ continuationCondition: ContinuationCondition? = nil, maximumIterationCount: Int) -> Self {
       Self(continuationCondition: continuationCondition, maximumIterationCount: maximumIterationCount)
     }
@@ -100,24 +136,38 @@ public struct Configuration: Sendable {
     }
   }
 
-  /// Whether or not, and how, to iterate the test plan repeatedly.
+  /// Unused
+  @available(*, deprecated, message: "This value is unused; legacy plan-level repetation is no longer available")
+  public var shouldUseLegacyPlanLevelRepetition: Bool = false
+
+  /// Whether or not, and how, to iterate test cases within the test plan
+  /// repeatedly.
   ///
   /// By default, the value of this property allows for a single iteration.
   public var repetitionPolicy: RepetitionPolicy = .once
 
   // MARK: - Isolation context for synchronous tests
 
+  /// Storage for ``defaultSynchronousIsolationContext``.
+  private var _defaultSynchronousIsolationContext: (any Actor)? = nil
+
   /// The isolation context to use for synchronous test functions.
   ///
   /// If the value of this property is `nil`, synchronous test functions run in
   /// an unspecified isolation context.
-  public var defaultSynchronousIsolationContext: (any Actor)? = nil
+  @_unavailableInEmbedded
+  public var defaultSynchronousIsolationContext: (any Actor)? {
+    get {
+      _defaultSynchronousIsolationContext
+    }
+    set {
+      _defaultSynchronousIsolationContext = newValue
+    }
+  }
 
   // MARK: - Time limits
 
-  /// Storage for the ``defaultTestTimeLimit`` property.
-  private var _defaultTestTimeLimit: (any Sendable)?
-
+#if !hasFeature(Embedded)
   /// The default amount of time a test may run for before timing out if it does
   /// not have an instance of ``TimeLimitTrait`` applied to it.
   ///
@@ -126,18 +176,7 @@ public struct Configuration: Sendable {
   ///
   /// To determine the actual time limit that applies to an instance of
   /// ``Test`` at runtime, use ``Test/adjustedTimeLimit(configuration:)``.
-  @available(_clockAPI, *)
-  public var defaultTestTimeLimit: Duration? {
-    get {
-      _defaultTestTimeLimit as? Duration
-    }
-    set {
-      _defaultTestTimeLimit = newValue
-    }
-  }
-
-  /// Storage for the ``maximumTestTimeLimit`` property.
-  private var _maximumTestTimeLimit: (any Sendable)?
+  public var defaultTestTimeLimit: Duration?
 
   /// The maximum amount of time a test may run for before timing out,
   /// regardless of the value of ``defaultTestTimeLimit`` or individual
@@ -148,33 +187,25 @@ public struct Configuration: Sendable {
   ///
   /// To determine the actual time limit that applies to an instance of
   /// ``Test`` at runtime, use ``Test/adjustedTimeLimit(configuration:)``.
-  @available(_clockAPI, *)
-  public var maximumTestTimeLimit: Duration? {
-    get {
-      _maximumTestTimeLimit as? Duration
-    }
-    set {
-      _maximumTestTimeLimit = newValue
-    }
-  }
+  public var maximumTestTimeLimit: Duration?
 
   /// Storage for the ``testTimeLimitGranularity`` property.
-  private var _testTimeLimitGranularity: (any Sendable)?
+  private var _testTimeLimitGranularity: Duration?
 
   /// The granularity to enforce on test time limits.
   ///
   /// By default, test time limit granularity is limited to intervals of one
   /// minute (60 seconds.) If finer or coarser granularity is required, the
   /// value of this property can be adjusted.
-  @available(_clockAPI, *)
   public var testTimeLimitGranularity: Duration {
     get {
-      (_testTimeLimitGranularity as? Duration) ?? .seconds(60)
+      _testTimeLimitGranularity ?? .seconds(60)
     }
     set {
       _testTimeLimitGranularity = newValue
     }
   }
+#endif
 
   // MARK: - Event handling
 
@@ -315,35 +346,5 @@ public struct Configuration: Sendable {
     ///   somewhat larger than it otherwise would be in an attempt to make the
     ///   defaults useful for real-world tests.
     public var maximumChildDepth: Int = 10
-  }
-}
-
-// MARK: - Deprecated
-
-extension Configuration {
-#if !SWT_NO_GLOBAL_ACTORS
-  @available(*, deprecated, message: "Set defaultSynchronousIsolationContext instead.")
-  public var isMainActorIsolationEnforced: Bool {
-    get {
-      defaultSynchronousIsolationContext === MainActor.shared
-    }
-    set {
-      if newValue {
-        defaultSynchronousIsolationContext = MainActor.shared
-      } else {
-        defaultSynchronousIsolationContext = nil
-      }
-    }
-  }
-#endif
-
-  @available(*, deprecated, message: "Set eventHandlingOptions.isExpectationCheckedEventEnabled instead.")
-  public var deliverExpectationCheckedEvents: Bool {
-    get {
-      eventHandlingOptions.isExpectationCheckedEventEnabled
-    }
-    set {
-      eventHandlingOptions.isExpectationCheckedEventEnabled = newValue
-    }
   }
 }

@@ -11,6 +11,14 @@
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) private import _TestDiscovery
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
+#if os(anyAppleOS) && canImport(CrashReporterSupport)
+private import CrashReporterSupport // NOTE: depends on Core Foundation!
+#endif
+
 #if !SWT_NO_EXIT_TESTS
 #if SWT_NO_FILE_IO
 #error("Platform-specific misconfiguration: support for exit tests requires support for file I/O")
@@ -20,6 +28,9 @@ private import _TestingInternals
 #endif
 #if SWT_NO_PROCESS_SPAWNING
 #error("Platform-specific misconfiguration: support for exit tests requires support for process spawning")
+#endif
+#if SWT_NO_CODABLE
+#error("Platform-specific misconfiguration: support for exit tests requires support for 'Codable'")
 #endif
 #endif
 
@@ -49,7 +60,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// time. Instances of this type are only guaranteed to be decodable by the
   /// same version of the testing library that encoded them.
   @_spi(ForToolsIntegrationOnly)
-  public struct ID: Sendable, Equatable, Codable {
+  public struct ID: Sendable, Equatable {
     /// Storage for the underlying bits of the ID.
     ///
     /// - Note: On Apple platforms, we deploy to OS versions that do not include
@@ -147,18 +158,17 @@ public struct ExitTest: Sendable, ~Copyable {
 }
 
 #if !SWT_NO_EXIT_TESTS
+#if !SWT_NO_CODABLE
+// MARK: - Codable
+
+extension ExitTest.ID: Codable {}
+#endif
+
 // MARK: - Current
 
 extension ExitTest {
   /// Storage for ``current``.
-  ///
-  /// A pointer is used for indirection because `ManagedBuffer` cannot yet hold
-  /// move-only types.
-  private static nonisolated(unsafe) let _current: Locked<UnsafeMutablePointer<ExitTest?>> = {
-    let current = UnsafeMutablePointer<ExitTest?>.allocate(capacity: 1)
-    current.initialize(to: nil)
-    return Locked(rawValue: current)
-  }()
+  private static let _current = Mutex<ExitTest?>()
 
   /// The exit test that is running in the current process, if any.
   ///
@@ -180,7 +190,7 @@ extension ExitTest {
       // we must make a copy so that we don't yield lock-guarded memory to the
       // caller (which is not concurrency-safe.)
       let currentCopy = _current.withLock { current in
-        return current.pointee?.unsafeCopy()
+        return current?.unsafeCopy()
       }
       yield currentCopy
     }
@@ -194,7 +204,8 @@ extension ExitTest {
   /// Disable crash reporting, crash logging, or core dumps for the current
   /// process.
   private static func _disableCrashReporting() {
-#if SWT_TARGET_OS_APPLE && !SWT_NO_MACH_PORTS
+#if os(anyAppleOS)
+#if !SWT_NO_MACH_PORTS
     // We don't need to create a crash log (a "corpse notification") for an exit
     // test. In the future, we might want to investigate actually setting up a
     // listener port in the parent process and tracking interesting exceptions
@@ -209,6 +220,10 @@ extension ExitTest {
       EXCEPTION_DEFAULT,
       THREAD_STATE_NONE
     )
+#endif
+#if canImport(CrashReporterSupport)
+    _ = CRDisableCrashReporting()
+#endif
 #elseif os(Linux)
     // On Linux, disable the generation of core files. They may or may not be
     // disabled by default; if they are enabled, they significantly slow down
@@ -217,7 +232,7 @@ extension ExitTest {
     // a pipe instead of a regular file; that gets us our performance back.
     // SEE: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/coredump.c#n610
     var rl = rlimit(rlim_cur: 1, rlim_max: 1)
-    _ = setrlimit(CInt(RLIMIT_CORE.rawValue), &rl)
+    _ = setrlimit(.init(RLIMIT_CORE.rawValue), &rl)
 #elseif os(FreeBSD) || os(OpenBSD)
     // As with Linux, disable the generation core files. The BSDs do not, as far
     // as I can tell, special-case RLIMIT_CORE=1.
@@ -271,7 +286,7 @@ extension ExitTest {
     // repository doesn't have an official GitHub mirror, but you can manually
     // navigate to misc/signal.cpp:481 to see the implementation of SIG_DFL
     // (which, again, calls `_exit(3)` unconditionally.)
-    for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT, SIGABRT_COMPAT] {
+    for sig in windowsSignals.keys {
       _ = signal(sig) { sig in
         _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
       }
@@ -288,8 +303,8 @@ extension ExitTest {
 
     // Set ExitTest.current before the test body runs.
     Self._current.withLock { current in
-      precondition(current.pointee == nil, "Set the current exit test twice in the same process. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
-      current.pointee = self.unsafeCopy()
+      precondition(current == nil, "Set the current exit test twice in the same process. \(fileABugMessage)")
+      current = self.unsafeCopy()
     }
 
     let error = await Issue.withErrorRecording(at: nil) {
@@ -311,7 +326,7 @@ extension ExitTest {
   /// A type representing an exit test as a test content record.
   fileprivate struct Record: Sendable, DiscoverableAsTestContent {
     static var testContentKind: TestContentKind {
-      "exit"
+      .exitTest
     }
 
     typealias TestContentAccessorHint = ID
@@ -357,12 +372,10 @@ extension ExitTest {
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
   ) -> CBool where repeat each T: Codable & Sendable {
-#if !hasFeature(Embedded)
     // Check that the type matches.
     guard typeAddress.load(as: Any.Type.self) == Record.self else {
       return false
     }
-#endif
 
     // Check that the ID matches if provided.
     let id = ID(id)
@@ -392,6 +405,7 @@ extension ExitTest {
   ///
   /// - Warning: This function is used to implement the
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
+  @_disfavoredOverload
   @safe public static func __store<T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: T,
@@ -418,15 +432,6 @@ extension ExitTest {
         return exitTest
       }
     }
-
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-    // Call the legacy lookup function that discovers tests embedded in types.
-    for record in Record.allTypeMetadataBasedTestContentRecords() {
-      if let exitTest = record.load(withHint: id)?.makeExitTest() {
-        return exitTest
-      }
-    }
-#endif
 
     return nil
   }
@@ -462,7 +467,7 @@ func callExitTest(
   encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
-  expression: __Expression,
+  expression: @autoclosure () -> __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
@@ -520,11 +525,27 @@ func callExitTest(
   }
 
   // Plumb the exit test's result through the general expectation machinery.
-  let expression = __Expression(String(describingForTest: expectedExitCondition))
+  func expressionWithCapturedRuntimeValues() -> __Expression {
+    var expression = expression().capturingRuntimeValues(result.exitStatus)
+
+    expression.subexpressions = [expectedExitCondition.exitStatus, result.exitStatus]
+      .compactMap { exitStatus in
+        guard let exitStatus, let exitStatusName = exitStatus.name else {
+          return nil
+        }
+        return __Expression(
+          exitStatusName,
+          runtimeValue: __Expression.Value(describing: exitStatus.code)
+        )
+      }
+
+    return expression
+  }
   return __checkValue(
     expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
-    expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(result.exitStatus),
+    expression: expression(),
+    expressionWithCapturedRuntimeValues: expressionWithCapturedRuntimeValues(),
+    mismatchedExitConditionDescription: #"expected exit status "\#(expectedExitCondition)", but "\#(result.exitStatus)" was reported instead"#,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -577,7 +598,7 @@ extension ExitTest {
     let firstBarrierByte = barrierValue[0]
 
     // If the buffer is too small to contain the barrier value, exit early.
-    guard buffer.count > barrierValue.count else {
+    guard buffer.count >= barrierValue.count else {
       return buffer
     }
 
@@ -651,7 +672,7 @@ extension ExitTest {
   ///
   /// The effect of calling this function more than once for the same
   /// environment variable is undefined.
-  private static func _makeFileHandle(forEnvironmentVariableNamed name: String, mode: String) -> FileHandle? {
+  private static func _makeFileHandle(forEnvironmentVariableNamed name: String, options: FileHandle.OpenOptions) -> FileHandle? {
     guard let environmentVariable = Environment.variable(named: name) else {
       return nil
     }
@@ -659,33 +680,18 @@ extension ExitTest {
     // Erase the environment variable so that it cannot accidentally be opened
     // twice (nor, in theory, affect the code of the exit test.)
     Environment.setVariable(nil, named: name)
-
-    var fd: CInt?
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
-    fd = CInt(environmentVariable)
-#elseif os(Windows)
-    if let handle = UInt(environmentVariable).flatMap(HANDLE.init(bitPattern:)) {
-      var flags: CInt = switch (mode.contains("r"), mode.contains("w")) {
-      case (true, true):
-        _O_RDWR
-      case (true, false):
-        _O_RDONLY
-      case (false, true):
-        _O_WRONLY
-      case (false, false):
-        0
-      }
-      flags |= _O_BINARY
-      fd = _open_osfhandle(Int(bitPattern: handle), flags)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD)
+    guard let fd = CInt(environmentVariable), fd >= 0 else {
+      return nil
     }
+    return try? FileHandle(unsafePOSIXFileDescriptor: fd, options: options)
+#elseif os(Windows)
+    return UInt(environmentVariable)
+      .flatMap(HANDLE.init(bitPattern:))
+      .flatMap { try? FileHandle(unsafeWindowsHANDLE: $0, options: options) }
 #else
 #warning("Platform-specific implementation missing: additional file descriptors unavailable")
 #endif
-    guard let fd, fd >= 0 else {
-      return nil
-    }
-
-    return try? FileHandle(unsafePOSIXFileDescriptor: fd, mode: mode)
   }
 
   /// Make a string suitable for use as the value of an environment variable
@@ -698,7 +704,7 @@ extension ExitTest {
   ///   back to a (new) file handle with `_makeFileHandle()`, or `nil` if the
   ///   file handle could not be converted to a string.
   private static func _makeEnvironmentVariable(for fileHandle: borrowing FileHandle) -> String? {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD)
     return fileHandle.withUnsafePOSIXFileDescriptor { fd in
       fd.map(String.init(describing:))
     }
@@ -745,7 +751,7 @@ extension ExitTest {
     // If an exit test was found, inject back channel handling into its body.
     // External tools authors should set up their own back channel mechanisms
     // and ensure they're installed before calling ExitTest.callAsFunction().
-    guard let backChannel = _makeFileHandle(forEnvironmentVariableNamed: "SWT_BACKCHANNEL", mode: "wb") else {
+    guard let backChannel = _makeFileHandle(forEnvironmentVariableNamed: "SWT_BACKCHANNEL", options: [.writeAccess]) else {
       return result
     }
 
@@ -758,7 +764,7 @@ extension ExitTest {
     let eventHandler = ABI.BackChannelVersion.eventHandler(encodeAsJSONLines: true) { json in
       _ = try? backChannel.withLock {
         try backChannel.write(json)
-        try backChannel.write("\n")
+        try backChannel.write(.asciiNewlineCharacter)
       }
     }
     configuration.eventHandler = { event, eventContext in
@@ -806,12 +812,12 @@ extension ExitTest {
       var result = [String]()
 
       let parentArguments = CommandLine.arguments
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
       lazy var xctestTargetPath = Environment.variable(named: "XCTestBundlePath")
         ?? parentArguments.dropFirst().last
       // If the running executable appears to be the XCTest runner executable in
       // Xcode, figure out the path to the running XCTest bundle. If we can find
-      // it, then we can re-run the host XCTestCase instance.
+      // it, then we can spawn a child process of it.
       var isHostedByXCTest = false
       if let executablePath = try? childProcessExecutablePath.get() {
         executablePath.withCString { childProcessExecutablePath in
@@ -824,12 +830,9 @@ extension ExitTest {
       }
 
       if isHostedByXCTest, let xctestTargetPath {
-        // HACK: if the current test is being run from within Xcode, we don't
-        // always know we're being hosted by an XCTestCase instance. In cases
-        // where we don't, but the XCTest environment variable specifying the
-        // test bundle is set, assume we _are_ being hosted and specify a
-        // blank test identifier ("/") to force the xctest command-line tool
-        // to run.
+        // HACK: specify a blank test identifier ("/") to force the xctest
+        // command-line tool to run. Xcode will then (eventually) invoke the
+        // testing library which will then start the exit test.
         result += ["-XCTest", "/", xctestTargetPath]
       }
 
@@ -858,10 +861,25 @@ extension ExitTest {
       // Inherit the environment from the parent process and make any necessary
       // platform-specific changes.
       var childEnvironment = Environment.get()
-#if SWT_TARGET_OS_APPLE
-      // We need to remove Xcode's environment variables from the child
-      // environment to avoid accidentally accidentally recursing.
-      for key in childEnvironment.keys where key.starts(with: "XCTest") {
+#if os(anyAppleOS)
+      // If XCTest is hosting tests in an app, it uses DYLD_INSERT_LIBRARIES to
+      // inject its startup code, then strips the injected library path from the
+      // environment variable so as not to affect child processes. We want to
+      // add it back in!
+      if let bundleInjectPath = childEnvironment["XCTestBundleInjectPath"] {
+        let newValue = if let oldValue = childEnvironment["DYLD_INSERT_LIBRARIES"] {
+          "\(oldValue):\(bundleInjectPath)"
+        } else {
+          bundleInjectPath
+        }
+        childEnvironment["DYLD_INSERT_LIBRARIES"] = newValue
+        childEnvironment.removeValue(forKey: "XCTestBundleInjectPath")
+      }
+
+      // We need to remove the XCTest-related environment variables set by Xcode,
+      // except those known to be safe and relevant, from the child environment
+      // to avoid accidentally recursing.
+      for key in childEnvironment.keys where key.starts(with: "XCTest") && key != "XCTestBundlePath" {
         childEnvironment.removeValue(forKey: key)
       }
 #endif
@@ -943,7 +961,7 @@ extension ExitTest {
         try capturedValuesWriteEnd.withLock {
           try exitTest._withEncodedCapturedValuesForEntryPoint { capturedValuesJSON in
             try capturedValuesWriteEnd.write(capturedValuesJSON)
-            try capturedValuesWriteEnd.write("\n")
+            try capturedValuesWriteEnd.write(.asciiNewlineCharacter)
           }
         }
         capturedValuesReadEnd.close()
@@ -975,7 +993,7 @@ extension ExitTest {
         // and process it as a (minimal) event stream.
         backChannelWriteEnd.close()
         taskGroup.addTask(name: decorateTaskName("exit test", withAction: "processing events")) {
-          Self._processRecords(fromBackChannel: backChannelReadEnd)
+          await Self._processRecords(fromBackChannel: backChannelReadEnd)
           return nil
         }
 
@@ -999,19 +1017,27 @@ extension ExitTest {
   /// - Parameters:
   ///   - backChannel: The file handle to read from. Reading continues until an
   ///     error is encountered or the end of the file is reached.
-  private static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) {
-    let bytes: [UInt8]
-    do {
-      bytes = try backChannel.readToEnd()
-    } catch {
-      // NOTE: an error caught here indicates an I/O problem.
-      // TODO: should we record these issues as systemic instead?
-      Issue(for: error).record()
-      return
-    }
-
-    for recordJSON in bytes.split(whereSeparator: \.isASCIINewline) where !recordJSON.isEmpty {
+  private static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) async {
+    var terminator: UInt8?
+    repeat {
+      let recordJSON: [UInt8]
       do {
+        (recordJSON, terminator) = try backChannel.read(until: \.isASCIINewline)
+      } catch {
+        // NOTE: an error caught here indicates an I/O problem.
+        // TODO: should we record these issues as systemic instead?
+        Issue(for: error).record()
+        return
+      }
+
+      // Allow other tasks to run after we may have blocked for some time on I/O
+      // with the child process.
+      await Task.yield()
+
+      do {
+        if recordJSON.isEmpty {
+          continue
+        }
         try recordJSON.withUnsafeBufferPointer { recordJSON in
           try Self._processRecord(.init(recordJSON), fromBackChannel: backChannel)
         }
@@ -1020,7 +1046,7 @@ extension ExitTest {
         // TODO: should we record these issues as systemic instead?
         Issue(for: error).record()
       }
-    }
+    } while terminator != nil
   }
 
   /// Decode a line of JSON read from a back channel file handle and handle it
@@ -1033,44 +1059,32 @@ extension ExitTest {
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
-    guard case let .event(event) = record.kind else {
+    guard case let .event(encodedEvent) = record.kind,
+      let event = Event(decoding: encodedEvent)
+    else {
       return
     }
 
-    lazy var comments: [Comment] = event._comments?.map(Comment.init(rawValue:)) ?? []
-    lazy var sourceContext = SourceContext(
-      backtrace: nil, // A backtrace from the child process will have the wrong address space.
-      sourceLocation: event._sourceLocation
-    )
-    lazy var skipInfo = SkipInfo(comment: comments.first, sourceContext: sourceContext)
-    if let issue = event.issue {
-      // Translate the issue back into a "real" issue and record it
-      // in the parent process. This translation is, of course, lossy
-      // due to the process boundary, but we make a best effort.
-      let issueKind: Issue.Kind = if let error = issue._error {
-        .errorCaught(error)
-      } else {
-        // TODO: improve fidelity of issue kind reporting (especially those without associated values)
-        .unconditional
-      }
-      let severity: Issue.Severity = switch issue.severity {
-      case .warning:
-        .warning
-      case .error, nil:
-        // Prior to 6.3, all Issues are errors
-        .error
-      }
-      var issueCopy = Issue(kind: issueKind, severity: severity, comments: comments, sourceContext: sourceContext)
-      if issue.isKnown {
-        // The known issue comment, if there was one, is already included in
-        // the `comments` array above.
-        issueCopy.knownIssueContext = Issue.KnownIssueContext()
-      }
-      issueCopy.record()
-    } else if let attachment = event.attachment {
-      Attachment.record(attachment, sourceLocation: event._sourceLocation!)
-    } else if case .testCancelled = event.kind {
+    // Translate the event back into a "real" event (such as "issue recorded")
+    // and post it in the parent process. This translation is, of course, lossy
+    // due to the process boundary, but we make a best effort.
+    //
+    // Events containing a backtrace from the child process will have the wrong
+    // address space, so remove the backtrace if present before recording it.
+
+    switch event.kind {
+    case .issueRecorded(var issue):
+      issue.sourceContext.backtrace = nil
+      issue.record()
+    case .valueAttached(let attachment):
+      Attachment.record(attachment, sourceLocation: attachment.sourceLocation)
+    case .testCancelled(var skipInfo), .testCaseCancelled(var skipInfo), .testSkipped(var skipInfo):
+      // In practice, an exit test won't receive .testSkipped events because
+      // they would happen before the exit test body starts running.
+      skipInfo.sourceContext.backtrace = nil
       _ = try? Test.cancel(with: skipInfo)
+    default:
+      break
     }
   }
 
@@ -1085,12 +1099,12 @@ extension ExitTest {
   private mutating func _decodeCapturedValuesForEntryPoint() throws {
     // Read the content of the captured values stream provided by the parent
     // process above.
-    guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_CAPTURED_VALUES", mode: "rb") else {
+    guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_CAPTURED_VALUES", options: [.readAccess]) else {
       return
     }
     let capturedValuesJSON = try fileHandle.readToEnd()
     let capturedValuesJSONLines = capturedValuesJSON.split(whereSeparator: \.isASCIINewline)
-    assert(capturedValues.count == capturedValuesJSONLines.count, "Expected to decode \(capturedValues.count) captured value(s) for the current exit test, but received \(capturedValuesJSONLines.count). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+    assert(capturedValues.count == capturedValuesJSONLines.count, "Expected to decode \(capturedValues.count) captured value(s) for the current exit test, but received \(capturedValuesJSONLines.count). \(fileABugMessage)")
 
     // Walk the list of captured values' types, map them to their JSON blobs,
     // and decode them.
@@ -1099,7 +1113,11 @@ extension ExitTest {
 
       func open<T>(_ type: T.Type) throws -> T where T: Codable & Sendable {
         return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
-          try JSON.decode(type, from: capturedValueJSON)
+          try JSON.decode(
+            type,
+            from: capturedValueJSON,
+            userInfo: [.allowNonConformingFloatingPointValuesUserInfoKey: true]
+          )
         }
       }
       capturedValue.wrappedValue = try open(capturedValue.typeOfWrappedValue)
@@ -1125,7 +1143,10 @@ extension ExitTest {
   /// configurations is undefined.
   private borrowing func _withEncodedCapturedValuesForEntryPoint(_ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void {
     for capturedValue in capturedValues {
-      try JSON.withEncoding(of: capturedValue.wrappedValue!) { capturedValueJSON in
+      try JSON.withEncoding(
+        of: capturedValue.wrappedValue!,
+        userInfo: [.allowNonConformingFloatingPointValuesUserInfoKey: true]
+      ) { capturedValueJSON in
         try JSON.asJSONLine(capturedValueJSON, body)
       }
     }

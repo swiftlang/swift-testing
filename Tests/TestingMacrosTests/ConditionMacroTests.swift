@@ -37,7 +37,7 @@ struct ConditionMacroTests {
       ##"#expect("a" == "b")"##:
         ##"Testing.__checkBinaryOperation("a", { $0 == $1() }, "b", expression: .__fromBinaryOperation(.__fromStringLiteral(#""a""#, "a"), "==", .__fromStringLiteral(#""b""#, "b")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(!Bool.random())"##:
-        ##"Testing.__checkFunctionCall(Bool.self, calling: { $0.random() }, expression: .__fromNegation(.__fromFunctionCall(.__fromSyntaxNode("Bool"), "random"), false), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkFunctionCall(Bool.self, calling: { $0.random() }, expression: .__fromNegation(.__fromFunctionCall(.__fromSyntaxNode("Bool"), "random"), false), negationCount: 1, comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect((true && false))"##:
         ##"Testing.__checkBinaryOperation(true, { $0 && $1() }, false, expression: .__fromBinaryOperation(.__fromSyntaxNode("true"), "&&", .__fromSyntaxNode("false")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(try x())"##:
@@ -117,7 +117,7 @@ struct ConditionMacroTests {
       ##"#require("a" == "b")"##:
         ##"Testing.__checkBinaryOperation("a", { $0 == $1() }, "b", expression: .__fromBinaryOperation(.__fromStringLiteral(#""a""#, "a"), "==", .__fromStringLiteral(#""b""#, "b")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(!Bool.random())"##:
-        ##"Testing.__checkFunctionCall(Bool.self, calling: { $0.random() }, expression: .__fromNegation(.__fromFunctionCall(.__fromSyntaxNode("Bool"), "random"), false), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkFunctionCall(Bool.self, calling: { $0.random() }, expression: .__fromNegation(.__fromFunctionCall(.__fromSyntaxNode("Bool"), "random"), false), negationCount: 1, comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require((true && false))"##:
         ##"Testing.__checkBinaryOperation(true, { $0 && $1() }, false, expression: .__fromBinaryOperation(.__fromSyntaxNode("true"), "&&", .__fromSyntaxNode("false")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(try x())"##:
@@ -346,6 +346,8 @@ struct ConditionMacroTests {
       "#expect(x as! T!)", "#require(x as! T!)",
       "#expect(x as! Optional<T>)", "#require(x as! Optional<T>)",
       "#expect(x as! Swift.Optional<T>)", "#require(x as! Swift.Optional<T>)",
+      "#expect(x as! Swift::Optional<T>)", "#require(x as! Swift::Optional<T>)",
+      "#expect(x as! Swift::Swift.Optional<T>)", "#require(x as! Swift::Swift.Optional<T>)",
     ]
   )
   func asExclamationMarkSuppressedForBoolAndOptional(input: String) throws {
@@ -424,6 +426,8 @@ struct ConditionMacroTests {
   @Test("#require(throws: Never.self) produces a diagnostic",
     arguments: [
       "#requireThrows(throws: Swift.Never.self)",
+      "#requireThrows(throws: Swift::Never.self)",
+      "#requireThrows(throws: Swift::Swift.Never.self)",
       "#requireThrows(throws: Never.self)",
       "#requireThrowsNever(throws: Never.self)",
     ]
@@ -438,8 +442,26 @@ struct ConditionMacroTests {
 
   @Test("#expect(processExitsWith:) diagnostics",
     arguments: [
+      "struct S<T> { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic structure 'S'",
+      "extension S where T: U { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+      "extension [T] { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+      "extension [T:U] { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+      "extension T? { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+      "extension T! { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
+      "extension [1 of T] { func f() { #expectExitTest(processExitsWith: x) {} } }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within a generic declaration",
       "func f<T>() { #expectExitTest(processExitsWith: x) {} }":
         "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic function 'f()'",
+      "func f() where T: U { #expectExitTest(processExitsWith: x) {} }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic function 'f()'",
+      "func f(_: some T) { #expectExitTest(processExitsWith: x) {} }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic function 'f(_:)'",
     ]
   )
   func exitTestDiagnostics(input: String, expectedMessage: String) throws {

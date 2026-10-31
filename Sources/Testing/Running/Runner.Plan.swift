@@ -90,7 +90,9 @@ extension Runner {
 
     /// The steps of the runner plan.
     public var steps: [Step] {
-      stepGraph.compactMap(\.value).sorted { $0.test.sourceLocation < $1.test.sourceLocation }
+      stepGraph
+        .compactMap { $0.value }
+        .sorted { $0.test.sourceLocation < $1.test.sourceLocation }
     }
 
     /// Initialize an instance of this type with the specified graph of test
@@ -136,16 +138,58 @@ extension Runner.Plan {
   /// node.
   private static func _recursivelyApplyTraits(_ parentTraits: [any SuiteTrait] = [], to testGraph: inout Graph<String, Test?>) {
     let traits: [any SuiteTrait] = parentTraits + (testGraph.value?.traits ?? []).lazy
-      .compactMap { $0 as? any SuiteTrait }
-      .filter(\.isRecursive)
+      .compactMap { $0.__as((any SuiteTrait).self) }
+      .filter { $0.isRecursive }
 
     testGraph.children = testGraph.children.mapValues { child in
       var child = child
       _recursivelyApplyTraits(traits, to: &child)
-      child.value?.traits.insert(contentsOf: traits, at: 0)
+      child.value?.traits.insert(contentsOf: traits.map { $0 as any Trait }, at: 0)
       return child
     }
   }
+
+#if !hasFeature(Embedded)
+  /// Recursively deduplicate traits on the given test by calling
+  /// ``ReducibleTrait/reduce(_:)`` across all nodes in the graph.
+  ///
+  /// - Parameters:
+  ///   - testGraph: The graph of tests to modify.
+  private static func _recursivelyReduceTraits(in testGraph: inout Graph<String, Test?>) {
+    testGraph = testGraph.mapValues { _, test in
+      guard var test else {
+        return nil
+      }
+
+      var traits = test.traits.map { $0 as Optional }
+      for i in traits.indices {
+        guard var trait = traits[i] as? any ReducibleTrait else {
+          // The trait is not reducible, so preserve it verbatim and move on.
+          continue
+        }
+        defer {
+          traits[i] = trait
+        }
+
+        func open<T>(_ trait: inout T) where T: ReducibleTrait {
+          for j in traits.index(after: i) ..< traits.endIndex {
+            if let other = traits[j] as? T,
+               let replacement = other.reduce(into: trait) {
+              // Reduction occurred, so remove the other trait and replace this one
+              // with the reduced trait.
+              trait = replacement
+              traits[j] = nil
+            }
+          }
+        }
+        open(&trait)
+      }
+      test.traits = traits.compactMap { $0 }
+
+      return test
+    }
+  }
+#endif
 
   /// Recursively synthesize test instances representing suites for all missing
   /// values in the specified test graph.
@@ -191,6 +235,26 @@ extension Runner.Plan {
 
     var sourceLocation: SourceLocation?
     synthesizeSuites(in: &graph, sourceLocation: &sourceLocation)
+  }
+
+  /// Given an array of tests, synthesize any containing suites that are not
+  /// already represented in that array.
+  ///
+  /// - Parameters:
+  ///   - tests: The test functions and test suites that have already been
+  ///     generated.
+  ///
+  /// - Returns: A superset of `tests` that also includes synthesized instances
+  ///   of ``Test`` representing any test suites not already present in `tests`
+  ///   that can be inferred from the contents of that collection.
+  static func synthesizeSuites(for tests: [Test]) -> [Test] {
+    var testGraph = Graph<String, Test?>()
+    for test in tests {
+      let idComponents = test.id.keyPathRepresentation
+      testGraph.insertValue(test, at: idComponents)
+    }
+    _recursivelySynthesizeSuites(in: &testGraph)
+    return testGraph.compactMap { $0.value }
   }
 
   /// The basic "run" action.
@@ -287,12 +351,14 @@ extension Runner.Plan {
   ///
   /// - Returns: A graph of the steps corresponding to `tests`.
   private static func _constructStepGraph(from tests: some Sequence<Test>, configuration: Configuration) async -> Graph<String, Step?> {
+#if !hasFeature(Embedded)
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
     Backtrace.startCachingForThrownErrors()
     defer {
       Backtrace.flushThrownErrorCache()
     }
+#endif
 
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining
@@ -335,6 +401,14 @@ extension Runner.Plan {
     // needlessly applying non-filtering related traits to tests which might be
     // filtered out.
     _recursivelyApplyTraits(to: &testGraph)
+
+#if !hasFeature(Embedded)
+    // Recursively reduce traits in the graph.
+    //
+    // As with `_recursivelyApplyTraits(to:)`, we must call this function before
+    // calling `prepare(for:)` to ensure correct operation.
+    _recursivelyReduceTraits(in: &testGraph)
+#endif
 
     // For each test value, determine the appropriate action for it.
     testGraph = await testGraph.mapValues { keyPath, test in
@@ -396,6 +470,9 @@ extension Runner.Plan {
   }
 }
 
+#if !SWT_NO_CODABLE
+// MARK: - Codable
+
 extension Runner.Plan.Action.RunOptions: Codable {
   private enum CodingKeys: CodingKey {
     case isParallelizationEnabled
@@ -418,6 +495,7 @@ extension Runner.Plan.Action.RunOptions: Codable {
     try container.encode(false, forKey: .isParallelizationEnabled)
   }
 }
+#endif
 
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
@@ -442,7 +520,7 @@ extension Runner.Plan {
 
     /// The steps of this runner plan.
     public var steps: some Collection<Step.Snapshot> {
-      _stepGraph.compactMap(\.value)
+      _stepGraph.compactMap { $0.value }
     }
   }
 }
@@ -548,12 +626,3 @@ extension Runner.Plan.Action {
   }
 }
 #endif
-
-// MARK: - Deprecated
-
-extension Runner.Plan.Action {
-  @available(*, deprecated, message: "Use .skip(_:) and pass a SkipInfo explicitly.")
-  public static func skip() -> Self {
-    .skip(SkipInfo())
-  }
-}

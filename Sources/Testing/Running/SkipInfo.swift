@@ -50,9 +50,11 @@ extension SkipInfo: Error {}
 
 extension SkipInfo: Equatable, Hashable {}
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension SkipInfo: Codable {}
+#endif
 
 // MARK: -
 
@@ -67,22 +69,60 @@ extension SkipInfo {
   init?(_ error: any Error) {
     if let skipInfo = error as? Self {
       self = skipInfo
-    } else if error is CancellationError, Task.isCancelled {
+    } else if let cancellationError = error as? CancellationError, Task.isCancelled {
       // Synthesize skip info for this cancellation error.
       let backtrace = Backtrace(forFirstThrowOf: error)
       let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: nil)
       self.init(comment: nil, sourceContext: sourceContext)
+#if compiler(>=6.5.1)
+      if #available(_cancellationErrorReasonAPI, *) {
+        switch cancellationError.reason {
+        case .unspecified:
+          break
+        case .deadlineExpired:
+          comment = "Deadline expired."
+        @unknown default:
+#if !hasFeature(Embedded)
+          comment = Comment(rawValue: String(describingForTest: cancellationError.reason))
+#else
+          break
+#endif
+        }
+      }
+#endif
     } else {
       return nil
     }
   }
 }
 
-// MARK: - Deprecated
+#if !SWT_NO_ABI_JSON_SCHEMA
+// MARK: - Conversion to/from ABI types
 
 extension SkipInfo {
-  @available(*, deprecated, message: "Use init(comment:sourceContext:) and pass an explicit SourceContext.")
-  public init(comment: Comment? = nil) {
-    self.init(comment: comment, sourceContext: .init(backtrace: .current(), sourceLocation: nil))
+  /// Initialize an instance of this type from the given value.
+  ///
+  /// SkipInfo is only non-nil for the skip/cancel event kinds.
+  ///
+  /// - Parameters:
+  ///   - event: The encoded event to initialize this instance from.
+  ///
+  /// Reconstructs ``SkipInfo`` from the comments and
+  /// source location stored in the encoded event.
+  init?<V>(decoding event: ABI.EncodedEvent<V>) {
+    // Only skip/cancel event kinds can decode SkipInfo.
+    switch event.kind {
+    case .testCancelled, .testCaseCancelled, .testSkipped:
+      break
+    default:
+      return nil
+    }
+
+    // Typically only a single comment is expected for SkipInfo.
+    let comment = event.comments?.first.map(Comment.init(rawValue:))
+    let sourceLocation = event.sourceLocation.flatMap(SourceLocation.init(decoding:))
+    let sourceContext = SourceContext(backtrace: nil, sourceLocation: sourceLocation)
+    self.init(comment: comment, sourceContext: sourceContext)
   }
 }
+#endif

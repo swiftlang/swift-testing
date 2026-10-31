@@ -24,12 +24,14 @@ private import _TestingInternals
 ///
 /// This constant is not part of the public interface of the testing library.
 var EXIT_NO_TESTS_FOUND: CInt {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
   EX_UNAVAILABLE
 #elseif os(Windows)
   CInt(ERROR_NOT_FOUND)
 #else
+#if !hasFeature(Embedded)
 #warning("Platform-specific implementation missing: value for EXIT_NO_TESTS_FOUND unavailable")
+#endif
   return 2 // We're assuming that EXIT_SUCCESS = 0 and EXIT_FAILURE = 1.
 #endif
 }
@@ -59,7 +61,7 @@ public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) 
   }
 #endif
 
-  return await entryPoint(passing: args, eventHandler: nil)
+  return await entryPoint(passing: args, forSwiftPackageManager: true, eventHandler: nil)
 }
 
 /// The entry point to the testing library used by Swift Package Manager.

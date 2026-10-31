@@ -110,20 +110,110 @@ extension Comment: ExpressibleByStringInterpolation {
       rawValue += literal
     }
 
-    @inlinable public mutating func appendInterpolation(_ value: (some Any)?) {
-      rawValue += String(describingForTest: value)
+    /// Append a value that may be an optional string.
+    ///
+    /// - Parameters:
+    ///   - value: The value to append if it is an instance of `Optional<S>`
+    ///     where `S: StringProtocol`.
+    ///
+    /// - Returns: Whether or not `value` was an optional string and was
+    /// 	appended to this interpolation instance.
+    ///
+    /// We special-case strings to not include the quotation marks added by
+    /// ``CustomTestStringConvertible`` (which in the context of interpolation
+    /// probably violate the Principle of Least Surprise).
+    ///
+    /// In Embedded Swift, this function only handles `String` and `Substring`
+    /// because casts to protocol existentials are disallowed.
+    private mutating func _appendPossibleStringOptional(_ value: (some Any)?) -> Bool {
+      func append(_ value: (some StringProtocol)?) -> Bool {
+        if let value {
+          rawValue += value
+        } else {
+          rawValue += _OptionalNilComparisonType.testDescription
+        }
+        return true
+      }
+      if let value = value as? String? {
+        return append(value)
+      } else if let value = value as? Substring? {
+        return append(value)
+      } else if let value = value as? StaticString? {
+        let value = value.map { String(describing: $0) }
+        return append(value)
+      }
+#if !hasFeature(Embedded)
+      if let value = value as? any StringProtocol? {
+        let value = value.map { String($0) }
+        return append(value)
+      }
+#endif
+      return false
     }
 
-    @inlinable public mutating func appendInterpolation(_ value: (some StringProtocol)?) {
-      // Special-case strings to not include the quotation marks added by
-      // CustomTestStringConvertible (which in the context of interpolation
-      // probably violate the Principle of Least Surprise).
-      if let value {
-        rawValue += value
-      } else {
-        rawValue += String(describingForTest: value)
+    /// Append the description of a given value to this interpolation, using a
+    /// lazily-computed fallback description after special cases are considered.
+    ///
+    /// - Parameters:
+    /// 	- value: The value to describe.
+    ///   - description: A string describing `value`, used if no special cases
+    ///   	apply to `value`.
+    @usableFromInline mutating func appendInterpolation(_ value: (some Any)?, description: @autoclosure () -> String) {
+      if _appendPossibleStringOptional(value) {
+        return
       }
+
+      // No special cases applied.
+      rawValue += description()
     }
+
+#if !hasFeature(Embedded)
+    @inlinable public mutating func appendInterpolation(_ value: (some Any)?) {
+      appendInterpolation(value, description: String(describingForTest: value))
+    }
+#else
+    @inlinable public mutating func appendInterpolation(_ value: some CustomTestStringConvertible) {
+      appendInterpolation(value, description: String(describingForTest: value))
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: some CustomStringConvertible & CustomTestStringConvertible) {
+      appendInterpolation(value, description: String(describingForTest: value))
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: some CustomStringConvertible) {
+      appendInterpolation(value, description: String(describingForTest: value))
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: some CustomDebugStringConvertible & CustomTestStringConvertible) {
+      appendInterpolation(value, description: String(describingForTest: value))
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: some CustomDebugStringConvertible) {
+      appendInterpolation(value, description: String(describingForTest: value))
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: some CustomStringConvertible & CustomDebugStringConvertible & CustomTestStringConvertible) {
+      appendInterpolation(value, description: String(describingForTest: value))
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: some CustomStringConvertible & CustomDebugStringConvertible) {
+      appendInterpolation(value, description: String(describingForTest: value))
+    }
+
+    @_disfavoredOverload
+    @available(*, deprecated, message: "String representations of arbitrary values are not supported in Embedded Swift")
+    mutating func appendInterpolation(_ value: borrowing some ~Copyable & ~Escapable) {
+      appendInterpolation(UnavailableInEmbeddedSwift(), description: UnavailableInEmbeddedSwift.testDescription)
+    }
+
+    mutating func appendInterpolation(_ value: (some ~Copyable & ~Escapable).Type) {
+      appendInterpolation(value, description: String(describingForTest: value))
+    }
+
+    mutating func appendInterpolation(_ value: any Error) {
+      appendInterpolation(value as any Error, description: String(describingForTest: value))
+    }
+#endif
   }
 }
 
@@ -131,11 +221,12 @@ extension Comment: ExpressibleByStringInterpolation {
 
 extension Comment: Equatable, Hashable {}
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension Comment: Codable {}
-
 extension Comment.Kind: Codable {}
+#endif
 
 // MARK: - Trait, TestTrait, SuiteTrait
 
@@ -172,20 +263,6 @@ extension Trait where Self == Comment {
 extension Test {
   /// The complete set of comments about this test from all of its traits.
   public var comments: [Comment] {
-    traits.flatMap(\.comments)
-  }
-
-  /// The complete set of comments about this test from all traits of a certain
-  /// type.
-  ///
-  /// - Parameters:
-  ///   - traitType: The type of ``Trait`` whose comments should be returned.
-  ///
-  /// - Returns: The comments found for the specified test trait type.
-  @_spi(Experimental)
-  public func comments<T>(from traitType: T.Type) -> [Comment] where T: Trait {
-    traits.lazy
-      .compactMap { $0 as? T }
-      .flatMap(\.comments)
+    traits.flatMap { $0.comments }
   }
 }

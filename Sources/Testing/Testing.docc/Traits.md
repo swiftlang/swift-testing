@@ -69,4 +69,5 @@ types that customize the behavior of your tests.
 - ``ParallelizationTrait``
 - ``Tag``
 - ``Tag/List``
+- ``TaskLocalTrait``
 - ``TimeLimitTrait``

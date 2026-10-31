@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable import Testing
+@_spi(Experimental) @testable import Testing
 
 @Suite("Graph<K, V> Tests")
 struct GraphTests {
@@ -548,5 +548,44 @@ struct GraphTests {
       return [$0.value, $0.value + 1]
     }
     #expect(Set(values) == [123, 124, 456, 457, 13579, 13580, 789, 790, 2468, 2469])
+  }
+
+  @Test(.enabled(if: performanceTestsEnabled))
+  func `inserting many items with the same prefix is not quadratic`() {
+    // This test verifies that inserting various numbers of elements that
+    // all share a common prefix scales ~linearly.
+
+    var perItemTimes = [Int: Double]()
+    let clock = Test.Clock()
+
+    for itemCount in [500, 1000, 5000, 10000] {
+      var graph = Graph<String, Int?>()
+
+      // Start with a representative target/suite/test prefix
+      let sharedPrefix = ["ProjectTests", "ProjectSuite", "something(_:)"]
+      graph[sharedPrefix] = -1
+
+      let startTime = clock.now
+
+      // Insert many items that all share this prefix
+      for i in 0..<itemCount {
+        var path = sharedPrefix
+        path.append("Argument \(i)")
+        graph[path] = i
+      }
+
+      #expect(graph[sharedPrefix + ["Argument 0"]] == 0)
+      #expect(graph[sharedPrefix + ["Argument \(itemCount - 1)"]] == itemCount - 1)
+
+      let elapsedTime = startTime.duration(to: clock.now) / .seconds(1)
+      perItemTimes[itemCount] = elapsedTime / Double(itemCount)
+    }
+
+    let mean = perItemTimes.values.reduce(0, +) / Double(perItemTimes.count)
+    let variance = perItemTimes.values.reduce(0) { $0 + ($1 - mean) * ($1 - mean) }
+    let standardDeviation = (variance / (Double(perItemTimes.count) - 1)).squareRoot()
+
+    // Standard deviation should be less than 25% of mean
+    #expect(standardDeviation < mean * 0.25)
   }
 }

@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import SwiftIfConfig
 public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
@@ -46,13 +47,35 @@ public struct TagMacro: PeerMacro, AccessorMacro, Sendable {
       return _fallbackAccessorDecls
     }
 
+    if let genericArgumentClause = node.genericArgumentClause {
+      context.diagnose(.genericAttributeNotSupported(node, on: declaration, becauseOf: genericArgumentClause, languageMode: context.buildConfiguration?.languageVersion))
+    }
+
     // Check that the tag is declared within Tag's namespace.
     let typeNameTokens: [String] = type.tokens(viewMode: .fixedUp).lazy
       .filter { $0.tokenKind != .period }
       .map(\.textWithoutBackticks)
-    guard typeNameTokens.first == "Tag" || typeNameTokens.starts(with: ["Testing", "Tag"]) else {
+    let validTypeNameTokens = [
+      ["Tag"],
+      ["Testing", "Tag"],
+      ["Testing", "::", "Tag"],
+      ["Testing", "::", "Testing", "Tag"],
+    ]
+    guard validTypeNameTokens.contains(where: typeNameTokens.starts(with:)) else {
       context.diagnose(.attributeNotSupportedOutsideTagExtension(node, on: variableDecl))
       return _fallbackAccessorDecls
+    }
+
+    // Because we cannot validate type names at macro expansion time, Embedded
+    // Swift does not support tags nested in extensions to types within `Tag`
+    // (e.g. `extension Tag.Foo { @Tag ... }`). Types within `Tag` can contain
+    // tags in their primary declarations (e.g. `extension Tag { enum Foo { @Tag ... } }`).
+    if context.isTargetEmbedded,
+       let extensionDecl = context.lexicalContext.last?.as(ExtensionDeclSyntax.self) {
+      guard extensionDecl.type.isNamed("Tag", inModuleNamed: "Testing") else {
+        context.diagnose(.containingNodeUnsupported(extensionDecl, whenUsing: node, inEmbedded: true, on: variableDecl))
+        return _fallbackAccessorDecls
+      }
     }
 
     // Check that the type of the variable is either Tag, Testing.Tag, or (if
@@ -82,12 +105,12 @@ public struct TagMacro: PeerMacro, AccessorMacro, Sendable {
       return _fallbackAccessorDecls
     }
 
+    let typeInfoExpr = type.typeInfoExpr(in: context)
+    let fromStaticMemberExpr: ExprSyntax = "Testing.Tag.__fromStaticMember(of: \(typeInfoExpr), \(literal: variableName.textWithoutBackticks))"
     return [
-      #"""
-      get {
-        Testing.Tag.__fromStaticMember(of: \#(raw: type).self, \#(literal: variableName.textWithoutBackticks))
-      }
-      """#
+      """
+      get { \(fromStaticMemberExpr) }
+      """
     ]
   }
 

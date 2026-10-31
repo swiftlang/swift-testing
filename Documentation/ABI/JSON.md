@@ -25,21 +25,24 @@ The order of keys in JSON objects is not normative. Whitespace in this schema is
 not normative; it is present to help the reader understand the content of the
 various JSON objects in the schema. The event stream is output using the JSON
 Lines format and does not include newline characters (except **one** at the end
-of the `<output-record-line>` rule.)
+of the `<output-record>` rule as used in the `<output-stream>` rule.)
 
 Trailing commas in JSON objects and arrays are only to be included where
 syntactically valid.
 
 ### Common data types
 
-`<string>` and `<number>` are defined as in JSON. `<array:T>` represents an
-array (also defined as in JSON) whose elements all follow rule `<T>`.
+`<string>`, `<number>`, and `<integer>` are defined as in JSON. `<array:T>`
+represents an array (also defined as in JSON) whose elements all follow rule
+`<T>`.
 
 ```
 <bool> ::= true | false ; as in JSON
 
 <source-location> ::= {
-  "fileID": <string>, ; the Swift file ID of the file
+  ["fileID": <string>,] ; the Swift file ID of the file if available, as per
+                        ; SE-0274 § "Specification of the #file string format"
+  "filePath": <string>, ; the compile-time path to the file
   "line": <number>,
   "column": <number>,
 }
@@ -49,7 +52,17 @@ array (also defined as in JSON) whose elements all follow rule `<T>`.
   "since1970": <number>, ; floating-point seconds since 1970-01-01 00:00:00 UT
 }
 
-<version> ::= "version": 0 ; will be incremented as the format changes
+<version> ::= "version": <version-number>
+<version-number> ::= 0 | "<version core>" ; as per https://semver.org
+
+<comment> ::= <string> ; human-readable, developer-supplied text
+
+<time> ::= <number> ; timestamp or duration expressed in (floating-point) seconds
+
+<numeric-range> ::= {
+  ["min": <integer>,] ; lower-bound, inclusive
+  ["max": <integer>] ; upper-bound, inclusive, must be ≥ min (if present)
+}
 ```
 
 <!--
@@ -149,6 +162,9 @@ additional `"testCases"` field describing the individual test cases.
   ["displayName": <string>,] ; the user-supplied custom display name
   "sourceLocation": <source-location>, ; where the test suite is defined
   "id": <test-id>,
+  ["tags": <array:tag>,] ; the tags associated with this test suite
+  ["bugs": <array:bug>,] ; the bugs associated with this test suite
+  ["timeLimit": <number>,] ; the time limit associated with this test suite
 }
 
 <test-function> ::= {
@@ -157,10 +173,21 @@ additional `"testCases"` field describing the individual test cases.
   ["displayName": <string>,] ; the user-supplied custom display name
   "sourceLocation": <source-location>, ; where the test is defined
   "id": <test-id>,
-  "isParameterized": <bool> ; is this a parameterized test function or not?
+  "isParameterized": <bool>, ; is this a parameterized test function or not?
+  ["tags": <array:tag>,] ; the tags associated with this test function
+  ["bugs": <array:bug>,] ; the bugs associated with this test function
+  ["timeLimit": <number>,] ; the time limit associated with this test function
 }
 
 <test-id> ::= <string> ; an opaque string representing the test case
+
+<tag> ::= <string> ; a string representation of a tag
+
+<bug> ::= {
+  ["url": <string>,] ; the bug URL
+  ["id": <string>,] ; the bug id
+  ["title": <string>,] ; the human readable bug title
+}
 ```
 
 <!--
@@ -189,17 +216,27 @@ sufficient information to display the event in a human-readable format.
   "instant": <instant>, ; when the event occurred
   ["issue": <issue>,] ; the recorded issue (if "kind" is "issueRecorded")
   ["attachment": <attachment>,] ; the attachment (if kind is "valueAttached")
-  "messages": <array:message>,
+  ["comments": <array:comment>,] ; comments provided by the test author
+  ["messages": <array:message>,]
+  ["sourceLocation": <source-location>,] ; where the event occurred, if known
   ["testID": <test-id>,]
+  ["iteration": <number>,] ; the iteration number (if the event is recorded
+                           ; during test execution)
 }
 
 <event-kind> ::= "runStarted" | "testStarted" | "testCaseStarted" |
   "issueRecorded" | "testCaseEnded" | "testEnded" | "testSkipped" |
-  "runEnded" | "valueAttached"; additional event kinds may be added in the future
+  "runEnded" | "valueAttached" | "testCancelled" | "testCaseCancelled"
+  ; additional event kinds may be added in the future
 
 <issue> ::= {
-  "isKnown": <bool>, ; is this a known issue or not?
-  ["sourceLocation": <source-location>,] ; where the issue occurred, if known
+  "severity": <string>, ; the severity of the issue
+  "isFailure": <bool>, ; if the issue is a failing issue
+  ["expression": <expression>,] ; an expression associated with the issue
+  ["error": <error>,] ; the associated error, if any
+  ["confirmationMiscount": <miscount>,] ; an associated confirmation miscount (too high or too low)
+  ["exceededTimeLimit": <time>,] ; the time limit, in seconds, that was exceeded
+  ["isKnown": <bool> | <comment>] ; whether the issue is known (optionally, the comment associated with the known issue)
 }
 
 <attachment> ::= {
@@ -213,9 +250,51 @@ sufficient information to display the event in a human-readable format.
 
 <message-symbol> ::= "default" | "skip" | "pass" | "passWithKnownIssue" |
   "fail" | "difference" | "warning" | "details"
+
+<error> ::= {
+  ["code": <integer>,]
+  ["domain": <string>,]
+  ["description": <string>,]
+  ["type": <type-info>]
+}
+
+<miscount> ::= {
+  "actual": <integer>, ; actual confirmation count
+  "expected": <integer> ; when the confirmation specifies a single count
+            | <numeric-range> ; when the confirmation specifies a range
+}
+
+<expression> ::= {
+  "sourceCode": <string>, ; unmodified source code
+  ["value": <expression-value>,] ; the expression's value if available
+  ["type": <type-info>,] ; type for the runtime value
+  ["children": <array:expression>] ; subexpressions, if present
+}
+
+<expression-value> ::= <string> ; a description of the value
+
+<type-info> ::= {
+  ["fullyQualifiedName": <string>,]  ; e.g. "Swift.Bool", "std::string"
+  ["unqualifiedName": <string>,]   ; e.g. "Bool", "string"
+  ["mangledName": <string>,] ; e.g. "$sSb", "_ZNSt3__112basic_string..."
+}
 ```
 
 <!--
   ["testID": <test-id>,
     ["testCase": <test-case>]]
 -->
+
+## See Also
+
+### Relevant Swift Evolution proposals
+
+| Proposal Number | Summary | Swift Version | Schema Version |
+|:-|-|-:|-:|
+| [ST-0002](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0002-json-abi.md) | Introduced the initial version of this JSON schema. | 6.0 | `0` |
+| [ST-0009](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0009-attachments.md#integration-with-supporting-tools) | Added attachments. | 6.2 | `0` |
+| [ST-0013](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0013-issue-severity-warning.md#event-stream) | Added test issue `severity` and `isFailure`. | 6.3 | `"6.3"` |
+| [ST-0016](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0016-test-cancellation.md#integration-with-supporting-tools) | Added test cancellation. | 6.3 | `"6.3"` |
+| [ST-0019](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0019-include-tags-bugs-and-timeline-in-event-stream.md#json-schema-changes) | Added `tags`, `bugs`, and `timeLimit`. | 6.4 | `"6.4"` |
+| [ST-0020](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0020-sourcelocation-filepath.md#detailed-design) | Added `filePath`. | 6.3 | `"6.3"` |
+| [ST-0024](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0024-per-test-case-repetitions.md)| Added `iteration`. | 6.4 | `"6.4"` |

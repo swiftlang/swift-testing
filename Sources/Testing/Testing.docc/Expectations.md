@@ -35,7 +35,7 @@ satisfy the expectation.
 @Test func calculatingOrderTotal() {
   let calculator = OrderCalculator()
   #expect(calculator.total(of: [3, 3]) == 7)
-  // Prints "Expectation failed: (calculator.total(of: [3, 3]) → 6) == 7"
+  // Prints "Expectation failed: calculator.total(of: [3, 3]) == 7"
 }
 ```
 
@@ -91,11 +91,10 @@ the test when the code doesn't satisfy a requirement, use
 
 - ``Expectation``
 - ``ExpectationFailedError``
-- ``CustomTestStringConvertible``
 
 ### Representing source locations
 
 - ``SourceLocation``
-<!-- - ``_sourceLocation()`` -->
+- ``sourceLocation()``
 <!-- - ``SourceContext`` -->
 <!-- - ``Backtrace`` -->

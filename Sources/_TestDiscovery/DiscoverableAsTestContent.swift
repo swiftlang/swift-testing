@@ -31,7 +31,7 @@ public protocol DiscoverableAsTestContent: Sendable {
   /// type with the same stride and alignment as `UInt`. Using a type with
   /// different stride or alignment will result in a failure when trying to
   /// discover test content records associated with this type.
-  associatedtype TestContentContext: BitwiseCopyable = UInt
+  associatedtype TestContentContext: ConvertibleFromBytes = UInt
 
   /// A type of "hint" passed to ``allTestContentRecords()`` to help the testing
   /// library find the correct result.
@@ -39,19 +39,4 @@ public protocol DiscoverableAsTestContent: Sendable {
   /// By default, this type equals `Never`, indicating that this type of test
   /// content does not support hinting during discovery.
   associatedtype TestContentAccessorHint = Never
-
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-  /// A string present in the names of types containing test content records
-  /// associated with this type.
-  @available(swift, deprecated: 100000.0, message: "Do not adopt this functionality in new code. It will be removed in a future release.")
-  static var _testContentTypeNameHint: String { get }
-#endif
 }
-
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-extension DiscoverableAsTestContent {
-  public static var _testContentTypeNameHint: String {
-    "__🟡$"
-  }
-}
-#endif

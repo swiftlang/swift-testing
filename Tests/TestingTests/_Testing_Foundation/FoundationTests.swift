@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && !SWT_NO_UTC_CLOCK
+#if !SWT_NO_FOUNDATION && !SWT_NO_UTC_CLOCK
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _Testing_Foundation
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 import Foundation
@@ -18,7 +18,7 @@ struct FoundationTests {
   func castTestClockInstantToDate() {
     let instant = Test.Clock.Instant.now
     let date = Date(instant)
-    #expect(TimeInterval(instant.timeComponentsSince1970.seconds) == date.timeIntervalSince1970.rounded(.down))
+    #expect(TimeInterval(instant.durationSince1970.components.seconds) == date.timeIntervalSince1970.rounded(.down))
   }
 }
 #endif

@@ -10,13 +10,17 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A type that can be used to confirm that an event occurs zero or more times.
 public struct Confirmation: Sendable {
   /// The number of times ``confirm(count:)`` has been called.
   ///
   /// This property is fileprivate because it may be mutated asynchronously and
   /// callers may be tempted to use it in ways that result in data races.
-  fileprivate var count = Locked(rawValue: 0)
+  fileprivate var count = Allocated(Atomic(0))
 
   /// Confirm this confirmation.
   ///
@@ -27,7 +31,7 @@ public struct Confirmation: Sendable {
   /// directly.
   public func confirm(count: Int = 1) {
     precondition(count > 0)
-    self.count.add(count)
+    self.count.value.add(count, ordering: .sequentiallyConsistent)
   }
 }
 
@@ -98,7 +102,7 @@ public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: Int = 1,
   isolation: isolated (any Actor)? = #isolation,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: (Confirmation) async throws -> sending R
 ) async rethrows -> R {
   try await confirmation(
@@ -172,12 +176,12 @@ public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: some RangeExpression<Int> & Sequence<Int> & Sendable,
   isolation: isolated (any Actor)? = #isolation,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: (Confirmation) async throws -> sending R
 ) async rethrows -> R {
   let confirmation = Confirmation()
   defer {
-    let actualCount = confirmation.count.rawValue
+    let actualCount = confirmation.count.value.load(ordering: .sequentiallyConsistent)
     if !expectedCount.contains(actualCount) {
       let issue = Issue(
         kind: .confirmationMiscounted(actual: actualCount, expected: expectedCount),
@@ -201,7 +205,7 @@ public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: UnboundedRange,
   isolation: isolated (any Actor)? = #isolation,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
   swt_unreachable()
@@ -211,13 +215,14 @@ public func confirmation<R>(
 /// that handles the partial-range-through operator (`...n`).
 ///
 /// This overload is necessary because the lower bound of `PartialRangeThrough`
-/// is ambiguous: does it start at `0` or `1`? Test authors should specify a
+/// is ambiguous: does it start at `0` or `1`? Test authors should specify an
+/// explicit lower bound.
 @available(*, unavailable, message: "Range expression '...n' is ambiguous without an explicit lower bound")
 public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: PartialRangeThrough<Int>,
   isolation: isolated (any Actor)? = #isolation,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
   swt_unreachable()
@@ -227,13 +232,14 @@ public func confirmation<R>(
 /// that handles the partial-range-up-to operator (`..<n`).
 ///
 /// This overload is necessary because the lower bound of `PartialRangeUpTo` is
-/// ambiguous: does it start at `0` or `1`? Test authors should specify a
+/// ambiguous: does it start at `0` or `1`? Test authors should specify an
+/// explicit lower bound.
 @available(*, unavailable, message: "Range expression '..<n' is ambiguous without an explicit lower bound")
 public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: PartialRangeUpTo<Int>,
   isolation: isolated (any Actor)? = #isolation,
-  sourceLocation: SourceLocation = #_sourceLocation,
+  sourceLocation: SourceLocation = #Testing::sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
   swt_unreachable()

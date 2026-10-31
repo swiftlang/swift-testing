@@ -25,7 +25,7 @@ static inline void swt_unreachable(void) {
   __builtin_unreachable();
 }
 
-#if !SWT_NO_FILE_IO
+#if !defined(SWT_NO_FILE_IO)
 /// The C file handle type.
 ///
 /// This typedef is necessary because `FILE *` may be imported into Swift as
@@ -60,7 +60,17 @@ static int swt_errno(void) {
   return errno;
 }
 
-#if !SWT_NO_FILE_IO
+#if defined(__linux__) || defined(__ANDROID__)
+/// Find a subsequence of bytes in a larger sequence of bytes.
+///
+/// On Linux, this function declaration is provided because `memmem()` is only
+/// declared if `_GNU_SOURCE` is set, but setting it causes build errors due
+/// to conflicts with Swift's Glibc module. The function is available in all
+/// supported versions of the GNU C Library.
+SWT_IMPORT_FROM_STDLIB void *_Nullable memmem(const void *haystack, size_t hsize, const void *needle, size_t nsize);
+#endif
+
+#if !defined(SWT_NO_FILE_IO)
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)
 ///
@@ -73,7 +83,7 @@ static bool swt_S_ISFIFO(mode_t mode) {
 #endif
 #endif
 
-#if defined(__APPLE__) && !SWT_NO_MACH_PORTS
+#if defined(__APPLE__) && !defined(SWT_NO_MACH_PORTS)
 /// Get a Mach port representing the current task (process.)
 ///
 /// This function is provided because `mach_task_self()` is a complex macro, but
@@ -84,12 +94,94 @@ static mach_port_t swt_mach_task_self(void) {
 }
 #endif
 
+#if defined(__APPLE__) && defined(__OBJC2__) && !defined(SWT_NO_DYNAMIC_LINKING)
+/// Get an array of Mach headers that are loaded into the current process and
+/// contain Objective-C or Swift code.
+///
+/// This function is provided because the testing library still needs to
+/// build with older Apple SDKs that do not contain a declaration of the runtime
+/// `objc_copyImageHeaders()` function.
+///
+/// - Bug: This declaration should be removed once Apple has shipped an updated
+///   SDK that includes `objc_copyImageHeaders()`.
+static struct mach_header const *_Nonnull *_Nullable swt_objc_copyImageHeaders(unsigned int *_Nullable outCount) {
+  __auto_type objc_copyImageHeaders = (__typeof__(&swt_objc_copyImageHeaders))dlsym(RTLD_DEFAULT, "objc_copyImageHeaders");
+  if (objc_copyImageHeaders) {
+    return (* objc_copyImageHeaders)(outCount);
+  }
+  return 0;
+}
+
+/// Get an array of the names of Mach images that are loaded into the current
+/// process and contain Objective-C or Swift code.
+///
+/// This function is provided because `objc_copyImageNames()` is unreliable when
+/// TSAN or XOJIT is enabled in the current process:
+///
+///   - If TSAN is enabled, calling `dlclose()` in a loop becomes a quadratic
+///     operation.
+///   - If XOJIT is enabled, it inserts multiple images into the dyld image list
+///     with the same name, so we cannot call `dlopen()` for all loaded images.
+static const char *_Nonnull *_Nullable swt_objc_copyImageNames(unsigned int *_Nullable outCount) {
+  if (dlsym(RTLD_DEFAULT, "__tsan_acquire") != 0) {
+    // TSAN appears to be enabled.
+    return 0;
+  }
+
+#if !defined(SWT_NO_ENVIRONMENT_VARIABLES)
+  if (getenv("XCODE_RUNNING_FOR_PLAYGROUNDS") != 0) {
+    // XOJIT appears to be enabled.
+    return 0;
+  }
+#endif
+
+  return objc_copyImageNames(outCount);
+}
+
+/// Get the Mach header corresponding to the given `dlopen()` handle.
+///
+/// This declaration is provided because the function is only _declared_ in the
+/// anyAppleOS 27 SDKs and newer, but is _exported_ in all anyAppleOS releases
+/// we support.
+SWT_IMPORT_FROM_STDLIB const struct mach_header *_Nullable _dyld_get_dlopen_image_header(void *handle)
+__API_AVAILABLE(macos(13.0), ios(16.0), watchos(9.0), tvos(16.0));
+#endif
+
+#if defined(__APPLE__)
+/// Define the minimal set of atomic operations supported and used by the
+/// testing library for a given C type.
+///
+/// This macro is provided because Swift cannot directly import the symbols in
+/// `<stdatomic.h>` nor clang's/GCC's generic atomic intrinsics. This macro
+/// simplifies the definition of atomic operations across the set of types we
+/// need them for.
+#define SWT_DEFINE_ATOMIC_OPERATIONS(T) \
+  SWT_SWIFT_NAME(swt_atomicLoad(_:)) \
+  static inline T SWT_CONCAT(swt_atomicLoad, __COUNTER__)(T *const _Nonnull src) { \
+    return __atomic_load_n(src, __ATOMIC_SEQ_CST); \
+  } \
+  SWT_SWIFT_NAME(swt_atomicStore(_:_:)) \
+  static inline void SWT_CONCAT(swt_atomicStore, __COUNTER__)(T *_Nonnull dst, T src) { \
+    __atomic_store_n(dst, src, __ATOMIC_SEQ_CST); \
+  } \
+  SWT_SWIFT_NAME(swt_atomicCompareExchange(_:_:_:)) \
+  static inline bool SWT_CONCAT(swt_atomicCompareExchange, __COUNTER__)(T *_Nonnull dst, T *_Nonnull expected, T desired) { \
+    return __atomic_compare_exchange_n(dst, expected, desired, /*weak: */false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST); \
+  }
+
+/// Define the minimal set of atomic operations that we use on various C types.
+SWT_DEFINE_ATOMIC_OPERATIONS(bool)
+SWT_DEFINE_ATOMIC_OPERATIONS(int)
+SWT_DEFINE_ATOMIC_OPERATIONS(intptr_t)
+SWT_DEFINE_ATOMIC_OPERATIONS(void const *_Nullable)
+#endif
+
 #if defined(_WIN32)
 /// Make a Win32 language ID.
 ///
 /// This function is provided because `MAKELANGID()` is a complex macro and
 /// cannot be imported directly into Swift.
-static LANGID swt_MAKELANGID(int p, int s) {
+static LANGID swt_MAKELANGID(WORD p, WORD s) {
   return MAKELANGID(p, s);
 }
 
@@ -115,14 +207,68 @@ static const IMAGE_SECTION_HEADER *_Null_unspecified swt_IMAGE_FIRST_SECTION(con
 ///
 /// By POSIX convention, the environment block variable is declared in client
 /// code rather than in a header.
-SWT_EXTERN char *_Nullable *_Null_unspecified environ;
+SWT_EXTERN char *_Nullable *_Null_unspecified environ SWT_NONISOLATED_UNSAFE;
+#endif
 
-/// Get the environment block.
+#if defined(__ELF__) && defined(__swift__)
+/// A function exported by the Swift runtime that enumerates all metadata
+/// sections loaded into the current process.
 ///
-/// This function is provided because directly accessing `environ` from Swift
-/// triggers concurrency warnings about accessing shared mutable state.
-static char *_Nullable *_Null_unspecified swt_environ(void) {
-  return environ;
+/// This function is needed on ELF-based platforms because they do not preserve
+/// section information that we can discover at runtime.
+SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
+  bool (* body)(const void *sections, void *context),
+  void *context
+);
+
+/// A value whose address is the base address of the image into which this
+/// header is included.
+///
+/// This declaration is needed on ELF-based platforms because `__ehdr_start` is
+/// not always emitted by the linker and cannot be correctly referenced from
+/// Swift code.
+///
+/// - Important: Do not use this variable directly. Instead, use
+///   `swt_ehdr_start()` to get its address.
+SWT_IMPORT_FROM_STDLIB const char __ehdr_start[] __attribute__((__weak__));
+
+/// The base address of the image into which this header is included.
+///
+/// This function is needed on ELF-based platforms because `__ehdr_start` is
+/// not always emitted by the linker and cannot be correctly referenced from
+/// Swift code.
+static inline const void *_Nullable swt_ehdr_start(void) {
+  if (&__ehdr_start != 0) {
+    return __ehdr_start;
+  }
+  return 0;
+}
+#endif
+
+#if defined(__linux__)
+/// Get the `FICLONE` `ioctl()` argument.
+///
+/// This function is provided because `FICLONE` is a complex macro and cannot be
+/// imported directly into Swift.
+static unsigned long swt_FICLONE(void) {
+  return FICLONE;
+}
+#endif
+
+#if defined(__FreeBSD__)
+/// Get the `COPY_FILE_RANGE_CLONE` `copy_file_range()` flag.
+///
+/// This function is provided because `COPY_FILE_RANGE_CLONE` is not available
+/// prior to FreeBSD 15.0. The caller should check `getosreldate()` before using
+/// this flag.
+static unsigned int swt_COPY_FILE_RANGE_CLONE(void) {
+#if defined(COPY_FILE_RANGE_CLONE)
+  return COPY_FILE_RANGE_CLONE;
+#else
+  // Compiled against an older unistd.h, but presumably running on FreeBSD 15.0
+  // or newer. SEE: https://github.com/freebsd/freebsd-src/blob/main/sys/sys/unistd.h
+  return 0x00800000;
+#endif
 }
 #endif
 
@@ -152,6 +298,7 @@ static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
 #endif
 #endif
 
+#if defined(EEXIST)
 /// Get the value of `EEXIST`.
 ///
 /// This function is provided because `EEXIST` is a complex macro in wasi-libc
@@ -159,6 +306,7 @@ static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
 static int swt_EEXIST(void) {
   return EEXIST;
 }
+#endif
 
 #if defined(F_GETFD)
 /// Call `fcntl(F_GETFD)`.
@@ -178,6 +326,92 @@ static int swt_getfdflags(int fd) {
 static int swt_setfdflags(int fd, int flags) {
   return fcntl(fd, F_SETFD, flags);
 }
+#endif
+
+#if defined(CLOCK_MONOTONIC)
+/// Get the value of `CLOCK_MONOTONIC`.
+///
+/// This function is provided because `CLOCK_MONOTONIC` is a complex macro in
+/// wasi-libc and cannot be imported directly into Swift.
+static clockid_t swt_CLOCK_MONOTONIC(void) {
+  return CLOCK_MONOTONIC;
+}
+#endif
+
+/// Get the name of the given exit code if one is available.
+///
+/// - Parameters:
+///   - exitCode: An exit code.
+///
+/// - Returns: The name of `exitCode` if it is a known constant such as
+///   `EXIT_FAILURE` or if a name for it is defined in `<sysexits.h>` and that
+///   header is present at compile time. If no name is available for `exitCode`,
+///   returns `NULL`.
+///
+/// - Note: The set of exit codes in `<sysexits.h>` is _de facto_ standardized
+///   on platforms that include that header.
+static const char *_Nullable swt_getExitCodeName(int exitCode) {
+#define SWT_EXIT_CODE(NAME) NAME: return #NAME
+  switch (exitCode) {
+    case SWT_EXIT_CODE(EXIT_SUCCESS);
+    case SWT_EXIT_CODE(EXIT_FAILURE);
+#if __has_include(<sysexits.h>)
+    case SWT_EXIT_CODE(EX_USAGE);
+    case SWT_EXIT_CODE(EX_DATAERR);
+    case SWT_EXIT_CODE(EX_NOINPUT);
+    case SWT_EXIT_CODE(EX_NOUSER);
+    case SWT_EXIT_CODE(EX_NOHOST);
+    case SWT_EXIT_CODE(EX_UNAVAILABLE);
+    case SWT_EXIT_CODE(EX_SOFTWARE);
+    case SWT_EXIT_CODE(EX_OSERR);
+    case SWT_EXIT_CODE(EX_OSFILE);
+    case SWT_EXIT_CODE(EX_CANTCREAT);
+    case SWT_EXIT_CODE(EX_IOERR);
+    case SWT_EXIT_CODE(EX_TEMPFAIL);
+    case SWT_EXIT_CODE(EX_PROTOCOL);
+    case SWT_EXIT_CODE(EX_NOPERM);
+    case SWT_EXIT_CODE(EX_CONFIG);
+#endif
+    default: return 0;
+  }
+#undef SWT_SYSEXIT_CODE
+};
+
+#if !defined(SWT_NO_INTEROP)
+
+/// A type describing a fallback event handler that testing API can invoke as an
+/// alternate method of reporting test events to the current test runner.
+/// Shadows the type with the same name in _TestingInterop.
+///
+/// - Parameters:
+///   - recordJSONSchemaVersionNumber: The JSON schema version used to encode
+///     the event record.
+///   - recordJSONBaseAddress: A pointer to the first byte of the encoded event.
+///   - recordJSONByteCount: The size of the encoded event in bytes.
+///   - reserved: Reserved for future use.
+typedef void (* SWTFallbackEventHandler)(const char *recordJSONSchemaVersionNumber,
+                                      const void *recordJSONBaseAddress,
+                                      size_t recordJSONByteCount,
+                                      const void *_Nullable reserved);
+
+/// Set the current fallback event handler if one has not already been set.
+///
+/// - Parameters:
+///   - handler: The handler function to set.
+///
+/// - Returns: Whether or not `handler` was installed.
+///
+/// The fallback event handler can only be installed once per process, typically
+/// by the first testing library to run. If this function has already been
+/// called and the handler set, it does not replace the previous handler.
+SWT_EXTERN bool _swift_testing_installFallbackEventHandler(SWTFallbackEventHandler handler);
+
+/// Get the current fallback event handler.
+/// Shadows the function with the same name in _TestingInterop.
+///
+/// - Returns: The currently-set handler function, if any.
+SWT_EXTERN SWTFallbackEventHandler _Nullable _swift_testing_getFallbackEventHandler(void);
+
 #endif
 
 SWT_ASSUME_NONNULL_END

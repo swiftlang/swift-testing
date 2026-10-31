@@ -37,12 +37,12 @@ fileprivate func __forwardNoAsync<R>(_ value: @autoclosure () throws -> R) throw
   Issue.record("Called wrong __forwardNoAsync()")
 }
 
-fileprivate func __invokeXCTestCaseMethod<T>(
+fileprivate func __invokeXCTestMethod<T>(
   _ selector: __XCTestCompatibleSelector?,
-  onInstanceOf xcTestCaseSubclass: T.Type,
+  onInstanceOf xcTestSubclass: T.Type,
   sourceLocation: SourceLocation
 ) {
-  Issue.record("Called wrong __invokeXCTestCaseMethod()")
+  Issue.record("Called wrong __invokeXCTestMethod()")
 }
 
 fileprivate func __xcTestCompatibleSelector(_ selector: String) -> __XCTestCompatibleSelector? {

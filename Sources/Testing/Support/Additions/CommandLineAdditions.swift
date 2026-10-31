@@ -10,11 +10,59 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
+#if hasFeature(Embedded)
+/// A minimal interface-compatible implementation of the `CommandLine` type from
+/// the Swift standard library.
+///
+/// This type is declared for Embedded Swift targets to simplify calling code.
+enum CommandLine {
+  /// An array that provides access to this program's command line arguments.
+  ///
+  /// In Embedded Swift, the value of this property is initially set when
+  /// `swift_testing_embeddedMain()` is called. If that function has not been
+  /// called, the value of this property is a placeholder array containing a
+  /// single string representing the program name.
+  static var arguments: [String] {
+    let argcArgv = _argcArgv.rawValue
+    if argcArgv.argc > 0, let argv = argcArgv.argv {
+      let result = (0 ..< Int(clamping: argcArgv.argc))
+        .compactMap { String(validatingCString: argv[$0]) }
+      if !result.isEmpty {
+        return result
+      }
+    }
+    return ["swift-test"]
+  }
+}
+#endif
+
 extension CommandLine {
+#if !hasFeature(Embedded) && !os(WASI) && !os(anyAppleOS)
+#if os(Windows)
+  private typealias FPEncoding = UTF16
+  private typealias FPCodeUnit = UTF16.CodeUnit
+#else
+  private typealias FPEncoding = UTF8
+  private typealias FPCodeUnit = CChar
+#endif
+
+  private static var executablePathCString: ContiguousArray<FPCodeUnit>? {
+    @_silgen_name("_swift_stdlib_executablePathCString") get
+  }
+#endif
+
   /// The path to the current process' executable.
   static var executablePath: String {
     get throws {
-#if SWT_TARGET_OS_APPLE
+#if hasFeature(Embedded) || os(WASI)
+      // Embedded Swift and WASI do not currently support getting the executable
+      // path via the standard library.
+      throw SystemError(description: "The current executable path is not available on this platform.")
+#elseif os(anyAppleOS)
       var result: String?
 #if DEBUG
       var bufferCount = UInt32(1) // force looping
@@ -32,70 +80,22 @@ extension CommandLine {
         }
       }
       return result!
-#elseif os(Linux) || os(Android)
-      return try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX) * 2) { buffer in
-        let readCount = readlink("/proc/self/exe", buffer.baseAddress!, buffer.count - 1)
-        guard readCount >= 0 else {
-          throw CError(rawValue: swt_errno())
-        }
-        buffer[readCount] = 0 // NUL-terminate the string.
-        return String(cString: buffer.baseAddress!)
-      }
-#elseif os(FreeBSD)
-      var mib = [CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1]
-      return try mib.withUnsafeMutableBufferPointer { mib in
-        var bufferCount = 0
-        guard 0 == sysctl(mib.baseAddress!, .init(mib.count), nil, &bufferCount, nil, 0) else {
-          throw CError(rawValue: swt_errno())
-        }
-        return try withUnsafeTemporaryAllocation(of: CChar.self, capacity: bufferCount) { buffer in
-          guard 0 == sysctl(mib.baseAddress!, .init(mib.count), buffer.baseAddress!, &bufferCount, nil, 0) else {
-            throw CError(rawValue: swt_errno())
-          }
-          return String(cString: buffer.baseAddress!)
-        }
-      }
-#elseif os(OpenBSD)
-      // OpenBSD does not have API to get a path to the running executable. Use
-      // arguments[0]. We do a basic sniff test for a path-like string, but
-      // otherwise return argv[0] verbatim.
-      guard let argv0 = arguments.first, argv0.contains("/") else {
-        throw CError(rawValue: ENOEXEC)
-      }
-      return argv0
-#elseif os(Windows)
-      var result: String?
-#if DEBUG
-      var bufferCount = Int(1) // force looping
 #else
-      var bufferCount = Int(MAX_PATH)
+      guard let executablePathCString else {
+#if os(Windows)
+        throw Win32Error(rawValue: GetLastError())
+#else
+        throw CError(rawValue: swt_errno())
 #endif
-      while result == nil {
-        try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: bufferCount) { buffer in
-          SetLastError(DWORD(ERROR_SUCCESS))
-          _ = GetModuleFileNameW(nil, buffer.baseAddress!, DWORD(buffer.count))
-          switch GetLastError() {
-          case DWORD(ERROR_SUCCESS):
-            result = String.decodeCString(buffer.baseAddress!, as: UTF16.self)?.result
-            if result == nil {
-              throw Win32Error(rawValue: DWORD(ERROR_ILLEGAL_CHARACTER))
-            }
-          case DWORD(ERROR_INSUFFICIENT_BUFFER):
-            bufferCount += Int(MAX_PATH)
-          case let errorCode:
-            throw Win32Error(rawValue: errorCode)
+      }
+      return try executablePathCString.withUnsafeBufferPointer { executablePathCString in
+        try executablePathCString.withMemoryRebound(to: FPEncoding.CodeUnit.self) { executablePathCString in
+          guard let result = String.decodeCString(executablePathCString.baseAddress!, as: FPEncoding.self)?.result else {
+            throw SystemError(description: "Could not decode the current executable's path as \(FPEncoding.self).")
           }
+          return result
         }
       }
-      return result!
-#elseif os(WASI)
-      // WASI does not really have the concept of a file system path to the main
-      // executable, so simply return the first argument--presumably the program
-      // name, but as you know this is not guaranteed by the C standard!
-      return arguments[0]
-#else
-#warning("Platform-specific implementation missing: executable path unavailable")
-      throw SystemError(description: "The executable path of the current process could not be determined.")
 #endif
     }
   }

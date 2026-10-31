@@ -13,6 +13,9 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 Swift Testing is a package with expressive and intuitive APIs that make testing
 your Swift code a breeze.
 
+[![CI status badge for main branch using main toolchain](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_main.yml/badge.svg?branch=main&event=push)](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_main.yml)
+[![CI status badge for main branch using 6.3 toolchain](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_release.yml/badge.svg?branch=main&event=push)](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_release.yml)
+
 ## Feature overview
 
 ### Clear, expressive API
@@ -56,31 +59,30 @@ like tests that target a specific device or use a specific module. You can also
 give tests a descriptive name so you know what they’re doing at a glance.
 
 ```swift
-@Test("Check video metadata",
-      .tags(.metadata))
-func videoMetadata() {
-    let video = Video(fileName: "By the Lake.mov")
-    let expectedMetadata = Metadata(duration: .seconds(90))
+@Test(.tags(.metadata))
+func `Check video metadata`() {
+    let video = Video(fileName: "By Lake Tahoe.mov")
+    let expectedMetadata = Metadata(duration: .seconds(90), filmingLocation: "California")
     #expect(video.metadata == expectedMetadata)
 }
 ```
 
 ### Scalable coverage and execution
 
-Parameterized tests help you run the same test over a sequence of values so you
-can write less code. And all tests integrate seamlessly with Swift Concurrency
-and run in parallel by default.
+Parameterized tests let you write less code by running the same test over many
+different inputs. And all tests integrate seamlessly with Swift Concurrency and
+run in parallel by default.
 
 ```swift
-@Test("Continents mentioned in videos", arguments: [
-    "A Beach",
-    "By the Lake",
-    "Camping in the Woods"
+@Test(arguments: [
+    "Weekend at Big Sur",
+    "By Lake Tahoe",
+    "Camping in Muir Woods"
 ])
-func mentionedContinents(videoName: String) async throws {
+func `California vacation videos have locations`(videoName: String) async throws {
     let videoLibrary = try await VideoLibrary()
     let video = try #require(await videoLibrary.video(named: videoName))
-    #expect(video.mentionedContinents.count <= 3)
+    #expect(video.metadata.filmingLocation == "California")
 }
 ```
 
@@ -103,18 +105,24 @@ Swift.
 The table below describes the current level of support that Swift Testing has
 for various platforms:
 
-| **Platform** | **CI Status (6.2)** | **CI Status (main)** | **Support Status** |
-|---|:-:|:-:|---|
-| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.2-macos)](https://ci.swift.org/job/swift-testing-main-swift-6.2-macos/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-macos)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-macos/) | Supported |
-| **iOS** | | | Supported |
-| **watchOS** | | | Supported |
-| **tvOS** | | | Supported |
-| **visionOS** | | | Supported |
-| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.2-linux)](https://ci.swift.org/job/swift-testing-main-swift-6.2-linux/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-linux)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-linux/) | Supported |
-| **FreeBSD** | | | Experimental |
-| **OpenBSD** | | | Experimental |
-| **Windows** | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.2-windows)](https://ci-external.swift.org/view/all/job/swift-testing-main-swift-6.2-windows/) | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-windows)](https://ci-external.swift.org/job/swift-testing-main-swift-main-windows/) | Supported |
-| **Wasm** | | | Experimental |
+| **Platform**     | **Support Status** | **Qualification[^1]**  |
+| ---------------- | ------------------ | ---------------------- |
+| Apple platforms  | Supported          | Automated              |
+| Linux            | Supported          | Automated              |
+| FreeBSD          | Supported          | Automated              |
+| Windows          | Supported          | Automated              |
+| Wasm             | Experimental       | Automated (Build Only) |
+| Android          | Experimental       | Automated (Build Only) |
+| OpenBSD          | Experimental       | [Manual](https://github.com/swiftlang/swift-testing/actions/workflows/manual_build_openbsd.yml) |
+
+[^1]:
+    Most platforms have "Automated" qualification, where continuous integration
+    automatically verifies that the project builds and passes all tests. This
+    ensures that any changes meet our highest quality standards, so it is our
+    goal for all supported platforms.
+
+    Presently, some platforms rely on manual test ("Automated (Build Only)"
+    qualification) or manual build and test ("Manual" qualification).
 
 ### Works with XCTest
 
@@ -128,7 +136,7 @@ Detailed documentation for Swift Testing can be found on the
 [Swift Package Index](https://swiftpackageindex.com/swiftlang/swift-testing/main/documentation/testing).
 There, you can delve into comprehensive guides, tutorials, and API references to
 make the most out of this package. Swift Testing is included with the Swift 6
-toolchain and Xcode 16.  You do not need to add it as a package dependency to
+toolchain and Xcode 16. You do not need to add it as a package dependency to
 your Swift package or Xcode project.
 
 > [!IMPORTANT]
@@ -137,5 +145,5 @@ your Swift package or Xcode project.
 > repository requires a recent **main-branch development snapshot** toolchain.
 
 Other documentation resources for this project can be found in the
-[README](https://github.com/swiftlang/swift-testing/blob/main/Documentation/README.md) 
+[README](https://github.com/swiftlang/swift-testing/blob/main/Documentation/README.md)
 of the `Documentation/` subdirectory.

@@ -8,14 +8,17 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
+#if !SWT_NO_ABI_JSON_SCHEMA
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-import Foundation
+
+#if !os(anyAppleOS) && canImport(Synchronization)
+import Synchronization
+#endif
 
 @Suite("Advanced Console Output Recorder Tests")
 struct AdvancedConsoleOutputRecorderTests {
   final class Stream: TextOutputStream, Sendable {
-    let buffer = Locked<String>(rawValue: "")
+    let buffer = Mutex<String>("")
 
     @Sendable func write(_ string: String) {
       buffer.withLock {
@@ -27,7 +30,7 @@ struct AdvancedConsoleOutputRecorderTests {
   @Test("Recorder initialization with default options")
   func recorderInitialization() {
     let stream = Stream()
-    let recorder = Event.AdvancedConsoleOutputRecorder<ABI.HighestVersion>(writingUsing: stream.write)
+    let recorder = Event.AdvancedConsoleOutputRecorder<ABI.CurrentVersion>(writingUsing: stream.write)
     
     // Verify the recorder was created successfully and has expected defaults
     #expect(recorder.options.base.useANSIEscapeCodes == false) // Default for non-TTY
@@ -36,10 +39,10 @@ struct AdvancedConsoleOutputRecorderTests {
   @Test("Recorder initialization with custom options")
   func recorderInitializationWithCustomOptions() {
     let stream = Stream()
-    var options = Event.AdvancedConsoleOutputRecorder<ABI.HighestVersion>.Options()
+    var options = Event.AdvancedConsoleOutputRecorder<ABI.CurrentVersion>.Options()
     options.base.useANSIEscapeCodes = true
     
-    let recorder = Event.AdvancedConsoleOutputRecorder<ABI.HighestVersion>(
+    let recorder = Event.AdvancedConsoleOutputRecorder<ABI.CurrentVersion>(
       options: options,
       writingUsing: stream.write
     )
@@ -53,7 +56,7 @@ struct AdvancedConsoleOutputRecorderTests {
     let stream = Stream()
     
     var configuration = Configuration()
-    let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.HighestVersion>(writingUsing: stream.write)
+    let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.CurrentVersion>(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
@@ -74,7 +77,7 @@ struct AdvancedConsoleOutputRecorderTests {
     let stream = Stream()
     
     var configuration = Configuration()
-    let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.HighestVersion>(writingUsing: stream.write)
+    let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.CurrentVersion>(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
@@ -98,7 +101,7 @@ struct AdvancedConsoleOutputRecorderTests {
     let stream = Stream()
     
     var configuration = Configuration()
-    let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.HighestVersion>(writingUsing: stream.write)
+    let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.CurrentVersion>(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
@@ -120,7 +123,7 @@ struct AdvancedConsoleOutputRecorderTests {
     let stream = Stream()
     
     var configuration = Configuration()
-    let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.HighestVersion>(writingUsing: stream.write)
+    let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.CurrentVersion>(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
@@ -140,7 +143,7 @@ struct AdvancedConsoleOutputRecorderTests {
     let stream = Stream()
     
     var configuration = Configuration()
-    let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.HighestVersion>(writingUsing: stream.write)
+    let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.CurrentVersion>(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
@@ -162,7 +165,7 @@ struct AdvancedConsoleOutputRecorderTests {
     let stream = Stream()
     
     var configuration = Configuration()
-    let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.HighestVersion>(writingUsing: stream.write)
+    let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.CurrentVersion>(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }

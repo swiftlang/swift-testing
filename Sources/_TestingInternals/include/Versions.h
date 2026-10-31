@@ -30,6 +30,36 @@ static inline uint64_t swt_getSwiftCompilerVersion(void) {
 #endif
 }
 
+/// Get the GNU C Library version.
+///
+/// - Returns: Whether or not we were able to get the GNU C Library version. If
+///   `false`, we were not building against it in the first place.
+static inline bool swt_getGNUCLibraryVersion(int *outMajor, int *outMinor) {
+#if !defined(SWT_EMBEDDED) && __is_target_environment(gnu)
+
+  const char *strVersion = gnu_get_libc_version();
+  if (strVersion) {
+    int scanCount = sscanf(strVersion, "%d.%d", outMajor, outMinor);
+    if (scanCount == 2) {
+      return true;
+    }
+  }
+
+  // Default to the statically available version number if the function call
+  // fails for some reason.
+#if defined(__GLIBC__) && defined(__GLIBC_MINOR__)
+  *outMajor = __GLIBC__;
+  *outMinor = __GLIBC_MINOR__;
+  return true;
+#else
+#warning __GLIBC__ or __GLIBC_MINOR__ not defined in target environment "gnu": GNU C Library version is unavailable
+  return false;
+#endif
+#else
+  return false;
+#endif
+}
+
 /// Get the human-readable version of the testing library.
 ///
 /// - Returns: A human-readable string describing the version of the testing
@@ -52,24 +82,6 @@ SWT_EXTERN void swt_getTestingLibraryCommit(const char *_Nullable *_Nonnull outH
 /// - Returns: A string containing the LLVM target triple used to build the
 ///   testing library, or `nullptr` if that information is not available.
 SWT_EXTERN const char *_Nullable swt_getTargetTriple(void);
-
-#if defined(__wasi__)
-/// Get the version of the C standard library and runtime used by WASI, if
-/// available.
-///
-/// This function is provided because `WASI_SDK_VERSION` may or may not be
-/// defined and may or may not be a complex macro.
-///
-/// For more information about the `WASI_SDK_VERSION` macro, see
-/// [wasi-libc-#490](https://github.com/WebAssembly/wasi-libc/issues/490).
-static const char *_Nullable swt_getWASIVersion(void) {
-#if defined(WASI_SDK_VERSION)
-  return WASI_SDK_VERSION;
-#else
-  return 0;
-#endif
-}
-#endif
 
 SWT_ASSUME_NONNULL_END
 

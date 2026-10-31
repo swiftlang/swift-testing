@@ -10,12 +10,9 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if canImport(Foundation)
-private import Foundation
-#endif
-
 @Suite("Test.Case Tests")
 struct Test_CaseTests {
+#if !SWT_NO_CODABLE
   @Test func nonParameterized() throws {
     let testCase = Test.Case(body: {})
     #expect(testCase.id.argumentIDs == nil)
@@ -24,7 +21,7 @@ struct Test_CaseTests {
 
   @Test func singleStableArgument() throws {
     let testCase = Test.Case(
-      values: [1],
+      values: [.init(1)],
       parameters: [Test.Parameter(index: 0, firstName: "x", type: Int.self)],
       body: {}
     )
@@ -33,7 +30,7 @@ struct Test_CaseTests {
 
   @Test func twoStableArguments() throws {
     let testCase = Test.Case(
-      values: [1, "a"],
+      values: [.init(1), .init("a")],
       parameters: [
         Test.Parameter(index: 0, firstName: "x", type: Int.self),
         Test.Parameter(index: 1, firstName: "y", type: String.self),
@@ -46,7 +43,7 @@ struct Test_CaseTests {
   @Test("Two arguments: one non-stable, followed by one stable")
   func nonStableAndStableArgument() throws {
     let testCase = Test.Case(
-      values: [NonCodable(), IssueRecordingEncodable()],
+      values: [.init(NonCodable()), .init(IssueRecordingEncodable())],
       parameters: [
         Test.Parameter(index: 0, firstName: "x", type: NonCodable.self),
         Test.Parameter(index: 1, firstName: "y", type: IssueRecordingEncodable.self),
@@ -58,7 +55,6 @@ struct Test_CaseTests {
 
   @Suite("Test.Case.ID Tests")
   struct IDTests {
-#if canImport(Foundation)
     @Test(arguments: [
       Test.Case.ID(argumentIDs: nil, discriminator: nil, isStable: true),
       Test.Case.ID(argumentIDs: [.init(bytes: "x".utf8)], discriminator: 0, isStable: false),
@@ -68,46 +64,18 @@ struct Test_CaseTests {
       #expect(try JSON.encodeAndDecode(id) == id)
     }
 
-    @Test func legacyDecoding_stable() throws {
-      let encodedData = Data("""
-        {"argumentIDs": [
-          {"bytes": [1]}
-        ]}
-        """.utf8)
-      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData)
-      #expect(testCaseID.isStable)
-
-      let argumentIDs = try #require(testCaseID.argumentIDs)
-      #expect(argumentIDs.count == 1)
-    }
-
-    @Test func legacyDecoding_nonStable() throws {
-      let encodedData = Data("{}".utf8)
-      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData)
-      #expect(!testCaseID.isStable)
-
-      let argumentIDs = try #require(testCaseID.argumentIDs)
-      #expect(argumentIDs.count == 1)
-    }
-
-    @Test func legacyDecoding_nonParameterized() throws {
-      let encodedData = Data(#"{"argumentIDs": []}"#.utf8)
-      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData)
+    @Test func decoding_nonParameterized() throws {
+      let encodedData = Array(#"{"isStable": true}"#.utf8)
+      let testCaseID = try encodedData.withUnsafeBytes { encodedData in
+        try JSON.decode(Test.Case.ID.self, from: encodedData)
+      }
       #expect(testCaseID.isStable)
       #expect(testCaseID.argumentIDs == nil)
       #expect(testCaseID.discriminator == nil)
     }
 
-    @Test func newDecoding_nonParameterized() throws {
-      let encodedData = Data(#"{"isStable": true}"#.utf8)
-      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData)
-      #expect(testCaseID.isStable)
-      #expect(testCaseID.argumentIDs == nil)
-      #expect(testCaseID.discriminator == nil)
-    }
-
-    @Test func newDecoding_parameterizedStable() throws {
-      let encodedData = Data("""
+    @Test func decoding_parameterizedStable() throws {
+      let encodedData = Array("""
         {
           "isStable": true,
           "argIDs": [
@@ -116,53 +84,64 @@ struct Test_CaseTests {
           "discriminator": 0
         }
         """.utf8)
-      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData)
+      let testCaseID = try encodedData.withUnsafeBytes { encodedData in
+        try JSON.decode(Test.Case.ID.self, from: encodedData)
+      }
       #expect(testCaseID.isStable)
       #expect(testCaseID.argumentIDs?.count == 1)
       #expect(testCaseID.discriminator == 0)
     }
-
-    @Test func newEncoding_nonParameterized() throws {
-      let id = Test.Case.ID(argumentIDs: nil, discriminator: nil, isStable: true)
-      let legacyID = try JSON.withEncoding(of: id) { data in
-        try JSON.decode(_LegacyTestCaseID.self, from: data)
-      }
-      let argumentIDs = try #require(legacyID.argumentIDs)
-      #expect(argumentIDs.isEmpty)
-    }
-
-    @Test func newEncoding_parameterizedNonStable() throws {
-      let id = Test.Case.ID(
-        argumentIDs: [.init(bytes: "x".utf8)],
-        discriminator: 0,
-        isStable: false
-      )
-      let legacyID = try JSON.withEncoding(of: id) { data in
-        try JSON.decode(_LegacyTestCaseID.self, from: data)
-      }
-      #expect(legacyID.argumentIDs == nil)
-    }
-
-    @Test func newEncoding_parameterizedStable() throws {
-      let id = Test.Case.ID(
-        argumentIDs: [.init(bytes: #""abc""#.utf8)],
-        discriminator: 0,
-        isStable: true
-      )
-      let legacyID = try JSON.withEncoding(of: id) { data in
-        try JSON.decode(_LegacyTestCaseID.self, from: data)
-      }
-      let argumentIDs = try #require(legacyID.argumentIDs)
-      #expect(argumentIDs.count == 1)
-      let argumentID = try #require(argumentIDs.first)
-      #expect(String(decoding: argumentID.bytes, as: UTF8.self) == #""abc""#)
-    }
-#endif
   }
+
+  @Suite("Combined argument ID Tests")
+  struct CombinedArgumentIDTests {
+    private func makeID(_ values: [any Sendable]) -> Test.Case.ID {
+      let parameters = values.indices.map {
+        Test.Parameter(index: $0, firstName: "p\($0)", type: Int.self)
+      }
+      let values = values.map { Test.Case.Argument.Value($0) }
+      return Test.Case(values: values, parameters: parameters, body: {}).id
+    }
+
+    @Test("Multiple arguments are folded into a single combined ID")
+    func multipleArgumentsFoldIntoOneID() {
+      let id = makeID([1, 2, 3])
+      #expect(id.argumentIDs?.count == 1)
+    }
+
+    @Test("Equal arguments produce equal combined IDs")
+    func equalArgumentsAreDeterministic() {
+      #expect(makeID([1, 2]).argumentIDs == makeID([1, 2]).argumentIDs)
+    }
+
+    @Test("Reordered arguments produce different combined IDs")
+    func combinedIDIsOrderSensitive() {
+      #expect(makeID([1, 2]).argumentIDs != makeID([2, 1]).argumentIDs)
+    }
+
+    @Test("A single argument's ID is used directly without combining")
+    func singleArgumentIDIsUsedDirectly() throws {
+      let parameter = Test.Parameter(index: 0, firstName: "x", type: Int.self)
+      let argumentID = try #require(try Test.Case.Argument.ID(identifying: 1, parameter: parameter))
+      #expect(makeID([1]).argumentIDs == [argumentID])
+    }
+
+    @Test("Combining is stable when all arguments are stable")
+    func combinedIDIsStableForStableArguments() {
+      #expect(makeID([1, 2]).isStable)
+    }
+
+    @Test("Combining preserves the nil ID for non-parameterized cases")
+    func nonParameterizedCaseHasNilArgumentIDs() {
+      #expect(Test.Case(body: {}).id.argumentIDs == nil)
+    }
+  }
+#endif
 }
 
 // MARK: - Fixtures, helpers
 
+#if !SWT_NO_CODABLE
 private struct NonCodable {}
 
 private struct IssueRecordingEncodable: Encodable {
@@ -170,8 +149,4 @@ private struct IssueRecordingEncodable: Encodable {
     Issue.record("Unexpected attempt to encode an instance of \(Self.self)")
   }
 }
-
-/// A fixture type which implements legacy decoding for ``Test/Case/ID``.
-private struct _LegacyTestCaseID: Decodable {
-  var argumentIDs: [Test.Case.Argument.ID]?
-}
+#endif

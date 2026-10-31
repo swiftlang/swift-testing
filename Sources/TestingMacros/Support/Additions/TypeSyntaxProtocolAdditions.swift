@@ -9,8 +9,50 @@
 //
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
+import SwiftSyntaxMacros
+
+/// An array of syntax node kinds that always represent generic types.
+private let _knownGenericTypeKinds: [SyntaxKind] = [
+  .arrayType, .dictionaryType, .optionalType,
+  .implicitlyUnwrappedOptionalType, .inlineArrayType
+]
 
 extension TypeSyntaxProtocol {
+  /// This type's module selector, if any.
+  var moduleSelector: ModuleSelectorSyntax? {
+    if let type = self.as(IdentifierTypeSyntax.self) {
+      return type.moduleSelector
+    } else if let type = self.as(MemberTypeSyntax.self) {
+      return type.moduleSelector ?? type.baseType.moduleSelector
+    }
+    return nil
+  }
+
+  /// Copy this instance and remove its module selector if present.
+  ///
+  /// - Returns: A copy of this instance with a `nil` module selector. If this
+  ///   instance does not specify a module selector, returns `self` verbatim.
+  func removingModuleSelector() -> some TypeSyntaxProtocol {
+    var result = TypeSyntax(self)
+
+    if var type = self.as(IdentifierTypeSyntax.self) {
+      if type.moduleSelector != nil {
+        type.moduleSelector = nil
+        result = TypeSyntax(type)
+      }
+    } else if var type = self.as(MemberTypeSyntax.self) {
+      if type.moduleSelector != nil {
+        type.moduleSelector = nil
+      } else if type.baseType.moduleSelector != nil {
+        type.baseType = TypeSyntax(type.baseType.removingModuleSelector())
+      }
+      result = TypeSyntax(type)
+    }
+
+    return result
+  }
+
   /// Whether or not this type is an optional type (`T?`, `Optional<T>`, etc.)
   var isOptional: Bool {
     if `is`(OptionalTypeSyntax.self) {
@@ -43,6 +85,35 @@ extension TypeSyntaxProtocol {
       .contains(.keyword(.any))
   }
 
+  /// Whether or not this type is explicitly a generic type.
+  var isExplicitlyGeneric: Bool {
+    // Fast(er) path: check if this type's syntax node kind is one that always
+    // represents generic types.
+    if _knownGenericTypeKinds.contains(kind) {
+      return true
+    }
+
+    // Check if this type has a generic argument clause.
+    if `as`(IdentifierTypeSyntax.self)?.genericArgumentClause != nil {
+      return true
+    }
+
+    // Check if the `some` or `any` keyword is present somewhere in this type.
+    let containsSomeOrAny = tokens(viewMode: .fixedUp).lazy
+      .map(\.tokenKind)
+      .contains { $0 == .keyword(.some) || $0 == .keyword(.any) }
+    if containsSomeOrAny {
+      return true
+    }
+
+    // Check the base type of this type (if any).
+    if let baseType = `as`(MemberTypeSyntax.self)?.baseType {
+      return baseType.isExplicitlyGeneric
+    }
+
+    return false
+  }
+
   /// Check whether or not this type is named with the specified name and
   /// module.
   ///
@@ -56,6 +127,19 @@ extension TypeSyntaxProtocol {
   ///
   /// - Returns: Whether or not this type has the given name.
   func isNamed(_ name: String, inModuleNamed moduleName: String) -> Bool {
+    // NOTE: the syntax M::M.T is ambiguous without type checking. We don't know
+    // from syntax alone if the second M is the module name (repeated) or if it
+    // is a type in module M with the same name. For example, XCTest::XCTest.T.
+    // Because it's ambiguous, we don't clear the moduleName argument after we
+    // strip the module selector and before we recursively call isNamed().
+    if let moduleSelector {
+      guard moduleName == moduleSelector.moduleName.textWithoutBackticks else {
+        return false
+      }
+      let selfCopy = self.removingModuleSelector()
+      return selfCopy.isNamed(name, inModuleNamed: moduleName)
+    }
+
     // Form a string of the fixed-up tokens representing the type name,
     // omitting any generic type parameters.
     let nameWithoutGenericParameters = tokens(viewMode: .fixedUp)
@@ -66,5 +150,50 @@ extension TypeSyntaxProtocol {
       .joined(separator: ".")
 
     return nameWithoutGenericParameters == name || nameWithoutGenericParameters == "\(moduleName).\(name)"
+  }
+}
+
+// MARK: - Representing types from macro expansions at runtime
+
+extension TypeSyntaxProtocol {
+  /// Get an expression that, at runtime, represents this type.
+  ///
+  /// - Parameters:
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: An expression such as `T.self` representing this type.
+  ///
+  /// In Embedded Swift, the expression is (currently) a tuple containing a
+  /// metatype reference and a fully-qualified type name.
+  func typeInfoExpr(in context: some MacroExpansionContext) -> ExprSyntax {
+    if !context.isTargetEmbedded {
+      return "(\(raw: self.trimmedDescription)).self"
+    } else {
+      let description = self
+        .removingModuleSelector()
+        .tokens(viewMode: .sourceAccurate)
+        .map(\.textWithoutBackticksUnlessNeeded)
+        .joined()
+      return "((\(raw: self.trimmedDescription)).self, \(literal: description))"
+    }
+  }
+}
+
+extension Optional where Wrapped: TypeSyntaxProtocol {
+  /// Get an expression that, at runtime, represents this optional type.
+  ///
+  /// - Parameters:
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: An expression such as `T.self` representing this optional type,
+  ///   or an expression representing `nil` if this optional type is `nil`.
+  ///
+  /// In Embedded Swift, the expression is (currently) a tuple containing a
+  /// metatype reference and a fully-qualified type name.
+  func typeInfoExpr(in context: some MacroExpansionContext) -> ExprSyntax {
+    guard let type = self else {
+      return "nil as Testing.__TypeInfo<Swift.Never>?"
+    }
+    return type.typeInfoExpr(in: context)
   }
 }

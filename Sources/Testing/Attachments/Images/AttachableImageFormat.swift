@@ -12,29 +12,28 @@
 /// when attaching an image to a test.
 ///
 /// When you attach an image to a test, you can pass an instance of this type to
-/// `Attachment.record(_:named:as:sourceLocation:)` so that the testing
+/// ``Attachment/record(_:named:as:sourceLocation:)`` so that the testing
 /// library knows the image format you'd like to use. If you don't pass an
 /// instance of this type, the testing library infers which format to use based
 /// on the attachment's preferred name.
 ///
-/// The PNG and JPEG image formats are always supported. The set of additional
-/// supported image formats is platform-specific:
+/// The testing library always supports the PNG and JPEG image formats. The set
+/// of additional supported image formats is platform-specific:
 ///
 /// - On Apple platforms, you can use [`CGImageDestinationCopyTypeIdentifiers()`](https://developer.apple.com/documentation/imageio/cgimagedestinationcopytypeidentifiers())
 ///   from the [Image I/O framework](https://developer.apple.com/documentation/imageio)
 ///   to determine which formats are supported.
-/// @Comment {
 /// - On Windows, you can use [`IWICImagingFactory.CreateComponentEnumerator()`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nf-wincodec-iwicimagingfactory-createcomponentenumerator)
 ///   to enumerate the available image encoders.
-/// }
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
 /// }
 #if SWT_NO_IMAGE_ATTACHMENTS
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
-@available(_uttypesAPI, *)
+@available(_uttypesAPI, *) // For DocC
 public struct AttachableImageFormat: Sendable {
   /// An enumeration describing the various kinds of image format that can be
   /// used with an attachment.
@@ -45,6 +44,13 @@ public struct AttachableImageFormat: Sendable {
     /// The (widely-supported) JPEG image format.
     case jpeg
 
+    /// A platform-specific type describing a platform-specific image format.
+#if !hasFeature(Embedded)
+    package typealias SystemValue = any Sendable & Equatable & Hashable
+#else
+    package typealias SystemValue = Never
+#endif
+
     /// A platform-specific image format.
     ///
     /// - Parameters:
@@ -54,7 +60,11 @@ public struct AttachableImageFormat: Sendable {
     ///
     /// On Apple platforms, `value` should be an instance of `UTType`. On
     /// Windows, it should be an instance of `CLSID`.
-    case systemValue(_ value: any Sendable)
+    ///
+    /// Support for platform-specific attachable image formats is not available
+    /// in Embedded Swift.
+    @_unavailableInEmbedded
+    case systemValue(_ value: SystemValue)
   }
 
   /// The kind of image format represented by this instance.
@@ -69,8 +79,9 @@ public struct AttachableImageFormat: Sendable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
-  public internal(set) var encodingQuality: Float = 1.0
+  public private(set) var encodingQuality: Float = 1.0
 
   package init(kind: Kind, encodingQuality: Float) {
     self.kind = kind
@@ -78,17 +89,120 @@ public struct AttachableImageFormat: Sendable {
   }
 }
 
-// MARK: -
+// MARK: - Equatable, Hashable
+
+/// @Metadata {
+///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
+/// }
+#if SWT_NO_IMAGE_ATTACHMENTS
+@available(*, unavailable, message: "Image attachments are not available on this platform.")
+#endif
+@available(_uttypesAPI, *) // For DocC
+extension AttachableImageFormat: Equatable, Hashable {}
 
 #if SWT_NO_IMAGE_ATTACHMENTS
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
-@available(_uttypesAPI, *)
+extension AttachableImageFormat.Kind: Equatable, Hashable {
+  public static func ==(lhs: Self, rhs: Self) -> Bool {
+    switch (lhs, rhs) {
+    case (.png, .png), (.jpeg, .jpeg):
+      return true
+    case let (.systemValue(lhs), .systemValue(rhs)):
+      func open<T>(_ lhs: T) -> Bool where T: Equatable {
+        lhs == (rhs as? T)
+      }
+      return open(lhs)
+    default:
+      return false
+    }
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    switch self {
+    case .png:
+      hasher.combine("png")
+    case .jpeg:
+      hasher.combine("jpeg")
+    case let .systemValue(systemValue):
+      hasher.combine(systemValue)
+    }
+  }
+}
+
+// MARK: - CustomStringConvertible, CustomDebugStringConvertible
+
+/// @Metadata {
+///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
+/// }
+#if SWT_NO_IMAGE_ATTACHMENTS
+@available(*, unavailable, message: "Image attachments are not available on this platform.")
+#endif
+@available(_uttypesAPI, *) // For DocC
+extension AttachableImageFormat: CustomStringConvertible, CustomDebugStringConvertible {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
+  /// }
+  public var description: String {
+    let kindDescription = String(describing: kind)
+    if encodingQuality < 1.0 {
+      return "\(kindDescription) at \(Int(encodingQuality * 100.0))% quality"
+    }
+    return kindDescription
+  }
+
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
+  /// }
+  public var debugDescription: String {
+#if !hasFeature(Embedded)
+    let kindDescription = String(reflecting: kind)
+#else
+    let kindDescription = kind.debugDescription // BUG: swift-#93531
+#endif
+    return "\(kindDescription) at quality \(encodingQuality)"
+  }
+}
+
+#if hasFeature(Embedded) && !SWT_NO_IMAGE_ATTACHMENTS
+// NOTE: In non-Embedded Swift, conformance to CustomStringConvertible is
+// provided by platform-specific cross-import overlays.
+extension AttachableImageFormat.Kind: CustomStringConvertible, CustomDebugStringConvertible {
+  package var description: String {
+    switch self {
+    case .png:
+      "PNG image"
+    case .jpeg:
+      "JPEG image"
+    }
+  }
+
+  package var debugDescription: String {
+    description
+  }
+}
+#endif
+
+// MARK: -
+
+/// @Metadata {
+///   @Available(Swift, introduced: 6.3)
+///   @Available(Xcode, introduced: 26.4)
+/// }
+#if SWT_NO_IMAGE_ATTACHMENTS
+@available(*, unavailable, message: "Image attachments are not available on this platform.")
+#endif
+@available(_uttypesAPI, *) // For DocC
 extension AttachableImageFormat {
   /// The PNG image format.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public static var png: Self {
     Self(kind: .png, encodingQuality: 1.0)
@@ -98,6 +212,7 @@ extension AttachableImageFormat {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public static var jpeg: Self {
     Self(kind: .jpeg, encodingQuality: 1.0)
@@ -116,6 +231,7 @@ extension AttachableImageFormat {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
+  ///   @Available(Xcode, introduced: 26.4)
   /// }
   public static func jpeg(withEncodingQuality encodingQuality: Float) -> Self {
     Self(kind: .jpeg, encodingQuality: encodingQuality)

@@ -37,20 +37,8 @@ public struct SourceContext: Sendable {
 
 extension SourceContext: Equatable, Hashable {}
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension SourceContext: Codable {}
-
-// MARK: - Deprecated
-
-extension SourceContext {
-  @available(*, deprecated, message: "Use init(backtrace:sourceLocation:) and pass both arguments explicitly instead.")
-  public init(backtrace: Backtrace?) {
-    self.init(backtrace: backtrace, sourceLocation: nil)
-  }
-
-  @available(*, deprecated, message: "Use init(backtrace:sourceLocation:) and pass both arguments explicitly instead.")
-  public init(sourceLocation: SourceLocation? = nil) {
-    self.init(backtrace: nil, sourceLocation: sourceLocation)
-  }
-}
+#endif

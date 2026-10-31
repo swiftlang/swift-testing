@@ -46,9 +46,23 @@ extension Bug: Equatable, Hashable {
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, JSON.Encodable
 
+#if !SWT_NO_CODABLE
 extension Bug: Codable {}
+#endif
+
+extension Bug: JSON.Encodable {
+  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
+    var result = [String: JSON.Value]()
+
+    result["url"] = url?.jsonValue(in: context)
+    result["id"] = id?.jsonValue(in: context)
+    result["title"] = title?.rawValue.jsonValue(in: context)
+
+    return .object(result)
+  }
+}
 
 // MARK: - Trait, TestTrait, SuiteTrait
 
@@ -81,8 +95,9 @@ extension Trait where Self == Bug {
   ///   - title: Optionally, the human-readable title of the bug.
   ///
   /// - Returns: An instance of ``Bug`` that represents the specified bug.
+  @_unavailableInEmbedded
   public static func bug(_ url: _const String? = nil, id: some Numeric, _ title: Comment? = nil) -> Self {
-    Self(url: url, id: String(describing: id), title: title)
+    Self(url: url, id: String(describingForTest: id), title: title)
   }
 
   /// Constructs a bug to track with a test.

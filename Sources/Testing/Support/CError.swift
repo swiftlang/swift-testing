@@ -18,6 +18,14 @@ internal import _TestingInternals
 /// This type is not part of the public interface of the testing library.
 struct CError: Error, RawRepresentable {
   var rawValue: CInt
+
+  var _domain: String {
+    "NSPOSIXErrorDomain"
+  }
+
+  var _code: Int {
+    Int(truncatingIfNeeded: rawValue)
+  }
 }
 
 #if os(Windows)
@@ -33,6 +41,15 @@ package struct Win32Error: Error, RawRepresentable {
   package init(rawValue: CUnsignedLong) {
     self.rawValue = rawValue
   }
+
+  package var _domain: String {
+    // SEE: `_NSWindowsErrorDomain` in swift-corelibs-foundation.
+    "org.swift.Foundation.WindowsError"
+  }
+
+  package var _code: Int {
+    Int(truncatingIfNeeded: rawValue)
+  }
 }
 #endif
 
@@ -46,6 +63,7 @@ package struct Win32Error: Error, RawRepresentable {
 /// - Returns: A Swift string equal to the result of `strerror()` from the C
 ///   standard library.
 func strerror(_ errorCode: CInt) -> String {
+#if !hasFeature(Embedded)
 #if os(Windows)
   String(unsafeUninitializedCapacity: 1024) { buffer in
     _ = strerror_s(buffer.baseAddress!, buffer.count, errorCode)
@@ -59,6 +77,9 @@ func strerror(_ errorCode: CInt) -> String {
   }
 #else
   String(cString: _TestingInternals.strerror(errorCode))
+#endif
+#else
+  "An error occurred (\(errorCode).)"
 #endif
 }
 
@@ -76,14 +97,14 @@ extension Win32Error: CustomStringConvertible {
       // error message... _unless_ you pass `FORMAT_MESSAGE_ALLOCATE_BUFFER` in
       // which case it takes a pointer-to-pointer that it populates with a
       // heap-allocated string. However, the signature for FormatMessageW()
-      // still takes an LPWSTR? (Optional<UnsafeMutablePointer<wchar_t>>), so we
-      // need to temporarily mis-cast the pointer before we can pass it in.
-      let count = buffer.withMemoryRebound(to: wchar_t.self) { buffer in
+      // still takes an LPWSTR? (Optional<UnsafeMutablePointer<CWideChar>>), so
+      // we need to temporarily mis-cast the pointer before we can pass it in.
+      let count = buffer.withMemoryRebound(to: CWideChar.self) { buffer in
         FormatMessageW(
           DWORD(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK),
           nil,
           rawValue,
-          DWORD(swt_MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT)),
+          DWORD(swt_MAKELANGID(WORD(LANG_NEUTRAL), WORD(SUBLANG_DEFAULT))),
           buffer.baseAddress,
           0,
           nil

@@ -8,10 +8,14 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+
+#if !os(anyAppleOS) && canImport(Synchronization)
+import Synchronization
+#endif
 #if canImport(XCTest)
 import XCTest
 #endif
-@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 struct MyError: Error, Equatable {
 }
@@ -632,7 +636,7 @@ final class RunnerTests: XCTestCase {
       func f() {}
     }
 
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     @Test(.hidden)
     @available(macOS 999.0, iOS 999.0, watchOS 999.0, tvOS 999.0, visionOS 999.0, *)
     func futureAvailable() {}
@@ -680,7 +684,7 @@ final class RunnerTests: XCTestCase {
   func testUnavailableTestsAreSkipped() async throws {
     let testStarted = expectation(description: "Test started")
     let testSkipped = expectation(description: "Test skipped")
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     testStarted.expectedFulfillmentCount = 5
     testSkipped.expectedFulfillmentCount = 8
 #else
@@ -699,7 +703,7 @@ final class RunnerTests: XCTestCase {
     await fulfillment(of: [testStarted, testSkipped], timeout: 0.0)
   }
 
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
   @Suite(.hidden) struct ObsoletedTests {
     @Test(.hidden)
     @available(macOS, introduced: 1.0, obsoleted: 999.0)
@@ -716,7 +720,11 @@ final class RunnerTests: XCTestCase {
     // emitted.
     let plan = await Runner.Plan(selecting: ObsoletedTests.self)
     for step in plan.steps where !step.test.isSuite {
-      XCTAssertNotNil(step.test.comments(from: ConditionTrait.self).map(\.rawValue).first { $0.contains("999.0") })
+      let conditionComments = step.test.traits
+        .compactMap { $0 as? ConditionTrait }
+        .flatMap(\.comments)
+        .map(\.rawValue)
+      XCTAssertNotNil(conditionComments.first { $0.contains("999.0") })
     }
   }
 #endif
@@ -726,7 +734,7 @@ final class RunnerTests: XCTestCase {
     @available(*, unavailable, message: "Expected Message")
     func unavailable() {}
 
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     @Test(.hidden)
     @available(macOS, unavailable, message: "Expected Message")
     @available(iOS, unavailable, message: "Expected Message")
@@ -798,15 +806,10 @@ final class RunnerTests: XCTestCase {
 
   @Suite(.hidden) struct AvailableWithDefinedAvailabilityTests {
     @Test(.hidden)
-    @available(_clockAPI, *)
-    func clockAPI() {}
+        func clockAPI() {}
   }
 
   func testAvailableWithDefinedAvailability() async throws {
-    guard #available(_clockAPI, *) else {
-      throw XCTSkip("Test method is unavailable here.")
-    }
-
     let testStarted = expectation(description: "Test started")
     testStarted.expectedFulfillmentCount = 3
     var configuration = Configuration()
@@ -871,28 +874,16 @@ final class RunnerTests: XCTestCase {
     }
   }
 
-  @available(*, deprecated)
-  func testSynchronousTestFunctionRunsOnMainActorWhenEnforced() async {
-    var configuration = Configuration()
-    configuration.isMainActorIsolationEnforced = true
-    await Self.$isMainActorIsolationEnforced.withValue(true) {
-      await runTest(for: MainActorIsolationTests.self, configuration: configuration)
-    }
-
-    configuration.isMainActorIsolationEnforced = false
-    await Self.$isMainActorIsolationEnforced.withValue(false) {
-      await runTest(for: MainActorIsolationTests.self, configuration: configuration)
-    }
-  }
-
   func testSynchronousTestFunctionRunsInDefaultIsolationContext() async {
     var configuration = Configuration()
+#if !hasFeature(Embedded)
     configuration.defaultSynchronousIsolationContext = MainActor.shared
     await Self.$isMainActorIsolationEnforced.withValue(true) {
       await runTest(for: MainActorIsolationTests.self, configuration: configuration)
     }
 
     configuration.defaultSynchronousIsolationContext = nil
+#endif
     await Self.$isMainActorIsolationEnforced.withValue(false) {
       await runTest(for: MainActorIsolationTests.self, configuration: configuration)
     }
@@ -918,7 +909,7 @@ final class RunnerTests: XCTestCase {
       deprecatedWithMessageCallee()
     }
 
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     @available(macOS, deprecated: 1.0)
     @available(iOS, deprecated: 1.0)
     @available(watchOS, deprecated: 1.0)
@@ -941,7 +932,7 @@ final class RunnerTests: XCTestCase {
   func testDeprecated() async throws {
     let testStarted = expectation(description: "Test started")
     let testSkipped = expectation(description: "Test skipped")
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     testStarted.expectedFulfillmentCount = 5
 #else
     testStarted.expectedFulfillmentCount = 4
@@ -960,9 +951,7 @@ final class RunnerTests: XCTestCase {
   }
 
   func testSerializedSortOrder() async {
-    OrderedTests.state.withLock { state in
-      state = 0
-    }
+    OrderedTests.state.store(0, ordering: .sequentiallyConsistent)
     await runTest(for: OrderedTests.self, configuration: .init())
   }
 }
@@ -970,29 +959,33 @@ final class RunnerTests: XCTestCase {
 // MARK: - Fixtures
 
 extension OrderedTests.Inner {
-  @Test(.hidden) func s() { XCTAssertEqual(OrderedTests.state.increment(), 5) }
+  @Test(.hidden) func s() { XCTAssertEqual(OrderedTests.state.add(1, ordering: .sequentiallyConsistent).newValue, 5) }
 }
 
 @Suite(.hidden, .serialized) struct OrderedTests {
-  static let state = Locked(rawValue: 0)
+  static let state = Atomic(0)
 
-  @Test(.hidden) func z() { XCTAssertEqual(Self.state.increment(), 1) }
-  @Test(.hidden) func y() { XCTAssertEqual(Self.state.increment(), 2) }
-  @Test(.hidden) func x() { XCTAssertEqual(Self.state.increment(), 3) }
-  @Test(.hidden) func w() { XCTAssertEqual(Self.state.increment(), 4) }
+  func increment() -> Int {
+    Self.state.add(1, ordering: .sequentiallyConsistent).newValue
+  }
+
+  @Test(.hidden) func z() { XCTAssertEqual(increment(), 1) }
+  @Test(.hidden) func y() { XCTAssertEqual(increment(), 2) }
+  @Test(.hidden) func x() { XCTAssertEqual(increment(), 3) }
+  @Test(.hidden) func w() { XCTAssertEqual(increment(), 4) }
   @Suite(.hidden) struct Inner {
     // s() in extension above, numbered 5
-    @Test(.hidden) func t() { XCTAssertEqual(OrderedTests.state.increment(), 6) }
+    @Test(.hidden) func t() { XCTAssertEqual(OrderedTests.state.add(1, ordering: .sequentiallyConsistent).newValue, 6) }
     // u() in extension below, numbered 7
   }
 
-  @Test(.hidden) func d() { XCTAssertEqual(Self.state.increment(), 8) }
-  @Test(.hidden) func c() { XCTAssertEqual(Self.state.increment(), 9) }
-  @Test(.hidden) func b() { XCTAssertEqual(Self.state.increment(), 10) }
-  @Test(.hidden) func a() { XCTAssertEqual(Self.state.increment(), 11) }
+  @Test(.hidden) func d() { XCTAssertEqual(increment(), 8) }
+  @Test(.hidden) func c() { XCTAssertEqual(increment(), 9) }
+  @Test(.hidden) func b() { XCTAssertEqual(increment(), 10) }
+  @Test(.hidden) func a() { XCTAssertEqual(increment(), 11) }
 }
 
 extension OrderedTests.Inner {
-  @Test(.hidden) func u() { XCTAssertEqual(OrderedTests.state.increment(), 7) }
+  @Test(.hidden) func u() { XCTAssertEqual(OrderedTests.state.add(1, ordering: .sequentiallyConsistent).newValue, 7) }
 }
 #endif

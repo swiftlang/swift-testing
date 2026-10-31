@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 extension Event {
   /// A type which handles ``Event`` instances and outputs representations of
   /// them as JUnit-compatible XML.
@@ -60,7 +64,7 @@ extension Event {
 
     /// This event recorder's mutable context about events it has received,
     /// which may be used to inform how subsequent events are written.
-    private var _context = Locked(rawValue: _Context())
+    private var _context = Allocated(Mutex(_Context()))
 
     /// Initialize a new event recorder.
     ///
@@ -91,7 +95,7 @@ extension Event.JUnitXMLRecorder {
 
     switch event.kind {
     case .runStarted:
-      _context.withLock { context in
+      _context.value.withLock { context in
         context.runStartInstant = instant
       }
       return #"""
@@ -102,7 +106,7 @@ extension Event.JUnitXMLRecorder {
     case .testStarted where false == test?.isSuite:
       let id = test!.id
       let keyPath = id.keyPathRepresentation
-      _context.withLock { context in
+      _context.value.withLock { context in
         context.testCount += 1
         context.testData[keyPath] = _Context.TestData(id: id, startInstant: instant)
       }
@@ -110,14 +114,15 @@ extension Event.JUnitXMLRecorder {
     case .testEnded where false == test?.isSuite:
       let id = test!.id
       let keyPath = id.keyPathRepresentation
-      _context.withLock { context in
+      _context.value.withLock { context in
         context.testData[keyPath]?.endInstant = instant
       }
       return nil
     case let .testSkipped(skipInfo) where false == test?.isSuite:
       let id = test!.id
       let keyPath = id.keyPathRepresentation
-      _context.withLock { context in
+      _context.value.withLock { context in
+        context.testCount += 1
         context.testData[keyPath] = _Context.TestData(id: id, startInstant: instant, skipInfo: skipInfo)
       }
       return nil
@@ -127,25 +132,25 @@ extension Event.JUnitXMLRecorder {
       }
       if let id = test?.id {
         let keyPath = id.keyPathRepresentation
-        _context.withLock { context in
+        _context.value.withLock { context in
           context.testData[keyPath]?.issues.append(issue)
         }
       } else {
-        _context.withLock { context in
+        _context.value.withLock { context in
           context.issuesForUnknownTests.append(issue)
         }
       }
       return nil
     case .runEnded:
-      return _context.withLock { context in
+      return _context.value.withLock { context in
         let issueCount = context.testData
-          .compactMap(\.value?.issues.count)
+          .compactMap { $0.value?.issues.count }
           .reduce(into: 0, +=) + context.issuesForUnknownTests.count
         let skipCount = context.testData
-          .compactMap(\.value?.skipInfo)
+          .compactMap { $0.value?.skipInfo }
           .count
-        let durationNanoseconds = context.runStartInstant.map { $0.nanoseconds(until: instant) } ?? 0
-        let durationSeconds = Double(durationNanoseconds) / 1_000_000_000
+        let durationSeconds = context.runStartInstant
+          .map { $0.duration(to: instant) / .seconds(1) } ?? 0.0
         return #"""
             <testsuite name="TestResults" errors="0" tests="\#(context.testCount)" failures="\#(issueCount)" skipped="\#(skipCount)" time="\#(durationSeconds)">
           \#(Self._xml(for: context.testData))
@@ -174,15 +179,14 @@ extension Event.JUnitXMLRecorder {
     if let testData = testDataGraph.value {
       let id = testData.id
       let classNameComponents = CollectionOfOne(id.moduleName) + id.nameComponents.dropLast()
-      let className = classNameComponents.joined(separator: ".")
-      let name = id.nameComponents.last!
+      let className = Self._escapeForXML(classNameComponents.joined(separator: "."))
+      let name = Self._escapeForXML(id.nameComponents.last!)
 
       // Tests that are skipped or for some reason never completed will not have
       // an end instant; don't report timing for such tests.
       var timeClause = ""
       if let endInstant = testData.endInstant {
-        let durationNanoseconds = testData.startInstant.nanoseconds(until: endInstant)
-        let durationSeconds = Double(durationNanoseconds) / 1_000_000_000
+        let durationSeconds = testData.startInstant.duration(to: endInstant) / .seconds(1)
         timeClause = #"time="\#(durationSeconds)" "#
       }
 
@@ -233,7 +237,7 @@ extension Event.JUnitXMLRecorder {
       "&amp;"
     case _ where !character.isASCII || character.isNewline:
       character.unicodeScalars.lazy
-        .map(\.value)
+        .map { $0.value }
         .map { "&#\($0);" }
         .joined()
     default:

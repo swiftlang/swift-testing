@@ -9,9 +9,11 @@
 //
 
 @testable import TestingMacros
+import Testing
 
 import SwiftBasicFormat
 import SwiftDiagnostics
+import SwiftIfConfig
 import SwiftOperators
 import SwiftParser
 import SwiftSyntax
@@ -34,16 +36,24 @@ fileprivate let allMacros: [String: any (Macro & Sendable).Type] = [
   "__testing": PragmaMacro.self,
 ]
 
-func parse(_ sourceCode: String, activeMacros activeMacroNames: [String] = [], removeWhitespace: Bool = false) throws -> (sourceCode: String, diagnostics: [Diagnostic]) {
+func parse(_ sourceCode: String, activeMacros activeMacroNames: [String] = [], removeWhitespace: Bool = false, languageMode: VersionTuple? = nil, isEmbedded: Bool = false) throws -> (sourceCode: String, diagnostics: [Diagnostic]) {
   let activeMacros: [String: any Macro.Type]
   if activeMacroNames.isEmpty {
     activeMacros = allMacros
   } else {
     activeMacros = allMacros.filter { activeMacroNames.contains($0.key) }
   }
+  var buildConfiguration: StaticBuildConfiguration?
+  if let languageMode {
+    buildConfiguration = StaticBuildConfiguration(languageVersion: languageMode, compilerVersion: VersionTuple(99, 0))
+  }
+  if isEmbedded {
+    try #require(languageMode != nil, "Language mode must be specified to parse for Embedded Swift")
+    buildConfiguration?.features.insert("Embedded")
+  }
   let operatorTable = OperatorTable.standardOperators
   let originalSyntax = try operatorTable.foldAll(Parser.parse(source: sourceCode))
-  let context = BasicMacroExpansionContext(lexicalContext: [], expansionDiscriminator: "", sourceFiles: [:])
+  let context = BasicMacroExpansionContext(lexicalContext: [], expansionDiscriminator: "", sourceFiles: [:], buildConfiguration: buildConfiguration)
   let syntax = try operatorTable.foldAll(
     originalSyntax.expand(macros: activeMacros) { syntax in
       BasicMacroExpansionContext(sharingWith: context, lexicalContext: syntax.allMacroLexicalContexts())

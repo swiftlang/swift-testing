@@ -12,6 +12,16 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import SwiftDiagnostics
+import SwiftIfConfig
+
+extension MacroExpansionContext {
+  /// Whether or not the target is building for Embedded Swift.
+  var isTargetEmbedded: Bool {
+    (try? buildConfiguration?.hasFeature(name: "Embedded")) ?? false
+  }
+}
+
+// MARK: -
 
 extension MacroExpansionContext {
   /// Get the type of the given lexical context.

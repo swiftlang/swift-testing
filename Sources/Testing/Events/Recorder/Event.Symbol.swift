@@ -28,7 +28,8 @@ extension Event {
 
     /// The symbol to use when a test passes with one or more warnings.
     @_spi(Experimental)
-    case passWithWarnings
+    @available(*, deprecated, renamed: "warning")
+    static var passWithWarnings: Self { .warning }
 
     /// The symbol to use when a test fails.
     case fail
@@ -37,7 +38,7 @@ extension Event {
     case difference
 
     /// A warning or caution symbol to use when the developer should be aware of
-    /// some condition.
+    /// some condition, or if a test passes with one or more warnings.
     case warning
 
     /// The symbol to use when presenting details about an event to the user.
@@ -45,10 +46,31 @@ extension Event {
 
     /// The symbol to use when describing an instance of ``Attachment``.
     case attachment
+
+    /// A custom symbol.
+    ///
+    /// - Parameters:
+    ///   - unicodeCharacter: The Unicode character to use to represent this
+    ///     symbol in text-based output.
+    ///   - windowsCharacter: The Unicode character to use to represent this
+    ///     symbol in text-based output on Windows, where the default console
+    ///     font has more limited Unicode support.
+    ///   - sfSymbolCharacter: The character corresponding to this symbol in the
+    ///     SF&nbsp;Symbols system font.
+    ///   - sfSymbolName: The name of the SF&nbsp;Symbol corresponding to this
+    ///     symbol.
+    ///   - color: The color to use when rendering this symbol, if any.
+    case custom(
+      unicodeCharacter: Character,
+      windowsCharacter: Character,
+      sfSymbolCharacter: Character,
+      sfSymbolName: String,
+      color: Color? = nil
+    )
   }
 }
 
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
 // MARK: - SF Symbols
 
 extension Event.Symbol {
@@ -61,12 +83,10 @@ extension Event.Symbol {
       ("\u{10065F}", "arrow.triangle.turn.up.right.diamond.fill")
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
-        ("\u{100883}", "xmark.diamond")
+        ("\u{100882}", "minus.diamond.fill")
       } else {
         ("\u{10105B}", "checkmark.diamond.fill")
       }
-    case .passWithWarnings:
-      ("\u{100123}", "questionmark.diamond.fill")
     case .fail:
       ("\u{100884}", "xmark.diamond.fill")
     case .difference:
@@ -77,15 +97,18 @@ extension Event.Symbol {
       ("\u{100135}", "arrow.turn.down.right")
     case .attachment:
       ("\u{100237}", "doc")
+    case let .custom(_, _, sfSymbolCharacter, sfSymbolName, _):
+      (sfSymbolCharacter, sfSymbolName)
     }
   }
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
   /// The SF&nbsp;Symbols character corresponding to this instance.
   ///
-  /// This property is not part of the public interface of the testing library.
-  /// Developers should use ``sfSymbolName`` instead.
-  var sfSymbolCharacter: Character {
+  /// - Important: This character only renders as an [SF&nbsp;Symbol](https://developer.apple.com/sf-symbols/)
+  ///   if the user has the SF&nbsp;Symbols app installed. Developers should
+  ///   generally use ``sfSymbolName`` instead.
+  public var sfSymbolCharacter: Character {
     _sfSymbolInfo.privateUseAreaCharacter
   }
 #endif
@@ -111,7 +134,7 @@ extension Event.Symbol {
   /// be used to represent it in text-based output. The value of this property
   /// is platform-dependent.
   public var unicodeCharacter: Character {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI) || hasFeature(Embedded)
     switch self {
     case .default:
       // Unicode: WHITE DIAMOND
@@ -121,15 +144,12 @@ extension Event.Symbol {
       return "\u{279C}"
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
-        // Unicode: HEAVY BALLOT X
-        return "\u{2718}"
+        // Unicode: BOX DRAWINGS HEAVY HORIZONTAL
+        return "\u{2501}"
       } else {
         // Unicode: HEAVY CHECK MARK
         return "\u{2714}"
       }
-    case .passWithWarnings:
-      // Unicode: QUESTION MARK
-      return "\u{003F}"
     case .fail:
       // Unicode: HEAVY BALLOT X
       return "\u{2718}"
@@ -146,6 +166,8 @@ extension Event.Symbol {
       // TODO: decide on symbol
       // Unicode: PRINT SCREEN SYMBOL
       return "\u{2399}"
+    case let .custom(unicodeCharacter, _, _, _, _):
+      return unicodeCharacter
     }
 #elseif os(Windows)
     // The default Windows console font (Consolas) has limited Unicode support,
@@ -159,15 +181,12 @@ extension Event.Symbol {
       return "\u{279C}"
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
-        // Unicode: MULTIPLICATION SIGN
-        return "\u{00D7}"
+        // Unicode: HYPHEN-MINUS
+        return "\u{002D}"
       } else {
         // Unicode: SQUARE ROOT
         return "\u{221A}"
       }
-    case .passWithWarnings:
-      // Unicode: QUESTION MARK
-      return "\u{003F}"
     case .fail:
       // Unicode: MULTIPLICATION SIGN
       return "\u{00D7}"
@@ -184,6 +203,8 @@ extension Event.Symbol {
       // TODO: decide on symbol
       // Unicode: PRINT SCREEN SYMBOL
       return "\u{2399}"
+    case let .custom(_, windowsCharacter, _, _, _):
+      return windowsCharacter
     }
 #else
 #warning("Platform-specific implementation missing: Unicode characters unavailable")
@@ -192,6 +213,30 @@ extension Event.Symbol {
   }
 }
 
-// MARK: - Codable
+// MARK: - Color
 
-extension Event.Symbol: Codable {}
+extension Event.Symbol {
+  /// The color to use when rendering this instance, if any.
+  public var color: Color? {
+    switch self {
+    case .default, .skip, .difference:
+      .darkGray
+    case let .pass(knownIssueCount):
+      if knownIssueCount > 0 {
+        .darkGray
+      } else {
+        .green
+      }
+    case .fail:
+      .red
+    case .warning:
+      .yellow
+    case .details:
+      nil
+    case .attachment:
+      .blue
+    case let .custom(_, _, _, _, color):
+      color
+    }
+  }
+}

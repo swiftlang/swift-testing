@@ -78,9 +78,10 @@ the process), it can be annotated `@MainActor`:
 ### Limit the availability of a test
 
 If a test function can only run on newer versions of an operating system or of
-the Swift language, use the `@available` attribute when declaring it. Use the
-`message` argument of the `@available` attribute to specify a message to log if
-a test is unable to run due to limited availability:
+the Swift language, use the `@available` attribute when declaring it. When a
+test can't run due to limited availability, the testing library reports it as
+skipped. Use the `message` argument of the `@available` attribute to include a
+message explaining why the test is unable to run:
 
 ```swift
 @available(macOS 11.0, *)

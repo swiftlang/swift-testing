@@ -15,17 +15,19 @@ add_compile_options(
 add_compile_options(
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -require-explicit-sendable>")
 add_compile_options(
-  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-experimental-feature -Xfrontend AccessLevelOnImport>")
+  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-experimental-feature -Xfrontend AccessLevelOnImport>"
+  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-experimental-feature -Xfrontend Lifetimes>"
+  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-experimental-feature -Xfrontend Extern>")
 add_compile_options(
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend ExistentialAny>"
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend InternalImportsByDefault>"
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend MemberImportVisibility>"
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend InferIsolatedConformances>")
 
+# We don't build test targets with CMake, so everything is content.
+add_compile_definitions("SWT_BUILDING_SWIFT_TESTING_CONTENT")
+
 # Platform-specific definitions.
-if(APPLE)
-  add_compile_definitions("SWT_TARGET_OS_APPLE")
-endif()
 set(SWT_NO_EXIT_TESTS_LIST "iOS" "watchOS" "tvOS" "visionOS" "WASI" "Android")
 if(CMAKE_SYSTEM_NAME IN_LIST SWT_NO_EXIT_TESTS_LIST)
   add_compile_definitions("SWT_NO_EXIT_TESTS")
@@ -45,9 +47,23 @@ endif()
 if (NOT (APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Windows"))
   add_compile_definitions("SWT_NO_IMAGE_ATTACHMENTS")
 endif()
+set(SWT_NO_FILE_CLONING_LIST "OpenBSD" "WASI" "Android")
+if(CMAKE_SYSTEM_NAME IN_LIST SWT_NO_FILE_CLONING_LIST)
+  add_compile_definitions("SWT_NO_FILE_CLONING")
+endif()
 
 file(STRINGS "${SWT_SOURCE_ROOT_DIR}/VERSION.txt" SWT_TESTING_LIBRARY_VERSION LIMIT_COUNT 1)
 if(SWT_TESTING_LIBRARY_VERSION)
   message(STATUS "Swift Testing version: ${SWT_TESTING_LIBRARY_VERSION}")
   add_compile_definitions("$<$<COMPILE_LANGUAGE:CXX>:SWT_TESTING_LIBRARY_VERSION=\"${SWT_TESTING_LIBRARY_VERSION}\">")
+endif()
+
+if((NOT BUILD_SHARED_LIBS) AND (NOT CMAKE_SYSTEM_NAME STREQUAL "WASI"))
+  # When building a static library, Interop is not supported at this time
+  add_compile_definitions("SWT_NO_INTEROP")
+endif()
+
+set(SWT_NO_HARNESS_LIST "iOS" "watchOS" "tvOS" "visionOS" "WASI" "Android")
+if(CMAKE_SYSTEM_NAME IN_LIST SWT_NO_HARNESS_LIST)
+  add_compile_definitions("SWT_NO_HARNESS")
 endif()

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "swiftCompiler": {
+    "extraCLIOptions": [
+      "-enable-experimental-feature", "Embedded",
+      "-wmo",
+      "-Xfrontend", "-disable-stack-protector"
+    ]
+  },
+  "linker": {
+    "extraCLIOptions": [
+      "-lswift_Concurrency",
+      "-lswiftUnicodeDataTables",
+      "-lswiftEmbeddedPlatformPOSIX",
+      "-lswiftEmbeddedPlatformSingleThreaded"
+    ]
+  }
+}

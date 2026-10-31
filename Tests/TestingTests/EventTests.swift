@@ -14,7 +14,6 @@ private import _TestingInternals
 
 @Suite("Event Tests")
 struct EventTests {
-#if canImport(Foundation)
   @Test("Event's and Event.Kinds's Codable Conformances",
         arguments: [
           Event.Kind.expectationChecked(
@@ -56,7 +55,7 @@ struct EventTests {
   func codable(kind: Event.Kind) async throws {
     let testID = Test.ID(moduleName: "ModuleName",
                          nameComponents: ["NameComponent1", "NameComponent2"],
-                         sourceLocation: #_sourceLocation)
+                         sourceLocation: #Testing::sourceLocation)
     let testCaseID = Test.Case.ID(argumentIDs: nil, discriminator: nil, isStable: true)
     let event = Event(kind, testID: testID, testCaseID: testCaseID, instant: .now)
     let eventSnapshot = Event.Snapshot(snapshotting: event)
@@ -67,14 +66,14 @@ struct EventTests {
 
   @Test("Event.Contexts's Codable Conformances")
   func codable() async throws {
-    let eventContext = Event.Context(test: .current, testCase: .current, configuration: .current)
+    let eventContext = Event.Context(test: .current, testCase: .current, iteration: 0, configuration: .current)
     let snapshot = Event.Context.Snapshot(snapshotting: eventContext)
 
     let decoded = try JSON.encodeAndDecode(snapshot)
 
     #expect(String(describing: decoded.test) == String(describing: eventContext.test.map(Test.Snapshot.init(snapshotting:))))
     #expect(String(describing: decoded.testCase) == String(describing: eventContext.testCase.map(Test.Case.Snapshot.init(snapshotting:))))
+    #expect(decoded.iteration == eventContext.iteration)
   }
-#endif
 }
 #endif

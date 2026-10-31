@@ -8,71 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A protocol describing types with a custom string representation when
 /// presented as part of a test's output.
-///
-/// Values whose types conform to this protocol use it to describe themselves
-/// when they are present as part of the output of a test. For example, this
-/// protocol affects the display of values that are passed as arguments to test
-/// functions or that are elements of an expectation failure.
-///
-/// By default, the testing library converts values to strings using
-/// `String(describing:)`. The resulting string may be inappropriate for some
-/// types and their values. If the type of the value is made to conform to
-/// ``CustomTestStringConvertible``, then the value of its ``testDescription``
-/// property will be used instead.
-///
-/// For example, consider the following type:
-///
-/// ```swift
-/// enum Food: CaseIterable {
-///   case paella, oden, ragu
-/// }
-/// ```
-///
-/// If an array of cases from this enumeration is passed to a parameterized test
-/// function:
-///
-/// ```swift
-/// @Test(arguments: Food.allCases)
-/// func isDelicious(_ food: Food) { ... }
-/// ```
-///
-/// Then the values in the array need to be presented in the test output, but
-/// the default description of a value may not be adequately descriptive:
-///
-/// ```
-/// ◇ Test case passing 1 argument food → .paella to isDelicious(_:) started.
-/// ◇ Test case passing 1 argument food → .oden to isDelicious(_:) started.
-/// ◇ Test case passing 1 argument food → .ragu to isDelicious(_:) started.
-/// ```
-///
-/// By adopting ``CustomTestStringConvertible``, customized descriptions can be
-/// included:
-///
-/// ```swift
-/// extension Food: CustomTestStringConvertible {
-///   var testDescription: String {
-///     switch self {
-///     case .paella:
-///       "paella valenciana"
-///     case .oden:
-///       "おでん"
-///     case .ragu:
-///       "ragù alla bolognese"
-///     }
-///   }
-/// }
-/// ```
-///
-/// The presentation of these values will then reflect the value of the
-/// ``testDescription`` property:
-///
-/// ```
-/// ◇ Test case passing 1 argument food → paella valenciana to isDelicious(_:) started.
-/// ◇ Test case passing 1 argument food → おでん to isDelicious(_:) started.
-/// ◇ Test case passing 1 argument food → ragù alla bolognese to isDelicious(_:) started.
-/// ```
 ///
 /// ## See Also
 ///
@@ -95,7 +34,9 @@ extension String {
   /// ## See Also
   ///
   /// - ``CustomTestStringConvertible``
+  @_unavailableInEmbedded
   public init(describingForTest value: some Any) {
+#if !hasFeature(Embedded)
     // The mangled type name SPI doesn't handle generic types very well, so we
     // ask for the dynamic type of `value` (type(of:)) instead of just T.self.
     lazy var valueTypeInfo = TypeInfo(describingTypeOf: value)
@@ -124,11 +65,80 @@ extension String {
       // Use the generic description of the value.
       self.init(describing: value)
     }
+#else
+    swt_unreachable()
+#endif
   }
+
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// @Comment {
+  ///   This overload is used to trivially describe values that are statically
+  ///   known to conform to ``CustomTestStringConvertible``.
+  /// }
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  @_documentation(visibility: private)
+  @inlinable public init(describingForTest value: borrowing some CustomTestStringConvertible) {
+    self = value.testDescription
+  }
+
+#if hasFeature(Embedded)
+  public init(describingForTest value: borrowing some CustomStringConvertible & CustomTestStringConvertible) {
+    self = value.testDescription
+  }
+
+  public init(describingForTest value: borrowing some CustomStringConvertible) {
+    self = String(describing: copy value)
+  }
+
+  public init(describingForTest value: borrowing some CustomDebugStringConvertible & CustomTestStringConvertible) {
+    self = value.testDescription
+  }
+
+  public init(describingForTest value: borrowing some CustomDebugStringConvertible) {
+    self = value.debugDescription // BUG: swift-#93531
+  }
+
+  public init(describingForTest value: borrowing some CustomStringConvertible & CustomDebugStringConvertible & CustomTestStringConvertible) {
+    self = value.testDescription
+  }
+
+  public init(describingForTest value: borrowing some CustomStringConvertible & CustomDebugStringConvertible) {
+    self = String(describing: copy value)
+  }
+
+  @_disfavoredOverload
+  @available(*, deprecated, message: "String representations of arbitrary values are not supported in Embedded Swift")
+  init(describingForTest value: borrowing some ~Copyable & ~Escapable) {
+    // FIXME: need some sort of description functionality for arbitrary values
+    self = UnavailableInEmbeddedSwift.testDescription
+  }
+
+  init(describingForTest value: (some ~Copyable & ~Escapable).Type) {
+    // FIXME: need some sort of description functionality for types
+    self = UnavailableInEmbeddedSwift.testDescription
+  }
+
+  init(describingForTest error: any Error) {
+    let domain = error._domain
+    if domain == "(unknown domain in Embedded Swift)" { // TODO: avoid hard-coding
+      self = "error \(error._code) in unknown domain"
+    } else {
+      self = "error \(error._code) in domain '\(domain)'"
+    }
+  }
+#endif
 }
 
 // MARK: - Built-in implementations
 
+#if !hasFeature(Embedded)
 /// The _de facto_ implementation of ``CustomTestStringConvertible`` for a
 /// metatype value.
 ///
@@ -147,16 +157,145 @@ extension Optional: CustomTestStringConvertible {
     case let .some(unwrappedValue):
       String(describingForTest: unwrappedValue)
     case nil:
-      "nil"
+      _OptionalNilComparisonType.testDescription
     }
   }
 }
-
-extension _OptionalNilComparisonType: CustomTestStringConvertible {
+#else
+extension Optional: CustomTestStringConvertible where Wrapped: CustomTestStringConvertible {
   public var testDescription: String {
-    "nil"
+    switch self {
+    case let .some(unwrappedValue):
+      String(describingForTest: unwrappedValue)
+    case nil:
+      _OptionalNilComparisonType.testDescription
+    }
   }
 }
+#endif
+
+extension _OptionalNilComparisonType: CustomTestStringConvertible {
+  @inlinable static var testDescription: String {
+    "nil"
+  }
+
+  public var testDescription: String {
+    Self.testDescription
+  }
+}
+
+#if hasFeature(Embedded)
+// MARK: - Arithmetic types (Embedded Swift only)
+
+extension Numeric where Self: CustomStringConvertible & CustomTestStringConvertible {
+  public var testDescription: String {
+    String(describing: self)
+  }
+}
+
+extension Int: CustomTestStringConvertible {}
+extension Int8: CustomTestStringConvertible {}
+extension Int16: CustomTestStringConvertible {}
+extension Int32: CustomTestStringConvertible {}
+extension Int64: CustomTestStringConvertible {}
+extension Int128: CustomTestStringConvertible {}
+
+extension UInt: CustomTestStringConvertible {}
+extension UInt8: CustomTestStringConvertible {}
+extension UInt16: CustomTestStringConvertible {}
+extension UInt32: CustomTestStringConvertible {}
+extension UInt64: CustomTestStringConvertible {}
+extension UInt128: CustomTestStringConvertible {}
+
+extension Float16: CustomTestStringConvertible {}
+extension Float32: CustomTestStringConvertible {}
+extension Float64: CustomTestStringConvertible {}
+#if !(os(Windows) || os(Android) || ($Embedded && !os(Linux) && !os(anyAppleOS))) && (arch(i386) || arch(x86_64))
+extension Float80: CustomTestStringConvertible {}
+#endif
+
+extension Bool: CustomTestStringConvertible {
+  public var testDescription: String {
+    self ? "true" : "false"
+  }
+}
+
+// MARK: - Pointer types (Embedded Swift only)
+
+extension _Pointer where Self: CustomTestStringConvertible {
+  public var testDescription: String {
+    let bitPattern = UInt(bitPattern: self)
+    return "0x\(String(bitPattern, radix: 16))"
+  }
+}
+
+extension UnsafeRawPointer: CustomTestStringConvertible {}
+extension UnsafeMutableRawPointer: CustomTestStringConvertible {}
+extension UnsafePointer: CustomTestStringConvertible {}
+extension UnsafeMutablePointer: CustomTestStringConvertible {}
+
+extension OpaquePointer: CustomTestStringConvertible {
+  public var testDescription: String {
+    let bitPattern = UInt(bitPattern: self)
+    return "0x\(String(bitPattern, radix: 16))"
+  }
+}
+
+extension UnsafeRawBufferPointer: CustomTestStringConvertible {
+  public var testDescription: String {
+    let bitPattern = UInt(bitPattern: baseAddress)
+    return "UnsafeRawBufferPointer(start: 0x\(String(bitPattern, radix: 16)), count: \(count))"
+  }
+}
+
+extension UnsafeMutableRawBufferPointer: CustomTestStringConvertible {
+  public var testDescription: String {
+    let bitPattern = UInt(bitPattern: baseAddress)
+    return "UnsafeMutableRawBufferPointer(start: 0x\(String(bitPattern, radix: 16)), count: \(count))"
+  }
+}
+
+extension UnsafeBufferPointer: CustomTestStringConvertible {
+  public var testDescription: String {
+    let bitPattern = UInt(bitPattern: baseAddress)
+    return "UnsafeBufferPointer(start: 0x\(String(bitPattern, radix: 16)), count: \(count))"
+  }
+}
+
+extension UnsafeMutableBufferPointer: CustomTestStringConvertible {
+  public var testDescription: String {
+    let bitPattern = UInt(bitPattern: baseAddress)
+    return "UnsafeMutableBufferPointer(start: 0x\(String(bitPattern, radix: 16)), count: \(count))"
+  }
+}
+
+// MARK: - Collection types (Embedded Swift only)
+
+extension Sequence where Self: CustomStringConvertible & CustomTestStringConvertible, Self.Element: CustomTestStringConvertible {
+  public var testDescription: String {
+    String(describing: self)
+  }
+}
+
+extension Array: CustomTestStringConvertible where Element: CustomTestStringConvertible {
+  public var testDescription: String {
+    let result = self.lazy
+      .map { String(describingForTest: $0) }
+      .joined(separator: ", ")
+    return "[\(result)]"
+  }
+}
+
+extension Dictionary: CustomTestStringConvertible where Key: CustomTestStringConvertible, Value: CustomTestStringConvertible {
+  public var testDescription: String {
+    let result = self.lazy
+      .map { (String(describingForTest: $0), String(describingForTest: $1)) }
+      .map { "\($0): \($1)" }
+      .joined(separator: ",")
+    return "[\(result)]"
+  }
+}
+#endif
 
 // MARK: - Strings
 
@@ -169,6 +308,15 @@ extension CustomTestStringConvertible where Self: StringProtocol {
 extension String: CustomTestStringConvertible {}
 extension Substring: CustomTestStringConvertible {}
 
+#if hasFeature(Embedded)
+extension StaticString: CustomTestStringConvertible {
+  public var testDescription: String {
+    String(describing: self)
+  }
+}
+#endif
+
+#if !hasFeature(Embedded)
 // MARK: - Ranges
 
 extension ClosedRange: CustomTestStringConvertible {
@@ -200,3 +348,4 @@ extension Range: CustomTestStringConvertible {
     "\(String(describingForTest: lowerBound)) ..< \(String(describingForTest: upperBound))"
   }
 }
+#endif

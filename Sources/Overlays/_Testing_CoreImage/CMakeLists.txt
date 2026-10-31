@@ -7,8 +7,9 @@
 # See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 if(APPLE)
+  include(ModuleABIName)
   add_library(_Testing_CoreImage
-    Attachments/CIImage+AttachableAsCGImage.swift
+    Attachments/CIImage+AttachableAsImage.swift
     ReexportTesting.swift)
 
   target_link_libraries(_Testing_CoreImage PUBLIC

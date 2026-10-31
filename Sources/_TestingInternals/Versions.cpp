@@ -10,10 +10,13 @@
 
 #include "Versions.h"
 
-#include <array>
-#include <algorithm>
-#include <iterator>
-#include <mutex>
+/// A type that represents a C string and can substitute for `std::array` on
+/// systems where that type is not available.
+template <size_t count>
+struct CString {
+  /// The underlying C string.
+  char value[count];
+};
 
 const char *swt_getTestingLibraryVersion(void) {
 #if defined(SWT_TESTING_LIBRARY_VERSION)
@@ -22,31 +25,33 @@ const char *swt_getTestingLibraryVersion(void) {
   return SWT_TESTING_LIBRARY_VERSION;
 #elif __clang_major__ >= 17 && defined(__has_embed)
 #if __has_embed("../../VERSION.txt")
-  // Read the version from version.txt at the root of the package's repo.
-  static char version[] = {
+  static constexpr CString result = [] () {
+    // Read the version from version.txt at the root of the package's repo.
+    constexpr const char version[] = {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc23-extensions"
 #embed "../../VERSION.txt" suffix(, '\0')
 #pragma clang diagnostic pop
-  };
+    };
 
-  // Zero out the newline character and anything after it.
-  static std::once_flag once;
-  std::call_once(once, [] {
-    auto i = std::find_if(std::begin(version), std::end(version), [] (char c) {
-      return c == '\r' || c == '\n';
-    });
-    std::fill(i, std::end(version), '\0');
-  });
+    // Copy from the C string into a C++ array, stopping at the first newline if
+    // one is present.
+    CString<sizeof(version)> result {};
+    for (size_t i = 0; i < sizeof(version); i++) {
+      char c = version[i];
+      if (c == '\r' || c == '\n') {
+        break;
+      }
+      result.value[i] = c;
+    }
+    return result;
+  }();
 
-  return version;
+  return result.value;
 #else
 #warning SWT_TESTING_LIBRARY_VERSION not defined and VERSION.txt not found: testing library version is unavailable
   return nullptr;
 #endif
-#elif defined(__OpenBSD__)
-  // OpenBSD's version of clang doesn't support __has_embed or #embed.
-  return nullptr;
 #else
 #warning SWT_TESTING_LIBRARY_VERSION not defined and could not read from VERSION.txt at compile time: testing library version is unavailable
   return nullptr;

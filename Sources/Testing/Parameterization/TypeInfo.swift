@@ -8,17 +8,23 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 /// A description of the type of a value encountered during testing or a
 /// parameter of a test function.
 @_spi(ForToolsIntegrationOnly)
 public struct TypeInfo: Sendable {
   /// An enumeration defining backing storage for an instance of ``TypeInfo``.
   private enum _Kind: Sendable {
+#if !hasFeature(Embedded)
     /// The type info represents a concrete metatype.
     ///
     /// - Parameters:
     ///   - type: The concrete metatype.
-    case type(_ type: any ~Copyable.Type)
+    case type(_ type: any (~Copyable & ~Escapable).Type)
+#endif
 
     /// The type info represents a metatype, but a reference to that metatype is
     /// not available at runtime.
@@ -34,25 +40,29 @@ public struct TypeInfo: Sendable {
   /// The kind of type info.
   private var _kind: _Kind
 
+#if !hasFeature(Embedded)
   /// The described type, if available.
   ///
   /// If this instance was created from a type name, or if it was previously
   /// encoded and decoded, the value of this property is `nil`.
-  public var type: (any ~Copyable.Type)? {
+  public var type: (any (~Copyable & ~Escapable).Type)? {
     if case let .type(type) = _kind {
       return type
     }
     return nil
   }
+#endif
 
   /// Initialize an instance of this type with the specified names.
   ///
   /// - Parameters:
-  ///   - fullyQualifiedComponents: The fully-qualified name components of the
-  ///     type.
-  ///   - unqualified: The unqualified name of the type.
+  ///   - fullyQualifiedNameComponents: The fully-qualified name components of
+  ///   	the type.
+  ///   - unqualifiedName: The unqualified name of the type. If `nil`, the last
+  ///   	string in `fullyQualifiedNameComponents` is used instead.
   ///   - mangled: The mangled name of the type, if available.
-  init(fullyQualifiedNameComponents: [String], unqualifiedName: String, mangledName: String? = nil) {
+  init(fullyQualifiedNameComponents: [String], unqualifiedName: String? = nil, mangledName: String? = nil) {
+    let unqualifiedName = unqualifiedName ?? fullyQualifiedNameComponents.last ?? fullyQualifiedNameComponents.joined(separator: ".")
     _kind = .nameOnly(
       fullyQualifiedComponents: fullyQualifiedNameComponents,
       unqualified: unqualifiedName,
@@ -65,21 +75,25 @@ public struct TypeInfo: Sendable {
   /// - Parameters:
   ///   - fullyQualifiedName: The fully-qualified name of the type, with its
   ///     components separated by a period character (`"."`).
-  ///   - unqualified: The unqualified name of the type.
+  ///   - unqualified: The unqualified name of the type. If `nil`, this string
+  ///     is derived from `fullyQualifiedName`.
   ///   - mangled: The mangled name of the type, if available.
-  init(fullyQualifiedName: String, unqualifiedName: String, mangledName: String?) {
+  init(fullyQualifiedName: String, unqualifiedName: String? = nil, mangledName: String?) {
+    let fullyQualifiedNameComponents = Self.fullyQualifiedNameComponents(ofTypeWithName: fullyQualifiedName)
+    let unqualifiedName = unqualifiedName ?? fullyQualifiedNameComponents.last ?? fullyQualifiedName
     self.init(
-      fullyQualifiedNameComponents: Self.fullyQualifiedNameComponents(ofTypeWithName: fullyQualifiedName),
+      fullyQualifiedNameComponents: fullyQualifiedNameComponents,
       unqualifiedName: unqualifiedName,
       mangledName: mangledName
     )
   }
 
+#if !hasFeature(Embedded)
   /// Initialize an instance of this type describing the specified type.
   ///
   /// - Parameters:
   ///   - type: The type which this instance should describe.
-  init(describing type: (some ~Copyable).Type) {
+  init<T>(describing type: T.Type) where T: ~Copyable & ~Escapable {
     _kind = .type(type)
   }
 
@@ -89,10 +103,7 @@ public struct TypeInfo: Sendable {
   /// - Parameters:
   ///   - value: The value whose type this instance should describe.
   init(describingTypeOf value: some Any) {
-#if !hasFeature(Embedded)
-    let value = value as Any
-#endif
-    let type = Swift.type(of: value)
+    let type = Swift.type(of: value as Any)
     self.init(describing: type)
   }
 
@@ -101,9 +112,38 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - value: The value whose type this instance should describe.
-  init<T>(describingTypeOf value: borrowing T) where T: ~Copyable {
+  init<T>(describingTypeOf value: borrowing T) where T: ~Copyable & ~Escapable {
     self.init(describing: T.self)
   }
+#endif
+
+  /// The `Any` type.
+  static var any: Self {
+#if !hasFeature(Embedded)
+    Self(describing: Any.self)
+#else
+    Self(fullyQualifiedNameComponents: ["Swift", "Any"])
+#endif
+  }
+
+  /// The `Bool` type.
+  static var bool: Self {
+#if !hasFeature(Embedded)
+    Self(describing: Bool.self)
+#else
+    Self(fullyQualifiedNameComponents: ["Swift", "Bool"])
+#endif
+  }
+
+  /// The `any Error` type.
+  static var anyError: Self {
+#if !hasFeature(Embedded)
+    Self(describing: (any Error).self)
+#else
+    Self(fullyQualifiedNameComponents: ["Swift", "Error"])
+#endif
+  }
+
 }
 
 // MARK: - Name
@@ -128,24 +168,36 @@ public struct TypeInfo: Sendable {
 func rawIdentifierAwareSplit<S>(_ string: S, separator: Character, maxSplits: Int = .max) -> [S.SubSequence] where S: StringProtocol {
   var result = [S.SubSequence]()
 
+  // Characters with special consideration in this function.
+  let backtick: Character = "`"
+  let openAngleBracket: Character = "<"
+  let closeAngleBracket: Character = ">"
+
   var inRawIdentifier = false
+  var genericClauseDepth = 0
   var componentStartIndex = string.startIndex
   for i in string.indices {
     let c = string[i]
-    if c == "`" {
+    if c == backtick {
       // We are either entering or exiting a raw identifier. While inside a raw
       // identifier, separator characters are ignored.
       inRawIdentifier.toggle()
-    } else if c == separator && !inRawIdentifier {
-      // Add everything up to this separator as the next component, then start
-      // a new component after the separator.
-      result.append(string[componentStartIndex ..< i])
-      componentStartIndex = string.index(after: i)
+    } else if !inRawIdentifier {
+      if c == separator && genericClauseDepth == 0 {
+        // Add everything up to this separator as the next component, then start
+        // a new component after the separator.
+        result.append(string[componentStartIndex ..< i])
+        componentStartIndex = string.index(after: i)
 
-      if result.count == maxSplits {
-        // We don't need to find more separators. We'll add the remainder of the
-        // string outside the loop as the last component, then return.
-        break
+        if result.count == maxSplits {
+          // We don't need to find more separators. We'll add the remainder of
+          // the string outside the loop as the last component, then return.
+          break
+        }
+      } else if c == openAngleBracket {
+        genericClauseDepth += 1
+      } else if c == closeAngleBracket {
+        genericClauseDepth -= 1
       }
     }
   }
@@ -184,8 +236,17 @@ extension TypeInfo {
     return String(String.UnicodeScalarView(result))
   }
 
+  /// Keys into the fully-qualified name cache.
+  private enum _CacheKey: Sendable, Equatable, Hashable {
+    /// The key is a type (cast to `ObjectIdentifier`).
+    case type(ObjectIdentifier)
+
+    /// The key is an unsplit fully-qualified name string.
+    case string(String)
+  }
+
   /// An in-memory cache of fully-qualified type name components.
-  private static let _fullyQualifiedNameComponentsCache = Locked<[ObjectIdentifier: [String]]>()
+  private static let _fullyQualifiedNameComponentsCache = Mutex<[_CacheKey: [String]]>()
 
   /// Split the given fully-qualified type name into its components.
   ///
@@ -194,6 +255,13 @@ extension TypeInfo {
   ///
   /// - Returns: The components of `fullyQualifiedName` as substrings thereof.
   static func fullyQualifiedNameComponents(ofTypeWithName fullyQualifiedName: String) -> [String] {
+    let cachedResult = _fullyQualifiedNameComponentsCache.withLock { cache in
+      return cache[.string(fullyQualifiedName)]
+    }
+    if let cachedResult {
+      return cachedResult
+    }
+
     var components = rawIdentifierAwareSplit(fullyQualifiedName, separator: ".")
 
     // If a type is extended in another module and then referenced by name,
@@ -208,7 +276,7 @@ extension TypeInfo {
       components[0] = moduleName
     }
 
-    return components.lazy
+    let result: [String] = components.lazy
       .filter { component in
         // If a type is private or embedded in a function, its fully qualified
         // name may include "(unknown context at $xxxxxxxx)" as a component.
@@ -223,6 +291,12 @@ extension TypeInfo {
           component
         }
       }.map(String.init)
+
+    _fullyQualifiedNameComponentsCache.withLock { cache in
+      cache[.string(fullyQualifiedName)] = result
+    }
+
+    return result
   }
 
   /// The complete name of this type, with the names of all referenced types
@@ -242,18 +316,23 @@ extension TypeInfo {
   /// `["Example", "A", "B"]`.
   public var fullyQualifiedNameComponents: [String] {
     switch _kind {
+#if !hasFeature(Embedded)
     case let .type(type):
-      if let cachedResult = Self._fullyQualifiedNameComponentsCache.rawValue[ObjectIdentifier(type)] {
+      let cachedResult = Self._fullyQualifiedNameComponentsCache.withLock { cache in
+        return cache[.type(ObjectIdentifier(type))]
+      }
+      if let cachedResult {
         return cachedResult
       }
 
       let result = Self.fullyQualifiedNameComponents(ofTypeWithName: String(reflecting: type))
 
-      Self._fullyQualifiedNameComponentsCache.withLock { fullyQualifiedNameComponentsCache in
-        fullyQualifiedNameComponentsCache[ObjectIdentifier(type)] = result
+      Self._fullyQualifiedNameComponentsCache.withLock { cache in
+        cache[.type(ObjectIdentifier(type))] = result
       }
 
       return result
+#endif
     case let .nameOnly(fullyQualifiedNameComponents, _, _):
       return fullyQualifiedNameComponents
     }
@@ -292,6 +371,7 @@ extension TypeInfo {
   /// The value of this property for the type `A.B` would simply be `"B"`.
   public var unqualifiedName: String {
     switch _kind {
+#if !hasFeature(Embedded)
     case let .type(type):
       // Replace non-breaking spaces with spaces. See the helper function's
       // documentation for more information.
@@ -299,6 +379,7 @@ extension TypeInfo {
       result = Self._rewriteNonBreakingSpacesAsASCIISpaces(in: result) ?? result
 
       return result
+#endif
     case let .nameOnly(_, unqualifiedName, _):
       return unqualifiedName
     }
@@ -316,21 +397,39 @@ extension TypeInfo {
   /// could not determine the mangled name of the represented type, the value of
   /// this property is `nil`.
   var mangledName: String? {
-    guard #available(_mangledTypeNameAPI, *) else {
-      return nil
-    }
     switch _kind {
+#if !hasFeature(Embedded)
     case let .type(type):
-      return _mangledTypeName(type)
+      return _mangledTypeName(type).map { "$s\($0)" }
+#endif
     case let .nameOnly(_, _, mangledName):
       return mangledName
     }
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Properties
 
 extension TypeInfo {
+  /// The UTF-8 prefix applied to mangled type names in the `__C` module.
+  private static let _swiftMangledNamePrefix = Array("$s".utf8)
+
+  /// Check whether or not the given mangled type name looks like a Swift type
+  /// (including types in the `__C` module) as opposed to, say, a C++ type.
+  ///
+  /// - Parameters:
+  ///   - mangledName: The mangled name to check.
+  ///
+  /// - Returns: Whether or not `mangledName` appears to follow Swift's mangling
+  ///   rules.
+  private static func _looksLikeSwiftMangledName(_ mangledName: some BidirectionalCollection<UTF8.CodeUnit>) -> Bool {
+    mangledName.count > _swiftMangledNamePrefix.count && mangledName.starts(with: _swiftMangledNamePrefix)
+  }
+
+  /// The UTF-8 prefix applied to mangled type names in the `__C` module.
+  private static let _swiftEnumerationMangledNameSuffix = Array("O".utf8)
+
   /// Whether or not the described type is a Swift `enum` type.
   ///
   /// Per the [Swift mangling ABI](https://github.com/swiftlang/swift/blob/main/docs/ABI/Mangling.rst),
@@ -340,8 +439,17 @@ extension TypeInfo {
   ///   `_mangledTypeName()` to derive this information. We should use supported
   ///   API instead. ([swift-#69147](https://github.com/swiftlang/swift/issues/69147))
   var isSwiftEnumeration: Bool {
-    mangledName?.last == "O"
+    guard let mangledName = mangledName?.utf8, Self._looksLikeSwiftMangledName(mangledName) else {
+      return false
+    }
+
+    let suffix = Self._swiftEnumerationMangledNameSuffix
+    let suffixStartIndex = mangledName.index(mangledName.endIndex, offsetBy: -suffix.count)
+    return mangledName[suffixStartIndex...].elementsEqual(suffix)
   }
+
+  /// The UTF-8 prefix applied to mangled type names in the `__C` module.
+  private static let __CModuleMangledNamePrefix = _swiftMangledNamePrefix + Array("So".utf8)
 
   /// Whether or not the described type is imported from C, C++, or Objective-C.
   ///
@@ -355,12 +463,11 @@ extension TypeInfo {
   ///   `_mangledTypeName()` to derive this information. We should use supported
   ///   API instead. ([swift-#69146](https://github.com/swiftlang/swift/issues/69146))
   var isImportedFromC: Bool {
-    guard let mangledName, mangledName.count > 2 else {
+    guard let mangledName = mangledName?.utf8, Self._looksLikeSwiftMangledName(mangledName) else {
       return false
     }
 
-    let prefixEndIndex = mangledName.index(mangledName.startIndex, offsetBy: 2)
-    return mangledName[..<prefixEndIndex] == "So"
+    return mangledName.starts(with: Self.__CModuleMangledNamePrefix)
   }
 }
 
@@ -378,6 +485,7 @@ func isClass(_ subclass: AnyClass, subclassOf superclass: AnyClass) -> Bool {
   }
   return open(subclass, superclass)
 }
+#endif
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible, CustomTestStringConvertible
 
@@ -394,6 +502,7 @@ extension TypeInfo: CustomStringConvertible, CustomDebugStringConvertible {
 // MARK: - Equatable, Hashable
 
 extension TypeInfo: Hashable {
+#if !hasFeature(Embedded)
   /// Check if this instance describes a given type.
   ///
   /// - Parameters:
@@ -403,11 +512,14 @@ extension TypeInfo: Hashable {
   public func describes(_ type: Any.Type) -> Bool {
     self == TypeInfo(describing: type)
   }
+#endif
 
   public static func ==(lhs: Self, rhs: Self) -> Bool {
     switch (lhs._kind, rhs._kind) {
+#if !hasFeature(Embedded)
     case let (.type(lhs), .type(rhs)):
       return ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
+#endif
     default:
       return lhs.fullyQualifiedNameComponents == rhs.fullyQualifiedNameComponents
     }
@@ -418,6 +530,7 @@ extension TypeInfo: Hashable {
   }
 }
 
+#if !SWT_NO_CODABLE
 // MARK: - Codable
 
 extension TypeInfo: Codable {
@@ -448,6 +561,7 @@ extension TypeInfo: Codable {
 }
 
 extension TypeInfo.EncodedForm: Codable {}
+#endif
 
 // MARK: - Custom casts
 
@@ -464,7 +578,7 @@ extension TypeInfo.EncodedForm: Codable {}
 /// self-documenting. In debug builds, it checks that `type` is a C function
 /// type. In release builds, it behaves the same as `unsafeBitCast(_:to:)`.
 func castCFunction<T>(at address: UnsafeRawPointer, to type: T.Type) -> T {
-#if DEBUG
+#if DEBUG && !hasFeature(Embedded)
   if let mangledName = TypeInfo(describing: T.self).mangledName {
     precondition(mangledName.last == "C", "\(#function) should only be used to cast a pointer to a C function type.")
   }
@@ -483,7 +597,7 @@ func castCFunction<T>(at address: UnsafeRawPointer, to type: T.Type) -> T {
 /// self-documenting. In debug builds, it checks that `function` is a C function
 /// pointer. In release builds, it behaves the same as `unsafeBitCast(_:to:)`.
 func castCFunction<T>(_ function: T, to _: UnsafeRawPointer.Type) -> UnsafeRawPointer {
-#if DEBUG
+#if DEBUG && !hasFeature(Embedded)
   if let mangledName = TypeInfo(describing: T.self).mangledName {
     precondition(mangledName.last == "C", "\(#function) should only be used to cast a C function.")
   }

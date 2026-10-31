@@ -23,6 +23,10 @@ as supplemental content located in the
 [`Sources/Testing/Testing.docc/`](https://github.com/swiftlang/swift-testing/tree/main/Sources/Testing/Testing.docc)
 directory.
 
+[Obtaining Swift Testing](https://github.com/swiftlang/swift-testing/blob/main/Documentation/Distributions.md)
+discusses the various ways Swift Testing is distributed and offers recommended
+usage workflows.
+
 ## Vision document and API proposals
 
 The [Vision document](https://github.com/swiftlang/swift-evolution/blob/main/visions/swift-testing.md)
@@ -61,6 +65,9 @@ The [`ABI`](ABI/) directory contains documents related to Swift Testing's ABI:
 that is, parts of its interface that are intended to be stable over time and can
 be used without needing to write any code in Swift:
 
+- [`ABI/EventStreamHandling.md`](ABI/EventStreamHandling.md) contains
+  information about Swift Testing's SPI that you can use when working with the
+  library's JSON event stream.
 - [`ABI/JSON.md`](ABI/JSON.md) contains Swift Testing's JSON specification that
   can be used by tools to interact with Swift Testing either directly or via the
   `swift test` command-line tool.
