@@ -239,12 +239,13 @@ To use static linkage during test discovery, define the
  // ...
 +#elseif os(Classic)
 +private nonisolated(unsafe) let _imageAddress: UnsafeRawPointer? = nil
-+@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
-+@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
++@_silgen_name(raw: "...") private nonisolated(unsafe) let _testContentSectionBegin: _Cell<CChar>
++@_silgen_name(raw: "...") private nonisolated(unsafe) let _testContentSectionEnd: _Cell<CChar>
  #else
- #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
- private nonisolated(unsafe) let _testContentSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
- private nonisolated(unsafe) let _testContentSectionEnd = _testContentSectionBegin
+#warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
+private nonisolated(unsafe) let _imageAddress: UnsafeRawPointer? = nil
+@exclusivity(unchecked) private nonisolated(unsafe) let _testContentSectionBegin = _Cell<CChar>(0)
+private var _testContentSectionEnd: _Cell<CChar> { _read { yield _testContentSectionBegin } }
  #endif
  // ...
 ```
