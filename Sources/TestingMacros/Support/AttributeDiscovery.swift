@@ -169,9 +169,25 @@ struct AttributeInfo {
     // If there are any parameterized test function arguments, wrap each in a
     // closure so they may be evaluated lazily at runtime.
     if let testFunctionArguments {
+      let argumentCount = testFunctionArguments.count
+      let parameterCount = declaration.as(FunctionDeclSyntax.self)?.signature.parameterClause.parameters.count
       arguments += testFunctionArguments.map { argument in
         var copy = argument
-        copy.expression = .init(ClosureExprSyntax { argument.expression.trimmed })
+        copy.expression = ExprSyntax(
+          ClosureExprSyntax {
+            FunctionCallExprSyntax(callee: "Testing.__makeArgumentList" as ExprSyntax) {
+              LabeledExprSyntax(expression: argument.expression.trimmed)
+
+              // We only need to track the parameter count if tuple desugaring
+              // is in play, which cannot happen with multiple argument lists
+              // (because you can't desugar a tuple into a partial parameter
+              // list alongside other parameters).
+              if argumentCount == 1, let parameterCount, parameterCount != argumentCount {
+                LabeledExprSyntax(label: "parameterCount", expression: IntegerLiteralExprSyntax(parameterCount))
+              }
+            }
+          }
+        )
         return copy
       }
     }
