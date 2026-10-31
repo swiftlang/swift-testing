@@ -252,14 +252,14 @@ a custom `hint` type for your accessor functions, you can set
 extension FoodTruckDiagnostic: DiscoverableAsTestContent {
   static var testContentKind: TestContentKind { /* Your `kind` value here. */ }
   
-  typealias TestContentContext = UnsafePointer<FoodTruck.Name>
+  typealias TestContentContext = UnsafePointer<FoodTruck.Name>?
   typealias TestContentAccessorHint = String
 }
 ```
 
 If you customize `TestContentContext`, be aware that the type you specify must
 have the same stride as `UInt` and must have an alignment less than or equal to
-that of `UInt`.
+that of `UInt`. The type must also conform to [`ConvertibleFromBytes`](https://developer.apple.com/documentation/swift/convertiblefrombytes).
 
 When you are done configuring your type's protocol conformance, you can then
 enumerate all test content records matching it as instances of
