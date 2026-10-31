@@ -628,8 +628,10 @@ extension ExitTest {
   /// and standard error streams of the current process.
   private static func _writeBarrierValues() {
     let barrierValue = Self.barrierValue
-    try? FileHandle.stdout.write(barrierValue)
-    try? FileHandle.stderr.write(barrierValue)
+    barrierValue.withUnsafeBufferPointer { barrierValue in
+      try? FileHandle.stdout.write(barrierValue)
+      try? FileHandle.stderr.write(barrierValue)
+    }
   }
 
   /// A handler that is invoked when an exit test starts.

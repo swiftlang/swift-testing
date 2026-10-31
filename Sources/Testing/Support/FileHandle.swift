@@ -138,7 +138,7 @@ struct FileHandle: ~Copyable, Sendable {
   ///   - options: The options to open `path` with.
   ///
   /// - Throws: Any error preventing the stream from being opened.
-  init(atPath path: String, options: OpenOptions) throws {
+  init(atPath path: String, options: OpenOptions) throws(CError) {
 #if os(Windows)
     // Special-case CONOUT$ to map to stdout. This way, if somebody specifies
     // CONOUT$ as the target path for XML or JSON output from `swift test`,
@@ -156,8 +156,8 @@ struct FileHandle: ~Copyable, Sendable {
     }
 
     // Windows deprecates fopen() as insecure, so call _wfopen_s() instead.
-    let fileHandle = try path.withCString(encodedAs: UTF16.self) { path in
-      try options.stringValue.withCString(encodedAs: UTF16.self) { mode in
+    let fileHandle = try path.withCString(encodedAs: UTF16.self) { path throws(CError) in
+      try options.stringValue.withCString(encodedAs: UTF16.self) { mode throws(CError) in
         var file: SWT_FILEHandle?
         let result = _wfopen_s(&file, path, mode)
         guard let file, result == 0 else {
@@ -186,7 +186,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// By default, the resulting file handle is not inherited by any child
   /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
   /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
-  init(forReadingAtPath path: String, options: OpenOptions = []) throws {
+  init(forReadingAtPath path: String, options: OpenOptions = []) throws(CError) {
     try self.init(atPath: path, options: options.union(.readAccess))
   }
 
@@ -202,7 +202,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// By default, the resulting file handle is not inherited by any child
   /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
   /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
-  init(forWritingAtPath path: String, options: OpenOptions = []) throws {
+  init(forWritingAtPath path: String, options: OpenOptions = []) throws(CError) {
     try self.init(atPath: path, options: options.union(.writeAccess))
   }
 
@@ -232,7 +232,7 @@ struct FileHandle: ~Copyable, Sendable {
   ///
   /// The resulting file handle takes ownership of `fd` and closes it when it is
   /// deinitialized or if an error is thrown from this initializer.
-  init(unsafePOSIXFileDescriptor fd: consuming CInt, options: OpenOptions) throws {
+  init(unsafePOSIXFileDescriptor fd: consuming CInt, options: OpenOptions) throws(CError) {
 #if os(Windows)
     let fileHandle = _fdopen(fd, options.stringValue)
 #else
@@ -289,7 +289,7 @@ struct FileHandle: ~Copyable, Sendable {
   ///
   /// Use this function when calling C I/O interfaces such as `fputs()` on the
   /// underlying C file handle.
-  borrowing func withUnsafeCFILEHandle<R>(_ body: (borrowing SWT_FILEHandle) throws -> R) rethrows -> R {
+  borrowing func withUnsafeCFILEHandle<R, E>(_ body: (borrowing SWT_FILEHandle) throws(E) -> R) throws(E) -> R {
     try body(_fileHandle)
   }
 
@@ -306,8 +306,8 @@ struct FileHandle: ~Copyable, Sendable {
   /// that require a file descriptor instead of the standard `FILE *`
   /// representation. If the file handle cannot be converted to a file
   /// descriptor, `nil` is passed to `body`.
-  borrowing func withUnsafePOSIXFileDescriptor<R>(_ body: (borrowing CInt?) throws -> R) rethrows -> R {
-    try withUnsafeCFILEHandle { handle in
+  borrowing func withUnsafePOSIXFileDescriptor<R, E>(_ body: (borrowing CInt?) throws(E) -> R) throws(E) -> R {
+    try withUnsafeCFILEHandle { handle throws(E) in
 #if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
       let fd = fileno(handle)
 #elseif os(Windows)
@@ -337,7 +337,7 @@ struct FileHandle: ~Copyable, Sendable {
   ///
   /// The resulting file handle takes ownership of `handle` and closes it when
   /// it is deinitialized or if an error is thrown from this initializer.
-  init(unsafeWindowsHANDLE handle: consuming HANDLE, options: OpenOptions) throws {
+  init(unsafeWindowsHANDLE handle: consuming HANDLE, options: OpenOptions) throws(CError) {
     var flags: CInt = _O_BINARY
     switch (options.contains(.readAccess), options.contains(.writeAccess)) {
     case (true, true):
@@ -376,8 +376,8 @@ struct FileHandle: ~Copyable, Sendable {
   /// that require the file's `HANDLE` representation instead of the standard
   /// `FILE *` representation. If the file handle cannot be converted to a
   /// Windows handle, `nil` is passed to `body`.
-  borrowing func withUnsafeWindowsHANDLE<R>(_ body: (borrowing HANDLE?) throws -> R) rethrows -> R {
-    try withUnsafePOSIXFileDescriptor { fd in
+  borrowing func withUnsafeWindowsHANDLE<R, E>(_ body: (borrowing HANDLE?) throws(E) -> R) throws(E) -> R {
+    try withUnsafePOSIXFileDescriptor { fd throws(E) in
       guard let fd else {
         return try body(nil)
       }
@@ -403,8 +403,8 @@ struct FileHandle: ~Copyable, Sendable {
   /// to the underlying file. It can be used when, for example, write operations
   /// are split across multiple calls but must not be interleaved with writes on
   /// other threads.
-  borrowing func withLock<R>(_ body: () throws -> R) rethrows -> R {
-    try withUnsafeCFILEHandle { handle in
+  borrowing func withLock<R, E>(_ body: () throws(E) -> R) throws(E) -> R {
+    try withUnsafeCFILEHandle { handle throws(E) in
 #if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
       flockfile(handle)
       defer {
@@ -434,7 +434,7 @@ extension FileHandle {
   ///   current offset and ending at the end of the file.
   ///
   /// - Throws: Any error that occurred while reading the file.
-  func readToEnd() throws -> [UInt8] {
+  func readToEnd() throws(CError) -> [UInt8] {
     var result = [UInt8]()
 
     // If possible, reserve enough space in the resulting buffer to contain
@@ -459,9 +459,9 @@ extension FileHandle {
       result.reserveCapacity(size)
     }
 
-    try withLock {
-      try withUnsafeCFILEHandle { file in
-        try withUnsafeTemporaryAllocation(byteCount: 1024, alignment: 1) { buffer in
+    try withLock { () throws(CError) in
+      try withUnsafeCFILEHandle { file throws(CError) in
+        try withUnsafeTemporaryAllocation(byteCount: 1024, alignment: 1) { buffer throws(CError) in
           repeat {
             let countRead = fread(buffer.baseAddress!, 1, buffer.count, file)
             if 0 != ferror(file) {
@@ -490,8 +490,9 @@ extension FileHandle {
   ///   stream or the first byte that matches `isTerminator`; and the terminator
   ///   byte if one was encountered.
   ///
-  /// - Throws: Any error that occurred while reading the file.
-  func read(until isTerminator: (UInt8) throws -> Bool) throws -> (bytesRead: [UInt8], terminator: UInt8?) {
+  /// - Throws: Any error that occurred while reading the file, or any error
+  ///   thrown by `isTerminator`.
+  func read<E>(until isTerminator: (UInt8) throws(E) -> Bool) throws(any Error) -> (bytesRead: [UInt8], terminator: UInt8?) {
     var bytesRead = [UInt8]()
     var terminator: UInt8?
 
@@ -535,8 +536,8 @@ extension FileHandle {
   ///
   /// - Throws: Any error that occurred while writing `bytes`. If an error
   ///   occurs while flushing the file, it is not thrown.
-  func write(_ bytes: UnsafeBufferPointer<UInt8>, flushAfterward: Bool = true) throws {
-    try withUnsafeCFILEHandle { file in
+  func write(_ bytes: UnsafeBufferPointer<UInt8>, flushAfterward: Bool = true) throws(CError) {
+    try withUnsafeCFILEHandle { file throws(CError) in
       defer {
         if flushAfterward {
           _ = fflush(file)
@@ -555,25 +556,6 @@ extension FileHandle {
   /// Write a sequence of bytes to this file handle.
   ///
   /// - Parameters:
-  ///   - bytes: The bytes to write.
-  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
-  ///     after writing. If `true`, `fflush()` is called even if an error
-  ///     occurred while writing.
-  ///
-  /// - Throws: Any error that occurred while writing `bytes`. If an error
-  ///   occurs while flushing the file, it is not thrown.
-  ///
-  /// - Precondition: `bytes` must provide contiguous storage.
-  func write(_ bytes: some Sequence<UInt8>, flushAfterward: Bool = true) throws {
-    let hasContiguousStorage: Void? = try bytes.withContiguousStorageIfAvailable { bytes in
-      try write(bytes, flushAfterward: flushAfterward)
-    }
-    precondition(hasContiguousStorage != nil, "byte sequence must provide contiguous storage: \(bytes)")
-  }
-
-  /// Write a sequence of bytes to this file handle.
-  ///
-  /// - Parameters:
   ///   - bytes: The bytes to write. This untyped buffer is interpreted as a
   ///     sequence of `UInt8` values.
   ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
@@ -582,8 +564,8 @@ extension FileHandle {
   ///
   /// - Throws: Any error that occurred while writing `bytes`. If an error
   ///   occurs while flushing the file, it is not thrown.
-  func write(_ bytes: UnsafeRawBufferPointer, flushAfterward: Bool = true) throws {
-    try bytes.withMemoryRebound(to: UInt8.self) { bytes in
+  func write(_ bytes: UnsafeRawBufferPointer, flushAfterward: Bool = true) throws(CError) {
+    try bytes.withMemoryRebound(to: UInt8.self) { bytes throws(CError) in
       try write(bytes, flushAfterward: flushAfterward)
     }
   }
@@ -598,8 +580,8 @@ extension FileHandle {
   ///
   /// - Throws: Any error that occurred while writing `bytes`. If an error
   ///   occurs while flushing the file, it is not thrown.
-  func write(_ byte: UInt8, flushAfterward: Bool = true) throws {
-    try withUnsafeCFILEHandle { file in
+  func write(_ byte: UInt8, flushAfterward: Bool = true) throws(CError) {
+    try withUnsafeCFILEHandle { file throws(CError) in
       defer {
         if flushAfterward {
           _ = fflush(file)
@@ -624,8 +606,8 @@ extension FileHandle {
   ///   occurs while flushing the file, it is not thrown.
   ///
   /// `string` is converted to a UTF-8 C string and written to this file handle.
-  func write(_ string: String, flushAfterward: Bool = true) throws {
-    try withUnsafeCFILEHandle { file in
+  func write(_ string: String, flushAfterward: Bool = true) throws(CError) {
+    try withUnsafeCFILEHandle { file throws(CError) in
       defer {
         if flushAfterward {
           _ = fflush(file)
@@ -633,7 +615,7 @@ extension FileHandle {
       }
 
       var string = string
-      try string.withUTF8 { string in
+      try string.withUTF8 { string throws(CError) in
         try write(string, flushAfterward: flushAfterward)
       }
     }
@@ -734,8 +716,8 @@ extension FileHandle {
   /// By default, the resulting file handles are not inherited by any child
   /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
   /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
-  static func makePipe(readEnd: inout FileHandle?, writeEnd: inout FileHandle?) throws {
-    var (fdReadEnd, fdWriteEnd) = try withUnsafeTemporaryAllocation(of: CInt.self, capacity: 2) { fds in
+  static func makePipe(readEnd: inout FileHandle?, writeEnd: inout FileHandle?) throws(CError) {
+    var (fdReadEnd, fdWriteEnd) = try withUnsafeTemporaryAllocation(of: CInt.self, capacity: 2) { fds throws(CError) in
       guard 0 == _pipeWithO_CLOEXEC(fds.baseAddress!) else {
         throw CError(rawValue: swt_errno())
       }
@@ -908,7 +890,7 @@ func canonicalizePath(_ path: String) -> String? {
 ///   - fd: The file descriptor.
 ///
 /// - Throws: Any error that occurred while setting the flag.
-func setFD_CLOEXEC(_ flag: Bool, onFileDescriptor fd: CInt) throws {
+func setFD_CLOEXEC(_ flag: Bool, onFileDescriptor fd: CInt) throws(CError) {
   switch swt_getfdflags(fd) {
   case -1:
     // An error occurred reading the flags for this file descriptor.
