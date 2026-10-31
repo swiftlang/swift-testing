@@ -67,3 +67,7 @@ set(SWT_NO_HARNESS_LIST "iOS" "watchOS" "tvOS" "visionOS" "WASI" "Android")
 if(CMAKE_SYSTEM_NAME IN_LIST SWT_NO_HARNESS_LIST)
   add_compile_definitions("SWT_NO_HARNESS")
 endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+  add_compile_definitions("SWT_NO_AVAILABILITY")
+endif()
