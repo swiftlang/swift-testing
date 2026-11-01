@@ -10,7 +10,7 @@
 
 extension Test.Case {
   /// A type describing a lazily-generated sequence of test cases generated from
-  /// a known collection of argument values.
+  /// a known sequence of argument values.
   ///
   /// Instances of this type can be iterated over multiple times.
   ///
@@ -78,11 +78,15 @@ extension Test.Case {
     ///   - parameters: The parameters of the test function for which test cases
     ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
-    ///     passes an argument value from `collection`.
+    ///     passes an argument value from the Cartesian product of `collection1`
+    ///     and `collection2`.
+    ///
+    /// - Bug: The testing library should support variadic generics.
+    ///     ([103416861](rdar://103416861))
     init<C1, C2>(
       argumentLists collection1: Test.Case.Argument.List<C1>, _ collection2: Test.Case.Argument.List<C2>,
       parameters: [Test.Parameter],
-      testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
+      testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
     ) where S == CartesianProduct<C1, C2> {
       let cartesianProduct = Test.Case.Argument.List(cartesianProduct(collection1.sequence, collection2.sequence)) { element in
         collection1.makeArgumentValues(element.0) + collection2.makeArgumentValues(element.1)

@@ -300,7 +300,7 @@ extension Test {
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
-  ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element: Sendable {
+  ) -> Self where S: ~Copyable & ~Escapable, C: Sequence & Sendable, C.Element: Sendable {
     let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters
     return Self(
@@ -450,35 +450,6 @@ extension Test {
     arguments collection1: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C1, C1.Element>, _ collection2: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C2, C2.Element>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-  ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
-    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
-    let parameters = paramTuples.parameters
-    return Self(
-      name: testFunctionName,
-      displayName: displayName,
-      traits: traits,
-      sourceBounds: sourceBounds,
-      containingTypeInfo: containingTypeInfo,
-      xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: { try await Case.Generator(argumentLists: collection1(), collection2(), parameters: parameters, testFunction: testFunction) },
-      parameters: parameters
-    )
-  }
-
-  /// Create an instance of ``Test`` for a parameterized function.
-  ///
-  /// - Warning: This function is used to implement the `@Test` macro. Do not
-  ///   call it directly.
-  public static func __function<S, C1, C2>(
-    named testFunctionName: String,
-    in containingType: __TypeInfo<S>?,
-    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
-    displayName: String? = nil,
-    traits: __TraitArray<any TestTrait>,
-    arguments zippedCollections: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<Zip2Sequence<C1, C2>, (C1.Element, C2.Element)>,
-    sourceBounds: __SourceBounds,
-    parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
@@ -490,9 +461,7 @@ extension Test {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: {
-        Case.Generator(argumentList: try await zippedCollections(), parameters: parameters, testFunction: testFunction)
-      },
+      testCases: { try await Case.Generator(argumentLists: collection1(), collection2(), parameters: parameters, testFunction: testFunction) },
       parameters: parameters
     )
   }

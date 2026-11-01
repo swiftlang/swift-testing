@@ -19,16 +19,9 @@ extension Test.Case {
   ///
   /// - Warning: This type is used to implement the `@Test` macro. Do not use it
   ///   directly.
-  public struct __ArgumentList<S, E>: Sendable where S: Sendable & ~Copyable, E: Sendable & ~Copyable {
-    /// Storage for ``sequence``.
-    private var _sequence: Allocated<S>
-
+  public struct __ArgumentList<S, E>: Sendable, ~Copyable where S: Sendable & ~Copyable, E: Sendable & ~Copyable {
     /// The underlying sequence of arguments passed to the test.
-    var sequence: S {
-      _read {
-        yield _sequence.value
-      }
-    }
+    var sequence: S
 
     /// A function that transforms an element of `sequence` to zero or more
     /// instances of ``Test/Case/Argument/Value``.
@@ -42,9 +35,11 @@ extension Test.Case {
   }
 }
 
+extension Test.Case.__ArgumentList: Copyable where S: Copyable, E: ~Copyable {}
+
 extension Test.Case.__ArgumentList where S: Sequence, E == S.Element {
   init(_ sequence: consuming S, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) {
-    self._sequence = Allocated(sequence)
+    self.sequence = sequence
     self.makeArgumentValues = makeArgumentValues
   }
 }
