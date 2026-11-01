@@ -479,7 +479,7 @@ extension Test {
     arguments zippedCollections: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<Zip2Sequence<C1, C2>>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters

@@ -25,4 +25,9 @@ struct ZipTests {
   func allElementsEqual(i: Int, j: Int) {
     #expect(i == j)
   }
+
+  @Test("Zipped collections can be passed as a single argument", arguments: zip("abc", "def"))
+  func singleArgument(ij: (Character, Character)) {
+    #expect(ij.0 < ij.1)
+  }
 }

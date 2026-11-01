@@ -31,7 +31,7 @@ public protocol DiscoverableAsTestContent: Sendable {
   /// type with the same stride and alignment as `UInt`. Using a type with
   /// different stride or alignment will result in a failure when trying to
   /// discover test content records associated with this type.
-  associatedtype TestContentContext: BitwiseCopyable = UInt
+  associatedtype TestContentContext: ConvertibleFromBytes = UInt
 
   /// A type of "hint" passed to ``allTestContentRecords()`` to help the testing
   /// library find the correct result.
