@@ -60,6 +60,55 @@ extension Test {
       }
     }
 
+    /// The arguments passed to this test case, if any.
+    ///
+    /// The values in this span correspond to the arguments to the test function
+    /// of which this instance is a test case.
+    ///
+    /// ### Passing tuples to test functions
+    ///
+    /// If your test function takes a tuple (including a key-value pair from a
+    /// dictionary) as its input and maps it to more than one argument, the
+    /// value of this property represents each member of the tuple as a separate
+    /// argument. For example, given the following test function:
+    ///
+    /// ```swift
+    /// @Test(arguments: [(Food.burger, Temperature.hot), (.iceCream, .cold),
+    ///   (.burrito, .hot), (.popsicle, .cold)])
+    /// func `Serving temperature for food`(food: Food, temp: Temperature) {
+    ///   // ...
+    /// }
+    /// ```
+    ///
+    /// The value of this property will be a span with two elements. The first
+    /// element in the span will be an instance of `Food` and the second element
+    /// will be an instance of `Temperature`.
+    ///
+    /// ### Test functions with no arguments
+    ///
+    /// If your test function is not parameterized, the testing library assigns
+    /// it a single test case and the value of this property for that test case
+    /// is an empty span.
+    ///
+    /// @Comment {
+    ///   In the future, we will want to support move-only existentials and
+    ///   casting (see https://github.com/swiftlang/swift/pull/93612 and
+    ///   related PRs).
+    /// }
+    @_spi(Experimental)
+    @available(anyAppleOS 26, *)
+    public var argumentValues: Span<any Sendable> {
+      _read {
+        switch _kind {
+        case .nonParameterized:
+          yield Span()
+        case let .parameterized(arguments, _, _):
+          let values = arguments.map { $0.value }
+          yield values.span
+        }
+      }
+    }
+
     /// A number used to distinguish this test case from others associated with
     /// the same parameterized test function whose arguments have the same ID.
     ///

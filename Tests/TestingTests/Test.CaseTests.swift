@@ -135,6 +135,37 @@ struct Test_CaseTests {
     func nonParameterizedCaseHasNilArgumentIDs() {
       #expect(Test.Case(body: {}).id.argumentIDs == nil)
     }
+
+    @available(macOS 27, *)
+    @Test(arguments: "abc", 0 ..< 3)
+    func `argumentValues property`(x: Character, y: Int) throws {
+      let testCase = try #require(Test.Case.current)
+      let arguments = testCase.argumentValues
+      try #require(arguments.count == 2)
+      #expect(arguments[0] as? Character == x)
+      #expect(arguments[1] as? Int == y)
+    }
+
+    @available(macOS 27, *)
+    @Test(arguments: zip("abc", 0 ..< 3))
+    func `argumentValues property with tuple`(xy: (Character, Int)) throws {
+      let testCase = try #require(Test.Case.current)
+      let arguments = testCase.argumentValues
+      try #require(arguments.count == 1)
+      let arg = try #require(arguments[0] as? (Character, Int))
+      #expect(arg.0 == xy.0)
+      #expect(arg.1 == xy.1)
+    }
+
+    @available(macOS 27, *)
+    @Test(arguments: zip("abc", 0 ..< 3))
+    func `argumentValues property with desugared tuple`(x: Character, y: Int) throws {
+      let testCase = try #require(Test.Case.current)
+      let arguments = testCase.argumentValues
+      try #require(arguments.count == 2)
+      #expect(arguments[0] as? Character == x)
+      #expect(arguments[1] as? Int == y)
+    }
   }
 #endif
 }
@@ -150,3 +181,4 @@ private struct IssueRecordingEncodable: Encodable {
   }
 }
 #endif
+
