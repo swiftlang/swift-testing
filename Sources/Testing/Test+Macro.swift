@@ -296,7 +296,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments collection: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C>,
+    arguments collection: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C, C.Element>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
@@ -447,7 +447,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments collection1: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C1>, _ collection2: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C2>,
+    arguments collection1: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C1, C1.Element>, _ collection2: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C2, C2.Element>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
@@ -476,7 +476,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments zippedCollections: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<Zip2Sequence<C1, C2>>,
+    arguments zippedCollections: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<Zip2Sequence<C1, C2>, (C1.Element, C2.Element)>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void

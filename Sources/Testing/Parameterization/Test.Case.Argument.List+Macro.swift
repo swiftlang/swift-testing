@@ -19,9 +19,16 @@ extension Test.Case {
   ///
   /// - Warning: This type is used to implement the `@Test` macro. Do not use it
   ///   directly.
-  public struct __ArgumentList<S>: Sendable where S: Sendable & Sequence, S.Element: Sendable {
+  public struct __ArgumentList<S, E>: Sendable where S: Sendable & ~Copyable, E: Sendable & ~Copyable {
+    /// Storage for ``sequence``.
+    private var _sequence: Allocated<S>
+
     /// The underlying sequence of arguments passed to the test.
-    var sequence: S
+    var sequence: S {
+      _read {
+        yield _sequence.value
+      }
+    }
 
     /// A function that transforms an element of `sequence` to zero or more
     /// instances of ``Test/Case/Argument/Value``.
@@ -31,12 +38,14 @@ extension Test.Case {
     ///
     /// - Returns: An array of values corresponding to `element`. The array's
     ///   count depends on the number of parameters to the test function.
-    var makeArgumentValues: @Sendable (_ element: S.Element) -> [Test.Case.Argument.Value]
+    var makeArgumentValues: @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]
+  }
+}
 
-    init(_ sequence: S, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: S.Element) -> [Test.Case.Argument.Value]) {
-      self.sequence = sequence
-      self.makeArgumentValues = makeArgumentValues
-    }
+extension Test.Case.__ArgumentList where S: Sequence, E == S.Element {
+  init(_ sequence: consuming S, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) {
+    self._sequence = Allocated(sequence)
+    self.makeArgumentValues = makeArgumentValues
   }
 }
 
@@ -54,7 +63,7 @@ extension Test.Case {
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @_disfavoredOverload
-public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> {
+public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence {
   Test.Case.__ArgumentList(arguments) { element in
     var testDescription: String?
 #if !hasFeature(Embedded)
@@ -99,7 +108,7 @@ public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Te
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S.Element == (E1, E2) {
+public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element == (E1, E2) {
   Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
       return [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
@@ -131,7 +140,7 @@ public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S: ExpressibleByDictionaryLiteral, S.Element == (key: K, value: V) {
+public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence & ExpressibleByDictionaryLiteral, S.Element == (key: K, value: V) {
   Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
       return [Test.Case.Argument.Value(element.key), Test.Case.Argument.Value(element.value)]
@@ -147,7 +156,7 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
 }
 
 #if hasFeature(Embedded)
-public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S.Element: CustomTestStringConvertible {
+public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element: CustomTestStringConvertible {
   Test.Case.__ArgumentList(arguments) { element in
     // We can't break down the tuple in Embedded Swift, but we can at
     // least present the correct number of arguments.
@@ -159,7 +168,7 @@ public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Te
   }
 }
 
-public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S.Element == (E1, E2), E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
+public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element == (E1, E2), E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
   Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
       return [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
@@ -170,7 +179,7 @@ public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 
   }
 }
 
-public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S> where S: ExpressibleByDictionaryLiteral, S.Element == (key: K, value: V), K: CustomTestStringConvertible, V: CustomTestStringConvertible {
+public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence & ExpressibleByDictionaryLiteral, S.Element == (key: K, value: V), K: CustomTestStringConvertible, V: CustomTestStringConvertible {
   Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
       return [Test.Case.Argument.Value(element.key), Test.Case.Argument.Value(element.value)]
