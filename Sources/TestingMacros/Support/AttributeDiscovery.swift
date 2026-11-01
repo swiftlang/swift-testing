@@ -168,27 +168,45 @@ struct AttributeInfo {
 
     // If there are any parameterized test function arguments, wrap each in a
     // closure so they may be evaluated lazily at runtime.
-    if let testFunctionArguments {
+    if let testFunctionArguments, let functionDecl = declaration.as(FunctionDeclSyntax.self) {
       let argumentCount = testFunctionArguments.count
-      let parameterCount = declaration.as(FunctionDeclSyntax.self)?.signature.parameterClause.parameters.count
+      let parameterCount = functionDecl.signature.parameterClause.parameters.count
+      let consumedParameterTypeName = functionDecl.signature.parameterClause.parameters
+        .compactMap { $0.type.as(AttributedTypeSyntax.self) }
+        .first { type in
+          type.specifiers
+            .flatMap { $0.tokens(viewMode: .sourceAccurate) }
+            .map(\.tokenKind)
+            .contains(.keyword(.consuming))
+        }.map { $0.with(\.specifiers, TypeSpecifierListSyntax()) }
+        .map(\.trimmedDescription)
       arguments += testFunctionArguments.map { argument in
-        var copy = argument
-        copy.expression = ExprSyntax(
-          ClosureExprSyntax {
-            FunctionCallExprSyntax(callee: "Testing.__makeArgumentList" as ExprSyntax) {
-              LabeledExprSyntax(expression: argument.expression.trimmed)
+        var argumentCopy = argument
+        var makeArgumentListExpr = ExprSyntax(
+          FunctionCallExprSyntax(callee: "Testing.__makeArgumentList" as ExprSyntax) {
+            LabeledExprSyntax(expression: argument.expression.trimmed)
 
-              // We only need to track the parameter count if tuple desugaring
-              // is in play, which cannot happen with multiple argument lists
-              // (because you can't desugar a tuple into a partial parameter
-              // list alongside other parameters).
-              if argumentCount == 1, let parameterCount, parameterCount != argumentCount {
-                LabeledExprSyntax(label: "parameterCount", expression: IntegerLiteralExprSyntax(parameterCount))
-              }
+            // We only need to track the parameter count if tuple desugaring
+            // is in play, which cannot happen with multiple argument lists
+            // (because you can't desugar a tuple into a partial parameter
+            // list alongside other parameters).
+            if argumentCount == 1, parameterCount != argumentCount {
+              LabeledExprSyntax(label: "parameterCount", expression: IntegerLiteralExprSyntax(parameterCount))
             }
           }
         )
-        return copy
+        if let consumedParameterTypeName {
+          // We do allow `consuming`, but only for copyable values. Move-only
+          // values must be `borrowing`. In order to enforce this distinction,
+          // we apply a secondary macro here that emits a diagnostic if the type
+          // of the argument list's elements is `~Copyable`. In a future
+          // language mode, we will always disallow `consuming` here.
+          makeArgumentListExpr = "#Testing::__consumeArgumentList(\(makeArgumentListExpr), \(literal: consumedParameterTypeName))"
+        }
+        argumentCopy.expression = ExprSyntax(
+          ClosureExprSyntax { makeArgumentListExpr }
+        )
+        return argumentCopy
       }
     }
 

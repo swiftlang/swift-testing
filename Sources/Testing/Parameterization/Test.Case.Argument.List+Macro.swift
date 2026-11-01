@@ -21,7 +21,7 @@ extension Test.Case {
   ///   directly.
   public struct __ArgumentList<S, E>: Sendable, ~Copyable where S: Sendable & ~Copyable, E: Sendable & ~Copyable {
     /// The underlying sequence of arguments passed to the test.
-    var sequence: S
+    var wrappedValue: S
 
     /// A function that transforms an element of `sequence` to zero or more
     /// instances of ``Test/Case/Argument/Value``.
@@ -38,8 +38,16 @@ extension Test.Case {
 extension Test.Case.__ArgumentList: Copyable where S: Copyable, E: ~Copyable {}
 
 extension Test.Case.__ArgumentList where S: Sequence, E == S.Element {
-  init(_ sequence: consuming S, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) {
-    self.sequence = sequence
+  init(_ wrappedValue: consuming S, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) {
+    self.wrappedValue = wrappedValue
+    self.makeArgumentValues = makeArgumentValues
+  }
+}
+
+@available(_inlineArrayAPI, *)
+extension Test.Case.__ArgumentList where S: ~Copyable, E: ~Copyable {
+  init<let count: Int>(_ wrappedValue: consuming InlineArray<count, E>, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) where S == InlineArray<count, E> {
+    self.wrappedValue = wrappedValue
     self.makeArgumentValues = makeArgumentValues
   }
 }
@@ -150,6 +158,78 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
   }
 }
 
+/// Make an argument list from the given inline array containing arguments.
+///
+/// - Parameters:
+///   - arguments: The inline array.
+///   - parameterCount: The number of parameters passed to the test function.
+///
+/// - Returns: An argument list.
+///
+/// This overload is specialized for `InlineArray` when its elements are
+/// copyable. It copies the inline array's contents to a normal Swift array.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@_disfavoredOverload
+public func __makeArgumentList<let count: Int, E>(_ arguments: consuming InlineArray<count, E>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<[E], E> where E: Copyable {
+  let argumentsCopy = [E](unsafeUninitializedCapacity: arguments.count) { buffer, initializedCount in
+    arguments.span.withUnsafeBufferPointer { arguments in
+      initializedCount = buffer.initialize(fromContentsOf: arguments)
+    }
+  }
+  return __makeArgumentList(argumentsCopy, parameterCount: parameterCount)
+}
+
+/// Make an argument list from the given inline array containing arguments.
+///
+/// - Parameters:
+///   - arguments: The inline array.
+///   - parameterCount: The number of parameters passed to the test function.
+///
+/// - Returns: An argument list.
+///
+/// This overload is specialized for `InlineArray` when its elements are
+/// 2-tuples. It copies the inline array's contents to a normal Swift array.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@_disfavoredOverload
+public func __makeArgumentList<let count: Int, E1, E2>(_ arguments: consuming InlineArray<count, (E1, E2)>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<[(E1, E2)], (E1, E2)> {
+  let argumentsCopy = [(E1, E2)](unsafeUninitializedCapacity: arguments.count) { buffer, initializedCount in
+    arguments.span.withUnsafeBufferPointer { arguments in
+      initializedCount = buffer.initialize(fromContentsOf: arguments)
+    }
+  }
+  return __makeArgumentList(argumentsCopy, parameterCount: parameterCount)
+}
+
+/// Make an argument list from the given inline array containing arguments.
+///
+/// - Parameters:
+///   - arguments: The inline array.
+///   - parameterCount: The number of parameters passed to the test function.
+///
+/// - Returns: An argument list.
+///
+/// This overload is specialized for `InlineArray` and allows us to support
+/// move-only argument values.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@_disfavoredOverload
+public func __makeArgumentList<let count: Int, E>(_ arguments: consuming InlineArray<count, E>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, E>, E> where E: ~Copyable {
+  Test.Case.__ArgumentList(arguments) { element in
+    return [Test.Case.Argument.Value(element)]
+  }
+}
+
 #if hasFeature(Embedded)
 public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element: CustomTestStringConvertible {
   Test.Case.__ArgumentList(arguments) { element in
@@ -185,3 +265,39 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
   }
 }
 #endif
+
+// MARK: - `consuming` misuse detection
+
+/// Consume an argument list whose elements conform to `Copyable`.
+///
+/// - Parameters:
+///   - argumentList: The argument list.
+///   - typeName: The type of the parameter to the test function, as a string.
+///
+/// - Returns: `argumentList` verbatim.
+///
+/// - Warning: This macro is used to implement the `@Test` macro. Do not use it
+///   directly.
+@freestanding(expression)
+public macro __consumeArgumentList<S, E>(
+  _ argumentList: consuming Test.Case.__ArgumentList<S, E>,
+  _ typeName: String
+) -> Test.Case.__ArgumentList<S, E> = #externalMacro(module: "TestingMacros", type: "ConsumeCopyableArgumentListMacro") where S: Sendable & ~Copyable, E: Sendable & Copyable
+
+/// Consume an argument list whose elements do not conform to `Copyable`.
+///
+/// - Parameters:
+///   - argumentList: The argument list.
+///   - typeName: The type of the parameter to the test function, as a string.
+///
+/// - Returns: `argumentList` verbatim.
+///
+/// - Warning: This macro is used to implement the `@Test` macro. Do not use it
+///   directly.
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@freestanding(expression)
+public macro __consumeArgumentList<S, E>(
+  _ argumentList: consuming Test.Case.__ArgumentList<S, E>,
+  _ typeName: String
+) -> Test.Case.__ArgumentList<S, E> = #externalMacro(module: "TestingMacros", type: "ConsumeMoveOnlyArgumentListMacro") where S: Sendable & ~Copyable, E: Sendable & ~Copyable
