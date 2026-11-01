@@ -18,9 +18,9 @@ extension Test.Case {
   ///   - Bug: The testing library should support variadic generics.
   ///     ([103416861](rdar://103416861))
   /// }
-  struct Generator<S>: Sendable where S: Sequence & Sendable, S.Element: Sendable {
+  final class Generator<S, E>: Sendable where S: Sendable & ~Copyable, E: Sendable & ~Copyable {
     /// The underlying argument list.
-    private var _argumentList: Test.Case.Argument.List<S>
+    private let _argumentList: Test.Case.Argument.List<S, E>
 
     /// A closure that maps an element from `_sequence` to a test case instance.
     ///
@@ -28,7 +28,7 @@ extension Test.Case {
     ///   - element: The element from `_sequence`.
     ///
     /// - Returns: A test case instance that tests `element`.
-    private var _mapElement: @Sendable (_ element: S.Element) -> Test.Case
+    private let _mapElement: @Sendable (_ element: borrowing E) -> Test.Case
 
     /// Initialize an instance of this type that iterates over the specified
     /// sequence of argument values.
@@ -41,10 +41,10 @@ extension Test.Case {
     ///   - testFunction: The test function to which each generated test case
     ///     passes an argument value from `sequence`.
     init(
-      argumentList: Test.Case.Argument.List<S>,
+      argumentList: Test.Case.Argument.List<S, S.Element>,
       parameters: [Test.Parameter],
       testFunction: nonisolated(nonsending) @escaping @Sendable (S.Element) async throws -> Void
-    ) {
+    ) where S: Sequence, E == S.Element {
       _argumentList = argumentList
       _mapElement = { element in
         return Test.Case(values: argumentList.makeArgumentValues(element), parameters: parameters) {
@@ -58,9 +58,9 @@ extension Test.Case {
     ///
     /// - Parameters:
     ///   - testFunction: The test function called by the generated test case.
-    init(
+    convenience init(
       testFunction: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
-    ) where S == CollectionOfOne<Void> {
+    ) where S == CollectionOfOne<Void>, E == Void {
       // A beautiful hack to give us the right number of cases: iterate over a
       // collection containing a single Void value.
       let argumentList = Test.Case.Argument.List(CollectionOfOne(())) { [] }
@@ -79,11 +79,11 @@ extension Test.Case {
     ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
     ///     passes an argument value from `collection`.
-    init<C1, C2>(
-      argumentLists collection1: Test.Case.Argument.List<C1>, _ collection2: Test.Case.Argument.List<C2>,
+    convenience init<C1, C2>(
+      argumentLists collection1: Test.Case.Argument.List<C1, C1.Element>, _ collection2: Test.Case.Argument.List<C2, C2.Element>,
       parameters: [Test.Parameter],
       testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-    ) where S == CartesianProduct<C1, C2> {
+    ) where S == CartesianProduct<C1, C2>, E == (C1.Element, C2.Element) {
       let cartesianProduct = Test.Case.Argument.List(cartesianProduct(collection1.sequence, collection2.sequence)) { element in
         collection1.makeArgumentValues(element.0) + collection2.makeArgumentValues(element.1)
       }
@@ -92,9 +92,29 @@ extension Test.Case {
   }
 }
 
+extension Test.Case.Generator where S: ~Copyable, E: ~Copyable {
+  private func _makeTestCase(from element: borrowing E, testCaseIDs: inout [Test.Case.ID: Int]) -> Test.Case {
+    var testCase = _mapElement(element)
+
+    if testCase.isParameterized {
+      // Store the original, unmodified test case ID. We're about to modify a
+      // property which affects it, and we want to update state based on the
+      // original one.
+      let testCaseID = testCase.id
+
+      // Ensure test cases with identical IDs each have a unique discriminator.
+      let discriminator = testCaseIDs[testCaseID, default: 0]
+      testCase.discriminator = discriminator
+      testCaseIDs[testCaseID] = discriminator + 1
+    }
+
+    return testCase
+  }
+}
+
 // MARK: - Sequence
 
-extension Test.Case.Generator: Sequence {
+extension Test.Case.Generator: Sequence where S: Sequence, E == S.Element {
   func makeIterator() -> some IteratorProtocol<Test.Case> {
     let state = (
       iterator: _argumentList.sequence.makeIterator(),
@@ -105,23 +125,47 @@ extension Test.Case.Generator: Sequence {
       guard let element = state.iterator.next() else {
         return nil
       }
-
-      var testCase = _mapElement(element)
-
-      if testCase.isParameterized {
-        // Store the original, unmodified test case ID. We're about to modify a
-        // property which affects it, and we want to update state based on the
-        // original one.
-        let testCaseID = testCase.id
-
-        // Ensure test cases with identical IDs each have a unique discriminator.
-        let discriminator = state.testCaseIDs[testCaseID, default: 0]
-        testCase.discriminator = discriminator
-        state.testCaseIDs[testCaseID] = discriminator + 1
-      }
-
-      return testCase
+      return self._makeTestCase(from: element, testCaseIDs: &state.testCaseIDs)
     }
+  }
+
+  var underestimatedCount: Int {
+    _argumentList.sequence.underestimatedCount
+  }
+}
+
+// MARK: - Iterable
+
+@available(anyAppleOS 27, *)
+extension Test.Case.Generator: Iterable where S: Iterable & ~Copyable, E == S.Element, E: ~Copyable {
+  struct BorrowingIterator: BorrowingIteratorProtocol & ~Copyable & ~Escapable {
+    private var _testCaseGenerator: Test.Case.Generator<S, E>
+    private var _iterator: S.BorrowingIterator?
+    private var _testCaseIDs = [Test.Case.ID: Int]()
+    private var _currentTestCases = [Test.Case]()
+
+    @_lifetime(borrow testCaseGenerator)
+    init(testCaseGenerator: borrowing Test.Case.Generator<S, E>) {
+      _testCaseGenerator = copy testCaseGenerator
+    }
+
+    @_lifetime(&self)
+    mutating func nextSpan(maxCount: Int) throws(S.BorrowingIterator.Failure) -> Span<Test.Case> {
+      if _iterator == nil {
+        _iterator = _testCaseGenerator._argumentList.sequence.makeBorrowingIterator()
+      }
+      let span = try _iterator!.nextSpan(maxCount: maxCount)
+      _currentTestCases = []
+      for i in 0 ..< span.count {
+        _currentTestCases.append(_testCaseGenerator._makeTestCase(from: span[i], testCaseIDs: &_testCaseIDs))
+      }
+      return _currentTestCases.span
+    }
+  }
+
+  @_lifetime(borrow self)
+  func makeBorrowingIterator() -> BorrowingIterator {
+    return BorrowingIterator(testCaseGenerator: self)
   }
 
   var underestimatedCount: Int {

@@ -346,9 +346,9 @@ public struct Test: Sendable {
     sourceBounds: __SourceBounds,
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
-    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
+    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S, S.Element>,
     parameters: [Parameter]
-  ) {
+  ) where S: Sequence {
     let properties = _Properties(
       name: name,
       displayName: displayName,
@@ -371,9 +371,9 @@ public struct Test: Sendable {
     sourceBounds: __SourceBounds,
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
-    testCases: Test.Case.Generator<S>,
+    testCases: Test.Case.Generator<S, S.Element>,
     parameters: [Parameter]
-  ) {
+  ) where S: Sequence {
     let properties = _Properties(
       name: name,
       displayName: displayName,

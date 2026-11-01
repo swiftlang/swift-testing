@@ -360,7 +360,7 @@ extension Test {
         sourceBounds: __SourceBounds(lowerBoundOnly: sourceLocation),
         containingTypeInfo: typeInfo,
         xcTestCompatibleSelector: nil,
-        testCases: { () -> Test.Case.Generator<CollectionOfOne<Void>> in
+        testCases: { () -> Test.Case.Generator<CollectionOfOne<Void>, Void> in
           throw APIMisuseError(description: "This instance of 'Test' was synthesized at runtime and cannot be run directly.")
         },
         parameters: parameters ?? []
