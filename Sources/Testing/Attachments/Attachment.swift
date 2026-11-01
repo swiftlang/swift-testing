@@ -546,6 +546,11 @@ extension Attachment where AttachableValue: ~Copyable {
       // Split the extension(s) off the preferred name. The first component in
       // the resulting array is our base name.
       var preferredNameComponents = preferredName.split(separator: ".")
+      if preferredNameComponents.isEmpty {
+        // The preferred name is empty or consists only of periods (e.g. "..")
+        // so there is no base name to add a suffix to. Use the default name.
+        preferredNameComponents = [Substring(Self.defaultPreferredName)]
+      }
       let firstPreferredNameComponent = preferredNameComponents[0]
 
       while true {

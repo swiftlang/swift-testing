@@ -164,6 +164,9 @@ struct AttachmentTests {
     String(repeating: "a", count: maximumNameCount),
     String(repeating: "a", count: maximumNameCount + 1),
     String(repeating: "a", count: maximumNameCount + 2),
+    ".",
+    "..",
+    "...",
   ]) func writeAttachmentWithBadName(name: String) throws {
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
     let attachment = Attachment(attachableValue, named: name)
@@ -174,6 +177,27 @@ struct AttachmentTests {
       remove(filePath)
     }
     try compare(attachableValue, toContentsOfFileAtPath: filePath)
+  }
+
+  @Test func writeAttachmentWithEmptyPreferredName() throws {
+    struct MyAttachableWithEmptyName: Attachable, Sendable {
+      func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+        try Array("<!doctype html>".utf8).withUnsafeBytes(body)
+      }
+
+      func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
+        ""
+      }
+    }
+    let attachment = Attachment(MyAttachableWithEmptyName())
+
+    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory())
+    defer {
+      remove(filePath)
+    }
+    let filePathComponents = filePath.split { $0 == "/" || $0 == #"\"# }
+    let fileName = try #require(filePathComponents.last)
+    #expect(fileName.hasPrefix("\(Attachment<MyAttachableWithEmptyName>.defaultPreferredName)-"))
   }
 
   @Test func fileSystemPathIsSetAfterWritingViaEventHandler() async throws {
