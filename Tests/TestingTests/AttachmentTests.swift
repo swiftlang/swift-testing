@@ -181,23 +181,25 @@ struct AttachmentTests {
 
   @Test func writeAttachmentWithEmptyPreferredName() throws {
     struct MyAttachableWithEmptyName: Attachable, Sendable {
+      var string: String
+
       func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-        try Array("<!doctype html>".utf8).withUnsafeBytes(body)
+        try Array(string.utf8).withUnsafeBytes(body)
       }
 
       func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
         ""
       }
     }
-    let attachment = Attachment(MyAttachableWithEmptyName())
+    let string = "<!doctype html>"
+    let attachment = Attachment(MyAttachableWithEmptyName(string: string))
 
     let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory())
     defer {
       remove(filePath)
     }
-    let filePathComponents = filePath.split { $0 == "/" || $0 == #"\"# }
-    let fileName = try #require(filePathComponents.last)
-    #expect(fileName.hasPrefix("\(Attachment<MyAttachableWithEmptyName>.defaultPreferredName)-"))
+    let file = try Testing.FileHandle(forReadingAtPath: filePath)
+    #expect(try file.readToEnd() == Array(string.utf8))
   }
 
   @Test func fileSystemPathIsSetAfterWritingViaEventHandler() async throws {
