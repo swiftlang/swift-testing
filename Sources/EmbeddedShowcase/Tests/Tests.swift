@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-import Testing
+@_spi(Experimental) import Testing
 
 // A minimal set of tests used to confirm that a whole program which links Swift
 // Testing can be built for an Embedded Swift target.
@@ -65,3 +65,6 @@ extension Tag {
     Attachment.record(loremIpsum, named: "Lorem Ipsum.txt")
   }
 }
+
+import Synchronization
+@Test(arguments: [Mutex(())]) func crasher(_ m: borrowing Mutex<Void>) {}
