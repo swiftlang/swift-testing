@@ -61,7 +61,7 @@ final actor Serializer<T> {
   ///
   /// - Warning: Calling this function recursively on the same instance of
   ///   ``Serializer`` will cause a deadlock.
-  func run<R>(_ workItem: @isolated(any) @Sendable () async throws -> R) async rethrows -> R where R: Sendable {
+  func run<R, E>(_ workItem: nonisolated(nonsending) @Sendable () async throws(E) -> R) async throws(E) -> R where R: Sendable {
 #if !SWT_NO_CONTINUATIONS
     _currentWidth += 1
     defer {

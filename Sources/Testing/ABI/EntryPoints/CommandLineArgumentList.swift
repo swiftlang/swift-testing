@@ -170,8 +170,8 @@ public struct CommandLineArgumentList: Sendable {
   init(
     parsing arguments: some Sequence<String>,
     describedBy descriptors: [Descriptor],
-    describingUnrecognizedArgumentWith describeUnrecognizedArgument: ((String) throws -> Descriptor)? = nil
-  ) throws {
+    describingUnrecognizedArgumentWith describeUnrecognizedArgument: ((String) throws(any Error) -> Descriptor)? = nil
+  ) throws(any Error) {
     var i = arguments.makeIterator()
     _ = i.next() // drop argv[0]
     while let arg = i.next() {

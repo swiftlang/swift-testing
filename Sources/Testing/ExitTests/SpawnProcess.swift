@@ -137,10 +137,10 @@ func spawnExecutable(
 
       // Forward standard I/O streams and any explicitly added file handles.
       var highestFD = max(STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO)
-      func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws {
+      func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws(CError) {
         try fileHandle.withUnsafePOSIXFileDescriptor { fd in
           guard let fd else {
-            throw SystemError(description: "A child process cannot inherit a file handle without an associated file descriptor. \(fileABugMessage)")
+            fatalError("A child process cannot inherit a file handle without an associated file descriptor. \(fileABugMessage)")
           }
           if let standardFD, standardFD != fd {
             _ = posix_spawn_file_actions_adddup2(fileActions, fd, standardFD)
@@ -166,7 +166,7 @@ func spawnExecutable(
           }
         }
       }
-      func inherit(_ fileHandle: borrowing FileHandle?, as standardFD: CInt? = nil) throws {
+      func inherit(_ fileHandle: borrowing FileHandle?, as standardFD: CInt? = nil) throws(CError) {
         if fileHandle != nil {
           try inherit(fileHandle!, as: standardFD)
         } else if let standardFD {

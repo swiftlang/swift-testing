@@ -138,7 +138,7 @@ extension Configuration.TestFilter {
   ///
   /// In Embedded Swift, `idPatterns` are not treated as regular expressions due
   /// to the lack of the `_StringProcessing` module.
-  init(membership: Membership, matchingAnyOf idPatterns: some Sequence<String>) throws {
+  init(membership: Membership, matchingAnyOf idPatterns: some Sequence<String>) throws(any Error) {
 #if canImport(_StringProcessing)
     // Validate each regular expression by attempting to initialize a `Regex`
     // representing it, but do not preserve it. This type only represents
@@ -164,7 +164,7 @@ extension Configuration.TestFilter {
   ///
   /// In Embedded Swift, `tagPatterns` are not treated as regular expressions
   /// due to the lack of the `_StringProcessing` module.
-  public init(includingTagsMatching tagPatterns: [String]) throws {
+  public init(includingTagsMatching tagPatterns: [String]) throws(any Error) {
 #if canImport(_StringProcessing)
     // See the comment above in init(membership:matchingAnyOf:) to understand why we construct regexes here.
     for pattern in tagPatterns {
@@ -180,7 +180,7 @@ extension Configuration.TestFilter {
   /// - Parameters:
   ///   - tagPatterns: The patterns, expressed as a `Regex`-compatible regular
   ///     expressions, to match test tags against.
-  public init(excludingTagsMatching tagPatterns: [String]) throws {
+  public init(excludingTagsMatching tagPatterns: [String]) throws(any Error) {
 #if canImport(_StringProcessing)
     // See the comment above in init(membership:matchingAnyOf:) to understand why we construct regexes here.
     for pattern in tagPatterns {
@@ -281,7 +281,7 @@ extension Configuration.TestFilter.Kind {
   ///   test filter kind. One example is the creation of a `Regex` from a
   ///   `.pattern` kind: if the pattern is not a valid regular expression, an
   ///   error will be thrown.
-  func operation<T>(itemType: T.Type = T.self) throws -> Configuration.TestFilter.Operation<T> where T: _FilterableItem {
+  func operation<T>(itemType: T.Type = T.self) throws(any Error) -> Configuration.TestFilter.Operation<T> where T: _FilterableItem {
     switch self {
     case .unfiltered:
       return .unfiltered
@@ -393,7 +393,7 @@ extension Configuration.TestFilter {
   ///   - testGraph: The test graph to filter.
   ///
   /// - Returns: A copy of `testGraph` with filtered tests replaced with `nil`.
-  func apply(to testGraph: Graph<String, Test?>) throws -> Graph<String, Test?> {
+  func apply(to testGraph: Graph<String, Test?>) throws(any Error) -> Graph<String, Test?> {
     var result: Graph<String, Test?>
 
     if _kind.requiresTraitPropagation {

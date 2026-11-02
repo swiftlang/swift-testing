@@ -1057,7 +1057,7 @@ extension ExitTest {
   ///   - backChannel: The file handle that `recordJSON` was read from.
   ///
   /// - Throws: Any error encountered attempting to decode or process the JSON.
-  private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
+  private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws(any Error) {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
     guard case let .event(encodedEvent) = record.kind,
       let event = Event(decoding: encodedEvent)
@@ -1096,7 +1096,7 @@ extension ExitTest {
   /// This function should only be used when the process was started via the
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
-  private mutating func _decodeCapturedValuesForEntryPoint() throws {
+  private mutating func _decodeCapturedValuesForEntryPoint() throws(any Error) {
     // Read the content of the captured values stream provided by the parent
     // process above.
     guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_CAPTURED_VALUES", options: [.readAccess]) else {

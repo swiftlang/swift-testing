@@ -104,7 +104,7 @@ extension ABI.Record: Codable {
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
 
-    func validateVersionNumber(_ versionNumber: VersionNumber) throws {
+    func validateVersionNumber(_ versionNumber: VersionNumber) throws(DecodingError) {
       if versionNumber == V.versionNumber {
         return
       }

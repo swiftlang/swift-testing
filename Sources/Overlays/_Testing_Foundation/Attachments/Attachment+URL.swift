@@ -63,7 +63,7 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
     contentsOf url: URL,
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #Testing::sourceLocation
-  ) async throws {
+  ) async throws(any Error) {
     guard url.isFileURL else {
       // TODO: network URLs?
       throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "Attaching downloaded files is not supported"])

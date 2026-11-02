@@ -244,7 +244,7 @@ public struct Test: Sendable {
   /// re-evaluated.
   ///
   /// - Throws: Any error caught while first evaluating the test arguments.
-  mutating func evaluateTestCases() async throws {
+  mutating func evaluateTestCases() async throws(any Error) {
     if case let .unevaluated(function) = testCasesState {
       do {
         let sequence = try await function()

@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
 #if canImport(Synchronization)
 private import Synchronization
 #endif
@@ -113,25 +114,27 @@ extension TestCancellable {
   /// This function sets up a task cancellation handler and calls `body`. If
   /// the current task, test, or test case is cancelled, it records a
   /// corresponding cancellation event.
-  func withCancellationHandling<R>(_ body: () async throws -> R) async rethrows -> R {
+  func withCancellationHandling<R, E>(_ body: () async throws(E) -> R) async throws(E) -> R {
     let taskCanceller = _TaskCanceller()
     var currentTaskCancellers = _currentTaskCancellers
     currentTaskCancellers[ObjectIdentifier(Self.self)] = taskCanceller
-    return try await $_currentTaskCancellers.withValue(currentTaskCancellers) {
-      // Before returning, explicitly clear the stored task so that an
-      // unstructured task that inherits the task local isn't able to
-      // accidentally cancel the task after it has been deallocated.
-      defer {
-        taskCanceller.clear()
-      }
+    return try await withUnsafeTypedThrows(throwing: E.self) {
+      try await $_currentTaskCancellers.withValue(currentTaskCancellers) {
+        // Before returning, explicitly clear the stored task so that an
+        // unstructured task that inherits the task local isn't able to
+        // accidentally cancel the task after it has been deallocated.
+        defer {
+          taskCanceller.clear()
+        }
 
-      return try await withTaskCancellationHandler {
-        try await body()
-      } onCancel: {
-        // The current task was cancelled, so cancel the test case or test
-        // associated with it.
-        let skipInfo = _currentSkipInfo ?? SkipInfo(sourceContext: SourceContext(backtrace: .current(), sourceLocation: nil))
-        _ = try? Test.cancel(with: skipInfo)
+        return try await withTaskCancellationHandler { () throws(E) in
+          try await body()
+        } onCancel: {
+          // The current task was cancelled, so cancel the test case or test
+          // associated with it.
+          let skipInfo = _currentSkipInfo ?? SkipInfo(sourceContext: SourceContext(backtrace: .current(), sourceLocation: nil))
+          _ = try? Test.cancel(with: skipInfo)
+        }
       }
     }
   }
@@ -238,7 +241,7 @@ extension Test: TestCancellable {
   ///   @Available(Swift, introduced: 6.3)
   ///   @Available(Xcode, introduced: 26.4)
   /// }
-  public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #Testing::sourceLocation) throws -> Never {
+  public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #Testing::sourceLocation) throws(any Error) -> Never {
     let skipInfo = SkipInfo(comment: comment, sourceContext: SourceContext(backtrace: nil, sourceLocation: sourceLocation))
     try Self.cancel(with: skipInfo)
   }
@@ -254,7 +257,7 @@ extension Test: TestCancellable {
   /// Note that the public ``Test/cancel(_:sourceLocation:)`` function has a
   /// different signature and accepts a source location rather than an instance
   /// of ``SkipInfo``.
-  static func cancel(with skipInfo: SkipInfo) throws -> Never {
+  static func cancel(with skipInfo: SkipInfo) throws(any Error) -> Never {
     let test = Test.current
     let testCase = Test.Case.current
 

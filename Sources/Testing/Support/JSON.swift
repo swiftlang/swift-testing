@@ -118,14 +118,16 @@ enum JSON {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func asJSONLine<R>(_ json: UnsafeRawBufferPointer, _ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
+  static func asJSONLine<R, E>(_ json: UnsafeRawBufferPointer, _ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R {
     if _slowPath(json.contains(where: \.isASCIINewline)) {
       // Remove the newline characters to conform to JSON lines specification.
       // This is not actually expected to happen in practice with Foundation's
       // JSON encoder.
       var json = Array(json)
       json.removeAll(where: \.isASCIINewline)
-      return try json.withUnsafeBytes(body)
+      return try json.withUnsafeBufferPointer { bytes throws(E) in
+        try body(UnsafeRawBufferPointer(bytes))
+      }
     } else {
       // No newlines found, no need to copy the buffer.
       return try body(json)

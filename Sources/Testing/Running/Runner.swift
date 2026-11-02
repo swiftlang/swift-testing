@@ -105,11 +105,11 @@ extension Runner {
   ///
   /// - Throws: Whatever is thrown by `body` or by any of the
   ///   ``TestScoping/provideScope(for:testCase:performing:)`` function calls.
-  private static func _applyScopingTraits(
+  private static func _applyScopingTraits<E>(
     for test: Test,
     testCase: Test.Case?,
-    _ body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
-  ) async throws {
+    _ body: nonisolated(nonsending) @escaping @Sendable () async throws(E) -> Void
+  ) async throws(any Error) {
     // If the test does not have any traits, exit early to avoid unnecessary
     // heap allocations below.
     if test.traits.isEmpty {
@@ -121,6 +121,7 @@ extension Runner {
     // sequence is reversed so that the last trait is the one that invokes body,
     // then the second-to-last invokes the last, etc. and ultimately the first
     // trait is the first one to be invoked.
+    let body: nonisolated(nonsending) @Sendable () async throws(any Error) -> Void = body
     let executeAllTraits = test.traits.lazy
       .reversed()
       .compactMap { trait in
@@ -149,7 +150,7 @@ extension Runner {
   ///
   /// - Throws: Whatever is thrown by `body` or by any of the traits' provide
   ///   scope function calls.
-  private static func _applyIssueHandlingTraits(for test: Test, _ body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) async throws {
+  private static func _applyIssueHandlingTraits<E>(for test: Test, _ body: nonisolated(nonsending) @escaping @Sendable () async throws(E) -> Void) async throws(any Error) {
     // If the test does not have any traits, exit early to avoid unnecessary
     // heap allocations below.
     if test.traits.isEmpty {
@@ -161,6 +162,7 @@ extension Runner {
     // reversed so that the last trait is the one that invokes body, then the
     // second-to-last invokes the last, etc. and ultimately the first trait is
     // the first one to be invoked.
+    let body: nonisolated(nonsending) @Sendable () async throws(any Error) -> Void = body
     let executeAllTraits = test.traits.lazy
       .compactMap { $0 as? IssueHandlingTrait }
       .reversed()
@@ -184,27 +186,29 @@ extension Runner {
   ///   - body: The function to invoke.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  private static func _forEach<E>(
-    in sequence: some Sequence<E>,
-    namingTasksWith taskNamer: (borrowing E) -> (taskName: String, action: String?)?,
-    _ body: @Sendable @escaping (borrowing E) async throws -> Void
-  ) async rethrows where E: Sendable {
-    try await withThrowingTaskGroup { taskGroup in
-      for element in sequence {
-        // Each element gets its own subtask to run in.
-        let taskName = taskNamer(element)
-        taskGroup.addTask(name: decorateTaskName(taskName?.taskName, withAction: taskName?.action)) {
-          try await body(element)
-        }
+  private static func _forEach<S, E>(
+    in sequence: S,
+    namingTasksWith taskNamer: (borrowing S.Element) -> (taskName: String, action: String?)?,
+    _ body: @Sendable @escaping (borrowing S.Element) async throws(E) -> Void
+  ) async throws(E) where S: Sequence, S.Element: Sendable {
+    try await withUnsafeTypedThrows(throwing: E.self) {
+      try await withThrowingTaskGroup { taskGroup in
+        for element in sequence {
+          // Each element gets its own subtask to run in.
+          let taskName = taskNamer(element)
+          taskGroup.addTask(name: decorateTaskName(taskName?.taskName, withAction: taskName?.action)) {
+            try await body(element)
+          }
 
 #if !hasFeature(Embedded)
-        // If not parallelizing, wait after each task.
-        if !_configuration.isParallelizationEnabled {
-          try await taskGroup.waitForAll()
-        }
+          // If not parallelizing, wait after each task.
+          if !_configuration.isParallelizationEnabled {
+            try await taskGroup.waitForAll()
+          }
 #else
-        try await taskGroup.waitForAll()
+          try await taskGroup.waitForAll()
 #endif
+        }
       }
     }
   }

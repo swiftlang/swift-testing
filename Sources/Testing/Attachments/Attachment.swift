@@ -436,7 +436,7 @@ extension Attachable where Self: ~Copyable {
   /// The testing library uses this function when saving an attachment. If there
   /// is already a file at `filePath`, the implementation throws an instance of
   /// ``CError`` with code `EEXIST`.
-  borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
+  borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws(any Error) {
 #if !SWT_NO_FILE_CLONING
     if clone(toFileAtPath: filePath, for: attachment) {
       return
@@ -506,7 +506,7 @@ extension Attachment where AttachableValue: ~Copyable {
   /// attachments the same way that Swift Package Manager does. You are not
   /// required to use this function.
   @_spi(ForToolsIntegrationOnly)
-  public borrowing func write(toFileAtPath filePath: String) throws {
+  public borrowing func write(toFileAtPath filePath: String) throws(any Error) {
     try attachableValue.write(toFileAtPath: filePath, for: self)
   }
 

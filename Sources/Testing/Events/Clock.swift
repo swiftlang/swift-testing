@@ -179,9 +179,11 @@ extension Test.Clock: _Concurrency.Clock {
   /// This function is not part of the public interface of the testing library.
   /// It is primarily used by the testing library's own tests. External clients
   /// can use ``sleep(for:tolerance:)`` or ``sleep(until:tolerance:)`` instead.
-  static func sleep(for duration: Duration) async throws {
+  static func sleep(for duration: Duration) async throws(CancellationError) {
 #if !SWT_NO_SUSPENDING_CLOCK
-    return try await SuspendingClock().sleep(for: duration)
+    try await withUnsafeTypedThrows(throwing: CancellationError.self) {
+      try await SuspendingClock().sleep(for: duration)
+    }
 #elseif !SWT_NO_TIMESPEC
     var ts = timespec(tv_sec: .init(duration.components.seconds), tv_nsec: .init(duration.components.attoseconds / 1_000_000_000))
     var tsRemaining = ts
@@ -194,13 +196,15 @@ extension Test.Clock: _Concurrency.Clock {
 #endif
   }
 
-  public func sleep(until deadline: Instant, tolerance: Duration?) async throws {
+  public func sleep(until deadline: Instant, tolerance: Duration?) async throws(CancellationError) {
     let duration = Instant.now.duration(to: deadline)
+    try await withUnsafeTypedThrows(throwing: CancellationError.self) {
 #if !SWT_NO_SUSPENDING_CLOCK
-    try await SuspendingClock().sleep(for: duration, tolerance: tolerance)
+      try await SuspendingClock().sleep(for: duration, tolerance: tolerance)
 #else
-    try await Self.sleep(for: duration)
+      try await Self.sleep(for: duration)
 #endif
+    }
   }
 }
 #endif

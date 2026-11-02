@@ -79,10 +79,10 @@ extension Configuration {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(
+  static func withCurrent<R, E>(
     _ configuration: Self,
-    perform body: () throws -> R
-  ) rethrows -> R {
+    perform body: () throws(E) -> R
+  ) throws(E) -> R {
     let id = configuration._addToAll()
     defer {
       configuration._removeFromAll(identifiedBy: id)
@@ -90,7 +90,9 @@ extension Configuration {
 
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.configuration = configuration
-    return try Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
+    return try withUnsafeTypedThrows(throwing: E.self) {
+      try Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
+    }
   }
 
   /// Call an asynchronous function while the value of ``Configuration/current``
@@ -103,10 +105,10 @@ extension Configuration {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(
+  static func withCurrent<R, E>(
     _ configuration: Self,
-    perform body: () async throws -> R
-  ) async rethrows -> R {
+    perform body: nonisolated(nonsending) () async throws(E) -> R
+  ) async throws(E) -> R {
     let id = configuration._addToAll()
     defer {
       configuration._removeFromAll(identifiedBy: id)
@@ -114,8 +116,10 @@ extension Configuration {
 
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.configuration = configuration
-    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
-      try await body()
+    return try await withUnsafeTypedThrows(throwing: E.self) {
+      try await Runner.RuntimeState.$current.withValue(runtimeState) {
+        try await body()
+      }
     }
   }
 
@@ -236,12 +240,14 @@ extension Test {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ test: Self, perform body: () async throws -> R) async rethrows -> R {
+  static func withCurrent<R, E>(_ test: Self, perform body: nonisolated(nonsending) () async throws(E) -> R) async throws(E) -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.test = test
     runtimeState.testCase = nil
-    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
-      try await test.withCancellationHandling(body)
+    return try await withUnsafeTypedThrows(throwing: E.self) {
+      try await Runner.RuntimeState.$current.withValue(runtimeState) {
+        try await test.withCancellationHandling(body)
+      }
     }
   }
 
@@ -259,11 +265,13 @@ extension Test {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrentIteration<R>(_ iteration: Int?, perform body: () async throws -> R) async rethrows -> R {
+  static func withCurrentIteration<R, E>(_ iteration: Int?, perform body: nonisolated(nonsending) () async throws(E) -> R) async throws(E) -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.iteration = iteration
-    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
-      try await body()
+    return try await withUnsafeTypedThrows(throwing: E.self) {
+      try await Runner.RuntimeState.$current.withValue(runtimeState) {
+        try await body()
+      }
     }
   }
 }
@@ -294,11 +302,13 @@ extension Test.Case {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ testCase: Self, perform body: () async throws -> R) async rethrows -> R {
+  static func withCurrent<R, E>(_ testCase: Self, perform body: nonisolated(nonsending) () async throws(E) -> R) async throws(E) -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.testCase = testCase
-    return try await Runner.RuntimeState.$current.withValue(runtimeState) {
-      try await testCase.withCancellationHandling(body)
+    return try await withUnsafeTypedThrows(throwing: E.self) {
+      try await Runner.RuntimeState.$current.withValue(runtimeState) {
+        try await testCase.withCancellationHandling(body)
+      }
     }
   }
 }
