@@ -339,16 +339,16 @@ public struct Test: Sendable {
   }
 
   /// Initialize an instance of this type representing a test function.
-  init<S, E>(
+  init<S>(
     name: String,
     displayName: String? = nil,
     traits: [any Trait],
     sourceBounds: __SourceBounds,
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
-    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S, E>,
+    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
     parameters: [Parameter]
-  ) where S: ~Copyable, E: ~Copyable {
+  ) {
     let properties = _Properties(
       name: name,
       displayName: displayName,
@@ -364,16 +364,16 @@ public struct Test: Sendable {
   }
 
   /// Initialize an instance of this type representing a test function.
-  init<S, E>(
+  init<S>(
     name: String,
     displayName: String? = nil,
     traits: [any Trait],
     sourceBounds: __SourceBounds,
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
-    testCases: Test.Case.Generator<S, E>,
+    testCases: Test.Case.Generator<S>,
     parameters: [Parameter]
-  ) where S: ~Copyable, E: ~Copyable {
+  ) {
     let properties = _Properties(
       name: name,
       displayName: displayName,
