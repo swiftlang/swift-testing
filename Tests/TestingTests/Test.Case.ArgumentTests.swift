@@ -43,13 +43,13 @@ struct Test_Case_ArgumentTests {
 
       do {
         let argument = arguments[0]
-        #expect(argument.value as? String == "value")
+        #expect(argument.value as? String == "value", "\(argument.value)")
         #expect(argument.parameter.index == 0)
         #expect(argument.parameter.firstName == "x")
       }
       do {
         let argument = arguments[1]
-        #expect(argument.value as? Int == 123)
+        #expect(argument.value as? Int == 123, "\(argument.value)")
         #expect(argument.parameter.index == 1)
         #expect(argument.parameter.firstName == "y")
       }
