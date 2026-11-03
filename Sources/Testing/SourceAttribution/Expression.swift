@@ -132,12 +132,14 @@ public struct __Expression: Sendable {
     ///
     /// - Parameters:
     ///   - subject: The subject this instance should describe.
-    init(describing subject: Any) {
-      description = String(describingForTest: subject)
+    ///   - mirror: An instance of ``Mirror`` that reflects `subject`, if
+    ///     available. If `nil`, this initializer creates a temporary mirror.
+    init(describing subject: Any, reflectedBy mirror: Mirror? = nil) {
+      let mirror = mirror ?? Mirror(reflectingForTest: subject)
+      description = String(describingForTest: subject, reflectedBy: mirror)
       debugDescription = String(reflecting: subject)
       typeInfo = TypeInfo(describingTypeOf: subject)
 
-      let mirror = Mirror(reflectingForTest: subject)
       isCollection = mirror.displayStyle?.isCollection ?? false
     }
 
@@ -219,10 +221,9 @@ public struct __Expression: Sendable {
         return
       }
 
-      self.init(describing: subject)
-      self.label = label
-
       let mirror = Mirror(reflectingForTest: subject)
+      self.init(describing: subject, reflectedBy: mirror)
+      self.label = label
 
       // If the subject being reflected is an instance of a reference type (e.g.
       // a class), keep track of whether it has been seen previously. Later

@@ -9,7 +9,7 @@
 //
 
 #if !SWT_NO_INTEROP
-#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded)
+#if os(anyAppleOS) && !hasFeature(Embedded)
 private import _TestingInternals
 #else
 private import Synchronization
@@ -25,7 +25,7 @@ private final class _FallbackEventHandlerStorage: Sendable, RawRepresentable {
 }
 
 /// The installed event handler.
-#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded)
+#if os(anyAppleOS) && !hasFeature(Embedded)
 private nonisolated(unsafe) let _fallbackEventHandler = {
   let result = UnsafeMutablePointer<UnsafeRawPointer?>.allocate(capacity: 1)
   result.initialize(to: nil)
@@ -63,7 +63,7 @@ package typealias FallbackEventHandler = @Sendable @convention(c) (
 @c
 @usableFromInline
 package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
-#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded)
+#if os(anyAppleOS) && !hasFeature(Embedded)
   guard let unmanaged = swt_atomicLoad(_fallbackEventHandler).map(Unmanaged<_FallbackEventHandlerStorage>.fromOpaque) else {
     return nil
   }
@@ -95,7 +95,7 @@ package func _swift_testing_installFallbackEventHandler(_ handler: FallbackEvent
   var result = false
 
   let handler = _FallbackEventHandlerStorage(rawValue: handler)
-#if SWT_TARGET_OS_APPLE && !hasFeature(Embedded)
+#if os(anyAppleOS) && !hasFeature(Embedded)
   let unmanaged = Unmanaged.passRetained(handler)
   var expectedNil: UnsafeRawPointer?
   result = swt_atomicCompareExchange(_fallbackEventHandler, &expectedNil, unmanaged.toOpaque())

@@ -14,7 +14,7 @@
 struct Test_Case_GeneratorTests {
   @Test func uniqueDiscriminators() throws {
     let generator = Test.Case.Generator(
-      arguments: [1, 1, 1],
+      argumentList: __makeArgumentList([1, 1, 1]),
       parameters: [Test.Parameter(index: 0, firstName: "x", type: Int.self)],
       testFunction: { _ in }
     )

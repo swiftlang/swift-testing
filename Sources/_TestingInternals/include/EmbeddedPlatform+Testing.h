@@ -50,7 +50,7 @@
 #endif
 
 #if SWIFT_TESTING_COMPILER_HAS_ATTRIBUTE(__warn_unused_result__)
-#define SWIFT_TESTING_NODISCARD __attribute__((warn_unused_result))
+#define SWIFT_TESTING_NODISCARD __attribute__((__warn_unused_result__))
 #else
 #define SWIFT_TESTING_NODISCARD
 #endif
@@ -74,6 +74,27 @@
 #define SWIFT_TESTING_NULLABLE
 #define SWIFT_TESTING_NONNULL
 #endif
+
+/// An attribute that declares a symbol to have weak linkage.
+///
+/// A _defined_ symbol with weak linkage can be overridden by another symbol
+/// with non-weak linkage at link time. This allows us to provide default
+/// implementations for functions.
+///
+/// This definition of "weak linkage" differs from the one used for
+/// `__attribute__((__weak_import__))` which some platforms (particularly Apple
+/// platforms) use to mark a _declared_ symbol as potentially being unavailable
+/// at runtime.
+///
+/// ## See Also
+///
+/// - [`__attribute__((__weak__))` on clang.llvm.org](https://clang.llvm.org/docs/AttributeReference.html#weak)
+#if SWIFT_TESTING_COMPILER_HAS_ATTRIBUTE(__weak__)
+#define SWIFT_TESTING_WEAK __attribute__((__weak__))
+#else
+#define SWIFT_TESTING_WEAK
+#endif
+
 
 /// Run tests in the current process according to the specified configuration
 /// and call a completion handler when the test run ends.

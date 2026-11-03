@@ -11,6 +11,7 @@ set(CMAKE_CXX_SCAN_FOR_MODULES 0)
 include(GitCommit)
 include(TargetTriple)
 add_library(_TestingInternals STATIC
+  EmbeddedPlatformDefault.cpp
   Versions.cpp
   WillThrow.cpp)
 target_include_directories(_TestingInternals PUBLIC

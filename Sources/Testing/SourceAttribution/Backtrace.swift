@@ -64,7 +64,7 @@ public struct Backtrace: Sendable {
     // platforms, hence the use of .init() when calling it below.
     withUnsafeTemporaryAllocation(of: UnsafeMutableRawPointer?.self, capacity: addressCount) { addresses in
       var initializedCount = 0
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
       initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
 #elseif os(Android)
       if #available(Android 33, *) {
@@ -331,7 +331,7 @@ extension Backtrace {
     forward(errorType)
   }
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+#if os(anyAppleOS) && !SWT_NO_DYNAMIC_LINKING
   /// A function provided by Core Foundation that copies the captured backtrace
   /// from storage inside `CFError` or `NSError`.
   ///
@@ -445,7 +445,7 @@ extension Backtrace {
   @inline(never)
   init?(forFirstThrowOf error: any Error, checkFoundation: Bool = true) {
     if checkFoundation && Self.isFoundationCaptureEnabled {
-#if !hasFeature(Embedded) && SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+#if !hasFeature(Embedded) && os(anyAppleOS) && !SWT_NO_DYNAMIC_LINKING
       if let addresses = Self._CFErrorCopyCallStackReturnAddresses?(error)?.takeRetainedValue() as? [Address] {
         self.init(addresses: addresses)
         return

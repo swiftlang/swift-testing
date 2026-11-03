@@ -12,7 +12,7 @@
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
-#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+#if !os(anyAppleOS) && canImport(Synchronization)
 import Synchronization
 #endif
 
@@ -259,7 +259,7 @@ private func withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws ->
   let addressInTestingLibrary = unsafeBitCast(ABI.v0.entryPoint, to: UnsafeRawPointer.self)
 
   var testingLibraryAddress: ImageAddress?
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
   var info = Dl_info()
   try #require(0 != dladdr(addressInTestingLibrary, &info))
 

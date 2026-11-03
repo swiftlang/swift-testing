@@ -35,7 +35,7 @@ extension Event {
     /// - Returns: Whether or not this instance should be recorded.
     func shouldRecord(withVerbosity verbosity: Int) -> Bool {
       switch name {
-      case Self._testingLibraryVersionName, Self._targetPlatformName:
+      case Self._testingLibraryVersionName, Self._targetPlatformName, Self._embeddedTargetInfoName:
         true
       default:
         verbosity > 0

@@ -15,7 +15,7 @@ public import Foundation
 public import Combine
 #endif
 
-#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+#if os(anyAppleOS) && canImport(UniformTypeIdentifiers)
 import UniformTypeIdentifiers
 #endif
 
@@ -65,7 +65,7 @@ extension Attachment {
         return .json
       }
 
-#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+#if os(anyAppleOS) && canImport(UniformTypeIdentifiers)
       // There is some other path extension. Check with Launch Services for a
       // Uniform Type Identifier that conforms to one we support.
       if let contentType = UTType(filenameExtension: ext) {
