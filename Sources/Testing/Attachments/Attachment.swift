@@ -545,7 +545,7 @@ extension Attachment where AttachableValue: ~Copyable {
     } catch {
       // Split the extension(s) off the preferred name. The first component in
       // the resulting array is our base name.
-      var preferredNameComponents = preferredName.split(separator: ".")
+      var preferredNameComponents = preferredName.split(separator: ".", omittingEmptySubsequences: false)
       let firstPreferredNameComponent = preferredNameComponents[0]
 
       while true {
