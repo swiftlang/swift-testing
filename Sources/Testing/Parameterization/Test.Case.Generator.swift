@@ -111,7 +111,7 @@ extension Test.Case.Generator {
   ///     should be generated.
   ///   - testFunction: The test function to which each generated test case
   ///     passes an argument value from `argumentList`.
-  @available(_inlineArrayAPI, *)
+  @available(_iterableAPI, *)
   init<let count: Int, E>(
     argumentList: consuming Test.Case.Argument.List<InlineArray<count, E>, E>,
     parameters: [Test.Parameter],
@@ -137,7 +137,7 @@ extension Test.Case.Generator {
   ///   - testFunction: The test function to which each generated test case
   ///     passes an argument value from the Cartesian product of `argumentList1`
   ///     and `argumentList2`.
-  @available(_inlineArrayAPI, *)
+  @available(_iterableAPI, *)
   init<let count1: Int, E1, let count2: Int, E2>(
     argumentLists argumentList1: consuming Test.Case.Argument.List<InlineArray<count1, E1>, E1>, _ argumentList2: consuming Test.Case.Argument.List<InlineArray<count2, E2>, E2>,
     parameters: [Test.Parameter],
