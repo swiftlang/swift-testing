@@ -18,7 +18,7 @@ extension Issue {
   ///
   /// - Returns: The issue that was recorded (`self` or a modified copy of it.)
   @discardableResult
-  func record(
+  package func record(
     configuration: Configuration? = nil,
   ) -> Self {
     // If this issue is a caught error that has a custom issue representation,

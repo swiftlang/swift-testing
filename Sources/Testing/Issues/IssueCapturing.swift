@@ -12,38 +12,23 @@
 internal import Synchronization
 #endif
 
-/// An ``IssueResponder`` for transparently recording any issues that pass
-/// through it without making any modifications.
-///
-/// Instances of `ObserveIssueResponder` are created whenever an
-/// ``withIssueObservation(_:)`` call is made. These are added to the
-/// Issue Responder Chain and used to observe all issues emitted during the
-/// `body` of the `withIssueObservation` call.
-struct ObserveIssuesResponder: IssueResponder {
-  /// The list of issues recorded during execution.
-  let issues = Allocated(Mutex([Issue]()))
-
-  /// Respond to the issue by recording it and sending it to the next responder
-  /// in the chain.
-  func respond(to issue: Issue) -> Issue? {
-    issues.value.withLock { $0.append(issue) }
-    return issue
-  }
-}
-
-/// An ``IssueResponder`` for recording any issues that are sent to it without
-/// making any modifications. `CaptureIssuesResponder` differs from
-/// ``ObserveIssuesResponder`` in that it does not pass the issue on to the
-/// next responder in the Issue Responder Chain.
+/// An ``IssueResponder`` for recording any matching issues that are sent to it
+/// without making any modifications. Recorded issues are not sent to the next
+/// responder in the issue responder chain.
 struct CaptureIssuesResponder: IssueResponder {
   /// The list of issues recorded during execution.
   let issues = Allocated(Mutex([Issue]()))
+  let issueMatcher: @Sendable (Issue) -> Bool
 
   /// Respond to the issue by recording it and stopping the issue from being
   /// sent to the next responder in the chain.
   func respond(to issue: Issue) -> Issue? {
-    issues.value.withLock { $0.append(issue) }
-    return nil
+    if issueMatcher(issue) {
+      issues.value.withLock { $0.append(issue) }
+      return nil
+    } else {
+      return issue
+    }
   }
 }
 
@@ -70,6 +55,8 @@ private func _recordError(
 ///
 /// - Parameters:
 ///   - body: The function to invoke.
+///   - issueMatcher: A function to invoke when an issue occurs that is used to
+///     determine if the issue should be captured. By default, all issues match.
 ///
 /// Library authors use this function to capture and analyze any issues for
 /// later analysis. This is particularly useful for verifying that test helpers
@@ -77,9 +64,10 @@ private func _recordError(
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
 package func withIssueCapturing(
-  _ body: () throws -> Void
+  _ body: () throws -> Void,
+  matching issueMatcher: @escaping @Sendable (Issue) -> Bool = { _ in true }
 ) -> [Issue] {
-  let responder = CaptureIssuesResponder()
+  let responder = CaptureIssuesResponder(issueMatcher: issueMatcher)
   withIssueResponder(responder) {
     do {
       try body()
@@ -96,6 +84,8 @@ package func withIssueCapturing(
 ///
 /// - Parameters:
 ///   - body: The function to invoke.
+///   - issueMatcher: A function to invoke when an issue occurs that is used to
+///     determine if the issue should be captured. By default, all issues match.
 ///
 /// Library authors use this function to capture and analyze any issues for
 /// later analysis. This is particularly useful for verifying that test helpers
@@ -103,59 +93,10 @@ package func withIssueCapturing(
 /// Test authors should consider using
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
 package func withIssueCapturing(
-  _ body: sending @isolated(any) () async throws -> Void
+  _ body: sending @isolated(any) () async throws -> Void,
+  matching issueMatcher: @escaping @Sendable (Issue) -> Bool = { _ in true }
 ) async -> [Issue] {
-  let responder = CaptureIssuesResponder()
-  await withIssueResponder(responder) {
-    do {
-      try await body()
-    } catch {
-      _recordError(error)
-    }
-  }
-  return responder.issues.value.withLock { $0 }
-}
-
-/// Invoke a function, and return any issues recorded during its execution.
-/// Issues recorded will still be sent to the rest of the testing library.
-///
-/// - Parameters:
-///   - body: The function to invoke.
-///
-/// Library authors use this function to capture and analyze any issues for
-/// later analysis. This is particularly useful for verifying that test helpers
-/// correctly record issues.
-/// Test authors should consider using
-/// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-package func withIssueObservation(
-  _ body: () throws -> Void
-) -> [Issue] {
-  let responder = ObserveIssuesResponder()
-  withIssueResponder(responder) {
-    do {
-      try body()
-    } catch {
-      _recordError(error)
-    }
-  }
-  return responder.issues.value.withLock { $0 }
-}
-
-/// Invoke a function, and return any issues recorded during its execution.
-/// Issues recorded will still be sent to the rest of the testing library.
-///
-/// - Parameters:
-///   - body: The function to invoke.
-///
-/// Library authors use this function to capture and analyze any issues for
-/// later analysis. This is particularly useful for verifying that test helpers
-/// correctly record issues.
-/// Test authors should consider using
-/// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
-package func withIssueObservation(
-  _ body: sending @isolated(any) () async throws -> Void
-) async -> [Issue] {
-  let responder = ObserveIssuesResponder()
+  let responder = CaptureIssuesResponder(issueMatcher: issueMatcher)
   await withIssueResponder(responder) {
     do {
       try await body()
