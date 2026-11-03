@@ -598,7 +598,7 @@ private let exit = Testing.exit
   @Test("Capture list (very long encoded form)")
   func longCaptureList() async {
     let count = 1 * 1024 * 1024
-    let buffer = Array(repeatElement(0 as UInt8, count: count))
+    let buffer = Array(repeating: 0 as UInt8, count: count)
     await #expect(processExitsWith: .success) { [count = count as Int, buffer = buffer as [UInt8]] in
       #expect(buffer.count == count)
     }
