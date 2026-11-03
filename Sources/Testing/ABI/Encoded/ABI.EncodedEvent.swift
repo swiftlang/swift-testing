@@ -257,11 +257,11 @@ extension ABI.EncodedEvent: Codable {
     case sourceLocation
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 
-  public init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws(any Error) {
     let container = try decoder.container(keyedBy: _CodingKeys.self)
     kind = try container.decode(Kind.self, forKey: .kind)
     instant = try container.decode(ABI.EncodedInstant<V>.self, forKey: .instant)
@@ -281,7 +281,7 @@ extension ABI.EncodedEvent: Codable {
 }
 
 extension ABI.EncodedEvent.Kind: Codable {
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 }

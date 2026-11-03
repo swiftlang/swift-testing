@@ -135,11 +135,11 @@ extension JSON {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body` or by the encoding process.
-  static func withEncoding<R>(
+  static func withEncoding<R, E>(
     of value: some JSON.Encodable,
     in context: JSON.EncodingContext = JSON.EncodingContext(),
-    _ body: (UnsafeRawBufferPointer) throws -> R
-  ) throws -> R {
+    _ body: (UnsafeRawBufferPointer) throws(E) -> R
+  ) throws(any Error) -> R {
     var buffer = [UInt8]()
     try value.jsonValue(in: context).encode(in: context, into: &buffer)
 
@@ -164,10 +164,10 @@ extension JSON {
   /// both `Encodable` and ``JSON/Encodable``. It uses our encoder rather than
   /// Foundation's (`JSONEncoder`). To use `JSONEncoder`, explicitly pass the
   /// `userInfo` argument.
-  static func withEncoding<R>(
+  static func withEncoding<R, E>(
     of value: some Swift.Encodable & JSON.Encodable,
-    _ body: (UnsafeRawBufferPointer) throws -> R
-  ) throws -> R {
+    _ body: (UnsafeRawBufferPointer) throws(E) -> R
+  ) throws(any Error) -> R {
     try withEncoding(of: value, in: JSON.EncodingContext(), body)
   }
 #endif
@@ -506,7 +506,7 @@ extension JSON.Value: Encodable {
     }
   }
 
-  func encode(to encoder: any Encoder) throws {
+  func encode(to encoder: any Encoder) throws(any Error) {
     switch self {
     case let .string(string):
       var container = encoder.singleValueContainer()
@@ -553,11 +553,11 @@ extension Encoder {
   /// it calls this function:
   ///
   /// ```swift
-  /// func encode(to encoder: any Encoder) throws {
+  /// func encode(to encoder: any Encoder) throws(any Error) {
   ///   try encoder.encodeJSONEncodableValue(self)
   /// }
   /// ```
-  func encodeJSONEncodableValue(_ value: some JSON.Encodable) throws {
+  func encodeJSONEncodableValue(_ value: some JSON.Encodable) throws(any Error) {
     var context = JSON.EncodingContext()
     if (userInfo[.allowNonConformingFloatingPointValuesUserInfoKey] as? Bool) == true {
       context.encodesNonConformingFloatingPointValues = true

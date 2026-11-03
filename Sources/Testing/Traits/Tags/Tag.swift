@@ -89,7 +89,7 @@ extension Tag: Equatable, Hashable, Comparable {
 // MARK: - Codable, CodingKeyRepresentable
 
 extension Tag: Codable, CodingKeyRepresentable {
-  public init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws(any Error) {
     let stringValue = try String(from: decoder)
     self.init(_codableStringValue: stringValue)
   }
@@ -102,7 +102,7 @@ extension Tag: Codable, CodingKeyRepresentable {
     }
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try _codableStringValue.encode(to: encoder)
   }
 

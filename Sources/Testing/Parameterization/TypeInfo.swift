@@ -549,12 +549,12 @@ extension TypeInfo: Codable {
     public var mangledName: String?
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     let encodedForm = EncodedForm(fullyQualifiedName: fullyQualifiedName, unqualifiedName: unqualifiedName, mangledName: mangledName)
     try encodedForm.encode(to: encoder)
   }
 
-  public init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws(any Error) {
     let encodedForm = try EncodedForm(from: decoder)
     self.init(fullyQualifiedName: encodedForm.fullyQualifiedName, unqualifiedName: encodedForm.unqualifiedName, mangledName: encodedForm.mangledName)
   }

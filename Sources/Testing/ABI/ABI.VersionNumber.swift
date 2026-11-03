@@ -168,7 +168,7 @@ extension ABI.VersionNumber: Equatable, Comparable {
 
 #if !SWT_NO_CODABLE
 extension ABI.VersionNumber: Codable {
-  public init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws(any Error) {
     let container = try decoder.singleValueContainer()
     if let number = try? container.decode(Component.self) {
       // Allow for version numbers encoded as integers for compatibility with
@@ -188,7 +188,7 @@ extension ABI.VersionNumber: Codable {
     }
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 
@@ -200,7 +200,7 @@ extension ABI.VersionNumber: Codable {
   ///   - recordJSON: The record JSON to partially decode.
   ///
   /// - Throws: Any error that prevented decoding an instance of this type.
-  public init(fromRecordJSON recordJSON: UnsafeRawBufferPointer) throws {
+  public init(fromRecordJSON recordJSON: UnsafeRawBufferPointer) throws(any Error) {
 #if !os(Windows) // no memmem()
     // This is sneaky: if we find the substring ""version": "" in the JSON, and
     // we only find it once, we can assume that what follows up to a comma,
