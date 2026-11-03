@@ -15,7 +15,7 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
-#if !SWT_EMBEDDED
+#if !defined(SWT_EMBEDDED)
 /// The type of handler that is called by `swift_willThrow()`.
 ///
 /// - Parameters:

@@ -20,7 +20,7 @@ private import SwiftShims
 ///
 /// This value is not part of the public interface of the testing library.
 let operatingSystemVersion: String = {
-#if !SWT_NO_SYSCTL && SWT_TARGET_OS_APPLE
+#if !SWT_NO_SYSCTL && os(anyAppleOS)
   let productVersion = sysctlbyname("kern.osproductversion", as: String.self) ?? ""
   let buildNumber = sysctlbyname("kern.osversion", as: String.self) ?? ""
   switch (productVersion, buildNumber) {
@@ -33,7 +33,7 @@ let operatingSystemVersion: String = {
   default:
     return "\(productVersion) (\(buildNumber))"
   }
-#elseif !SWT_NO_UNAME && (SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD))
+#elseif !SWT_NO_UNAME && (os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD))
   var name = utsname()
   if 0 == uname(&name) {
     let release = withUnsafeBytes(of: name.release) { release in
@@ -232,35 +232,21 @@ var swiftCompilerVersion: VersionNumber {
   )
 }
 
-#if os(Linux) && canImport(Glibc)
 /// The (runtime, not compile-time) version of glibc in use on this system.
 ///
 /// This value is not part of the public interface of the testing library.
-let glibcVersion: VersionNumber = {
-  // Default to the statically available version number if the function call
-  // fails for some reason.
-  var major = Int(clamping: __GLIBC__)
-  var minor = Int(clamping: __GLIBC_MINOR__)
-
-#if !hasFeature(Embedded)
-  if let strVersion = gnu_get_libc_version() {
-    withUnsafeMutablePointer(to: &major) { major in
-      withUnsafeMutablePointer(to: &minor) { minor in
-        withVaList([major, minor]) { args in
-          _ = vsscanf(strVersion, "%zd.%zd", args)
-        }
-      }
-    }
+let glibcVersion: VersionNumber? = {
+  var major = CInt(0)
+  var minor = CInt(0)
+  guard swt_getGNUCLibraryVersion(&major, &minor) else {
+    return nil
   }
-#endif
-
   return VersionNumber(majorComponent: .init(clamping: major), minorComponent: .init(clamping: minor))
 }()
-#endif
 
 // MARK: - sysctlbyname() Wrapper
 
-#if !hasFeature(Embedded) && !SWT_NO_SYSCTL && SWT_TARGET_OS_APPLE
+#if !hasFeature(Embedded) && !SWT_NO_SYSCTL && os(anyAppleOS)
 /// Get a string value by calling `sysctlbyname()`.
 ///
 /// - Parameters:

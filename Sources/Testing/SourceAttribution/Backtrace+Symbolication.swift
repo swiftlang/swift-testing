@@ -63,7 +63,7 @@ extension Backtrace {
     var result = addresses.map { SymbolicatedAddress(address: $0) }
 
 #if !SWT_NO_DYNAMIC_LINKING
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     for (i, address) in addresses.enumerated() {
       var info = Dl_info()
       if 0 != dladdr(UnsafePointer(bitPattern: UInt(clamping: address)), &info) {

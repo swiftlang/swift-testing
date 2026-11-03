@@ -17,7 +17,7 @@ private import WinSDK
 #endif
 
 extension Attachment where AttachableValue == _AttachableURLWrapper {
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
   /// An operation queue to use for asynchronously reading data from disk.
   private static let _operationQueue = OperationQueue()
 #endif
@@ -75,7 +75,7 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
     let url = url.resolvingSymlinksInPath()
     let isDirectory = try url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory!
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_FOUNDATION_FILE_COORDINATION && !SWT_NO_CONTINUATIONS
+#if os(anyAppleOS) && !SWT_NO_FOUNDATION_FILE_COORDINATION && !SWT_NO_CONTINUATIONS
     let urlWrapper = try await withCheckedThrowingContinuation { continuation in
       let fileCoordinator = NSFileCoordinator()
       let fileAccessIntent = NSFileAccessIntent.readingIntent(with: url, options: [.forUploading])
@@ -194,7 +194,7 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
     ])
   }
 #endif
-#elseif SWT_TARGET_OS_APPLE || os(FreeBSD)
+#elseif os(anyAppleOS) || os(FreeBSD)
   let archiverPath = "/usr/bin/tar"
 #elseif os(Windows)
   guard let archiverPath = _archiverPath else {
@@ -215,7 +215,7 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
     // The zip command constructs relative paths from the current working
     // directory rather than from command-line arguments.
     ["-c", #"cd "$0" && "$1" "$2" --recurse-paths ."#, sourcePath, trueArchiverPath, destinationPath]
-#elseif SWT_TARGET_OS_APPLE || os(FreeBSD)
+#elseif os(anyAppleOS) || os(FreeBSD)
     ["--create", "--auto-compress", "--directory", sourcePath, "--file", destinationPath, "."]
 #elseif os(Windows)
     // The Windows version of bsdtar can handle relative paths for other archive

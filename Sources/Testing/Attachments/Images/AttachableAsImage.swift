@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if SWT_TARGET_OS_APPLE || os(Windows)
+#if os(anyAppleOS) || os(Windows)
 // These platforms support image attachments.
 #elseif hasFeature(Embedded)
 // Embedded Swift can support image attachments, but the implementation will be

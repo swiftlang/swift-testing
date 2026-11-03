@@ -36,10 +36,12 @@
 // The minal implementations below satisfy the Platform Abstraction Layer's
 // requirements, but may not implement all the functionality specified by POSIX.
 
+SWIFT_TESTING_WEAK
 int *__error(void) {
   return &errno;
 }
 
+SWIFT_TESTING_WEAK
 int clock_gettime(clockid_t clockid, struct timespec *tp) {
   uint64_t us = time_us_64();
   tp->tv_sec = us / 1000000;
@@ -47,11 +49,13 @@ int clock_gettime(clockid_t clockid, struct timespec *tp) {
   return 0;
 }
 
+SWIFT_TESTING_WEAK
 int memset_s(void *dest, size_t destsz, int ch, size_t count) {
   memset(dest, ch, count);
   return 0;
 }
 
+SWIFT_TESTING_WEAK
 int _nanosleep(const struct timespec *duration, struct timespec *rem) {
   sleep_us(duration->tv_sec * 1000000);
   sleep_us(duration->tv_nsec / 1000);
@@ -59,6 +63,7 @@ int _nanosleep(const struct timespec *duration, struct timespec *rem) {
   return 0;
 }
 
+SWIFT_TESTING_WEAK
 int posix_memalign(void **memptr, size_t alignment, size_t size) {
   void *result = memalign(alignment, size);
   if (result) {
@@ -76,35 +81,22 @@ int posix_memalign(void **memptr, size_t alignment, size_t size) {
 #if __has_attribute(__swiftcall__)
 __attribute__((__swiftcall__))
 #endif
+SWIFT_TESTING_WEAK
 void _task_serialExecutor_checkIsolated(const void *executor, const void *selfType, const void *wtable) {}
 
 #if __has_attribute(__swiftcall__)
 __attribute__((__swiftcall__))
 #endif
+SWIFT_TESTING_WEAK
 int8_t _task_serialExecutor_isIsolatingCurrentContext(const void *executor, const void *selfType, const void *wtable) {
   return -1; // unknown
 }
 
 // MARK: -
 
-bool _swift_testing_getArgcArgv(swift_testing_argc_argv_t *outArgcArgv) {
-  static char *argv[] = { "swift-test", "--verbose" };
-  outArgcArgv->argc = 2;
-  outArgcArgv->argv = argv;
-  return true;
-}
-
-bool _swift_testing_getEnvironment(char *_Nullable *_Nullable *_Nonnull outEnvironment) {
-  return false;
-}
-
 bool _swift_testing_getEmbeddedTargetInfo(const char **outEmbeddedTargetInfo) {
   *outEmbeddedTargetInfo = PICO_PLATFORM_STRING " (Pico SDK " PICO_SDK_VERSION_STRING ")";
   return true;
-}
-
-bool _swift_testing_getConsoleCapabilities(swift_testing_console_capabilities_t *outConsoleCapabilities) {
-  return false;
 }
 
 static atomic_flag _statusLEDInitialized = ATOMIC_FLAG_INIT;
@@ -122,8 +114,6 @@ void _swift_testing_writeToConsole(const uint8_t *chars, size_t count) {
   stdio_put_string((const char *)chars, count, false, PICO_STDIO_DEFAULT_CRLF);
   status_led_set_state(false);
 }
-
-void _swift_testing_writeJSON(const char *path, const uint8_t *json, size_t count, const uint8_t terminator[1]) {}
 
 bool _swift_testing_getDurationSinceSystemEpoch(swift_testing_duration_t *outDuration) {
   uint64_t us = time_us_64();

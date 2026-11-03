@@ -14,7 +14,7 @@ internal import _TestingInternals
 internal import Synchronization
 #endif
 
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
 /// A type that replicates the interface of ``Synchronization/Atomic``.
 ///
 /// This type is used on Apple platforms because our deployment target there is

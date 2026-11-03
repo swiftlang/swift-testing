@@ -286,6 +286,8 @@ extension Bool {
   try #expect(true.throwingValue())
 }
 
+@Test(.hidden, arguments: 0 ..< 10, 0 ..< 10) func `Cartesian products can be passed as 2-tuples`(xy: (Int, Int)) {}
+
 @Suite("Miscellaneous tests")
 struct MiscellaneousTests {
   @Test("Free function's name")

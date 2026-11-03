@@ -134,24 +134,24 @@
 // MARK: - Platform-specific includes
 
 #if defined(__APPLE__)
-#if !SWT_NO_MACH_PORTS
+#if !defined(SWT_NO_MACH_PORTS)
 #include <mach/mach_init.h>
 #include <mach/task.h>
 #endif
 
-#if !SWT_NO_LIBDISPATCH
+#if !defined(SWT_NO_LIBDISPATCH)
 #include <dispatch/dispatch.h>
 #endif
 
-#if !SWT_NO_DYNAMIC_LINKING
+#if !defined(SWT_NO_DYNAMIC_LINKING)
 #include <mach-o/dyld.h>
 #endif
 
-#if !SWT_NO_OS_UNFAIR_LOCK
+#if !defined(SWT_NO_OS_UNFAIR_LOCK)
 #include <os/lock.h>
 #endif
 
-#if !SWT_NO_FILE_CLONING
+#if !defined(SWT_NO_FILE_CLONING)
 #include <sys/clonefile.h>
 #endif
 

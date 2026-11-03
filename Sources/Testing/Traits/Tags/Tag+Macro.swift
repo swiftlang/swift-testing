@@ -27,7 +27,19 @@ extension Tag {
 #else
     let typeInfo = TypeInfo(fullyQualifiedName: "\(type.fullyQualifiedName)", mangledName: nil)
 #endif
+    return fromStaticMember(of: typeInfo, name)
+  }
 
+  /// Create a tag representing a static member of ``Tag`` such as ``Tag/red``.
+  ///
+  /// - Parameters:
+  ///   - typeInfo: The type in which the tag is declared. This type must either
+  ///     be ``Tag`` or a type nested within it.
+  ///   - name: The name of the declared variable, not including its parent
+  ///     type, module name, or a leading period.
+  ///
+  /// - Returns: An instance of ``Tag``.
+  static func fromStaticMember(of typeInfo: TypeInfo, _ name: String) -> Self {
     // Split up the supplied type name into its fully-qualified components. We
     // will use this string array to reconstruct the fully-qualified name of the
     // described static member.

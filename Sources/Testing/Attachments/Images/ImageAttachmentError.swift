@@ -15,7 +15,7 @@ private import _TestingInternals
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 package enum ImageAttachmentError: Error {
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
   /// The image could not be converted to an instance of `CGImage`.
   case couldNotCreateCGImage
 
@@ -62,7 +62,7 @@ package enum ImageAttachmentError: Error {
 #endif
 extension ImageAttachmentError: CustomStringConvertible {
   package var description: String {
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     switch self {
     case .couldNotCreateCGImage:
       "Could not create the corresponding Core Graphics image."

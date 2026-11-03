@@ -10,7 +10,7 @@
 
 #include "WillThrow.h"
 
-#if !SWT_EMBEDDED
+#if !defined(SWT_EMBEDDED)
 #if __has_include(<atomic>)
 #include <atomic>
 
