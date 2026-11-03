@@ -52,6 +52,40 @@ extension Test.Case.__ArgumentList where S: ~Copyable, E: ~Copyable {
   }
 }
 
+extension Test.Case.__ArgumentList where S: ~Copyable, E: Copyable {
+  init(_ wrappedValue: consuming S, parameterCount: Int) {
+    self.wrappedValue = wrappedValue
+    self.makeArgumentValues = { element in
+      var testDescription: String?
+#if !hasFeature(Embedded)
+      var mirror: Mirror?
+      if parameterCount > 1 {
+        mirror = Mirror(reflectingForTest: element)
+        if let mirror, mirror.displayStyle == .tuple {
+          return mirror.children.lazy
+            .map { unsafeBitCast($0.value, to: (any Sendable).self) }
+            .map { Test.Case.Argument.Value($0) }
+        }
+      }
+
+      // The value did not appear to be a tuple or we didn't need to split the
+      // element. If we created a mirror above, we can reuse it here.
+      if mirror?.displayStyle == .tuple {
+        testDescription = String(describingForTest: element, reflectedBy: mirror)
+      }
+#else
+      // We can't break down the tuple in Embedded Swift, but we can at
+      // least present the correct number of arguments.
+      if parameterCount > 1 {
+        let unavailable = Test.Case.Argument.Value(UnavailableInEmbeddedSwift())
+        return Array(repeating: unavailable, count: parameterCount)
+      }
+#endif
+      return [Test.Case.Argument.Value(element, testDescription: testDescription)]
+    }
+  }
+}
+
 // MARK: -
 
 /// Make an argument list from the given sequence of arguments.
@@ -67,34 +101,7 @@ extension Test.Case.__ArgumentList where S: ~Copyable, E: ~Copyable {
 ///   it directly.
 @_disfavoredOverload
 public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence {
-  Test.Case.__ArgumentList(arguments) { element in
-    var testDescription: String?
-#if !hasFeature(Embedded)
-    var mirror: Mirror?
-    if parameterCount > 1 {
-      mirror = Mirror(reflectingForTest: element)
-      if let mirror, mirror.displayStyle == .tuple {
-        return mirror.children.lazy
-          .map { unsafeBitCast($0.value, to: (any Sendable).self) }
-          .map { Test.Case.Argument.Value($0) }
-      }
-    }
-
-    // The value did not appear to be a tuple or we didn't need to split the
-    // element. If we created a mirror above, we can reuse it here.
-    if mirror?.displayStyle == .tuple {
-      testDescription = String(describingForTest: element, reflectedBy: mirror)
-    }
-#else
-    // We can't break down the tuple in Embedded Swift, but we can at
-    // least present the correct number of arguments.
-    if parameterCount > 1 {
-      let unavailable = Test.Case.Argument.Value(UnavailableInEmbeddedSwift())
-      return Array(repeating: unavailable, count: parameterCount)
-    }
-#endif
-    return [Test.Case.Argument.Value(element, testDescription: testDescription)]
-  }
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
 
 /// Make an argument list from the given sequence of arguments.
@@ -174,13 +181,8 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
 @_spi(Experimental)
 @available(_inlineArrayAPI, *)
 @_disfavoredOverload
-public func __makeArgumentList<let count: Int, E>(_ arguments: consuming InlineArray<count, E>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<[E], E> where E: Copyable {
-  let argumentsCopy = [E](unsafeUninitializedCapacity: arguments.count) { buffer, initializedCount in
-    arguments.span.withUnsafeBufferPointer { arguments in
-      initializedCount = buffer.initialize(fromContentsOf: arguments)
-    }
-  }
-  return __makeArgumentList(argumentsCopy, parameterCount: parameterCount)
+public func __makeArgumentList<let count: Int, E>(_ arguments: consuming InlineArray<count, E>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, E>, E> where E: Copyable {
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
 
 /// Make an argument list from the given inline array containing arguments.
