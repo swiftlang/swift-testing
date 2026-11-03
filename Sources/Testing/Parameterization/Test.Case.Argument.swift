@@ -30,28 +30,26 @@ extension Test.Case {
       /// The underlying argument value.
       var wrappedValue: any Sendable
 
+      /// Storage for ``testDescription``.
+      ///
+      /// - Parameters:
+      ///   - value: This instance of ``Value``.
+      private var _testDescription: @Sendable (_ value: borrowing Value) -> String
+
+      init<W>(_ wrappedValue: W, testDescription: String? = nil) where W: Sendable {
+        self.wrappedValue = wrappedValue
 #if !hasFeature(Embedded)
-      init(_ wrappedValue: any Sendable) {
-        self.wrappedValue = wrappedValue
-      }
+        self._testDescription = { testDescription ?? String(describingForTest: $0.wrappedValue) }
 #else
-      init(_ wrappedValue: some Sendable) {
-        self.wrappedValue = wrappedValue
+        self._testDescription = { _ in testDescription ?? UnavailableInEmbeddedSwift.testDescription }
+#endif
       }
 
-      init(_ wrappedValue: some Sendable & CustomTestStringConvertible) {
+#if hasFeature(Embedded)
+      init<W>(_ wrappedValue: W, testDescription: String? = nil) where W: Sendable & CustomTestStringConvertible {
         self.wrappedValue = wrappedValue
-        self._testDescription = String(describingForTest: wrappedValue)
+        self._testDescription = { testDescription ?? String(describingForTest: $0.wrappedValue as! W) }
       }
-
-      // FIXME: switch to variadic generics when Embedded Swift support improves
-      init(_ wrappedValue: (some Sendable & CustomTestStringConvertible, some Sendable & CustomTestStringConvertible)) {
-        self.wrappedValue = wrappedValue
-        self._testDescription = "(\(String(describingForTest: wrappedValue.0)), \(String(describingForTest: wrappedValue.1)))"
-      }
-
-      /// Storage for ``testDescription``
-      private var _testDescription: String?
 #endif
     }
 
@@ -174,30 +172,6 @@ extension Test.Case.Argument.Value {
       }
     }
   }
-
-#if hasFeature(Embedded)
-  /// Make the default `makeArgumentValues` callback for the given argument
-  /// types and parameters.
-  ///
-  /// - Parameters:
-  ///   - parameters: The parameters of the test function for which test cases
-  ///     should be generated.
-  ///
-  /// - Returns: The default `makeArgumentValues` callback for the given
-  ///   argument types and parameters.
-  static func makeArgumentValues<E1, E2>(
-    for parameters: [Test.Parameter]
-  ) -> @Sendable (E1, E2) -> [Test.Case.Argument.Value] where E1: Sendable & CustomTestStringConvertible, E2: Sendable & CustomTestStringConvertible {
-    let splitsArguments = parameters.count > 1
-    return { e1, e2 in
-      if splitsArguments {
-        [Test.Case.Argument.Value(e1), Test.Case.Argument.Value(e2)]
-      } else {
-        [Test.Case.Argument.Value((e1, e2))]
-      }
-    }
-  }
-#endif
 }
 
 #if !SWT_NO_CODABLE
@@ -220,11 +194,7 @@ extension Test.Case.Argument: CustomTestStringConvertible {
 
 extension Test.Case.Argument.Value: CustomTestStringConvertible {
   var testDescription: String {
-#if !hasFeature(Embedded)
-    String(describingForTest: wrappedValue)
-#else
-    _testDescription ?? UnavailableInEmbeddedSwift.testDescription
-#endif
+    _testDescription(self)
   }
 }
 

@@ -206,7 +206,7 @@ extension Test {
     testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
   ) where C: Collection & Sendable, C.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
-    let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
+    let caseGenerator = Case.Generator(argumentList: __makeArgumentList(collection), parameters: parameters, testFunction: testFunction)
     self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
@@ -224,7 +224,7 @@ extension Test {
   ) where C: Collection & Sendable, C.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = { @Sendable in
-      Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction)
+      Case.Generator(argumentList: try await __makeArgumentList(collection()), parameters: parameters, testFunction: testFunction)
     }
     self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
@@ -258,7 +258,7 @@ extension Test {
     testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
-    let caseGenerator = Case.Generator(arguments: collection1, collection2, parameters: parameters, testFunction: testFunction)
+    let caseGenerator = Case.Generator(argumentLists: __makeArgumentList(collection1), __makeArgumentList(collection2), parameters: parameters, testFunction: testFunction)
     self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
@@ -286,7 +286,7 @@ extension Test {
     testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
-    let caseGenerator = Case.Generator(arguments: zippedCollections, parameters: parameters, testFunction: testFunction)
+    let caseGenerator = Case.Generator(argumentList: __makeArgumentList(zippedCollections), parameters: parameters, testFunction: testFunction)
     self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 }
