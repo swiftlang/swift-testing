@@ -82,7 +82,7 @@ public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Te
     // least present the correct number of arguments.
     if parameterCount > 1 {
       let unavailable = Test.Case.Argument.Value(UnavailableInEmbeddedSwift())
-      return Array(repeatElement(unavailable, count: parameterCount))
+      return Array(repeating: unavailable, count: parameterCount)
     }
 #endif
     return [Test.Case.Argument.Value(element, testDescription: testDescription)]
@@ -157,7 +157,7 @@ public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Te
     // least present the correct number of arguments.
     if parameterCount > 1 {
       let unavailable = Test.Case.Argument.Value(UnavailableInEmbeddedSwift())
-      return Array(repeatElement(unavailable, count: parameterCount))
+      return Array(repeating: unavailable, count: parameterCount)
     }
     return [Test.Case.Argument.Value(element)]
   }
