@@ -39,4 +39,34 @@ struct IssueCapturingTests {
     #expect(issues.last?.comments == ["oh no"])
     #expect(issues.last?.isFailure == true)
   }
+
+  @Test func `withIssueCapturing synchronous, using matching`() async {
+    let outerIssues = TestingUtilities.withIssueCapturing {
+      _ = TestingUtilities.withIssueCapturing {
+        Issue.record("oh no")
+        Issue.record("oh yes")
+      } matching: { issue in issue.comments.contains("oh yes") }
+    }
+
+    #expect(outerIssues.count == 1)
+    #expect(outerIssues.last?.comments == ["oh no"])
+    #expect(outerIssues.last?.isFailure == true)
+  }
+
+  @Test func `withIssueCapturing asynchronous, using matching`() async {
+    func forceAsync() async -> Void {}
+
+
+    let outerIssues = await TestingUtilities.withIssueCapturing {
+      _ = await TestingUtilities.withIssueCapturing {
+        Issue.record("oh no")
+        Issue.record("oh yes")
+        await forceAsync()
+      } matching: { issue in issue.comments.contains("oh yes") }
+    }
+
+    #expect(outerIssues.count == 1)
+    #expect(outerIssues.last?.comments == ["oh no"])
+    #expect(outerIssues.last?.isFailure == true)
+  }
 }

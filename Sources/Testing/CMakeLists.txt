@@ -63,6 +63,8 @@ add_library(Testing
   Issues/Confirmation.swift
   Issues/ErrorSnapshot.swift
   Issues/Issue.swift
+  Issues/IssueCapturing.swift
+  Issues/IssueResponder.swift
   Issues/Issue+Recording.swift
   Issues/KnownIssue.swift
   Parameterization/CustomTestArgumentEncodable.swift

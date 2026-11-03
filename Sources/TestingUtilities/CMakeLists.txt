@@ -8,9 +8,8 @@
 
 include(ModuleABIName)
 add_library(TestingUtilities
-  IssueResponderChain/IssueCapturing.swift
-  IssueResponderChain/IssueObservation.swift
-  IssueResponderChain/IssueResponder.swift
+  IssueCapturing.swift
+  Issue+Recording.swift
   )
 add_dependencies(TestingUtilities
   Testing)
