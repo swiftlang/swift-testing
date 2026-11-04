@@ -101,6 +101,55 @@ func runTestFunction(named name: String, in containingType: Any.Type, configurat
   await runner.run()
 }
 
+/// Create a ``Test`` instance for the expression and run it, returning any
+/// issues recorded.
+///
+/// - Parameters:
+///   - testFunction: The test expression to run
+///
+/// - Returns: The list of issues recorded.
+@discardableResult
+func runTest(
+  testFunction: @escaping @Sendable () async throws -> Void
+) async -> [Issue] {
+  let issues = Allocated(Mutex([Issue]()))
+
+  var configuration = Configuration()
+  configuration.eventHandler = { event, _ in
+    if case let .issueRecorded(issue) = event.kind {
+      issues.value.withLock {
+        $0.append(issue)
+      }
+    }
+  }
+  await Test(testFunction: testFunction).run(configuration: configuration)
+  return issues.value.withLock { $0 }
+}
+
+/// Runs the passed-in `Test`, returning any issues recorded.
+///
+/// - Parameters:
+///   - test: The test to run
+///
+/// - Returns: The list of issues recorded.
+@discardableResult
+func runTest(
+  test: Test
+) async -> [Issue] {
+  let issues = Allocated(Mutex([Issue]()))
+
+  var configuration = Configuration()
+  configuration.eventHandler = { event, _ in
+    if case let .issueRecorded(issue) = event.kind {
+      issues.value.withLock {
+        $0.append(issue)
+      }
+    }
+  }
+  await test.run(configuration: configuration)
+  return issues.value.withLock { $0 }
+}
+
 extension Runner {
   /// Initialize an instance of this type that runs the free test function
   /// named `testName` in the module specified in `fileID`.
