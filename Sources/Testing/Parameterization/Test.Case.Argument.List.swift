@@ -15,5 +15,5 @@ extension Test.Case.Argument {
   /// has the same shape as `__ArgumentList` but that type must be public and is
   /// not part of the testing library's public interface. This name is preferred
   /// outside macro expansion support code.
-  typealias List<S> = Test.Case.__ArgumentList<S, S.Element> where S: Sendable & Sequence, S.Element: Sendable
+  typealias List<S, E> = Test.Case.__ArgumentList<S, E> where S: Sendable & ~Copyable, E: Sendable & ~Copyable
 }

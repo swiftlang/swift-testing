@@ -51,6 +51,25 @@ extension Test.Case {
         self._testDescription = { testDescription ?? String(describingForTest: $0.wrappedValue as! W) }
       }
 #endif
+
+      /// Construct an instance of this type representing a tuple of two other
+      /// other instances.
+      ///
+      /// - Parameters:
+      ///   - value1: The instance representing the first element of the tuple.
+      ///   - value2: The instance representing the second element of the tuple.
+      init(tupleOf value1: Self, _ value2: Self) {
+#if !hasFeature(Embedded)
+        func open<each W>(_ wrappedValues: repeat each W) -> (repeat each W) where repeat each W: Sendable {
+          (repeat each wrappedValues)
+        }
+        let wrappedValue = open(value1.wrappedValue, value2.wrappedValue)
+#else
+        let wrappedValue = (value1.wrappedValue, value2.wrappedValue)
+#endif
+        let testDescription = "(\(value1.testDescription), \(value2.testDescription))"
+        self.init(wrappedValue, testDescription: testDescription)
+      }
     }
 
     /// Storage for ``value``.
