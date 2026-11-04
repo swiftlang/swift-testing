@@ -37,16 +37,8 @@ extension Test.Case {
 
 extension Test.Case.__ArgumentList: Copyable where S: Copyable, E: ~Copyable {}
 
-extension Test.Case.__ArgumentList where S: Sequence, E == S.Element {
-  init(_ wrappedValue: consuming S, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) {
-    self.wrappedValue = wrappedValue
-    self.makeArgumentValues = makeArgumentValues
-  }
-}
-
-@available(_inlineArrayAPI, *)
 extension Test.Case.__ArgumentList where S: ~Copyable, E: ~Copyable {
-  init<let count: Int>(_ wrappedValue: consuming InlineArray<count, E>, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) where S == InlineArray<count, E> {
+  init(_ wrappedValue: consuming S, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) {
     self.wrappedValue = wrappedValue
     self.makeArgumentValues = makeArgumentValues
   }
@@ -55,9 +47,8 @@ extension Test.Case.__ArgumentList where S: ~Copyable, E: ~Copyable {
 extension Test.Case.__ArgumentList where S: ~Copyable, E: Copyable {
   @_disfavoredOverload
   init(_ wrappedValue: consuming S, parameterCount: Int) {
-    self.wrappedValue = wrappedValue
     if parameterCount > 1 {
-      self.makeArgumentValues = { element in
+      self.init(wrappedValue: wrappedValue) { element in
 #if !hasFeature(Embedded)
         let mirror = Mirror(reflectingForTest: element)
         if mirror.displayStyle == .tuple {
@@ -78,22 +69,19 @@ extension Test.Case.__ArgumentList where S: ~Copyable, E: Copyable {
 #endif
       }
     } else {
-      self.makeArgumentValues = { element in
+      self.init(wrappedValue: wrappedValue) { element in
         [Test.Case.Argument.Value(element)]
       }
     }
   }
-}
 
-extension Test.Case.__ArgumentList where S: ~Copyable, E: Copyable {
   init<E1, E2>(_ wrappedValue: consuming S, parameterCount: Int) where E == (E1, E2) {
-    self.wrappedValue = wrappedValue
     if parameterCount > 1 {
-      self.makeArgumentValues = { element in
-        return [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
+      self.init(wrappedValue: wrappedValue) { element in
+        [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
       }
     } else {
-      self.makeArgumentValues = { element in
+      self.init(wrappedValue: wrappedValue) { element in
 #if !hasFeature(Embedded)
         let testDescription = "(\(String(describingForTest: element.0)), \(String(describingForTest: element.1)))"
 #else
@@ -103,6 +91,34 @@ extension Test.Case.__ArgumentList where S: ~Copyable, E: Copyable {
       }
     }
   }
+
+#if hasFeature(Embedded)
+  init(_ wrappedValue: consuming S, parameterCount: Int) where E: CustomTestStringConvertible {
+    if parameterCount > 1 {
+      self.init(wrappedValue) { element in
+        // We can't break down the tuple in Embedded Swift, but we can at
+        // least present the correct number of arguments.
+        let unavailable = Test.Case.Argument.Value(UnavailableInEmbeddedSwift())
+        return Array(repeating: unavailable, count: parameterCount)
+      }
+    } else {
+      self.init(wrappedValue: wrappedValue) { [Test.Case.Argument.Value($0)] }
+    }
+  }
+
+  init<E1, E2>(_ wrappedValue: consuming S, parameterCount: Int) where E == (E1, E2), E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
+    if parameterCount > 1 {
+      self.init(wrappedValue: wrappedValue) { element in
+        [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
+      }
+    } else {
+      self.init(wrappedValue: wrappedValue) { element in
+        let testDescription = "(\(String(describingForTest: element.0)), \(String(describingForTest: element.1)))"
+        return [Test.Case.Argument.Value(element, testDescription: testDescription)]
+      }
+    }
+  }
+#endif
 }
 
 // MARK: -
@@ -230,12 +246,11 @@ public func __makeArgumentList<let count: Int, E1, E2>(_ arguments: consuming In
 @available(_inlineArrayAPI, *)
 @_disfavoredOverload
 public func __makeArgumentList<let count: Int, E>(_ arguments: consuming InlineArray<count, E>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, E>, E> where E: ~Copyable {
-  Test.Case.__ArgumentList(arguments) { element in
-    return [Test.Case.Argument.Value(element)]
-  }
+  Test.Case.__ArgumentList(arguments) { [Test.Case.Argument.Value($0)] }
 }
 
 #if hasFeature(Embedded)
+// MARK: - Overloads for conformance to CustomTestStringConvertible (Embedded Swift only)
 public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element: CustomTestStringConvertible {
   Test.Case.__ArgumentList(arguments) { element in
     // We can't break down the tuple in Embedded Swift, but we can at
@@ -249,14 +264,7 @@ public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Te
 }
 
 public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element == (E1, E2), E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
-  Test.Case.__ArgumentList(arguments) { element in
-    if parameterCount > 1 {
-      return [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
-    } else {
-      let testDescription = "(\(String(describingForTest: element.0)), \(String(describingForTest: element.1)))"
-      return [Test.Case.Argument.Value(element, testDescription: testDescription)]
-    }
-  }
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
 
 public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence & ExpressibleByDictionaryLiteral, S.Element == (key: K, value: V), K: CustomTestStringConvertible, V: CustomTestStringConvertible {
@@ -268,6 +276,20 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
       return [Test.Case.Argument.Value(element, testDescription: testDescription)]
     }
   }
+}
+
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@_disfavoredOverload
+public func __makeArgumentList<let count: Int, E>(_ arguments: consuming InlineArray<count, E>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, E>, E> where E: Copyable & CustomTestStringConvertible {
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
+}
+
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@_disfavoredOverload
+public func __makeArgumentList<let count: Int, E1, E2>(_ arguments: consuming InlineArray<count, (E1, E2)>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, (E1, E2)>, (E1, E2)> where E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
 #endif
 
