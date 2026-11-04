@@ -356,14 +356,13 @@ extension Test {
 ///     this argument is `nil`, the display name of the test is derived from the
 ///     associated function's name.
 ///   - traits: Zero or more traits to apply to this test.
-///   - inlineArray: An inline array of values to pass to the associated test
+///   - iterable: An inline array of values to pass to the associated test
 ///     function.
 ///
-/// You can prefix the expression you pass to `inlineArray` with `try` or
-/// `await`. The testing library evaluates the expression lazily only if it
-/// determines that the associated test will run. During testing, the testing
-/// library calls the associated test function once for each element in
-/// `inlineArray`.
+/// You can prefix the expression you pass to `iterable` with `try` or `await`.
+/// The testing library evaluates the expression lazily only if it determines
+/// that the associated test will run. During testing, the testing library calls
+/// the associated test function once for each element in `iterable`.
 ///
 /// @Comment {
 ///   This macro declaration is necessary to help the compiler disambiguate
@@ -378,10 +377,10 @@ extension Test {
 @available(_iterableAPI, *)
 @attached(peer)
 @_documentation(visibility: private)
-public macro Test<let count: Int, E>(
+public macro Test<I>(
   _ traits: any TestTrait...,
-  arguments inlineArray: consuming InlineArray<count, E>
-) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where E: Sendable & ~Copyable
+  arguments iterable: consuming I
+) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where I: Sendable & Iterable & ~Copyable, I.Element: Sendable & ~Copyable, I.BorrowingIterator == Span<I.Element>.BorrowingIterator
 
 /// Declare a test parameterized over an inline array of values.
 ///
@@ -390,14 +389,13 @@ public macro Test<let count: Int, E>(
 ///     this argument is `nil`, the display name of the test is derived from the
 ///     associated function's name.
 ///   - traits: Zero or more traits to apply to this test.
-///   - inlineArray: An inline array of values to pass to the associated test
+///   - iterable: An inline array of values to pass to the associated test
 ///     function.
 ///
-/// You can prefix the expression you pass to `inlineArray` with `try` or
-/// `await`. The testing library evaluates the expression lazily only if it
-/// determines that the associated test will run. During testing, the testing
-/// library calls the associated test function once for each element in
-/// `inlineArray`.
+/// You can prefix the expression you pass to `iterable` with `try` or `await`.
+/// The testing library evaluates the expression lazily only if it determines
+/// that the associated test will run. During testing, the testing library calls
+/// the associated test function once for each element in `iterable`.
 ///
 /// ## See Also
 ///
@@ -405,11 +403,11 @@ public macro Test<let count: Int, E>(
 @_spi(Experimental)
 @available(_iterableAPI, *)
 @attached(peer)
-public macro Test<let count: Int, E>(
+public macro Test<I>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
-  arguments inlineArray: consuming InlineArray<count, E>
-) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where E: Sendable & ~Copyable
+  arguments iterable: consuming I
+) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where I: Sendable & Iterable & ~Copyable, I.Element: Sendable & ~Copyable, I.BorrowingIterator == Span<I.Element>.BorrowingIterator
 
 @_spi(Experimental)
 @available(_iterableAPI, *)
@@ -418,17 +416,17 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<S, let count: Int, E>(
+  public static func __function<S, I>(
     named testFunctionName: String,
     in containingType: __TypeInfo<S>?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments inlineArray: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<InlineArray<count, E>, E>,
+    arguments iterable: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<I, I.Element>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (borrowing E) async throws -> Void
-  ) -> Self where S: ~Copyable & ~Escapable, E: Sendable & ~Copyable {
+    testFunction: nonisolated(nonsending) @escaping @Sendable (borrowing I.Element) async throws -> Void
+  ) -> Self where S: ~Copyable & ~Escapable, I: Sendable & Iterable & ~Copyable, I.Element: Sendable & ~Copyable, I.BorrowingIterator == Span<I.Element>.BorrowingIterator {
     let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters
     return Self(
@@ -438,7 +436,7 @@ extension Test {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: { Case.Generator(argumentList: try await inlineArray(), parameters: parameters, testFunction: testFunction) },
+      testCases: { Case.Generator(argumentList: try await iterable(), parameters: parameters, testFunction: testFunction) },
       parameters: parameters
     )
   }
@@ -531,14 +529,71 @@ extension Test {
 ///
 /// - Parameters:
 ///   - traits: Zero or more traits to apply to this test.
-///   - inlineArray1: An inline array of values to pass to `testFunction`.
-///   - inlineArray2: A second inline array of values to pass to `testFunction`.
+///   - iterable1: An inline array of values to pass to `testFunction`.
+///   - iterable2: A second inline array of values to pass to `testFunction`.
 ///
-/// You can prefix the expressions you pass to `inlineArray1` or `inlineArray2`
-/// with `try` or `await`. The testing library evaluates the expressions lazily
-/// only if it determines that the associated test will run. During testing, the
+/// You can prefix the expressions you pass to `iterable1` or `iterable2` with
+/// `try` or `await`. The testing library evaluates the expressions lazily only
+/// if it determines that the associated test will run. During testing, the
 /// testing library calls the associated test function once for each pair of
-/// elements in `inlineArray1` and `inlineArray2`.
+/// elements in `iterable1` and `iterable2`.
+///
+/// ## See Also
+///
+/// - <doc:DefiningTests>
+@_spi(Experimental)
+@available(_iterableAPI, *)
+@attached(peer)
+@_documentation(visibility: private)
+public macro Test<I1, I2>(
+  _ traits: any TestTrait...,
+  arguments iterable1: consuming I1, _ iterable2: consuming I2
+) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where I1: Sendable & Iterable & ~Copyable, I1.Element: Sendable & ~Copyable, I1.BorrowingIterator == Span<I1.Element>.BorrowingIterator, I2: Sendable & Iterable & ~Copyable, I2.Element: Sendable & ~Copyable, I2.BorrowingIterator == Span<I2.Element>.BorrowingIterator
+
+/// Declare a test parameterized over two inline arrays of values.
+///
+/// - Parameters:
+///   - displayName: The customized display name of this test. If the value of
+///     this argument is `nil`, the display name of the test is derived from the
+///     associated function's name.
+///   - traits: Zero or more traits to apply to this test.
+///   - iterable1: An inline array of values to pass to `testFunction`.
+///   - iterable2: A second inline array of values to pass to `testFunction`.
+///
+/// You can prefix the expressions you pass to `iterable1` or `iterable2` with
+/// `try` or `await`. The testing library evaluates the expressions lazily only
+/// if it determines that the associated test will run. During testing, the
+/// testing library calls the associated test function once for each pair of
+/// elements in `iterable1` and `iterable2`.
+///
+/// ## See Also
+///
+/// - <doc:DefiningTests>
+@_spi(Experimental)
+@available(_iterableAPI, *)
+@attached(peer)
+public macro Test<I1, I2>(
+  _ displayName: _const String? = nil,
+  _ traits: any TestTrait...,
+  arguments iterable1: consuming I1, _ iterable2: consuming I2
+) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where I1: Sendable & Iterable & ~Copyable, I1.Element: Sendable & ~Copyable, I1.BorrowingIterator == Span<I1.Element>.BorrowingIterator, I2: Sendable & Iterable & ~Copyable, I2.Element: Sendable & ~Copyable, I2.BorrowingIterator == Span<I2.Element>.BorrowingIterator
+
+/// Declare a test parameterized over two inline arrays of values.
+///
+/// - Parameters:
+///   - traits: Zero or more traits to apply to this test.
+///   - iterable1: An inline array of values to pass to `testFunction`.
+///   - iterable2: A second inline array of values to pass to `testFunction`.
+///
+/// You can prefix the expressions you pass to `iterable1` or `iterable2` with
+/// `try` or `await`. The testing library evaluates the expressions lazily only
+/// if it determines that the associated test will run. During testing, the
+/// testing library calls the associated test function once for each pair of
+/// elements in `iterable1` and `iterable2`.
+///
+/// @Comment {
+///   This overload helps the compiler recognize inline array literals.
+/// }
 ///
 /// ## See Also
 ///
@@ -549,7 +604,7 @@ extension Test {
 @_documentation(visibility: private)
 public macro Test<let count1: Int, E1, let count2: Int, E2>(
   _ traits: any TestTrait...,
-  arguments inlineArray1: consuming InlineArray<count1, E1>, _ inlineArray2: consuming InlineArray<count2, E2>
+  arguments iterable1: consuming InlineArray<count1, E1>, _ iterable2: consuming InlineArray<count2, E2>
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where E1: Sendable & ~Copyable, E2: Sendable & ~Copyable
 
 /// Declare a test parameterized over two inline arrays of values.
@@ -559,14 +614,18 @@ public macro Test<let count1: Int, E1, let count2: Int, E2>(
 ///     this argument is `nil`, the display name of the test is derived from the
 ///     associated function's name.
 ///   - traits: Zero or more traits to apply to this test.
-///   - inlineArray1: An inline array of values to pass to `testFunction`.
-///   - inlineArray2: A second inline array of values to pass to `testFunction`.
+///   - iterable1: An inline array of values to pass to `testFunction`.
+///   - iterable2: A second inline array of values to pass to `testFunction`.
 ///
-/// You can prefix the expressions you pass to `inlineArray1` or `inlineArray2`
-/// with `try` or `await`. The testing library evaluates the expressions lazily
-/// only if it determines that the associated test will run. During testing, the
+/// You can prefix the expressions you pass to `iterable1` or `iterable2` with
+/// `try` or `await`. The testing library evaluates the expressions lazily only
+/// if it determines that the associated test will run. During testing, the
 /// testing library calls the associated test function once for each pair of
-/// elements in `inlineArray1` and `inlineArray2`.
+/// elements in `iterable1` and `iterable2`.
+///
+/// @Comment {
+///   This overload helps the compiler recognize inline array literals.
+/// }
 ///
 /// ## See Also
 ///
@@ -574,10 +633,11 @@ public macro Test<let count1: Int, E1, let count2: Int, E2>(
 @_spi(Experimental)
 @available(_iterableAPI, *)
 @attached(peer)
+@_documentation(visibility: private)
 public macro Test<let count1: Int, E1, let count2: Int, E2>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
-  arguments inlineArray1: consuming InlineArray<count1, E1>, _ inlineArray2: consuming InlineArray<count2, E2>
+  arguments iterable1: consuming InlineArray<count1, E1>, _ iterable2: consuming InlineArray<count2, E2>
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where E1: Sendable & ~Copyable, E2: Sendable & ~Copyable
 
 @_spi(Experimental)
@@ -587,17 +647,17 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<S, let count1: Int, E1, let count2: Int, E2>(
+  public static func __function<S, I1, I2>(
     named testFunctionName: String,
     in containingType: __TypeInfo<S>?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments inlineArray1: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<InlineArray<count1, E1>, E1>, _ inlineArray2: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<InlineArray<count2, E2>, E2>,
+    arguments iterable1: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<I1, I1.Element>, _ iterable2: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<I2, I2.Element>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (borrowing E1, borrowing E2) async throws -> Void
-  ) -> Self where S: ~Copyable & ~Escapable, E1: Sendable & ~Copyable, E2: Sendable & ~Copyable {
+    testFunction: nonisolated(nonsending) @escaping @Sendable (borrowing I1.Element, borrowing I2.Element) async throws -> Void
+  ) -> Self where S: ~Copyable & ~Escapable, I1: Sendable & Iterable & ~Copyable, I1.Element: Sendable & ~Copyable, I1.BorrowingIterator == Span<I1.Element>.BorrowingIterator, I2: Sendable & Iterable & ~Copyable, I2.Element: Sendable & ~Copyable, I2.BorrowingIterator == Span<I2.Element>.BorrowingIterator {
     let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
     let parameters = paramTuples.parameters
     return Self(
@@ -607,7 +667,7 @@ extension Test {
       sourceBounds: sourceBounds,
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: { try await Case.Generator(argumentLists: inlineArray1(), inlineArray2(), parameters: parameters, testFunction: testFunction) },
+      testCases: { try await Case.Generator(argumentLists: iterable1(), iterable2(), parameters: parameters, testFunction: testFunction) },
       parameters: parameters
     )
   }

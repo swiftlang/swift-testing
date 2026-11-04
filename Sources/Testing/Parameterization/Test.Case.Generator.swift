@@ -28,8 +28,9 @@ extension Test.Case {
     /// - Parameters:
     ///   - element: The element from `_sequence`.
     ///
-    /// - Returns: A test case instance that tests `element`.
-    private var _mapElement: @Sendable (_ element: S.Element) -> Test.Case
+    /// - Returns: A test case instance that tests `element`, or `nil` if the
+    ///   sequence is open-ended (e.g. adapting an iterable type) and has ended.
+    private var _mapElement: @Sendable (_ element: S.Element) -> Test.Case?
   }
 }
 
@@ -112,13 +113,13 @@ extension Test.Case.Generator {
   ///   - testFunction: The test function to which each generated test case
   ///     passes an argument value from `argumentList`.
   @available(_iterableAPI, *)
-  init<let count: Int, E>(
-    argumentList: consuming Test.Case.Argument.List<InlineArray<count, E>, E>,
+  init<I>(
+    argumentList: consuming Test.Case.Argument.List<I, I.Element>,
     parameters: [Test.Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (borrowing E) async throws -> Void
-  ) where S == Range<Int>, E: Sendable & ~Copyable {
+    testFunction: nonisolated(nonsending) @escaping @Sendable (borrowing I.Element) async throws -> Void
+  ) where S == Range<Int>, I: Sendable & Iterable & ~Copyable, I.Element: Sendable & ~Copyable, I.BorrowingIterator == Span<I.Element>.BorrowingIterator {
     let argumentList = consume argumentList
-    self.init(_sequence: 0 ..< count) { i in
+    self.init(_sequence: 0 ..< argumentList.wrappedValue.count) { i in
       let values = argumentList.makeArgumentValues(argumentList.wrappedValue[i])
       return Test.Case(values: values, parameters: parameters) {
         try await testFunction(argumentList.wrappedValue[i])
@@ -138,14 +139,14 @@ extension Test.Case.Generator {
   ///     passes an argument value from the Cartesian product of `argumentList1`
   ///     and `argumentList2`.
   @available(_iterableAPI, *)
-  init<let count1: Int, E1, let count2: Int, E2>(
-    argumentLists argumentList1: consuming Test.Case.Argument.List<InlineArray<count1, E1>, E1>, _ argumentList2: consuming Test.Case.Argument.List<InlineArray<count2, E2>, E2>,
+  init<C1, C2>(
+    argumentLists argumentList1: consuming Test.Case.Argument.List<C1, C1.Element>, _ argumentList2: consuming Test.Case.Argument.List<C2, C2.Element>,
     parameters: [Test.Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (borrowing E1, borrowing E2) async throws -> Void
-  ) where S == CartesianProduct<Range<Int>, Range<Int>>, E1: Sendable & ~Copyable, E2: Sendable & ~Copyable {
+    testFunction: nonisolated(nonsending) @escaping @Sendable (borrowing C1.Element, borrowing C2.Element) async throws -> Void
+  ) where S == CartesianProduct<Range<Int>, Range<Int>>, C1: Sendable & Iterable & ~Copyable, C1.Element: Sendable & ~Copyable, C1.BorrowingIterator == Span<C1.Element>.BorrowingIterator, C2: Sendable & Iterable & ~Copyable, C2.Element: Sendable & ~Copyable, C2.BorrowingIterator == Span<C2.Element>.BorrowingIterator {
     let argumentList1 = consume argumentList1
     let argumentList2 = consume argumentList2
-    self.init(_sequence: cartesianProduct(0 ..< count1, 0 ..< count2)) { i1, i2 in
+    self.init(_sequence: cartesianProduct(0 ..< argumentList1.wrappedValue.count, 0 ..< argumentList2.wrappedValue.count)) { i1, i2 in
       let values = argumentList1.makeArgumentValues(argumentList1.wrappedValue[i1]) + argumentList2.makeArgumentValues(argumentList2.wrappedValue[i2])
       return Test.Case(values: values, parameters: parameters) {
         try await testFunction(argumentList1.wrappedValue[i1], argumentList2.wrappedValue[i2])
@@ -164,11 +165,10 @@ extension Test.Case.Generator: Sequence {
     )
 
     return sequence(state: state) { state in
-      guard let element = state.iterator.next() else {
+      guard let element = state.iterator.next(),
+            var testCase = _mapElement(element) else {
         return nil
       }
-
-      var testCase = _mapElement(element)
 
       if testCase.isParameterized {
         // Store the original, unmodified test case ID. We're about to modify a

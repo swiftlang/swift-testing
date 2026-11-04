@@ -173,6 +173,72 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
   }
 }
 
+// MARK: -
+
+/// Make an argument list from the given inline array containing arguments.
+///
+/// - Parameters:
+///   - arguments: The inline array.
+///   - parameterCount: The number of parameters passed to the test function.
+///
+/// - Returns: An argument list.
+///
+/// This overload is specialized for inline arrays whose elements are copyable.
+/// It helps the compiler distinguish inline array literals from array literals.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@_spi(Experimental)
+@available(_iterableAPI, *)
+@_disfavoredOverload
+public func __makeArgumentList<let count: Int, E>(_ arguments: consuming InlineArray<count, E>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, E>, E> where E: Copyable {
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
+}
+
+/// Make an argument list from the given inline array containing arguments.
+///
+/// - Parameters:
+///   - arguments: The inline array.
+///   - parameterCount: The number of parameters passed to the test function.
+///
+/// - Returns: An argument list.
+///
+/// This overload is specialized for inline arrays whose elements are 2-tuples.
+/// It helps the compiler distinguish inline array literals from array literals.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@_spi(Experimental)
+@available(_iterableAPI, *)
+@_disfavoredOverload
+public func __makeArgumentList<let count: Int, E1, E2>(_ arguments: consuming InlineArray<count, (E1, E2)>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, (E1, E2)>, (E1, E2)> {
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
+}
+
+/// Make an argument list from the given inline array containing arguments.
+///
+/// - Parameters:
+///   - arguments: The inline array.
+///   - parameterCount: The number of parameters passed to the test function.
+///
+/// - Returns: An argument list.
+///
+/// This overload is specialized for inline arrays whose elements are move-only.
+/// It helps the compiler distinguish inline array literals from array literals.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@_spi(Experimental)
+@available(_iterableAPI, *)
+@_disfavoredOverload
+public func __makeArgumentList<let count: Int, E>(_ arguments: consuming InlineArray<count, E>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, E>, E> where E: ~Copyable {
+  Test.Case.__ArgumentList(arguments) { element in
+    return [Test.Case.Argument.Value(element)]
+  }
+}
+
+// MARK: -
+
 /// Make an argument list from the given inline array containing arguments.
 ///
 /// - Parameters:
@@ -188,7 +254,7 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
 @_spi(Experimental)
 @available(_iterableAPI, *)
 @_disfavoredOverload
-public func __makeArgumentList<S>(_ arguments: consuming S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Iterable & ~Copyable, S.Element: Copyable {
+public func __makeArgumentList<I>(_ arguments: consuming I, parameterCount: Int = 1) -> Test.Case.__ArgumentList<I, I.Element> where I: Iterable & ~Copyable, I.Element: Copyable, I.BorrowingIterator == Span<I.Element>.BorrowingIterator {
   Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
 
@@ -207,7 +273,7 @@ public func __makeArgumentList<S>(_ arguments: consuming S, parameterCount: Int 
 @_spi(Experimental)
 @available(_iterableAPI, *)
 @_disfavoredOverload
-public func __makeArgumentList<S, E1, E2>(_ arguments: consuming S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, (E1, E2)> where S: Iterable & ~Copyable, S.Element == (E1, E2) {
+public func __makeArgumentList<I, E1, E2>(_ arguments: consuming I, parameterCount: Int = 1) -> Test.Case.__ArgumentList<I, (E1, E2)> where I: Iterable & ~Copyable, I.Element == (E1, E2), I.BorrowingIterator == Span<I.Element>.BorrowingIterator {
   Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
 
@@ -227,7 +293,7 @@ public func __makeArgumentList<S, E1, E2>(_ arguments: consuming S, parameterCou
 @_spi(Experimental)
 @available(_iterableAPI, *)
 @_disfavoredOverload
-public func __makeArgumentList<S>(_ arguments: consuming S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Iterable & ~Copyable, S.Element: ~Copyable {
+public func __makeArgumentList<I>(_ arguments: consuming I, parameterCount: Int = 1) -> Test.Case.__ArgumentList<I, I.Element> where I: Iterable & ~Copyable, I.Element: ~Copyable, I.BorrowingIterator == Span<I.Element>.BorrowingIterator {
   Test.Case.__ArgumentList(arguments) { element in
     return [Test.Case.Argument.Value(element)]
   }

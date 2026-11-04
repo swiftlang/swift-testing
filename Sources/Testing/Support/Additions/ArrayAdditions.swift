@@ -90,3 +90,37 @@ func parameterPackCount<each T>(_ pack: repeat each T) -> Int {
   }
   return result
 }
+
+// MARK: -
+
+@available(_iterableAPI, *)
+extension Iterable where Self: ~Copyable & ~Escapable, Element: ~Copyable, BorrowingIterator == Span<Element>.BorrowingIterator {
+  /// A span over all of this iterable value's elements.
+  var span: Span<Element> {
+    @_lifetime(borrow self)
+    _read {
+      // Span.BorrowingIterator.nextSpan() produces a single non-empty span
+      // equal to the original span, and thus covering to the iterable value's
+      // entire range.
+      var i = self.makeBorrowingIterator()
+      yield i.nextSpan()
+    }
+  }
+  /// The number of elements in this iterable value.
+  var count: Int {
+    span.count
+  }
+
+  /// The element at the given `0`-based index.
+  ///
+  /// - Parameters:
+  ///   - index: The `0`-based offset from the start of this iterable value to
+  ///     the desired element.
+  ///
+  /// - Returns: The element at the given offset.
+  subscript(index: Int) -> Element {
+    _read {
+      yield span[index]
+    }
+  }
+}
