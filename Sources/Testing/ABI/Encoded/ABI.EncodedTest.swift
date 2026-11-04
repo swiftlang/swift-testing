@@ -147,35 +147,35 @@ extension ABI {
 
 #if !SWT_NO_CODABLE
 extension ABI.EncodedTest: Codable {
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 }
 
 extension ABI.EncodedTest.Kind: Codable {
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 }
 
 extension ABI.EncodedTest.Parameter: Codable {
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 }
 
 extension ABI.EncodedTestCase: Codable {
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 }
 
 extension ABI.EncodedTest.ID: Codable {
-  func encode(to encoder: any Encoder) throws {
+  func encode(to encoder: any Encoder) throws(any Error) {
     try stringValue.encode(to: encoder)
   }
 
-  init(from decoder: any Decoder) throws {
+  init(from decoder: any Decoder) throws(any Error) {
     stringValue = try String(from: decoder)
   }
 }

@@ -478,14 +478,14 @@ extension Runner.Plan.Action.RunOptions: Codable {
     case isParallelizationEnabled
   }
 
-  public init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws(any Error) {
     // No-op. This initializer cannot be synthesized since `CodingKeys` includes
     // a case representing a non-stored property. See comment about the
     // `isParallelizationEnabled` property in `encode(to:)`.
     self.init()
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     var container = encoder.container(keyedBy: CodingKeys.self)
 
     // The `isParallelizationEnabled` property was removed after this type was
@@ -534,7 +534,7 @@ extension Runner.Plan.Snapshot: Codable {
     case tests
   }
 
-  public init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws(any Error) {
     let container = try decoder.container(keyedBy: _CodingKeys.self)
 
     var testsContainer = try container.nestedUnkeyedContainer(forKey: .tests)
@@ -548,7 +548,7 @@ extension Runner.Plan.Snapshot: Codable {
     }
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     var container = encoder.container(keyedBy: _CodingKeys.self)
 
     var testsContainer = container.nestedUnkeyedContainer(forKey: .tests)

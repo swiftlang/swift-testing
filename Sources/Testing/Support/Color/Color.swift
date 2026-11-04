@@ -131,7 +131,7 @@ extension Color: Comparable {
 // MARK: - Codable
 
 extension Color: Decodable {
-  public init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws(any Error) {
     let stringValue = try String(from: decoder)
     switch stringValue {
     case "red":
