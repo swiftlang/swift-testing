@@ -89,7 +89,18 @@ extension Test.Case {
       testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
     ) where S == CartesianProduct<C1, C2> {
       let cartesianProduct = Test.Case.Argument.List(cartesianProduct(collection1.sequence, collection2.sequence)) { element in
-        collection1.makeArgumentValues(element.0) + collection2.makeArgumentValues(element.1)
+        if parameters.count > 1 {
+          return collection1.makeArgumentValues(element.0) + collection2.makeArgumentValues(element.1)
+        } else {
+          let v1 = collection1.makeArgumentValues(element.0)
+          let v2 = collection2.makeArgumentValues(element.1)
+          let testDescription: String? = if let d1 = v1.first?.testDescription, let d2 = v2.first?.testDescription {
+            "(\(d1), \(d2))"
+          } else {
+            nil
+          }
+          return [Test.Case.Argument.Value((element.0, element.1), testDescription: testDescription)]
+        }
       }
       self.init(argumentList: cartesianProduct, parameters: parameters, testFunction: testFunction)
     }
