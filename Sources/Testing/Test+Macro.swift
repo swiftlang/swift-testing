@@ -375,7 +375,7 @@ extension Test {
 ///
 /// - ``Test(_:arguments:)-35dat``
 @_spi(Experimental)
-@available(_iterableAPI, *)
+@available(_inlineArrayAPI, *)
 @attached(peer)
 @_documentation(visibility: private)
 public macro Test<let count: Int, E>(
@@ -403,7 +403,7 @@ public macro Test<let count: Int, E>(
 ///
 /// - <doc:DefiningTests>
 @_spi(Experimental)
-@available(_iterableAPI, *)
+@available(_inlineArrayAPI, *)
 @attached(peer)
 public macro Test<let count: Int, E>(
   _ displayName: _const String? = nil,
@@ -412,7 +412,7 @@ public macro Test<let count: Int, E>(
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where E: Sendable & ~Copyable
 
 @_spi(Experimental)
-@available(_iterableAPI, *)
+@available(_inlineArrayAPI, *)
 extension Test {
   /// Create an instance of ``Test`` for a parameterized function.
   ///
@@ -544,7 +544,7 @@ extension Test {
 ///
 /// - <doc:DefiningTests>
 @_spi(Experimental)
-@available(_iterableAPI, *)
+@available(_inlineArrayAPI, *)
 @attached(peer)
 @_documentation(visibility: private)
 public macro Test<let count1: Int, E1, let count2: Int, E2>(
@@ -572,7 +572,7 @@ public macro Test<let count1: Int, E1, let count2: Int, E2>(
 ///
 /// - <doc:DefiningTests>
 @_spi(Experimental)
-@available(_iterableAPI, *)
+@available(_inlineArrayAPI, *)
 @attached(peer)
 public macro Test<let count1: Int, E1, let count2: Int, E2>(
   _ displayName: _const String? = nil,
@@ -581,7 +581,7 @@ public macro Test<let count1: Int, E1, let count2: Int, E2>(
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where E1: Sendable & ~Copyable, E2: Sendable & ~Copyable
 
 @_spi(Experimental)
-@available(_iterableAPI, *)
+@available(_inlineArrayAPI, *)
 extension Test {
   /// Create an instance of ``Test`` for a parameterized function.
   ///

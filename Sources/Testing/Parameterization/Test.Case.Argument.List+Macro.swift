@@ -44,9 +44,9 @@ extension Test.Case.__ArgumentList where S: Sequence, E == S.Element {
   }
 }
 
-@available(_iterableAPI, *)
-extension Test.Case.__ArgumentList where S: Iterable & ~Copyable, E == S.Element, E: ~Copyable {
-  init(_ wrappedValue: consuming S, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) {
+@available(_inlineArrayAPI, *)
+extension Test.Case.__ArgumentList where S: ~Copyable, E: ~Copyable {
+  init<let count: Int>(_ wrappedValue: consuming InlineArray<count, E>, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) where S == InlineArray<count, E> {
     self.wrappedValue = wrappedValue
     self.makeArgumentValues = makeArgumentValues
   }
@@ -181,14 +181,15 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
 ///
 /// - Returns: An argument list.
 ///
-/// This overload is specialized for iterable types whose elements are copyable.
+/// This overload is specialized for `InlineArray` when its elements are
+/// copyable.
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @_spi(Experimental)
-@available(_iterableAPI, *)
+@available(_inlineArrayAPI, *)
 @_disfavoredOverload
-public func __makeArgumentList<S>(_ arguments: consuming S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Iterable & ~Copyable, S.Element: Copyable {
+public func __makeArgumentList<let count: Int, E>(_ arguments: consuming InlineArray<count, E>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, E>, E> where E: Copyable {
   Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
 
@@ -200,14 +201,15 @@ public func __makeArgumentList<S>(_ arguments: consuming S, parameterCount: Int 
 ///
 /// - Returns: An argument list.
 ///
-/// This overload is specialized for iterable types whose elements are 2-tuples.
+/// This overload is specialized for `InlineArray` when its elements are
+/// 2-tuples.
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @_spi(Experimental)
-@available(_iterableAPI, *)
+@available(_inlineArrayAPI, *)
 @_disfavoredOverload
-public func __makeArgumentList<S, E1, E2>(_ arguments: consuming S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, (E1, E2)> where S: Iterable & ~Copyable, S.Element == (E1, E2) {
+public func __makeArgumentList<let count: Int, E1, E2>(_ arguments: consuming InlineArray<count, (E1, E2)>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, (E1, E2)>, (E1, E2)> {
   Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
 
@@ -219,15 +221,15 @@ public func __makeArgumentList<S, E1, E2>(_ arguments: consuming S, parameterCou
 ///
 /// - Returns: An argument list.
 ///
-/// This overload is specialized for iterable types with move-only elements and
-/// allows us to support move-only argument values.
+/// This overload is specialized for `InlineArray` and allows us to support
+/// move-only argument values.
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @_spi(Experimental)
-@available(_iterableAPI, *)
+@available(_inlineArrayAPI, *)
 @_disfavoredOverload
-public func __makeArgumentList<S>(_ arguments: consuming S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Iterable & ~Copyable, S.Element: ~Copyable {
+public func __makeArgumentList<let count: Int, E>(_ arguments: consuming InlineArray<count, E>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, E>, E> where E: ~Copyable {
   Test.Case.__ArgumentList(arguments) { element in
     return [Test.Case.Argument.Value(element)]
   }
@@ -298,7 +300,7 @@ public macro __consumeArgumentList<S, E>(
 /// - Warning: This macro is used to implement the `@Test` macro. Do not use it
 ///   directly.
 @_spi(Experimental)
-@available(_iterableAPI, *)
+@available(_inlineArrayAPI, *)
 @freestanding(expression)
 public macro __consumeArgumentList<S, E>(
   _ argumentList: consuming Test.Case.__ArgumentList<S, E>,
