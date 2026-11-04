@@ -611,6 +611,39 @@ extension Test {
       parameters: parameters
     )
   }
+
+  /// Create an instance of ``Test`` for a parameterized function.
+  ///
+  /// - Warning: This function is used to implement the `@Test` macro. Do not
+  ///   call it directly.
+  public static func __function<S, let count1: Int, E1, let count2: Int, E2>(
+    named testFunctionName: String,
+    in containingType: __TypeInfo<S>?,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
+    displayName: String? = nil,
+    traits: __TraitArray<any TestTrait>,
+    arguments inlineArray1: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<InlineArray<count1, E1>, E1>, _ inlineArray2: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<InlineArray<count2, E2>, E2>,
+    sourceBounds: __SourceBounds,
+    parameters paramTuples: [__Parameter],
+    testFunction: nonisolated(nonsending) @escaping @Sendable ((E1, E2)) async throws -> Void
+  ) -> Self where S: ~Copyable & ~Escapable, E1: Sendable & Copyable, E2: Sendable & Copyable {
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
+    let parameters = paramTuples.parameters
+    return Self(
+      name: testFunctionName,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: {
+        try await Case.Generator(argumentLists: inlineArray1(), inlineArray2(), parameters: parameters) { e1, e2 in
+          try await testFunction((e1, e2))
+        }
+      },
+      parameters: parameters
+    )
+  }
 }
 
 // MARK: - @Test(arguments: zip(...))

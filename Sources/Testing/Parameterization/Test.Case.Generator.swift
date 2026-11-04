@@ -93,8 +93,12 @@ extension Test.Case.Generator {
     parameters: [Test.Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
   ) where S == CartesianProduct<C1, C2> {
+    let parameterCount = parameters.count
     self.init(_sequence: cartesianProduct(argumentList1.wrappedValue, argumentList2.wrappedValue)) { element in
-      let values = argumentList1.makeArgumentValues(element.0) + argumentList2.makeArgumentValues(element.1)
+      var values = argumentList1.makeArgumentValues(element.0) + argumentList2.makeArgumentValues(element.1)
+      if parameterCount == 1 && values.count == 2 {
+        values = [Test.Case.Argument.Value(tupleOf: values[0], values[1])]
+      }
       return Test.Case(values: values, parameters: parameters) {
         try await testFunction(element)
       }
@@ -145,8 +149,12 @@ extension Test.Case.Generator {
   ) where S == CartesianProduct<Range<Int>, Range<Int>>, E1: Sendable & ~Copyable, E2: Sendable & ~Copyable {
     let argumentList1 = consume argumentList1
     let argumentList2 = consume argumentList2
+    let parameterCount = parameters.count
     self.init(_sequence: cartesianProduct(0 ..< count1, 0 ..< count2)) { i1, i2 in
-      let values = argumentList1.makeArgumentValues(argumentList1.wrappedValue[i1]) + argumentList2.makeArgumentValues(argumentList2.wrappedValue[i2])
+      var values = argumentList1.makeArgumentValues(argumentList1.wrappedValue[i1]) + argumentList2.makeArgumentValues(argumentList2.wrappedValue[i2])
+      if parameterCount == 1 && values.count == 2 {
+        values = [Test.Case.Argument.Value(tupleOf: values[0], values[1])]
+      }
       return Test.Case(values: values, parameters: parameters) {
         try await testFunction(argumentList1.wrappedValue[i1], argumentList2.wrappedValue[i2])
       }
