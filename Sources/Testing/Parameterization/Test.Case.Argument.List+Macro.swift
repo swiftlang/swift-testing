@@ -69,9 +69,7 @@ extension Test.Case.__ArgumentList where S: ~Copyable, E: Copyable {
 #endif
       }
     } else {
-      self.init(wrappedValue: wrappedValue) { element in
-        [Test.Case.Argument.Value(element)]
-      }
+      self.init(wrappedValue: wrappedValue) { [Test.Case.Argument.Value($0)] }
     }
   }
 
