@@ -235,23 +235,18 @@ extension Event.JUnitXMLRecorder {
       "&gt;"
     case "&":
       "&amp;"
-    case _ where character.unicodeScalars.contains(where: _isDisallowedControlScalar):
+    default:
       character.unicodeScalars.lazy
         .map { scalar in
           if _isDisallowedControlScalar(scalar) {
             scalar.escaped(asASCII: true)
+          } else if !scalar.isASCII || Character(scalar).isNewline {
+            "&#\(scalar.value);"
           } else {
             String(scalar)
           }
         }
         .joined()
-    case _ where !character.isASCII || character.isNewline:
-      character.unicodeScalars.lazy
-        .map { $0.value }
-        .map { "&#\($0);" }
-        .joined()
-    default:
-      String(character)
     }
   }
 
