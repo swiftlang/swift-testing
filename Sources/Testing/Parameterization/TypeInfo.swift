@@ -412,8 +412,22 @@ extension TypeInfo {
 // MARK: - Properties
 
 extension TypeInfo {
+  /// Get the given type's kind (class, enum, etc.)
+  ///
+  /// - Parameters:
+  ///   - type: The type of interest.
+  ///
+  /// - Returns: An integer value describing the kind of type `type` is. For
+  ///   possible values, see the `MetadataKind` enumeration in the Swift
+  ///   repository [here](https://github.com/swiftlang/swift/blob/main/include/swift/ABI/MetadataValues.h).
+  @_silgen_name("swift_getMetadataKind")
+  private static func _getMetadataKind(_ type: any (~Copyable & ~Escapable).Type) -> UInt
+
   /// The UTF-8 prefix applied to mangled type names in the `__C` module.
   private static let _swiftMangledNamePrefix = Array("$s".utf8)
+
+  /// The UTF-8 representation of `ObjectIdentifier`'s mangling.
+  private static let _swiftObjectIdentifierMangledTypeName = Array("$sSO".utf8)
 
   /// Check whether or not the given mangled type name looks like a Swift type
   /// (including types in the `__C` module) as opposed to, say, a C++ type.
@@ -423,29 +437,68 @@ extension TypeInfo {
   ///
   /// - Returns: Whether or not `mangledName` appears to follow Swift's mangling
   ///   rules.
+  ///
+  /// See the [Swift mangling ABI](https://github.com/swiftlang/swift/blob/main/docs/ABI/Mangling.rst)
+  /// for more information.
   private static func _looksLikeSwiftMangledName(_ mangledName: some BidirectionalCollection<UTF8.CodeUnit>) -> Bool {
     mangledName.count > _swiftMangledNamePrefix.count && mangledName.starts(with: _swiftMangledNamePrefix)
   }
 
-  /// The UTF-8 prefix applied to mangled type names in the `__C` module.
-  private static let _swiftEnumerationMangledNameSuffix = Array("O".utf8)
-
   /// Whether or not the described type is a Swift `enum` type.
   ///
-  /// Per the [Swift mangling ABI](https://github.com/swiftlang/swift/blob/main/docs/ABI/Mangling.rst),
-  /// enumeration types are mangled as `"O"`.
-  ///
-  /// - Bug: We use the internal Swift standard library function
-  ///   `_mangledTypeName()` to derive this information. We should use supported
-  ///   API instead. ([swift-#69147](https://github.com/swiftlang/swift/issues/69147))
+  /// - Bug: When we only have a type's name rather than a metatype, we use the
+  ///   internal Swift standard library function `_mangledTypeName()` to derive
+  ///   this information. We should use supported API instead. ([swift-#69147](https://github.com/swiftlang/swift/issues/69147))
   var isSwiftEnumeration: Bool {
-    guard let mangledName = mangledName?.utf8, Self._looksLikeSwiftMangledName(mangledName) else {
+    switch _kind {
+    case let .type(type):
+      return (Self._getMetadataKind(type) & 0x7FF) == 0x201 /* 1 | MetadataKindIsNonHeap */
+    case let .nameOnly(_, _, mangledName):
+      guard let mangledName = mangledName?.utf8,
+            Self._looksLikeSwiftMangledName(mangledName),
+            mangledName.last == UInt8(ascii: "O") else {
+        return false
+      }
+
+      // Eliminate any specific known-incorrect manglings.
+      if mangledName.elementsEqual(Self._swiftObjectIdentifierMangledTypeName) {
+        return false
+      }
+
+      return true
+    }
+  }
+
+  /// The UTF-8 representation of the empty tuple's (`()`, AKA `Void`) mangling.
+  private static let _swiftVoidMangledTypeName = Array("$syt".utf8)
+
+  /// Whether or not the described type is a Swift tuple type.
+  ///
+  /// - Bug: When we only have a type's name rather than a metatype, we use the
+  ///   internal Swift standard library function `_mangledTypeName()` to derive
+  ///   this information. We should use supported API instead. ([swift-#69147](https://github.com/swiftlang/swift/issues/69147))
+  var isSwiftTuple: Bool {
+    switch _kind {
+    case let .type(type):
+      return (Self._getMetadataKind(type) & 0x7FF) == 0x301 /* 1 | MetadataKindIsRuntimePrivate | MetadataKindIsNonHeap */
+    case let .nameOnly(_, _, mangledName):
+      guard let mangledName = mangledName?.utf8,
+            Self._looksLikeSwiftMangledName(mangledName),
+            mangledName.last == UInt8(ascii: "t") else {
+        return false
+      }
+
+      /// A tuple type cannot contain exactly one element. It contains either
+      /// zero elements (`Void`) or more than one. It must therefore either
+      /// exactly equal `"$syt"` or contain an underscore between element types.
+      if mangledName.elementsEqual(Self._swiftVoidMangledTypeName) {
+        return true
+      } else if mangledName.contains(UInt8(ascii: "_")) {
+        return true
+      }
+
       return false
     }
-
-    let suffix = Self._swiftEnumerationMangledNameSuffix
-    let suffixStartIndex = mangledName.index(mangledName.endIndex, offsetBy: -suffix.count)
-    return mangledName[suffixStartIndex...].elementsEqual(suffix)
   }
 
   /// The UTF-8 prefix applied to mangled type names in the `__C` module.
