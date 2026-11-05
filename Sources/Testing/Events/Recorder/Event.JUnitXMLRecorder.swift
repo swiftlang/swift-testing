@@ -238,32 +238,16 @@ extension Event.JUnitXMLRecorder {
     default:
       character.unicodeScalars.lazy
         .map { scalar in
-          if _isDisallowedControlScalar(scalar) {
+          switch scalar.value {
+          case 0x00...0x08, 0x0B...0x0C, 0x0E...0x1F, 0x7F:
             scalar.escaped(asASCII: true)
-          } else if !scalar.isASCII || Character(scalar).isNewline {
+          case _ where !scalar.isASCII || Character(scalar).isNewline:
             "&#\(scalar.value);"
-          } else {
+          default:
             String(scalar)
           }
         }
         .joined()
-    }
-  }
-
-  /// Whether a Unicode scalar represents a control character that must be
-  /// sanitized for XML.
-  ///
-  /// - Parameters:
-  ///   - scalar: The scalar to check.
-  ///
-  /// - Returns: `true` if `scalar` is a disallowed or restricted control character
-  ///   that cannot be represented directly in XML output; otherwise `false`.
-  private static func _isDisallowedControlScalar(_ scalar: Unicode.Scalar) -> Bool {
-    switch scalar.value {
-    case 0x00...0x08, 0x0B...0x0C, 0x0E...0x1F, 0x7F:
-      true
-    default:
-      false
     }
   }
 
