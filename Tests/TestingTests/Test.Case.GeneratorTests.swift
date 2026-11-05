@@ -28,4 +28,20 @@ struct Test_Case_GeneratorTests {
     let discriminators = Set(testCases.map(\.id.discriminator))
     #expect(discriminators.count == 3)
   }
+
+  @Test(arguments: [1], "a") func `Cartesian product generates a single Test.Case.Argument.Value`(_ xy: (Int, Character)) throws {
+    let arguments = try #require(Test.Case.current?.arguments)
+    try #require(arguments.count == 1)
+    let value = try #require(arguments[0].value as? (Int, Character))
+    #expect(value == xy)
+  }
+
+  @available(_inlineArrayAPI, *)
+  @Test(arguments: [1] as InlineArray, ["a"] as InlineArray<_, Character>)
+  func `Cartesian product generates a single Test.Case.Argument.Value from two inline arrays`(_ xy: (Int, Character)) throws {
+    let arguments = try #require(Test.Case.current?.arguments)
+    try #require(arguments.count == 1)
+    let value = try #require(arguments[0].value as? (Int, Character))
+    #expect(value == xy)
+  }
 }

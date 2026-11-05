@@ -27,30 +27,104 @@ extension Test.Case {
 
     /// A type representing an argument's value.
     struct Value: Sendable {
-      /// The underlying argument value.
-      var wrappedValue: any Sendable
+      /// An enumeration describing the different kinds of value that this type
+      /// can represent.
+      private enum _Kind: Sendable {
+        /// A copyable value with no custom test description.
+        ///
+        /// - Parameters:
+        ///   - value: The wrapped value.
+        case `default`(_ value: any Sendable)
 
-      /// Storage for ``testDescription``.
+        /// A copyable value with a custom test description.
+        ///
+        /// - Parameters:
+        ///   - value: The wrapped value.
+        ///   - testDescription: A description of `value`.
+        indirect case withCustomTestDescription(_ value: any Sendable, testDescription: String)
+
+#if !hasFeature(Embedded)
+        /// A move-only value.
+        ///
+        /// - Parameters:
+        ///   - typeInfo: The type of the wrapped value.
+        ///
+        /// In the future, we may want to make this case store a yield-once
+        /// function so it can represent `~Copyable` values directly.
+        indirect case moveOnlyValue(_ typeInfo: TypeInfo)
+#else
+        /// A move-only value.
+        case moveOnlyValue
+#endif
+      }
+
+      /// The kind of value.
+      private var _kind: _Kind
+
+      /// The underlying argument value.
+      var wrappedValue: any Sendable {
+        switch _kind {
+        case let .default(value), let .withCustomTestDescription(value, _):
+          value
+        case .moveOnlyValue:
+          ()
+        }
+      }
+
+#if !hasFeature(Embedded)
+      /// The type of ``wrappedValue``.
       ///
-      /// - Parameters:
-      ///   - value: This instance of ``Value``.
-      private var _testDescription: @Sendable (_ value: borrowing Value) -> String
+      /// This property is necessary to support move-only values as they are
+      /// borrowed and cannot be stored directly in an instance of ``Value``.
+      var typeInfo: TypeInfo {
+        switch _kind {
+        case let .default(value), let .withCustomTestDescription(value, _):
+          TypeInfo(describingTypeOf: value)
+        case let .moveOnlyValue(typeInfo):
+          typeInfo
+        }
+      }
+#endif
 
       init<W>(_ wrappedValue: W, testDescription: String? = nil) where W: Sendable {
-        self.wrappedValue = wrappedValue
+        if let testDescription {
+          _kind = .withCustomTestDescription(wrappedValue, testDescription: testDescription)
+        } else {
+          _kind = .default(wrappedValue)
+        }
+      }
+
+      init<W>(_ wrappedValue: borrowing W, testDescription: String? = nil) where W: Sendable & ~Copyable {
 #if !hasFeature(Embedded)
-        self._testDescription = { testDescription ?? String(describingForTest: $0.wrappedValue) }
+        _kind = .moveOnlyValue(TypeInfo(describing: W.self))
 #else
-        self._testDescription = { _ in testDescription ?? UnavailableInEmbeddedSwift.testDescription }
+        _kind = .moveOnlyValue
 #endif
       }
 
-#if hasFeature(Embedded)
       init<W>(_ wrappedValue: W, testDescription: String? = nil) where W: Sendable & CustomTestStringConvertible {
-        self.wrappedValue = wrappedValue
-        self._testDescription = { testDescription ?? String(describingForTest: $0.wrappedValue as! W) }
+        let testDescription = testDescription ?? String(describingForTest: wrappedValue)
+        _kind = .withCustomTestDescription(wrappedValue, testDescription: testDescription)
       }
+
+      /// Construct an instance of this type representing a tuple of two other
+      /// other instances.
+      ///
+      /// - Parameters:
+      ///   - value1: The instance representing the first element of the tuple.
+      ///   - value2: The instance representing the second element of the tuple.
+      init(tupleOf value1: Self, _ value2: Self) {
+#if !hasFeature(Embedded)
+        func open<each W>(_ wrappedValues: repeat each W) -> (repeat each W) where repeat each W: Sendable {
+          (repeat each wrappedValues)
+        }
+        let wrappedValue = open(value1.wrappedValue, value2.wrappedValue)
+#else
+        let wrappedValue = (value1.wrappedValue, value2.wrappedValue)
 #endif
+        let testDescription = "(\(value1.testDescription), \(value2.testDescription))"
+        self.init(wrappedValue, testDescription: testDescription)
+      }
     }
 
     /// Storage for ``value``.
@@ -64,7 +138,7 @@ extension Test.Case {
     /// The type of this parameterized test argument's value.
     var typeInfo: TypeInfo {
 #if !hasFeature(Embedded)
-      TypeInfo(describingTypeOf: _value.wrappedValue)
+      _value.typeInfo
 #else
       parameter.typeInfo
 #endif
@@ -194,7 +268,24 @@ extension Test.Case.Argument: CustomTestStringConvertible {
 
 extension Test.Case.Argument.Value: CustomTestStringConvertible {
   var testDescription: String {
-    _testDescription(self)
+    switch _kind {
+    case let .default(value):
+#if !hasFeature(Embedded)
+      String(describingForTest: value)
+#else
+      UnavailableInEmbeddedSwift.testDescription
+#endif
+    case let .withCustomTestDescription(_, testDescription):
+      testDescription
+#if !hasFeature(Embedded)
+    case let .moveOnlyValue(typeInfo):
+      // TODO: extend CustomTestStringConvertible to ~Copyable
+      "(instance of \(typeInfo))"
+#else
+    case .moveOnlyValue:
+      UnavailableInEmbeddedSwift.testDescription
+#endif
+    }
   }
 }
 

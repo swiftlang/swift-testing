@@ -21,7 +21,7 @@ extension Test.Case {
   ///   directly.
   public struct __ArgumentList<S, E>: Sendable, ~Copyable where S: Sendable & ~Copyable, E: Sendable & ~Copyable {
     /// The underlying sequence of arguments passed to the test.
-    var sequence: S
+    var wrappedValue: S
 
     /// A function that transforms an element of `sequence` to zero or more
     /// instances of ``Test/Case/Argument/Value``.
@@ -37,11 +37,86 @@ extension Test.Case {
 
 extension Test.Case.__ArgumentList: Copyable where S: Copyable, E: ~Copyable {}
 
-extension Test.Case.__ArgumentList where S: Sequence, E == S.Element {
-  init(_ sequence: consuming S, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) {
-    self.sequence = sequence
+extension Test.Case.__ArgumentList where S: ~Copyable, E: ~Copyable {
+  init(_ wrappedValue: consuming S, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) {
+    self.wrappedValue = wrappedValue
     self.makeArgumentValues = makeArgumentValues
   }
+}
+
+extension Test.Case.__ArgumentList where S: ~Copyable, E: Copyable {
+  @_disfavoredOverload
+  init(_ wrappedValue: consuming S, parameterCount: Int) {
+    if parameterCount > 1 {
+      self.init(wrappedValue: wrappedValue) { element in
+#if !hasFeature(Embedded)
+        let mirror = Mirror(reflectingForTest: element)
+        if mirror.displayStyle == .tuple {
+          return mirror.children.lazy
+            .map { unsafeBitCast($0.value, to: (any Sendable).self) }
+            .map { Test.Case.Argument.Value($0) }
+        }
+
+        // The value did not appear to be a tuple or we didn't need to split the
+        // element. If we created a mirror above, we can reuse it here.
+        let testDescription = String(describingForTest: element, reflectedBy: mirror)
+        return [Test.Case.Argument.Value(element, testDescription: testDescription)]
+#else
+        // We can't break down the tuple in Embedded Swift, but we can at
+        // least present the correct number of arguments.
+        let unavailable = Test.Case.Argument.Value(UnavailableInEmbeddedSwift())
+        return Array(repeating: unavailable, count: parameterCount)
+#endif
+      }
+    } else {
+      self.init(wrappedValue: wrappedValue) { [Test.Case.Argument.Value($0)] }
+    }
+  }
+
+  init<E1, E2>(_ wrappedValue: consuming S, parameterCount: Int) where E == (E1, E2) {
+    if parameterCount > 1 {
+      self.init(wrappedValue: wrappedValue) { element in
+        [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
+      }
+    } else {
+      self.init(wrappedValue: wrappedValue) { element in
+#if !hasFeature(Embedded)
+        let testDescription = "(\(String(describingForTest: element.0)), \(String(describingForTest: element.1)))"
+#else
+        let testDescription = "(\(UnavailableInEmbeddedSwift.testDescription), \(UnavailableInEmbeddedSwift.testDescription))"
+#endif
+        return [Test.Case.Argument.Value(element, testDescription: testDescription)]
+      }
+    }
+  }
+
+#if hasFeature(Embedded)
+  init(_ wrappedValue: consuming S, parameterCount: Int) where E: CustomTestStringConvertible {
+    if parameterCount > 1 {
+      self.init(wrappedValue) { element in
+        // We can't break down the tuple in Embedded Swift, but we can at
+        // least present the correct number of arguments.
+        let unavailable = Test.Case.Argument.Value(UnavailableInEmbeddedSwift())
+        return Array(repeating: unavailable, count: parameterCount)
+      }
+    } else {
+      self.init(wrappedValue: wrappedValue) { [Test.Case.Argument.Value($0)] }
+    }
+  }
+
+  init<E1, E2>(_ wrappedValue: consuming S, parameterCount: Int) where E == (E1, E2), E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
+    if parameterCount > 1 {
+      self.init(wrappedValue: wrappedValue) { element in
+        [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
+      }
+    } else {
+      self.init(wrappedValue: wrappedValue) { element in
+        let testDescription = "(\(String(describingForTest: element.0)), \(String(describingForTest: element.1)))"
+        return [Test.Case.Argument.Value(element, testDescription: testDescription)]
+      }
+    }
+  }
+#endif
 }
 
 // MARK: -
@@ -59,34 +134,7 @@ extension Test.Case.__ArgumentList where S: Sequence, E == S.Element {
 ///   it directly.
 @_disfavoredOverload
 public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence {
-  Test.Case.__ArgumentList(arguments) { element in
-    var testDescription: String?
-#if !hasFeature(Embedded)
-    var mirror: Mirror?
-    if parameterCount > 1 {
-      mirror = Mirror(reflectingForTest: element)
-      if let mirror, mirror.displayStyle == .tuple {
-        return mirror.children.lazy
-          .map { unsafeBitCast($0.value, to: (any Sendable).self) }
-          .map { Test.Case.Argument.Value($0) }
-      }
-    }
-
-    // The value did not appear to be a tuple or we didn't need to split the
-    // element. If we created a mirror above, we can reuse it here.
-    if mirror?.displayStyle == .tuple {
-      testDescription = String(describingForTest: element, reflectedBy: mirror)
-    }
-#else
-    // We can't break down the tuple in Embedded Swift, but we can at
-    // least present the correct number of arguments.
-    if parameterCount > 1 {
-      let unavailable = Test.Case.Argument.Value(UnavailableInEmbeddedSwift())
-      return Array(repeating: unavailable, count: parameterCount)
-    }
-#endif
-    return [Test.Case.Argument.Value(element, testDescription: testDescription)]
-  }
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
 
 /// Make an argument list from the given sequence of arguments.
@@ -104,18 +152,7 @@ public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Te
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element == (E1, E2) {
-  Test.Case.__ArgumentList(arguments) { element in
-    if parameterCount > 1 {
-      return [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
-    } else {
-#if !hasFeature(Embedded)
-      let testDescription = "(\(String(describingForTest: element.0)), \(String(describingForTest: element.1)))"
-#else
-      let testDescription = "(\(UnavailableInEmbeddedSwift.testDescription), \(UnavailableInEmbeddedSwift.testDescription))"
-#endif
-      return [Test.Case.Argument.Value(element, testDescription: testDescription)]
-    }
-  }
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
 
 /// Make an argument list from the given sequence of arguments.
@@ -150,7 +187,68 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
   }
 }
 
+/// Make an argument list from the given inline array containing arguments.
+///
+/// - Parameters:
+///   - arguments: The inline array.
+///   - parameterCount: The number of parameters passed to the test function.
+///
+/// - Returns: An argument list.
+///
+/// This overload is specialized for `InlineArray` when its elements are
+/// copyable.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@_disfavoredOverload
+public func __makeArgumentList<let count: Int, E>(_ arguments: consuming InlineArray<count, E>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, E>, E> where E: Copyable {
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
+}
+
+/// Make an argument list from the given inline array containing arguments.
+///
+/// - Parameters:
+///   - arguments: The inline array.
+///   - parameterCount: The number of parameters passed to the test function.
+///
+/// - Returns: An argument list.
+///
+/// This overload is specialized for `InlineArray` when its elements are
+/// 2-tuples.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@_disfavoredOverload
+public func __makeArgumentList<let count: Int, E1, E2>(_ arguments: consuming InlineArray<count, (E1, E2)>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, (E1, E2)>, (E1, E2)> {
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
+}
+
+/// Make an argument list from the given inline array containing arguments.
+///
+/// - Parameters:
+///   - arguments: The inline array.
+///   - parameterCount: The number of parameters passed to the test function.
+///
+/// - Returns: An argument list.
+///
+/// This overload is specialized for `InlineArray` and allows us to support
+/// move-only argument values.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@_disfavoredOverload
+public func __makeArgumentList<let count: Int, E>(_ arguments: consuming InlineArray<count, E>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, E>, E> where E: ~Copyable {
+  Test.Case.__ArgumentList(arguments) { [Test.Case.Argument.Value($0)] }
+}
+
 #if hasFeature(Embedded)
+// MARK: - Overloads for conformance to CustomTestStringConvertible (Embedded Swift only)
 public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element: CustomTestStringConvertible {
   Test.Case.__ArgumentList(arguments) { element in
     // We can't break down the tuple in Embedded Swift, but we can at
@@ -164,14 +262,7 @@ public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Te
 }
 
 public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element == (E1, E2), E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
-  Test.Case.__ArgumentList(arguments) { element in
-    if parameterCount > 1 {
-      return [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
-    } else {
-      let testDescription = "(\(String(describingForTest: element.0)), \(String(describingForTest: element.1)))"
-      return [Test.Case.Argument.Value(element, testDescription: testDescription)]
-    }
-  }
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
 
 public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence & ExpressibleByDictionaryLiteral, S.Element == (key: K, value: V), K: CustomTestStringConvertible, V: CustomTestStringConvertible {
@@ -184,4 +275,54 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
     }
   }
 }
+
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@_disfavoredOverload
+public func __makeArgumentList<let count: Int, E>(_ arguments: consuming InlineArray<count, E>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, E>, E> where E: Copyable & CustomTestStringConvertible {
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
+}
+
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@_disfavoredOverload
+public func __makeArgumentList<let count: Int, E1, E2>(_ arguments: consuming InlineArray<count, (E1, E2)>, parameterCount: Int = 1) -> Test.Case.__ArgumentList<InlineArray<count, (E1, E2)>, (E1, E2)> where E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
+}
 #endif
+
+// MARK: - `consuming` misuse detection
+
+/// Consume an argument list whose elements conform to `Copyable`.
+///
+/// - Parameters:
+///   - argumentList: The argument list.
+///   - typeName: The type of the parameter to the test function, as a string.
+///
+/// - Returns: `argumentList` verbatim.
+///
+/// - Warning: This macro is used to implement the `@Test` macro. Do not use it
+///   directly.
+@freestanding(expression)
+public macro __consumeArgumentList<S, E>(
+  _ argumentList: consuming Test.Case.__ArgumentList<S, E>,
+  _ typeName: String
+) -> Test.Case.__ArgumentList<S, E> = #externalMacro(module: "TestingMacros", type: "ConsumeCopyableArgumentListMacro") where S: Sendable & ~Copyable, E: Sendable & Copyable
+
+/// Consume an argument list whose elements do not conform to `Copyable`.
+///
+/// - Parameters:
+///   - argumentList: The argument list.
+///   - typeName: The type of the parameter to the test function, as a string.
+///
+/// - Returns: `argumentList` verbatim.
+///
+/// - Warning: This macro is used to implement the `@Test` macro. Do not use it
+///   directly.
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@freestanding(expression)
+public macro __consumeArgumentList<S, E>(
+  _ argumentList: consuming Test.Case.__ArgumentList<S, E>,
+  _ typeName: String
+) -> Test.Case.__ArgumentList<S, E> = #externalMacro(module: "TestingMacros", type: "ConsumeMoveOnlyArgumentListMacro") where S: Sendable & ~Copyable, E: Sendable & ~Copyable
