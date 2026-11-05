@@ -266,7 +266,7 @@ extension Runner.Plan {
   ///   - test: The test whose action will be determined.
   ///
   /// - Returns:The action to take for `test`.
-  private static func _determineAction(for test: inout Test) async -> Action {
+  private nonisolated(nonsending) static func _determineAction(for test: inout Test) async -> Action {
     let result: Action
 
     // We use a task group here with a single child task so that, if the trait
@@ -350,7 +350,7 @@ extension Runner.Plan {
   ///   - configuration: The configuration to use for planning.
   ///
   /// - Returns: A graph of the steps corresponding to `tests`.
-  private static func _constructStepGraph(from tests: some Sequence<Test>, configuration: Configuration) async -> Graph<String, Step?> {
+  private nonisolated(nonsending) static func _constructStepGraph(from tests: some Sequence<Test>, configuration: Configuration) async -> Graph<String, Step?> {
 #if !hasFeature(Embedded)
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
@@ -455,7 +455,7 @@ extension Runner.Plan {
   ///   - configuration: The configuration to use for planning.
   ///
   /// This function produces a new runner plan for the provided tests.
-  public init(tests: some Sequence<Test>, configuration: Configuration) async {
+  public nonisolated(nonsending) init(tests: some Sequence<Test>, configuration: Configuration) async {
     let stepGraph = await Self._constructStepGraph(from: tests, configuration: configuration)
     self.init(stepGraph: stepGraph)
   }
@@ -465,7 +465,7 @@ extension Runner.Plan {
   ///
   /// - Parameters:
   ///   - configuration: The configuration to use for planning.
-  public init(configuration: Configuration) async {
+  public nonisolated(nonsending) init(configuration: Configuration) async {
     await self.init(tests: Test.all, configuration: configuration)
   }
 }

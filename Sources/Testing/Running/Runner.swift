@@ -30,7 +30,7 @@ public struct Runner: Sendable {
   /// - Parameters:
   ///   - tests: The tests to run.
   ///   - configuration: The configuration to use for running.
-  public init(testing tests: [Test], configuration: Configuration = .init()) async {
+  public nonisolated(nonsending) init(testing tests: [Test], configuration: Configuration = .init()) async {
     let plan = await Plan(tests: tests, configuration: configuration)
     self.init(plan: plan, configuration: configuration)
   }
@@ -51,7 +51,7 @@ public struct Runner: Sendable {
   ///
   /// - Parameters:
   ///   - configuration: The configuration to use for running.
-  public init(configuration: Configuration = .init()) async {
+  public nonisolated(nonsending) init(configuration: Configuration = .init()) async {
     let plan = await Plan(configuration: configuration)
     self.init(plan: plan, configuration: configuration)
   }
@@ -105,7 +105,7 @@ extension Runner {
   ///
   /// - Throws: Whatever is thrown by `body` or by any of the
   ///   ``TestScoping/provideScope(for:testCase:performing:)`` function calls.
-  private static func _applyScopingTraits(
+  private static nonisolated(nonsending) func _applyScopingTraits(
     for test: Test,
     testCase: Test.Case?,
     _ body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
@@ -149,7 +149,7 @@ extension Runner {
   ///
   /// - Throws: Whatever is thrown by `body` or by any of the traits' provide
   ///   scope function calls.
-  private static func _applyIssueHandlingTraits(for test: Test, _ body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) async throws {
+  private static nonisolated(nonsending) func _applyIssueHandlingTraits(for test: Test, _ body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) async throws {
     // If the test does not have any traits, exit early to avoid unnecessary
     // heap allocations below.
     if test.traits.isEmpty {
@@ -184,10 +184,10 @@ extension Runner {
   ///   - body: The function to invoke.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  private static func _forEach<E>(
+  private static nonisolated(nonsending) func _forEach<E>(
     in sequence: some Sequence<E>,
     namingTasksWith taskNamer: (borrowing E) -> (taskName: String, action: String?)?,
-    _ body: @Sendable @escaping (borrowing E) async throws -> Void
+    _ body: nonisolated(nonsending) @Sendable @escaping (borrowing E) async throws -> Void
   ) async rethrows where E: Sendable {
     try await withThrowingTaskGroup { taskGroup in
       for element in sequence {
@@ -225,7 +225,7 @@ extension Runner {
   ///
   /// This function does _not_ post the `planStepStarted` and `planStepEnded`
   /// events.
-  private static func _postingTestStartedAndEndedEvents<R>(for step: Plan.Step, configuration: Configuration, context: _Context, _ body: @Sendable () async throws -> R) async throws -> R {
+  private static nonisolated(nonsending) func _postingTestStartedAndEndedEvents<R>(for step: Plan.Step, configuration: Configuration, context: _Context, _ body: nonisolated(nonsending) @Sendable () async throws -> R) async throws -> R {
 #if DEBUG
     // This function should only be called when the caller has already set the
     // current test to the one represented by `step`.
@@ -289,7 +289,7 @@ extension Runner {
   /// ## See Also
   ///
   /// - ``Runner/run()``
-  private static func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>, context: _Context) async throws {
+  private static nonisolated(nonsending) func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>, context: _Context) async throws {
 #if !hasFeature(Embedded)
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
@@ -363,7 +363,7 @@ extension Runner {
   ///
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
-  private static func _runChildren(of stepGraph: Graph<String, Plan.Step?>, context: _Context) async throws {
+  private static nonisolated(nonsending) func _runChildren(of stepGraph: Graph<String, Plan.Step?>, context: _Context) async throws {
 #if !hasFeature(Embedded)
     let isParallelizationEnabled = _configuration.isParallelizationEnabled
 #else
@@ -423,7 +423,7 @@ extension Runner {
   ///
   /// If parallelization is supported and enabled, the generated test cases will
   /// be run in parallel using a task group.
-  private static func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step, context: _Context) async {
+  private static nonisolated(nonsending) func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step, context: _Context) async {
     let configuration = _configuration
 
     // Apply the configuration's test case filter.
@@ -461,7 +461,7 @@ extension Runner {
   ///
   /// This function sets ``Test/Case/current``, then invokes the test case's
   /// body closure.
-  private static func _runTestCase(
+  private static nonisolated(nonsending) func _runTestCase(
     _ testCase: Test.Case,
     within step: Plan.Step,
     in context: _Context,
@@ -481,7 +481,7 @@ extension Runner {
   ///
   /// This function sets ``Test/Case/current``, then invokes the test case's
   /// body closure.
-  private static func _runSingleTestCaseIteration(_ testCase: Test.Case, within step: Plan.Step) async {
+  private static nonisolated(nonsending) func _runSingleTestCaseIteration(_ testCase: Test.Case, within step: Plan.Step) async {
     let configuration = _configuration
 
     Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
@@ -518,7 +518,7 @@ extension Runner {
   }
 
   /// Run the tests in this runner's plan.
-  public func run() async {
+  public nonisolated(nonsending) func run() async {
     await Self._run(self)
   }
 
@@ -529,7 +529,7 @@ extension Runner {
   ///
   /// This function is `static` so that it cannot accidentally reference `self`
   /// or `self.configuration` when it should use a modified copy of either.
-  private static func _run(_ runner: Self) async {
+  private static nonisolated(nonsending) func _run(_ runner: Self) async {
     var runner = runner
     runner.configureEventHandlerRuntimeState()
 #if !SWT_NO_FILE_IO
@@ -582,7 +582,7 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - context: Context for the test run.
-  private func _runAllTests(context: _Context) async {
+  private nonisolated(nonsending) func _runAllTests(context: _Context) async {
     await withTaskGroup { taskGroup in
       _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: nil)) {
         try? await Self._runStep(atRootOf: plan.stepGraph, context: context)

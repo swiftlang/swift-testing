@@ -37,7 +37,7 @@ public struct _AttachableTransferableWrapper<T>: Sendable where T: Transferable 
   /// The exported form of the transferable value.
   private var _bytes: Data
 
-  init(exporting transferableValue: T, as contentType: UTType?) async throws {
+  nonisolated(nonsending) init(exporting transferableValue: T, as contentType: UTType?) async throws {
     let contentType = contentType ?? transferableValue.exportedContentTypes()
       .first { $0.conforms(to: .data) }
     guard let contentType else {
