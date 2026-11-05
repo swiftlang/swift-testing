@@ -150,7 +150,7 @@ struct CustomArgumentWrapper<T>: RawRepresentable, Encodable where T: CustomTest
     self.rawValue = rawValue
   }
 
-  func encode(to encoder: any Encoder) throws {
+  func encode(to encoder: any Encoder) throws(any Error) {
     try rawValue.encodeTestArgument(to: encoder)
   }
 }

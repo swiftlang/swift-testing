@@ -76,7 +76,7 @@ extension ABI.EncodedError: Codable {
     case typeInfo = "type"
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 }
