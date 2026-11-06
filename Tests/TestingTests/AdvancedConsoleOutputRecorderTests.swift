@@ -11,7 +11,7 @@
 #if !SWT_NO_ABI_JSON_SCHEMA
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+#if !os(anyAppleOS) && canImport(Synchronization)
 import Synchronization
 #endif
 

@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if !SWT_TARGET_OS_APPLE && canImport(Synchronization)
+#if !os(anyAppleOS) && canImport(Synchronization)
 import Synchronization
 #endif
 
@@ -171,7 +171,15 @@ struct TestCaseIterationTests {
     }
     configuration.repetitionPolicy = .repeating(maximumIterationCount: 2)
 
-    await test.run(configuration: configuration)
+    // We don't want configureEventHandlerRuntimeState() to pop us back up to
+    // the "real" configuration because it may have non-default verbosity and
+    // the tests that call this function are expressly interested in the content
+    // of messages matching patterns that may not match with increased/decreased
+    // verbosity. So we push the local configuration before calling `run()` so
+    // it pops back to itself.
+    await Configuration.withCurrent(configuration) {
+      await test.run(configuration: configuration)
+    }
     return events.rawValue
   }
 
@@ -208,13 +216,13 @@ struct TestCaseIterationTests {
     let events = await encodedEvents(for: test, encodeMessagesField: true)
     let messages = events.flatMap(\.messages).map(\.text)
 
-    #expect(messages.count == expected.count, sourceLocation: sourceLocation)
+    #expect(messages.count == expected.count, "\(messages.joined(separator: "\n"))", sourceLocation: sourceLocation)
     for (actual, expected) in zip(messages, expected) {
       #expect(throws: Never.self, sourceLocation: sourceLocation) {
-        try #expect(expected.wholeMatch(in: actual) != nil, sourceLocation: sourceLocation)
+        try #expect(expected.wholeMatch(in: actual) != nil, "\(actual)", sourceLocation: sourceLocation)
       }
     }
-}
+  }
 #endif
 
   @Test

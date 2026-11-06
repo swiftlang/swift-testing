@@ -58,11 +58,11 @@ extension ABI.EncodedConfirmationMiscount: Codable {
     case max
   }
 
-  func encode(to encoder: any Encoder) throws {
+  func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 
-  init(from decoder: any Decoder) throws {
+  init(from decoder: any Decoder) throws(any Error) {
     let container = try decoder.container(keyedBy: _CodingKeys.self)
     actual = try container.decode(Int.self, forKey: .actual)
 

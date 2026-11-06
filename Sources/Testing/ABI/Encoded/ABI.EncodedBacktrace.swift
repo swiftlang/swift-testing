@@ -44,11 +44,11 @@ extension ABI {
 
 #if !SWT_NO_CODABLE
 extension ABI.EncodedBacktrace: Codable {
-  func encode(to encoder: any Encoder) throws {
+  func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 
-  init(from decoder: any Decoder) throws {
+  init(from decoder: any Decoder) throws(any Error) {
     let container = try decoder.singleValueContainer()
 #if !SWT_NO_BACKTRACE_SYMBOLICATION
     symbolicatedAddresses = try container.decode([Backtrace.SymbolicatedAddress].self)

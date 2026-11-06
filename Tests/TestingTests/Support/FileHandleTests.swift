@@ -89,7 +89,7 @@ struct FileHandleTests {
   }
 #endif
 
-#if SWT_TARGET_OS_APPLE || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
   @Test("close() function")
   func closeFunction() async throws {
     try await confirmation("File handle closed") { closed in
@@ -103,20 +103,13 @@ struct FileHandleTests {
   func canWrite() throws {
     try withTemporaryPath { path in
       let fileHandle = try FileHandle(forWritingAtPath: path)
-      try fileHandle.write([0, 1, 2, 3, 4, 5])
+      let bytes: [UInt8] = [0, 1, 2, 3, 4, 5]
+      try bytes.withUnsafeBufferPointer { bytes in
+        try fileHandle.write(bytes)
+      }
       try fileHandle.write("Hello world!")
     }
   }
-
-#if !SWT_NO_EXIT_TESTS
-  @Test("Writing requires contiguous storage")
-  func writeIsContiguous() async {
-    await #expect(processExitsWith: .failure) {
-      let fileHandle = try FileHandle.null(options: [.writeAccess])
-      try fileHandle.write([1, 2, 3, 4, 5].lazy.filter { $0 == 1 })
-    }
-  }
-#endif
 
   @Test("Can read from a file")
   func canRead() throws {
@@ -126,7 +119,9 @@ struct FileHandleTests {
     try withTemporaryPath { path in
       do {
         let fileHandle = try FileHandle(forWritingAtPath: path)
-        try fileHandle.write(bytes)
+        try bytes.withUnsafeBufferPointer { bytes in
+          try fileHandle.write(bytes)
+        }
       }
       let fileHandle = try FileHandle(forReadingAtPath: path)
       let bytes2 = try fileHandle.readToEnd()
@@ -138,7 +133,10 @@ struct FileHandleTests {
   func cannotWriteBytesToReadOnlyFile() throws {
     let fileHandle = try FileHandle.null(options: [.readAccess])
     #expect(throws: CError.self) {
-      try fileHandle.write([0, 1, 2, 3, 4, 5])
+      let bytes: [UInt8] = [0, 1, 2, 3, 4, 5]
+      try bytes.withUnsafeBufferPointer { bytes in
+        try fileHandle.write(bytes)
+      }
     }
   }
 
@@ -185,7 +183,7 @@ struct FileHandleTests {
     #expect(writeEnd.isPipe as Bool)
   }
 
-#if SWT_TARGET_OS_APPLE || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || (os(Linux) && !SWT_NO_DYNAMIC_LINKING) || os(FreeBSD) || os(OpenBSD)
   @Test("Can close ends of a pipe")
   func closeEndsOfPipe() async throws {
     try await confirmation("File handle closed", expectedCount: 2) { closed in
@@ -285,7 +283,7 @@ func withTemporaryPath<R>(_ body: (_ path: String) throws -> R) throws -> R {
 }
 
 func temporaryDirectory() throws -> String {
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
   try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX)) { buffer in
     if 0 != confstr(_CS_DARWIN_USER_TEMP_DIR, buffer.baseAddress, buffer.count) {
       return String(cString: buffer.baseAddress!)
@@ -307,7 +305,7 @@ func temporaryDirectory() throws -> String {
 #endif
 }
 
-#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || os(FreeBSD) || os(OpenBSD)
 func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> FileHandle {
   let context = Unmanaged.passRetained(confirmation as AnyObject).toOpaque()
   let file = try #require(

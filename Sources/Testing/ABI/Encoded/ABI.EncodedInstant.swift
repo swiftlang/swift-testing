@@ -146,7 +146,7 @@ extension SuspendingClock.Instant {
 
 #if !SWT_NO_CODABLE
 extension ABI.EncodedInstant: Codable {
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 }

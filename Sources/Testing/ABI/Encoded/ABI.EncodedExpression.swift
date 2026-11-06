@@ -48,7 +48,7 @@ extension ABI.EncodedExpression: Codable {
     case children
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 }
