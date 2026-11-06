@@ -287,9 +287,7 @@ extension ExitTest {
     // navigate to misc/signal.cpp:481 to see the implementation of SIG_DFL
     // (which, again, calls `_exit(3)` unconditionally.)
     for sig in windowsSignals.keys {
-      try! FileHandle.stderr.write("Setting signal \(sig) handler\n")
       _ = signal(sig) { sig in
-        try! FileHandle.stderr.write("Calling signal \(sig) handler\n")
         _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
       }
     }
@@ -949,8 +947,8 @@ extension ExitTest {
               atPath: childProcessExecutablePath,
               arguments: childArguments,
               environment: childEnvironment,
-              standardOutput: FileHandle.stdout,//stdoutWriteEnd,
-              standardError: FileHandle.stderr,//stderrWriteEnd,
+              standardOutput: stdoutWriteEnd,
+              standardError: stderrWriteEnd,
               additionalFileHandles: [backChannelWriteEnd, capturedValuesReadEnd]
             )
           }
