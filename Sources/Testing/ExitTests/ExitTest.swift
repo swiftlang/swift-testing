@@ -86,7 +86,7 @@ public struct ExitTest: Sendable, ~Copyable {
   ///
   /// - Parameters:
   ///   - exitTest: The exit test to which this body closure belongs.
-  fileprivate typealias Body = nonisolated(nonsending) @Sendable (_ exitTest: inout Self) async throws -> Void
+  fileprivate typealias Body = @Sendable (_ exitTest: inout Self) async throws -> Void
 
   /// The body closure of the exit test.
   ///
@@ -259,7 +259,7 @@ extension ExitTest {
   /// `#expect(processExitsWith:)` _in the current process_. That closure is
   /// expected to terminate the process; if it does not, the testing library
   /// will terminate the process as if its `main()` function returned naturally.
-  public nonisolated(nonsending) consuming func callAsFunction() async -> Never {
+  public consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
 #if os(Windows)
@@ -367,7 +367,7 @@ extension ExitTest {
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
   @safe public static func __store<each T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
-    _ body: nonisolated(nonsending) @escaping @Sendable (repeat each T) async throws -> Void,
+    _ body: @escaping @Sendable (repeat each T) async throws -> Void,
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
@@ -658,7 +658,7 @@ extension ExitTest {
   /// are available or the child environment is otherwise terminated. The parent
   /// environment is then responsible for interpreting those results and
   /// recording any issues that occur.
-  public typealias Handler = nonisolated(nonsending) @Sendable (_ exitTest: borrowing Self) async throws -> ExitTest.Result
+  public typealias Handler = @Sendable (_ exitTest: borrowing Self) async throws -> ExitTest.Result
 
   /// Make a file handle from the string contained in the given environment
   /// variable.
