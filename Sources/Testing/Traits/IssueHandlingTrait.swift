@@ -98,7 +98,7 @@ extension IssueHandlingTrait: TestScoping {
   /// intentionally returns `nil` (see the comment in that method), so this
   /// function can be called instead to ensure this trait can still handle that
   /// issue.
-  func provideScope(performing function: @Sendable () async throws -> Void) async throws {
+  nonisolated(nonsending) func provideScope(performing function: nonisolated(nonsending) @Sendable () async throws -> Void) async throws {
     guard var configuration = Configuration.current else {
       preconditionFailure("Configuration.current is nil when calling \(#function). \(fileABugMessage)")
     }

@@ -77,9 +77,9 @@ extension Runner {
   ///   - body: The actual body of the function which must ultimately call into the test function.
   ///   - didRecordIssue: A closure passed by the caller to determine if an issue was recorded during
   ///     the test run.
-  static func applyRepetitionPolicy(
+  static nonisolated(nonsending) func applyRepetitionPolicy(
     _ policy: Configuration.RepetitionPolicy,
-    perform body: () async -> Void,
+    perform body: nonisolated(nonsending) () async -> Void,
     didRecordIssue: () -> Bool
   ) async {
     let maximumIterationCount = policy.maximumIterationCount

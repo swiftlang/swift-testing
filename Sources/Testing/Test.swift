@@ -160,7 +160,7 @@ public struct Test: Sendable {
     /// - Parameters:
     ///   - function: The function to call to evaluate the test's cases. The
     ///     result is a sequence of test cases.
-    case unevaluated(_ function: @Sendable () async throws -> AnySendableSequence<Test.Case>)
+    case unevaluated(_ function: nonisolated(nonsending) @Sendable () async throws -> AnySendableSequence<Test.Case>)
 
     /// The test's cases have been evaluated.
     ///
@@ -244,7 +244,7 @@ public struct Test: Sendable {
   /// re-evaluated.
   ///
   /// - Throws: Any error caught while first evaluating the test arguments.
-  mutating func evaluateTestCases() async throws {
+  mutating nonisolated(nonsending) func evaluateTestCases() async throws {
     if case let .unevaluated(function) = testCasesState {
       do {
         let sequence = try await function()
@@ -346,7 +346,7 @@ public struct Test: Sendable {
     sourceBounds: __SourceBounds,
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
-    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
+    testCases: nonisolated(nonsending) @escaping @Sendable () async throws -> Test.Case.Generator<S>,
     parameters: [Parameter]
   ) {
     let properties = _Properties(

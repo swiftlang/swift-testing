@@ -21,7 +21,7 @@ extension Test.Case {
   ///   directly.
   public struct __ArgumentList<S, E>: Sendable, ~Copyable where S: Sendable & ~Copyable, E: Sendable & ~Copyable {
     /// The underlying sequence of arguments passed to the test.
-    var sequence: S
+    var wrappedValue: S
 
     /// A function that transforms an element of `sequence` to zero or more
     /// instances of ``Test/Case/Argument/Value``.
@@ -37,9 +37,9 @@ extension Test.Case {
 
 extension Test.Case.__ArgumentList: Copyable where S: Copyable, E: ~Copyable {}
 
-extension Test.Case.__ArgumentList where S: Sequence, E == S.Element {
-  init(_ sequence: consuming S, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) {
-    self.sequence = sequence
+extension Test.Case.__ArgumentList where S: ~Copyable, E: ~Copyable {
+  init(_ wrappedValue: consuming S, makingArgumentValuesWith makeArgumentValues: @escaping @Sendable (_ element: borrowing E) -> [Test.Case.Argument.Value]) {
+    self.wrappedValue = wrappedValue
     self.makeArgumentValues = makeArgumentValues
   }
 }
@@ -96,14 +96,13 @@ public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 
   Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
       return [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
-    } else {
-#if !hasFeature(Embedded)
-      let testDescription = "(\(String(describingForTest: element.0)), \(String(describingForTest: element.1)))"
-#else
-      let testDescription = "(\(UnavailableInEmbeddedSwift.testDescription), \(UnavailableInEmbeddedSwift.testDescription))"
-#endif
-      return [Test.Case.Argument.Value(element, testDescription: testDescription)]
     }
+#if !hasFeature(Embedded)
+    let testDescription = "(\(String(describingForTest: element.0)), \(String(describingForTest: element.1)))"
+#else
+    let testDescription = "(\(UnavailableInEmbeddedSwift.testDescription), \(UnavailableInEmbeddedSwift.testDescription))"
+#endif
+    return [Test.Case.Argument.Value(element, testDescription: testDescription)]
   }
 }
 
@@ -128,18 +127,19 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
   Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
       return [Test.Case.Argument.Value(element.key), Test.Case.Argument.Value(element.value)]
-    } else {
-#if !hasFeature(Embedded)
-      let testDescription = "(key: \(String(describingForTest: element.key)), value: \(String(describingForTest: element.value)))"
-#else
-      let testDescription = "(key: \(UnavailableInEmbeddedSwift.testDescription), value: \(UnavailableInEmbeddedSwift.testDescription))"
-#endif
-      return [Test.Case.Argument.Value(element, testDescription: testDescription)]
     }
+#if !hasFeature(Embedded)
+    let testDescription = "(key: \(String(describingForTest: element.key)), value: \(String(describingForTest: element.value)))"
+#else
+    let testDescription = "(key: \(UnavailableInEmbeddedSwift.testDescription), value: \(UnavailableInEmbeddedSwift.testDescription))"
+#endif
+    return [Test.Case.Argument.Value(element, testDescription: testDescription)]
   }
 }
 
 #if hasFeature(Embedded)
+// MARK: - Overloads for conformance to CustomTestStringConvertible (Embedded Swift only)
+
 public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element: CustomTestStringConvertible {
   Test.Case.__ArgumentList(arguments) { element in
     // We can't break down the tuple in Embedded Swift, but we can at
@@ -156,10 +156,9 @@ public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 
   Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
       return [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
-    } else {
-      let testDescription = "(\(String(describingForTest: element.0)), \(String(describingForTest: element.1)))"
-      return [Test.Case.Argument.Value(element, testDescription: testDescription)]
     }
+    let testDescription = "(\(String(describingForTest: element.0)), \(String(describingForTest: element.1)))"
+    return [Test.Case.Argument.Value(element, testDescription: testDescription)]
   }
 }
 
@@ -167,10 +166,9 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
   Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
       return [Test.Case.Argument.Value(element.key), Test.Case.Argument.Value(element.value)]
-    } else {
-      let testDescription = "(key: \(String(describingForTest: element.key)), value: \(String(describingForTest: element.value)))"
-      return [Test.Case.Argument.Value(element, testDescription: testDescription)]
     }
+    let testDescription = "(key: \(String(describingForTest: element.key)), value: \(String(describingForTest: element.value)))"
+    return [Test.Case.Argument.Value(element, testDescription: testDescription)]
   }
 }
 #endif

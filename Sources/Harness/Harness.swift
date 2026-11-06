@@ -17,7 +17,7 @@ private import ArgumentParser
     commandName: "swift-testing-harness"
   )
 
-  mutating func run() async throws {
+  mutating nonisolated(nonsending) func run() async throws {
     throw ValidationError("This tool is currently unimplemented.")
   }
 }

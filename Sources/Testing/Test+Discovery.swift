@@ -24,7 +24,7 @@ extension Test {
       .testDeclaration
     }
 
-    var rawValue: @Sendable () async -> Test
+    var rawValue: nonisolated(nonsending) @Sendable () async -> Test
   }
 
   /// Store the test generator function into the given memory.
@@ -40,7 +40,7 @@ extension Test {
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   use it directly.
   @safe public static func __store(
-    _ generator: @escaping @Sendable () async -> Test,
+    _ generator: nonisolated(nonsending) @escaping @Sendable () async -> Test,
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer
   ) -> CBool {
@@ -54,7 +54,7 @@ extension Test {
   /// All available ``Test`` instances in the process, according to the runtime.
   ///
   /// The order of values in this sequence is unspecified.
-  static var all: some Sequence<Self> {
+  static nonisolated(nonsending) var all: some Sequence<Self> {
     get async {
       // The result is a set rather than an array to deduplicate tests that were
       // generated multiple times (e.g. from multiple discovery modes or from

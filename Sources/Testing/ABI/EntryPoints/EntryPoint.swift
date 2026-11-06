@@ -34,7 +34,7 @@ private import Synchronization
 /// External callers cannot call this function directly. The can use
 /// ``ABI/v0/entryPoint-swift.type.property`` to get a reference to an
 /// ABI-stable version of this function.
-func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager: Bool = false, eventHandler: Event.Handler?) async -> CInt {
+nonisolated(nonsending) func entryPoint(passing args: __CommandLineArguments_v0?, forSwiftPackageManager: Bool = false, eventHandler: Event.Handler?) async -> CInt {
   let exitCode = Atomic(EXIT_SUCCESS)
 
   do {
