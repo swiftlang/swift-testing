@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
 #if canImport(Synchronization)
 private import Synchronization
 #endif
@@ -412,44 +413,50 @@ extension TypeInfo {
 // MARK: - Properties
 
 extension TypeInfo {
-  /// The UTF-8 prefix applied to mangled type names in the `__C` module.
-  private static let _swiftMangledNamePrefix = Array("$s".utf8)
-
-  /// Check whether or not the given mangled type name looks like a Swift type
-  /// (including types in the `__C` module) as opposed to, say, a C++ type.
+  /// Get the given type's kind (class, enum, etc.)
   ///
   /// - Parameters:
-  ///   - mangledName: The mangled name to check.
+  ///   - type: The type of interest.
   ///
-  /// - Returns: Whether or not `mangledName` appears to follow Swift's mangling
-  ///   rules.
-  private static func _looksLikeSwiftMangledName(_ mangledName: some BidirectionalCollection<UTF8.CodeUnit>) -> Bool {
-    mangledName.count > _swiftMangledNamePrefix.count && mangledName.starts(with: _swiftMangledNamePrefix)
-  }
-
-  /// The UTF-8 prefix applied to mangled type names in the `__C` module.
-  private static let _swiftEnumerationMangledNameSuffix = Array("O".utf8)
+  /// - Returns: An integer value describing the kind of type `type` is. For
+  ///   possible values, see the `MetadataKind` enumeration in the Swift
+  ///   repository [here](https://github.com/swiftlang/swift/blob/main/include/swift/ABI/MetadataValues.h).
+  @_silgen_name("swift_getMetadataKind")
+  private static func _getMetadataKind(_ type: any (~Copyable & ~Escapable).Type) -> UInt
 
   /// Whether or not the described type is a Swift `enum` type.
   ///
-  /// Per the [Swift mangling ABI](https://github.com/swiftlang/swift/blob/main/docs/ABI/Mangling.rst),
-  /// enumeration types are mangled as `"O"`.
-  ///
-  /// - Bug: We use the internal Swift standard library function
-  ///   `_mangledTypeName()` to derive this information. We should use supported
-  ///   API instead. ([swift-#69147](https://github.com/swiftlang/swift/issues/69147))
+  /// The value of this property can only be derived when the original metatype
+  /// value is available. If this instance is derived only from type name
+  /// information, the value of this property is `false`.
   var isSwiftEnumeration: Bool {
-    guard let mangledName = mangledName?.utf8, Self._looksLikeSwiftMangledName(mangledName) else {
-      return false
-    }
+    let metadataKind = self.type.map(Self._getMetadataKind) ?? 0
+    return (metadataKind & 0x7FF) == 0x201 /* 1 | MetadataKindIsNonHeap */
+  }
 
-    let suffix = Self._swiftEnumerationMangledNameSuffix
-    let suffixStartIndex = mangledName.index(mangledName.endIndex, offsetBy: -suffix.count)
-    return mangledName[suffixStartIndex...].elementsEqual(suffix)
+  /// Whether or not the described type is a Swift tuple type.
+  ///
+  /// The value of this property can only be derived when the original metatype
+  /// value is available. If this instance is derived only from type name
+  /// information, the value of this property is `false`.
+  var isSwiftTuple: Bool {
+    let metadataKind = self.type.map(Self._getMetadataKind) ?? 0
+    return (metadataKind & 0x7FF) == 0x301 /* 1 | MetadataKindIsRuntimePrivate | MetadataKindIsNonHeap */
+  }
+
+  /// Whether or not the described type is a function with any signature and
+  /// calling convention.
+  ///
+  /// The value of this property can only be derived when the original metatype
+  /// value is available. If this instance is derived only from type name
+  /// information, the value of this property is `false`.
+  var isFunction: Bool {
+    let metadataKind = self.type.map(Self._getMetadataKind) ?? 0
+    return (metadataKind & 0x7FF) == 0x302 /* 2 | MetadataKindIsRuntimePrivate | MetadataKindIsNonHeap */
   }
 
   /// The UTF-8 prefix applied to mangled type names in the `__C` module.
-  private static let __CModuleMangledNamePrefix = _swiftMangledNamePrefix + Array("So".utf8)
+  private static let __CModuleMangledNamePrefix = Array("$sSo".utf8)
 
   /// Whether or not the described type is imported from C, C++, or Objective-C.
   ///
@@ -460,14 +467,10 @@ extension TypeInfo {
   /// is an imported type.
   ///
   /// - Bug: We use the internal Swift standard library function
-  ///   `_mangledTypeName()` to derive this information. We should use supported
-  ///   API instead. ([swift-#69146](https://github.com/swiftlang/swift/issues/69146))
+  ///   `_mangledTypeName()` to derive this information. We should instead
+  ///   consider using `swift_demangle_getModuleName()` from libswiftDemangle.
   var isImportedFromC: Bool {
-    guard let mangledName = mangledName?.utf8, Self._looksLikeSwiftMangledName(mangledName) else {
-      return false
-    }
-
-    return mangledName.starts(with: Self.__CModuleMangledNamePrefix)
+    mangledName?.utf8.starts(with: Self.__CModuleMangledNamePrefix) ?? false
   }
 }
 
