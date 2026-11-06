@@ -63,16 +63,10 @@ public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Te
     if parameterCount > 1 {
 #if !hasFeature(Embedded)
       let mirror = Mirror(reflectingForTest: element)
-      if mirror.displayStyle == .tuple {
-        return mirror.children.lazy
-          .map { unsafeBitCast($0.value, to: (any Sendable).self) }
-          .map { Test.Case.Argument.Value($0) }
-      }
-
-      // The value did not appear to be a tuple or we didn't need to split the
-      // element. If we created a mirror above, we can reuse it here.
-      let testDescription = String(describingForTest: element, reflectedBy: mirror)
-      return [Test.Case.Argument.Value(element, testDescription: testDescription)]
+      assert(mirror.displayStyle == .tuple, "Expected the value '\(element)' of type '\(TypeInfo(describingTypeOf: element))' would be a tuple because it is passed to a test function expecting \(parameterCount) arguments. \(fileABugMessage)")
+      return mirror.children.lazy
+        .map { unsafeBitCast($0.value, to: (any Sendable).self) }
+        .map { Test.Case.Argument.Value($0) }
 #else
       // We can't break down the tuple in Embedded Swift, but we can at
       // least present the correct number of arguments.
