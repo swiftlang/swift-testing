@@ -490,7 +490,7 @@ private func _escapeCommandLine(_ arguments: [String]) -> String {
 /// This function is a convenience that spawns the given process and waits for
 /// it to terminate. It is primarily for use by other targets in this package
 /// such as its cross-import overlays.
-package func spawnExecutableAtPathAndWait(
+package nonisolated(nonsending) func spawnExecutableAtPathAndWait(
   _ executablePath: String,
   arguments: [String] = [],
   environment: [String: String] = [:]

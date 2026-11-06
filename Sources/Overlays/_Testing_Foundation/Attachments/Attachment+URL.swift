@@ -158,7 +158,7 @@ private let _archiverPath: String? = {
 ///
 /// This function asynchronously compresses the contents of `directoryURL` into
 /// an archive (currently of `.zip` format, although this is subject to change.)
-private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> _AttachableURLWrapper {
+private nonisolated(nonsending) func _compressContentsOfDirectory(at directoryURL: URL) async throws -> _AttachableURLWrapper {
 #if !SWT_NO_PROCESS_SPAWNING
   let temporaryName = "\(UUID().uuidString).zip"
   let temporaryURL = FileManager.default.temporaryDirectory.appendingPathComponent(temporaryName)

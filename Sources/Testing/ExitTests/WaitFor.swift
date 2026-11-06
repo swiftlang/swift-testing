@@ -61,7 +61,7 @@ private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
 /// - Note: The open-source implementation of libdispatch available on Linux
 ///   and other platforms does not support `DispatchSourceProcess`. Those
 ///   platforms use an alternate implementation below.
-func wait(for pid: consuming pid_t) async throws -> ExitStatus {
+nonisolated(nonsending) func wait(for pid: consuming pid_t) async throws -> ExitStatus {
   let pid = consume pid
 
   let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit)
@@ -233,7 +233,7 @@ private let _createWaitThread: Void = {
 ///
 /// On Apple platforms, the libdispatch-based implementation above is more
 /// efficient because it does not need to permanently reserve a thread.
-func wait(for pid: consuming pid_t) async throws -> ExitStatus {
+nonisolated(nonsending) func wait(for pid: consuming pid_t) async throws -> ExitStatus {
   let pid = consume pid
 
   // Ensure the waiter thread is running.
@@ -270,7 +270,7 @@ func wait(for pid: consuming pid_t) async throws -> ExitStatus {
 /// This implementation of `wait(for:)` calls `RegisterWaitForSingleObject()` to
 /// wait for `processHandle`, suspends the calling task until the waiter's
 /// callback is called, then calls `GetExitCodeProcess()`.
-func wait(for processHandle: consuming HANDLE) async throws -> ExitStatus {
+nonisolated(nonsending) func wait(for processHandle: consuming HANDLE) async throws -> ExitStatus {
   let processHandle = consume processHandle
   defer {
     _ = CloseHandle(processHandle)
@@ -314,6 +314,6 @@ func wait(for processHandle: consuming HANDLE) async throws -> ExitStatus {
 }
 #else
 #warning("Platform-specific implementation missing: cannot wait for child processes to exit")
-func wait(for processID: consuming Never) async throws -> ExitStatus {}
+nonisolated(nonsending) func wait(for processID: consuming Never) async throws -> ExitStatus {}
 #endif
 #endif

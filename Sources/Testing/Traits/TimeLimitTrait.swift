@@ -270,10 +270,10 @@ extension Test {
 /// and `body` is cancelled.
 ///
 /// This function is not part of the public interface of the testing library.
-func withTimeLimit(
+nonisolated(nonsending) func withTimeLimit(
   _ timeLimit: Duration,
   taskName: String? = nil,
-  _ body: @escaping @Sendable () async throws -> Void,
+  _ body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void,
   timeoutHandler: @escaping @Sendable () -> Void
 ) async throws {
   try await withThrowingTaskGroup { group in
@@ -284,7 +284,9 @@ func withTimeLimit(
       try await Test.Clock().sleep(for: timeLimit)
       timeoutHandler()
     }
-    group.addTask(name: decorateTaskName(taskName, withAction: "running"), operation: body)
+    group.addTask(name: decorateTaskName(taskName, withAction: "running")) {
+      try await body()
+    }
 
     defer {
       group.cancelAll()
@@ -311,10 +313,10 @@ func withTimeLimit(
 /// with no time limit.
 ///
 /// This function is not part of the public interface of the testing library.
-func withTimeLimit(
+nonisolated(nonsending) func withTimeLimit(
   for test: Test,
   configuration: Configuration,
-  _ body: @escaping @Sendable () async throws -> Void,
+  _ body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void,
   timeoutHandler: @escaping @Sendable (_ timeLimit: Duration) -> Void
 ) async throws {
   if let timeLimit = test.adjustedTimeLimit(configuration: configuration) {
