@@ -75,15 +75,4 @@ let windowsSignals: [CInt: String] = {
   }
   return result
 }()
-
-/// All signals whose handlers are set on a per-thread basis on Windows.
-///
-/// On POSIX-shaped platforms, signal handlers are always process-global, but
-/// some signal handlers on Windows can only be set on a per-thread basis.
-///
-/// For more information, see Microsoft's UCRT sources available at
-/// https://www.nuget.org/packages/Microsoft.Windows.SDK.CRTSource.
-let windowsThreadLocalSignals: [CInt] = [
-  SIGFPE, SIGILL, SIGSEGV,
-]
 #endif
