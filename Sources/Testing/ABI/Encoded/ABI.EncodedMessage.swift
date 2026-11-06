@@ -87,13 +87,13 @@ extension ABI {
 
 #if !SWT_NO_CODABLE
 extension ABI.EncodedMessage: Codable {
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 }
 
 extension ABI.EncodedMessage.Symbol: Codable {
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 }

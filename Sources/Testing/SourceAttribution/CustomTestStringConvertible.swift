@@ -37,6 +37,25 @@ extension String {
   @_unavailableInEmbedded
   public init(describingForTest value: some Any) {
 #if !hasFeature(Embedded)
+    self.init(describingForTest: value, reflectedBy: nil)
+#else
+    swt_unreachable()
+#endif
+  }
+
+#if !hasFeature(Embedded)
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///   - mirror: If not `nil`, an instance of ``Mirror`` previously created to
+  ///     reflect `value`. If `nil`, and a mirror is needed, this initializer
+  ///     will create a temporary one.
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  init(describingForTest value: some Any, reflectedBy mirror: Mirror?) {
     // The mangled type name SPI doesn't handle generic types very well, so we
     // ask for the dynamic type of `value` (type(of:)) instead of just T.self.
     lazy var valueTypeInfo = TypeInfo(describingTypeOf: value)
@@ -61,14 +80,23 @@ extension String {
       // Add a leading period to enumeration cases to more closely match their
       // source representation. SEE: _adHocPrint_unlocked() in the stdlib.
       self = ".\(value)"
+    } else if valueTypeInfo.isSwiftTuple,
+              case let mirror = Mirror(reflectingForTest: value),
+              mirror.displayStyle == .tuple {
+      self = "(" + mirror.children.lazy
+        .map { child in
+          if let label = child.label, label.utf8.first != UInt8(ascii: ".") {
+            "\(label): \(String(describingForTest: child.value))"
+          } else {
+            String(describingForTest: child.value)
+          }
+        }.joined(separator: ", ") + ")"
     } else {
       // Use the generic description of the value.
       self.init(describing: value)
     }
-#else
-    swt_unreachable()
-#endif
   }
+#endif
 
   /// Initialize this instance so that it can be presented in a test's output.
   ///

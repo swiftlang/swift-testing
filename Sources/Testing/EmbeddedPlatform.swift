@@ -78,7 +78,7 @@ extension JSON {
     ///
     /// - Throws: If the given path could not be opened for writing or, in
     ///   Embedded Swift, if the platform does not support writing JSON at all.
-    init(forWritingAtPath path: String) throws {
+    init(forWritingAtPath path: String) throws(CError) {
 #if !hasFeature(Embedded)
       _file = try FileHandle(forWritingAtPath: path)
 #else
@@ -96,9 +96,9 @@ extension JSON {
     ///     unnecessary copies of `json` in memory.
     ///
     /// - Throws: Any error that occurs while writing `json` or `terminator`.
-    func write(_ json: UnsafeRawBufferPointer, terminatedBy terminator: UInt8?) throws {
+    func write(_ json: UnsafeRawBufferPointer, terminatedBy terminator: UInt8?) throws(CError) {
 #if !hasFeature(Embedded)
-      _ = try _file.withLock {
+      _ = try _file.withLock { () throws(CError) in
         try _file.write(json)
         if let terminator {
           try _file.write(terminator)

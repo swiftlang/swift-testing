@@ -201,7 +201,7 @@ extension SourceLocation: Codable {
     case _filePath
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     var container = encoder.container(keyedBy: _CodingKeys.self)
     try container.encode(fileID, forKey: .fileID)
     try container.encode(line, forKey: .line)
@@ -212,7 +212,7 @@ extension SourceLocation: Codable {
     try container.encode(filePath, forKey: .filePath)
   }
 
-  public init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws(any Error) {
     let container = try decoder.container(keyedBy: _CodingKeys.self)
     let fileID = try container.decode(String.self, forKey: .fileID)
     let line = try container.decode(Int.self, forKey: .line)
