@@ -60,32 +60,21 @@ extension Test.Case.__ArgumentList where S: Sequence, E == S.Element {
 @_disfavoredOverload
 public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence {
   Test.Case.__ArgumentList(arguments) { element in
-    var testDescription: String?
+    if parameterCount > 1 {
 #if !hasFeature(Embedded)
-    var mirror: Mirror?
-    if parameterCount > 1 {
-      mirror = Mirror(reflectingForTest: element)
-      if let mirror, mirror.displayStyle == .tuple {
-        return mirror.children.lazy
-          .map { unsafeBitCast($0.value, to: (any Sendable).self) }
-          .map { Test.Case.Argument.Value($0) }
-      }
-    }
-
-    // The value did not appear to be a tuple or we didn't need to split the
-    // element. If we created a mirror above, we can reuse it here.
-    if mirror?.displayStyle == .tuple {
-      testDescription = String(describingForTest: element, reflectedBy: mirror)
-    }
+      let mirror = Mirror(reflectingForTest: element)
+      assert(mirror.displayStyle == .tuple, "Expected the value '\(element)' of type '\(TypeInfo(describingTypeOf: element))' would be a tuple because it is passed to a test function expecting \(parameterCount) arguments. \(fileABugMessage)")
+      return mirror.children.lazy
+        .map { unsafeBitCast($0.value, to: (any Sendable).self) }
+        .map { Test.Case.Argument.Value($0) }
 #else
-    // We can't break down the tuple in Embedded Swift, but we can at
-    // least present the correct number of arguments.
-    if parameterCount > 1 {
+      // We can't break down the tuple in Embedded Swift, but we can at
+      // least present the correct number of arguments.
       let unavailable = Test.Case.Argument.Value(UnavailableInEmbeddedSwift())
       return Array(repeating: unavailable, count: parameterCount)
-    }
 #endif
-    return [Test.Case.Argument.Value(element, testDescription: testDescription)]
+    }
+    return [Test.Case.Argument.Value(element)]
   }
 }
 
