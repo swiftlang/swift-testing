@@ -319,7 +319,7 @@ extension ExitTest {
     // See also `_setThreadLocalSignalHandlers` above, which we use to ensure
     // thread-local signal handlers are set consistently across threads when
     // said threads are created.
-    _needsThreadLocalSignalHandlers.store(true, ordering: .sequentiallyConsistent)
+    Self._needsThreadLocalSignalHandlers.store(true, ordering: .sequentiallyConsistent)
     for sig in windowsSignals.keys {
       _ = signal(sig) { sig in
         _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
