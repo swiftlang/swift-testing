@@ -470,7 +470,6 @@ func callExitTest(
   expression: @autoclosure () -> __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<ExitTest.Result?, any Error> {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
