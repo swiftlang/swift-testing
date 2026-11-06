@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
 #if canImport(Synchronization)
 private import Synchronization
 #endif
@@ -423,86 +424,39 @@ extension TypeInfo {
   @_silgen_name("swift_getMetadataKind")
   private static func _getMetadataKind(_ type: any (~Copyable & ~Escapable).Type) -> UInt
 
-  /// The UTF-8 prefix applied to mangled type names in the `__C` module.
-  private static let _swiftMangledNamePrefix = Array("$s".utf8)
-
-  /// The UTF-8 representation of `ObjectIdentifier`'s mangling.
-  private static let _swiftObjectIdentifierMangledTypeName = Array("$sSO".utf8)
-
-  /// Check whether or not the given mangled type name looks like a Swift type
-  /// (including types in the `__C` module) as opposed to, say, a C++ type.
-  ///
-  /// - Parameters:
-  ///   - mangledName: The mangled name to check.
-  ///
-  /// - Returns: Whether or not `mangledName` appears to follow Swift's mangling
-  ///   rules.
-  ///
-  /// See the [Swift mangling ABI](https://github.com/swiftlang/swift/blob/main/docs/ABI/Mangling.rst)
-  /// for more information.
-  private static func _looksLikeSwiftMangledName(_ mangledName: some BidirectionalCollection<UTF8.CodeUnit>) -> Bool {
-    mangledName.count > _swiftMangledNamePrefix.count && mangledName.starts(with: _swiftMangledNamePrefix)
-  }
-
   /// Whether or not the described type is a Swift `enum` type.
   ///
-  /// - Bug: When we only have a type's name rather than a metatype, we use the
-  ///   internal Swift standard library function `_mangledTypeName()` to derive
-  ///   this information. We should use supported API instead. ([swift-#69147](https://github.com/swiftlang/swift/issues/69147))
+  /// The value of this property can only be derived when the original metatype
+  /// value is available. If this instance is derived only from type name
+  /// information, the value of this property is `false`.
   var isSwiftEnumeration: Bool {
-    switch _kind {
-    case let .type(type):
-      return (Self._getMetadataKind(type) & 0x7FF) == 0x201 /* 1 | MetadataKindIsNonHeap */
-    case let .nameOnly(_, _, mangledName):
-      guard let mangledName = mangledName?.utf8,
-            Self._looksLikeSwiftMangledName(mangledName),
-            mangledName.last == UInt8(ascii: "O") else {
-        return false
-      }
-
-      // Eliminate any specific known-incorrect manglings.
-      if mangledName.elementsEqual(Self._swiftObjectIdentifierMangledTypeName) {
-        return false
-      }
-
-      return true
-    }
+    let metadataKind = self.type.map(Self._getMetadataKind) ?? 0
+    return (metadataKind & 0x7FF) == 0x201 /* 1 | MetadataKindIsNonHeap */
   }
-
-  /// The UTF-8 representation of the empty tuple's (`()`, AKA `Void`) mangling.
-  private static let _swiftVoidMangledTypeName = Array("$syt".utf8)
 
   /// Whether or not the described type is a Swift tuple type.
   ///
-  /// - Bug: When we only have a type's name rather than a metatype, we use the
-  ///   internal Swift standard library function `_mangledTypeName()` to derive
-  ///   this information. We should use supported API instead. ([swift-#69147](https://github.com/swiftlang/swift/issues/69147))
+  /// The value of this property can only be derived when the original metatype
+  /// value is available. If this instance is derived only from type name
+  /// information, the value of this property is `false`.
   var isSwiftTuple: Bool {
-    switch _kind {
-    case let .type(type):
-      return (Self._getMetadataKind(type) & 0x7FF) == 0x301 /* 1 | MetadataKindIsRuntimePrivate | MetadataKindIsNonHeap */
-    case let .nameOnly(_, _, mangledName):
-      guard let mangledName = mangledName?.utf8,
-            Self._looksLikeSwiftMangledName(mangledName),
-            mangledName.last == UInt8(ascii: "t") else {
-        return false
-      }
+    let metadataKind = self.type.map(Self._getMetadataKind) ?? 0
+    return (metadataKind & 0x7FF) == 0x301 /* 1 | MetadataKindIsRuntimePrivate | MetadataKindIsNonHeap */
+  }
 
-      /// A tuple type cannot contain exactly one element. It contains either
-      /// zero elements (`Void`) or more than one. It must therefore either
-      /// exactly equal `"$syt"` or contain an underscore between element types.
-      if mangledName.elementsEqual(Self._swiftVoidMangledTypeName) {
-        return true
-      } else if mangledName.contains(UInt8(ascii: "_")) {
-        return true
-      }
-
-      return false
-    }
+  /// Whether or not the described type is a function with any signature and
+  /// calling convention.
+  ///
+  /// The value of this property can only be derived when the original metatype
+  /// value is available. If this instance is derived only from type name
+  /// information, the value of this property is `false`.
+  var isFunction: Bool {
+    let metadataKind = self.type.map(Self._getMetadataKind) ?? 0
+    return (metadataKind & 0x7FF) == 0x302 /* 2 | MetadataKindIsRuntimePrivate | MetadataKindIsNonHeap */
   }
 
   /// The UTF-8 prefix applied to mangled type names in the `__C` module.
-  private static let __CModuleMangledNamePrefix = _swiftMangledNamePrefix + Array("So".utf8)
+  private static let __CModuleMangledNamePrefix = Array("$sSo".utf8)
 
   /// Whether or not the described type is imported from C, C++, or Objective-C.
   ///
@@ -513,14 +467,10 @@ extension TypeInfo {
   /// is an imported type.
   ///
   /// - Bug: We use the internal Swift standard library function
-  ///   `_mangledTypeName()` to derive this information. We should use supported
-  ///   API instead. ([swift-#69146](https://github.com/swiftlang/swift/issues/69146))
+  ///   `_mangledTypeName()` to derive this information. We should instead
+  ///   consider using `swift_demangle_getModuleName()` from libswiftDemangle.
   var isImportedFromC: Bool {
-    guard let mangledName = mangledName?.utf8, Self._looksLikeSwiftMangledName(mangledName) else {
-      return false
-    }
-
-    return mangledName.starts(with: Self.__CModuleMangledNamePrefix)
+    mangledName?.utf8.starts(with: Self.__CModuleMangledNamePrefix) ?? false
   }
 }
 
