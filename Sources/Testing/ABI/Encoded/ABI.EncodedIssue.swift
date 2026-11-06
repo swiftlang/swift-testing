@@ -164,11 +164,11 @@ extension ABI.EncodedIssue: Codable {
     case confirmationMiscount
   }
 
-  func encode(to encoder: any Encoder) throws {
+  func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 
-  init(from decoder: any Decoder) throws {
+  init(from decoder: any Decoder) throws(any Error) {
     let container = try decoder.container(keyedBy: _CodingKeys.self)
 
     severity = try container.decodeIfPresent(Severity.self, forKey: .severity)
@@ -203,7 +203,7 @@ extension ABI.EncodedIssue: Codable {
 }
 
 extension ABI.EncodedIssue.Severity: Codable {
-  func encode(to encoder: any Encoder) throws {
+  func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 }

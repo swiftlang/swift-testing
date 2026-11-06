@@ -423,6 +423,33 @@ struct FileHandle: ~Copyable, Sendable {
       return try body()
     }
   }
+
+  /// Throw the current C error.
+  ///
+  /// - Throws: The current C error.
+  ///
+  /// This function throws the current C error (even if `0`) unless it is equal
+  /// to `EINTR` (on platforms that define it). If the current error is `EINTR`,
+  /// the function returns normally; the caller should then retry the current
+  /// operation in whole or in part.
+  ///
+  /// This function does not call `ferror()` or `feof()`. It assumes the caller
+  /// has already called `ferror()` and determined an error has occurred.
+  private func _throwIfNeeded() throws(CError) {
+    let errorCode = swt_errno()
+#if DEBUG
+    precondition(errorCode != 0, "Attempted to throw C error code 0 from a file operation. \(fileABugMessage)")
+#endif
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+    let isEINTR = (errorCode == EINTR)
+#else
+    let isEINTR = Bool(false)
+#endif
+    guard isEINTR else {
+      throw CError(rawValue: errorCode)
+    }
+    withUnsafeCFILEHandle { clearerr($0) }
+  }
 }
 
 // MARK: - Reading
@@ -461,11 +488,11 @@ extension FileHandle {
 
     try withLock { () throws(CError) in
       try withUnsafeCFILEHandle { file throws(CError) in
-        try withUnsafeTemporaryAllocation(byteCount: 1024, alignment: 1) { buffer throws(CError) in
+        try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 1024) { buffer throws(CError) in
           repeat {
-            let countRead = fread(buffer.baseAddress!, 1, buffer.count, file)
+            let countRead = fread(buffer.baseAddress!, MemoryLayout<UInt8>.stride, buffer.count, file)
             if 0 != ferror(file) {
-              throw CError(rawValue: swt_errno())
+              try _throwIfNeeded()
             }
             if countRead > 0 {
               let endIndex = buffer.index(buffer.startIndex, offsetBy: countRead)
@@ -505,16 +532,18 @@ extension FileHandle {
 #elseif os(Windows)
         let fgetc = _fgetc_nolock
 #endif
-        while terminator == nil, let byteRead = UInt8(exactly: fgetc(file)) {
-          if try isTerminator(byteRead) {
-            terminator = byteRead
-          } else {
-            bytesRead.append(byteRead)
+
+        repeat {
+          if let byteRead = UInt8(exactly: fgetc(file)) {
+            if try isTerminator(byteRead) {
+              terminator = byteRead
+            } else {
+              bytesRead.append(byteRead)
+            }
+          } else if 0 != ferror(file) {
+            try _throwIfNeeded()
           }
-        }
-        if 0 != ferror(file) {
-          throw CError(rawValue: swt_errno())
-        }
+        } while terminator == nil && 0 == feof(file)
       }
     }
 
@@ -544,10 +573,17 @@ extension FileHandle {
         }
       }
 
-      if let baseAddress = bytes.baseAddress {
-        let countWritten = fwrite(baseAddress, MemoryLayout<UInt8>.stride, bytes.count, file)
-        if countWritten < bytes.count {
-          throw CError(rawValue: swt_errno())
+      try withLock { () throws(CError) in
+        if var baseAddress = bytes.baseAddress {
+          var countRemaining = bytes.count
+          repeat {
+            let countWritten = fwrite(baseAddress, MemoryLayout<UInt8>.stride, countRemaining, file)
+            if countWritten < countRemaining {
+              try _throwIfNeeded()
+            }
+            baseAddress += countWritten
+            countRemaining -= countWritten
+          } while countRemaining > 0
         }
       }
     }
@@ -588,9 +624,14 @@ extension FileHandle {
         }
       }
 
-      if EOF == fputc(CInt(byte), file) {
-        throw CError(rawValue: swt_errno())
-      }
+      var byteWritten = false
+      repeat {
+        if EOF == fputc(CInt(byte), file) {
+          try _throwIfNeeded()
+        } else {
+          byteWritten = true
+        }
+      } while !byteWritten
     }
   }
 

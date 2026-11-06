@@ -114,11 +114,11 @@ extension Backtrace: Equatable, Hashable {}
 // encoded form of a backtrace.
 
 extension Backtrace: Codable {
-  public init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws(any Error) {
     try self.init(addresses: [Address](from: decoder))
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try addresses.encode(to: encoder)
   }
 }

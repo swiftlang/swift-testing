@@ -97,14 +97,14 @@ extension ABI.Record: Codable {
     case payload
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
 
-  public init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws(any Error) {
     let container = try decoder.container(keyedBy: CodingKeys.self)
 
-    func validateVersionNumber(_ versionNumber: VersionNumber) throws {
+    func validateVersionNumber(_ versionNumber: VersionNumber) throws(DecodingError) {
       if versionNumber == V.versionNumber {
         return
       }

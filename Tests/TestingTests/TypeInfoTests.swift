@@ -11,6 +11,12 @@
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
+extension TypeInfo {
+  func withStringsOnly() -> Self {
+    Self(fullyQualifiedNameComponents: fullyQualifiedNameComponents, unqualifiedName: unqualifiedName, mangledName: mangledName)
+  }
+}
+
 @Suite("TypeInfo Tests")
 struct TypeInfoTests {
   @Test(arguments: [
@@ -122,8 +128,69 @@ struct TypeInfoTests {
   }
 
   @Test func isSwiftEnumeration() {
-    #expect(!TypeInfo(describing: String.self).isSwiftEnumeration)
-    #expect(TypeInfo(describing: SomeEnum.self).isSwiftEnumeration)
+    let typeInfo = TypeInfo(describing: SomeEnum.self)
+    #expect(typeInfo.isSwiftEnumeration)
+    #expect(!typeInfo.withStringsOnly().isSwiftEnumeration) // doesn't work with mangled names
+  }
+
+  @Test(
+    arguments: [
+      String.self,
+      ObjectIdentifier.self,
+    ] as [Any.Type]
+  ) func isNotSwiftEnumeration(type: Any.Type) {
+    let typeInfo = TypeInfo(describing: type)
+    #expect(!typeInfo.isSwiftEnumeration)
+    #expect(!typeInfo.withStringsOnly().isSwiftEnumeration) // doesn't work with mangled names
+  }
+
+  @Test(
+    arguments: [
+      Void.self,
+      (Int, String).self,
+      (x: Int, y: String).self,
+    ] as [Any.Type]
+  ) func isSwiftTuple(type: Any.Type) {
+    let typeInfo = TypeInfo(describing: type)
+    #expect(typeInfo.isSwiftTuple)
+    #expect(!typeInfo.withStringsOnly().isSwiftTuple) // doesn't work with mangled names
+  }
+
+  @Test(
+    arguments: [
+      SomeEnum.self,
+      UnsafeCurrentTask.self,
+      (@convention(thin) () -> ()).self,
+    ] as [Any.Type]
+  ) func isNotSwiftTuple(type: Any.Type) {
+    let typeInfo = TypeInfo(describing: type)
+    #expect(!typeInfo.isSwiftTuple)
+    #expect(!typeInfo.withStringsOnly().isSwiftTuple) // doesn't work with mangled names
+  }
+
+  @Test(
+    arguments: [
+      (() -> ()).self,
+      (@Sendable () -> ()).self,
+      (@convention(c) () -> ()).self,
+      (@Sendable () async throws -> ()).self,
+    ] as [Any.Type]
+  ) func isFunction(type: Any.Type) {
+    let typeInfo = TypeInfo(describing: type)
+    #expect(typeInfo.isFunction)
+    #expect(!typeInfo.withStringsOnly().isFunction) // doesn't work with mangled names
+  }
+
+  @Test(
+    arguments: [
+      String.self,
+      SomeEnum.self,
+      UnsafeCurrentTask.self,
+    ] as [Any.Type]
+  ) func isNotFunction(type: Any.Type) {
+    let typeInfo = TypeInfo(describing: type)
+    #expect(!typeInfo.isFunction)
+    #expect(!typeInfo.withStringsOnly().isSwiftTuple) // doesn't work with mangled names
   }
 
   @Test func typeOfMoveOnlyValueIsInferred() {
