@@ -86,7 +86,7 @@ public struct ExitTest: Sendable, ~Copyable {
   ///
   /// - Parameters:
   ///   - exitTest: The exit test to which this body closure belongs.
-  fileprivate typealias Body = @Sendable (_ exitTest: inout Self) async throws -> Void
+  fileprivate typealias Body = nonisolated(nonsending) @Sendable (_ exitTest: inout Self) async throws -> Void
 
   /// The body closure of the exit test.
   ///
@@ -259,7 +259,7 @@ extension ExitTest {
   /// `#expect(processExitsWith:)` _in the current process_. That closure is
   /// expected to terminate the process; if it does not, the testing library
   /// will terminate the process as if its `main()` function returned naturally.
-  public consuming func callAsFunction() async -> Never {
+  public nonisolated(nonsending) consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
 #if os(Windows)
@@ -367,7 +367,7 @@ extension ExitTest {
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
   @safe public static func __store<each T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
-    _ body: @escaping @Sendable (repeat each T) async throws -> Void,
+    _ body: nonisolated(nonsending) @escaping @Sendable (repeat each T) async throws -> Void,
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
@@ -462,7 +462,7 @@ extension ExitTest {
 /// This function contains the common implementation for all
 /// `await #expect(processExitsWith:) { }` invocations regardless of calling
 /// convention.
-func callExitTest(
+nonisolated(nonsending) func callExitTest(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
   processExitsWith expectedExitCondition: ExitTest.Condition,
@@ -658,7 +658,7 @@ extension ExitTest {
   /// are available or the child environment is otherwise terminated. The parent
   /// environment is then responsible for interpreting those results and
   /// recording any issues that occur.
-  public typealias Handler = @Sendable (_ exitTest: borrowing Self) async throws -> ExitTest.Result
+  public typealias Handler = nonisolated(nonsending) @Sendable (_ exitTest: borrowing Self) async throws -> ExitTest.Result
 
   /// Make a file handle from the string contained in the given environment
   /// variable.
@@ -856,7 +856,7 @@ extension ExitTest {
       return result
     }()
 
-    @Sendable func result(_ exitTest: borrowing ExitTest) async throws -> ExitTest.Result {
+    @Sendable nonisolated(nonsending) func result(_ exitTest: borrowing ExitTest) async throws -> ExitTest.Result {
       let childProcessExecutablePath = try childProcessExecutablePath.get()
 
       // Inherit the environment from the parent process and make any necessary
@@ -1018,7 +1018,7 @@ extension ExitTest {
   /// - Parameters:
   ///   - backChannel: The file handle to read from. Reading continues until an
   ///     error is encountered or the end of the file is reached.
-  private static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) async {
+  private nonisolated(nonsending) static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) async {
     var terminator: UInt8?
     repeat {
       let recordJSON: [UInt8]
