@@ -509,6 +509,39 @@ struct EventRecorderTests {
   }
 
   @Test(
+    "JUnitXMLRecorder sanitizes disallowed control characters",
+    .bug("https://github.com/swiftlang/swift-testing/issues/1917")
+  )
+  func junitXMLSanitizesControlCharacters() throws {
+    let stream = Stream()
+    let recorder = Event.JUnitXMLRecorder(writingUsing: stream.write)
+    let test = Test(name: "controlCharTest") {}
+    let context = Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
+    let runContext = Event.Context(test: nil, testCase: nil, iteration: nil, configuration: nil)
+
+    recorder.record(Event(.runStarted, testID: nil, testCaseID: nil), in: runContext)
+    recorder.record(Event(.testStarted, testID: test.id, testCaseID: nil), in: context)
+    let issue = Issue(kind: .unconditional, severity: .error, comments: [Comment(rawValue: "A\u{1B}B\0C\u{07}D\u{7F}E")], sourceContext: .init())
+    recorder.record(Event(.issueRecorded(issue), testID: test.id, testCaseID: nil), in: context)
+    recorder.record(Event(.testEnded, testID: test.id, testCaseID: nil), in: context)
+    recorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: runContext)
+
+    let xmlString = stream.buffer.rawValue
+    #expect(xmlString.hasPrefix("<?xml version=\"1.1\""))
+    #expect(xmlString.contains(#"A\u{1B}B\0C\u{07}D\u{7F}E"#))
+    #expect(!xmlString.contains("\u{1B}"))
+    #expect(!xmlString.contains("\0"))
+    #expect(!xmlString.contains("\u{07}"))
+    #expect(!xmlString.contains("\u{7F}"))
+    let xmlData = try #require(xmlString.data(using: .utf8))
+    let parser = XMLParser(data: xmlData)
+    #expect(parser.parse())
+    if let error = parser.parserError {
+      throw error
+    }
+  }
+
+  @Test(
     "JUnit XML omits time for skipped tests",
     .bug("https://github.com/swiftlang/swift-testing/issues/740")
   )
