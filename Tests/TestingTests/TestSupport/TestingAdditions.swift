@@ -432,7 +432,7 @@ extension JSON {
   /// - Returns: A copy of `value` after encoding and decoding.
   ///
   /// - Throws: Any error encountered encoding or decoding `value`.
-  static func encodeAndDecode<T>(_ value: T) throws -> T where T: Codable {
+  static func encodeAndDecode<T>(_ value: T) throws(any Error) -> T where T: Codable {
     if let jsonEncodableValue = value as? any JSON.Encodable & Decodable {
       try JSON.withEncoding(of: jsonEncodableValue) { data in
         try JSON.decode(T.self, from: data)
@@ -452,7 +452,7 @@ extension JSON {
   /// - Returns: The encoded JSON string.
   ///
   /// - Throws: Any error encountered encoding or decoding `value`.
-  static func encode<T>(_ value: T) throws -> String where T: JSON.Encodable {
+  static func encode<T>(_ value: T) throws(any Error) -> String where T: JSON.Encodable {
     try JSON.withEncoding(of: value) { data in
       return String(decoding: data, as: UTF8.self)
     }
@@ -472,7 +472,7 @@ extension JSON {
   /// - Returns: An instance of `type` decoded from `json`.
   ///
   /// - Throws: Any error encountered while decoding `json`.
-  static func decode<T>(_ type: T.Type, from json: String) throws -> T where T: Decodable {
+  static func decode<T>(_ type: T.Type, from json: String) throws(any Error) -> T where T: Decodable {
     var json = json
     return try json.withUTF8 { json in
       try JSON.decode(T.self, from: UnsafeRawBufferPointer(json))

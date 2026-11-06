@@ -435,10 +435,18 @@ public struct __Expression: Sendable {
       }
 #endif
       if addDescription {
-        let runtimeValueDescription = String(describingForTest: runtimeValue)
-        // Hack: don't print string representations of function calls.
-        if runtimeValueDescription != "(Function)" && runtimeValueDescription != result {
-          result = "\(result) → \(runtimeValueDescription)"
+#if !hasFeature(Embedded)
+        let isFunction = runtimeValue.typeInfo.isFunction
+#else
+        let isFunction = false
+#endif
+        if isFunction {
+          // Don't print string representations of function calls.
+        } else {
+          let runtimeValueDescription = String(describingForTest: runtimeValue)
+          if runtimeValueDescription != result {
+            result = "\(result) → \(runtimeValueDescription)"
+          }
         }
       }
     } else {

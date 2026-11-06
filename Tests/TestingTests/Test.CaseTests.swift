@@ -145,7 +145,7 @@ struct Test_CaseTests {
 private struct NonCodable {}
 
 private struct IssueRecordingEncodable: Encodable {
-  func encode(to encoder: any Encoder) throws {
+  func encode(to encoder: any Encoder) throws(any Error) {
     Issue.record("Unexpected attempt to encode an instance of \(Self.self)")
   }
 }
