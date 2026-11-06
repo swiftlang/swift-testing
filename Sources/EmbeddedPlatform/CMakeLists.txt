@@ -6,3 +6,6 @@
 # See https://swift.org/LICENSE.txt for license information
 # See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
+add_subdirectory(PicoSDK)
+add_subdirectory(POSIX)
+add_subdirectory(WASI)
