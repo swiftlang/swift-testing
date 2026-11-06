@@ -263,6 +263,12 @@ extension ExitTest {
     Self._disableCrashReporting()
 
 #if os(Windows)
+    // WORKAROUND: Some other component resets the signal handlers back to their
+    // defaults on the first isolation context hop, so get that out of the way
+    // by imposing one manually here.
+    @inline(never) @concurrent func hop() async {}
+    await hop()
+
     // Windows does not support signal handling to the degree UNIX-like systems
     // do. When a signal is raised in a Windows process, the default signal
     // handler simply calls `_exit()` and passes the constant value `3`. To
