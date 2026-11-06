@@ -98,13 +98,13 @@ extension Confirmation {
 ///
 /// When the closure returns, the testing library checks if the confirmation's
 /// preconditions have been met, and records an issue if they have not.
-public func confirmation<R>(
+public func confirmation<R, E>(
   _ comment: Comment? = nil,
   expectedCount: Int = 1,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #Testing::sourceLocation,
-  _ body: (Confirmation) async throws -> sending R
-) async rethrows -> R {
+  _ body: (Confirmation) async throws(E) -> sending R
+) async throws(E) -> R {
   try await confirmation(
     comment,
     expectedCount: expectedCount ... expectedCount,
@@ -172,13 +172,13 @@ public func confirmation<R>(
 ///   @Available(Swift, introduced: 6.1)
 ///   @Available(Xcode, introduced: 16.3)
 /// }
-public func confirmation<R>(
+public func confirmation<R, E>(
   _ comment: Comment? = nil,
   expectedCount: some RangeExpression<Int> & Sequence<Int> & Sendable,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #Testing::sourceLocation,
-  _ body: (Confirmation) async throws -> sending R
-) async rethrows -> R {
+  _ body: (Confirmation) async throws(E) -> sending R
+) async throws(E) -> R {
   let confirmation = Confirmation()
   defer {
     let actualCount = confirmation.count.value.load(ordering: .sequentiallyConsistent)
@@ -201,13 +201,13 @@ public func confirmation<R>(
 /// `RangeExpression`. It effectively always succeeds because any number of
 /// confirmations matches, so it is marked unavailable and is not implemented.
 @available(*, unavailable, message: "Unbounded range '...' has no effect when used with a confirmation.")
-public func confirmation<R>(
+public func confirmation<R, E>(
   _ comment: Comment? = nil,
   expectedCount: UnboundedRange,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #Testing::sourceLocation,
-  _ body: (Confirmation) async throws -> R
-) async rethrows -> R {
+  _ body: (Confirmation) async throws(E) -> R
+) async throws(E) -> R {
   swt_unreachable()
 }
 
@@ -218,13 +218,13 @@ public func confirmation<R>(
 /// is ambiguous: does it start at `0` or `1`? Test authors should specify an
 /// explicit lower bound.
 @available(*, unavailable, message: "Range expression '...n' is ambiguous without an explicit lower bound")
-public func confirmation<R>(
+public func confirmation<R, E>(
   _ comment: Comment? = nil,
   expectedCount: PartialRangeThrough<Int>,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #Testing::sourceLocation,
-  _ body: (Confirmation) async throws -> R
-) async rethrows -> R {
+  _ body: (Confirmation) async throws(E) -> R
+) async throws(E) -> R {
   swt_unreachable()
 }
 
@@ -235,12 +235,12 @@ public func confirmation<R>(
 /// ambiguous: does it start at `0` or `1`? Test authors should specify an
 /// explicit lower bound.
 @available(*, unavailable, message: "Range expression '..<n' is ambiguous without an explicit lower bound")
-public func confirmation<R>(
+public func confirmation<R, E>(
   _ comment: Comment? = nil,
   expectedCount: PartialRangeUpTo<Int>,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #Testing::sourceLocation,
-  _ body: (Confirmation) async throws -> R
-) async rethrows -> R {
+  _ body: (Confirmation) async throws(E) -> R
+) async throws(E) -> R {
   swt_unreachable()
 }
