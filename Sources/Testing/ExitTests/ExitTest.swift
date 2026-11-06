@@ -658,7 +658,7 @@ extension ExitTest {
   /// are available or the child environment is otherwise terminated. The parent
   /// environment is then responsible for interpreting those results and
   /// recording any issues that occur.
-  public typealias Handler = @Sendable (_ exitTest: borrowing Self) async throws -> ExitTest.Result
+  public typealias Handler = nonisolated(nonsending) @Sendable (_ exitTest: borrowing Self) async throws -> ExitTest.Result
 
   /// Make a file handle from the string contained in the given environment
   /// variable.
