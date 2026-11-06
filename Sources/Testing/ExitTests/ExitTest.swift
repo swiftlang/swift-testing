@@ -253,13 +253,42 @@ extension ExitTest {
   /// call in a spawned exit test process.
   private static let _idEnvironmentVariableName = "SWT_EXIT_TEST_ID"
 
+#if os(Windows)
+  /// Whether or not we need to set thread-local signal handlers in the current
+  /// process.
+  private static let _needsThreadLocalSignalHandlers = Atomic<Bool>(false)
+
+  /// Set all thread-local signal handlers whenever a thread in an exit test
+  /// process is created ("attached" in Windows API parlance).
+  @section(".CRT$XLB") @used
+  private static let _setThreadLocalSignalHandlers: PIMAGE_TLS_CALLBACK = { _, reason, _ in
+    if reason == DWORD(DLL_PROCESS_ATTACH),
+       Environment.variable(named: _idEnvironmentVariableName) != nil {
+      _needsThreadLocalSignalHandlers.store(true, ordering: .sequentiallyConsistent)
+    }
+
+    // NOTE: The main thread will trigger `DLL_PROCESS_ATTACH` and other threads
+    // will trigger `DLL_THREAD_ATTACH`.
+    guard reason == DWORD(DLL_PROCESS_ATTACH) || reason == DWORD(DLL_THREAD_ATTACH),
+          _needsThreadLocalSignalHandlers.load(ordering: .sequentiallyConsistent) else {
+      return
+    }
+
+    for sig in windowsThreadLocalSignals {
+      _ = signal(sig) { sig in
+        _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
+      }
+    }
+  }
+#endif
+
   /// Call the exit test in the current process.
   ///
   /// This function invokes the closure originally passed to
   /// `#expect(processExitsWith:)` _in the current process_. That closure is
   /// expected to terminate the process; if it does not, the testing library
   /// will terminate the process as if its `main()` function returned naturally.
-  public consuming func callAsFunction() async -> Never {
+  public nonisolated(nonsending) consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
 #if os(Windows)
@@ -286,6 +315,11 @@ extension ExitTest {
     // repository doesn't have an official GitHub mirror, but you can manually
     // navigate to misc/signal.cpp:481 to see the implementation of SIG_DFL
     // (which, again, calls `_exit(3)` unconditionally.)
+    //
+    // See also `_setThreadLocalSignalHandlers` above, which we use to ensure
+    // thread-local signal handlers are set consistently across threads when
+    // said threads are created.
+    Self._needsThreadLocalSignalHandlers.store(true, ordering: .sequentiallyConsistent)
     for sig in windowsSignals.keys {
       _ = signal(sig) { sig in
         _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
