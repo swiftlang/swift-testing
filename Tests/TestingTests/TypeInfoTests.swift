@@ -160,6 +160,7 @@ struct TypeInfoTests {
     arguments: [
       SomeEnum.self,
       UnsafeCurrentTask.self,
+      (@convention(thin) () -> ()).self,
     ] as [Any.Type]
   ) func isNotSwiftTuple(type: Any.Type) {
     let typeInfo = TypeInfo(describing: type)
