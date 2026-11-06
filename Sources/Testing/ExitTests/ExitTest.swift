@@ -259,7 +259,7 @@ extension ExitTest {
   /// `#expect(processExitsWith:)` _in the current process_. That closure is
   /// expected to terminate the process; if it does not, the testing library
   /// will terminate the process as if its `main()` function returned naturally.
-  public consuming func callAsFunction() async -> Never {
+  public nonisolated(nonsending) consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
 #if os(Windows)
