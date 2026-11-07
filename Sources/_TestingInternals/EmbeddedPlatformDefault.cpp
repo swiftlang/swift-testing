@@ -29,7 +29,14 @@ SWIFT_TESTING_WEAK bool _swift_testing_getConsoleCapabilities(swift_testing_cons
 
 SWIFT_TESTING_WEAK void _swift_testing_writeJSON(const char *path, const uint8_t *json, size_t count, const uint8_t terminator[1]) {}
 
+SWIFT_TESTING_EXTERN void _swift_clockSuspending_getTime(int64_t *seconds, int64_t *nanoseconds);
+
 SWIFT_TESTING_WEAK bool _swift_testing_getDurationSinceSystemEpoch(swift_testing_duration_t *outDuration) {
-  return false;
+  int64_t seconds = 0;
+  int64_t nanoseconds = 0;
+  _swift_clockSuspending_getTime(&seconds, &nanoseconds);
+  outDuration->seconds = seconds;
+  outDuration->nanoseconds = nanoseconds;
+  return true;
 }
 #endif
