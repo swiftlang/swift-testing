@@ -60,8 +60,8 @@ extension Test.Case {
       ///   - value2: The instance representing the second element of the tuple.
       init(tupleOf value1: Self, _ value2: Self) {
 #if !hasFeature(Embedded)
-        func open<each W>(_ wrappedValues: repeat each W) -> (repeat each W) where repeat each W: Sendable {
-          (repeat each wrappedValues)
+        func open<W1, W2>(_ wrappedValue1: W1, _ wrappedValue2: W2) -> (W1, W2) where W1: Sendable, W2: Sendable {
+          (wrappedValue1, wrappedValue2)
         }
         let wrappedValue = open(value1.wrappedValue, value2.wrappedValue)
 #else
