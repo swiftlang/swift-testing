@@ -24,13 +24,6 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
     providingPeersOf declaration: some DeclSyntaxProtocol,
     in context: some MacroExpansionContext
   ) throws -> [DeclSyntax] {
-    if context.isTargetEmbedded {
-      // Don't bother doing any expansion at all in Embedded Swift in order to
-      // keep reported diagnostics reasonable. The `Suite` macro declarations
-      // are marked unavailable and will diagnose, but will not prevent macro
-      // expansion code from running.
-      return []
-    }
     guard _diagnoseIssues(with: declaration, suiteAttribute: node, in: context),
           let declaration = declaration.asProtocol((any DeclGroupSyntax).self) else {
       return []
@@ -62,8 +55,8 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
     }
 
     // Check if the lexical context is appropriate for a suite or test.
-    diagnostics += diagnoseIssuesWithLexicalContext(context.lexicalContext, containing: declaration, attribute: suiteAttribute)
-    diagnostics += diagnoseIssuesWithLexicalContext(declaration, containing: declaration, attribute: suiteAttribute)
+    diagnostics += diagnoseIssuesWithLexicalContext(context.lexicalContext, containing: declaration, attribute: suiteAttribute, in: context)
+    diagnostics += diagnoseIssuesWithLexicalContext(declaration, containing: declaration, attribute: suiteAttribute, in: context)
 
     // Suites inheriting from XCTest.XCTest are not supported. This check is
     // duplicated in TestDeclarationMacro but is not part of
@@ -78,7 +71,11 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
     // @Suite cannot be applied to a type extension (although a type extension
     // can still contain test functions and test suites.)
     if let extensionDecl = declaration.as(ExtensionDeclSyntax.self) {
-      diagnostics.append(.attributeHasNoEffect(suiteAttribute, on: extensionDecl))
+      if !context.isTargetEmbedded {
+        diagnostics.append(.attributeHasNoEffect(suiteAttribute, on: extensionDecl))
+      } else {
+        diagnostics.append(.attributeNotSupported(suiteAttribute, inEmbedded: true, on: extensionDecl))
+      }
     }
 
     // Check other attributes on the declaration. Note that it should be
@@ -127,6 +124,9 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
     // resolved in traits like `@Suite(.enabled(if: Self.someCondition))`.
     let containingType = context.typeOfLexicalContext
 
+    // Get the name of the suite type for passing to the test factory function.
+    let typeNameExpr = declaration.type.typeInfoExpr(in: context)
+
     if let genericGuardDecl = makeGenericGuardDecl(guardingAgainst: declaration, in: context) {
       result.append(genericGuardDecl)
     }
@@ -140,7 +140,7 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
       @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
       @Sendable private nonisolated(nonsending) \(staticKeyword(for: containingType)) func \(generatorName)() async -> Testing.Test {
         .__type(
-          \(declaration.type.trimmed).self,
+          \(typeNameExpr),
           \(raw: attributeInfo.functionArgumentList(in: context))
         )
       }
@@ -151,7 +151,7 @@ public struct SuiteDeclarationMacro: PeerMacro, Sendable {
     result.append(
       makeTestContentRecordDecl(
         named: testContentRecordName,
-        in: containingType,
+        in: context.typeOfLexicalContext,
         ofKind: .testDeclaration,
         accessingWith: """
         { outValue, type, _, _ in

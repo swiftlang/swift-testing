@@ -14,7 +14,7 @@
 struct Test_Case_GeneratorTests {
   @Test func uniqueDiscriminators() throws {
     let generator = Test.Case.Generator(
-      arguments: [1, 1, 1],
+      argumentList: __makeArgumentList([1, 1, 1]),
       parameters: [Test.Parameter(index: 0, firstName: "x", type: Int.self)],
       testFunction: { _ in }
     )
@@ -27,5 +27,12 @@ struct Test_Case_GeneratorTests {
 
     let discriminators = Set(testCases.map(\.id.discriminator))
     #expect(discriminators.count == 3)
+  }
+
+  @Test(arguments: [1], "a") func `Cartesian product generates a single Test.Case.Argument.Value`(_ xy: (Int, Character)) throws {
+    let arguments = try #require(Test.Case.current?.arguments)
+    try #require(arguments.count == 1)
+    let value = try #require(arguments[0].value as? (Int, Character))
+    #expect(value == xy)
   }
 }

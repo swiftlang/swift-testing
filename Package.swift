@@ -125,6 +125,28 @@ let package = Package(
       ),
     ]
 
+    // Declare products for the Platform Abstraction Layer annex implementations
+    // we provide so that they can be used as package dependencies.
+    if buildingForEmbedded {
+      result += [
+        .library(
+          name: "EmbeddedPlatformPOSIX+Testing",
+          type: .static,
+          targets: ["EmbeddedPlatformPOSIX+Testing"]
+        ),
+        .library(
+          name: "EmbeddedPlatformWASI+Testing",
+          type: .static,
+          targets: ["EmbeddedPlatformWASI+Testing"]
+        ),
+        .library(
+          name: "EmbeddedPlatformPicoSDK+Testing",
+          type: .static,
+          targets: ["EmbeddedPlatformPicoSDK+Testing"]
+        ),
+      ]
+    }
+
     return result
   }(),
 
@@ -477,8 +499,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // When building as a package, the macro plugin always builds as an
       // executable rather than a library.
       .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
-
-      .define("SWT_TARGET_OS_APPLE", .whenApple()),
     ]
 
     result.appendFeatureFlags()
@@ -511,9 +531,10 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("AvailabilityMacro=_typedThrowsAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
       .enableExperimentalFeature("AvailabilityMacro=_transferableAPI:macOS 15.2, iOS 18.2, watchOS 11.2, tvOS 18.2, visionOS 2.2"),
       .enableExperimentalFeature("AvailabilityMacro=_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
-      .enableExperimentalFeature("AvailabilityMacro=_objcCopyImageHeadersAPI:macOS 27.0, iOS 27.0, watchOS 27.0, tvOS 27.0, visionOS 27.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_objcCopyImageHeadersAPI:anyAppleOS 27.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_cancellationErrorReasonAPI:anyAppleOS 9999.0"),
 
-      .enableExperimentalFeature("AvailabilityMacro=_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_distantFuture:anyAppleOS 99.0"),
     ]
   }
 
@@ -619,7 +640,7 @@ extension Array where Element: _LanguageBuildSetting {
       "SWT_NO_DYNAMIC_LINKING": (platforms: [.wasi], embedded: true),
       "SWT_NO_PIPES": (platforms: [.wasi], embedded: true),
       "SWT_NO_FOUNDATION_FILE_COORDINATION": (platforms: .nonApplePlatforms, embedded: true),
-      "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: true),
+      "SWT_NO_IMAGE_ATTACHMENTS": (platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android], embedded: false),
       "SWT_NO_FILE_IO": (platforms: .none, embedded: true),
       "SWT_NO_FILE_CLONING": (platforms: [.openbsd, .wasi, .android], embedded: true),
       "SWT_NO_ABI_ENTRY_POINT": (platforms: .none, embedded: true),

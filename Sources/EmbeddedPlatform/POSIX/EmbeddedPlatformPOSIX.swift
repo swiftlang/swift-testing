@@ -15,6 +15,12 @@ private import Synchronization
 #endif
 
 #if hasFeature(Embedded)
+/// Whether or not this system uses the GNU C Library.
+private let _isGNUCLibrary: Bool = {
+  var ignored = (CInt(0), CInt(0))
+  return swt_getGNUCLibraryVersion(&ignored.0, &ignored.1)
+}()
+
 /// Storage for `_swift_testing_getArgcArgv()`.
 private let _argcArgv = Mutex(swift_testing_argc_argv_t())
 
@@ -22,7 +28,7 @@ private let _argcArgv = Mutex(swift_testing_argc_argv_t())
 /// the early values of `argc` and `argv` where available.
 @section(".init_array.65535") @used
 private let _captureArgcArgv: @convention(c) (CInt, UnsafeMutablePointer<UnsafeMutablePointer<CChar>>?, UnsafeRawPointer?) -> Void = { argc, argv, _ in
-  guard swt_isGNUCLibrary() else {
+  guard _isGNUCLibrary else {
     // The arguments to this function are non-standard and provided when using
     // the GNU C Library only.
     return
@@ -33,28 +39,23 @@ private let _captureArgcArgv: @convention(c) (CInt, UnsafeMutablePointer<UnsafeM
     return
   }
 
-  if argc > 0, let argv {
-    let argcArgv = swift_testing_argc_argv_t(argc: argc, argv: argv)
-    _argcArgv.withLock { $0 = argcArgv }
-  }
+  let argcArgv = swift_testing_argc_argv_t(argc: argc, argv: argv)
+  _argcArgv.withLock { $0 = argcArgv }
 }
 
 @c @implementation func _swift_testing_getArgcArgv(_ outArgcArgv: UnsafeMutablePointer<swift_testing_argc_argv_t>) -> CBool {
-  guard swt_isGNUCLibrary() else {
+  guard _isGNUCLibrary else {
     return false
   }
 
   let argcArgv = _argcArgv.withLock { $0 }
-  guard let argcArgv else {
-    return false
-  }
   outArgcArgv.initialize(to: argcArgv)
   return true
 }
 
 #if !SWT_NO_ENVIRONMENT_VARIABLES
 @c @implementation func _swift_testing_getEnvironment(_ outEnvironment: UnsafeMutablePointer<UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?>) -> CBool {
-  outEnvironment.initialize(to: swt_environ())
+  outEnvironment.initialize(to: environ)
   return true
 }
 #endif

@@ -9,6 +9,8 @@
 //
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
+import SwiftSyntaxMacros
 
 /// An array of syntax node kinds that always represent generic types.
 private let _knownGenericTypeKinds: [SyntaxKind] = [
@@ -148,5 +150,50 @@ extension TypeSyntaxProtocol {
       .joined(separator: ".")
 
     return nameWithoutGenericParameters == name || nameWithoutGenericParameters == "\(moduleName).\(name)"
+  }
+}
+
+// MARK: - Representing types from macro expansions at runtime
+
+extension TypeSyntaxProtocol {
+  /// Get an expression that, at runtime, represents this type.
+  ///
+  /// - Parameters:
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: An expression such as `T.self` representing this type.
+  ///
+  /// In Embedded Swift, the expression is (currently) a tuple containing a
+  /// metatype reference and a fully-qualified type name.
+  func typeInfoExpr(in context: some MacroExpansionContext) -> ExprSyntax {
+    if !context.isTargetEmbedded {
+      return "(\(raw: self.trimmedDescription)).self"
+    } else {
+      let description = self
+        .removingModuleSelector()
+        .tokens(viewMode: .sourceAccurate)
+        .map(\.textWithoutBackticksUnlessNeeded)
+        .joined()
+      return "((\(raw: self.trimmedDescription)).self, \(literal: description))"
+    }
+  }
+}
+
+extension Optional where Wrapped: TypeSyntaxProtocol {
+  /// Get an expression that, at runtime, represents this optional type.
+  ///
+  /// - Parameters:
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: An expression such as `T.self` representing this optional type,
+  ///   or an expression representing `nil` if this optional type is `nil`.
+  ///
+  /// In Embedded Swift, the expression is (currently) a tuple containing a
+  /// metatype reference and a fully-qualified type name.
+  func typeInfoExpr(in context: some MacroExpansionContext) -> ExprSyntax {
+    guard let type = self else {
+      return "nil as Testing.__TypeInfo<Swift.Never>?"
+    }
+    return type.typeInfoExpr(in: context)
   }
 }

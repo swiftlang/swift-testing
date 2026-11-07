@@ -14,7 +14,7 @@
 struct Test_CaseTests {
 #if !SWT_NO_CODABLE
   @Test func nonParameterized() throws {
-    let testCase = Test.Case(body: {})
+    let testCase = Test.Case(values: [], parameters: [], body: {})
     #expect(testCase.id.argumentIDs == nil)
     #expect(testCase.id.discriminator == nil)
   }
@@ -133,7 +133,7 @@ struct Test_CaseTests {
 
     @Test("Combining preserves the nil ID for non-parameterized cases")
     func nonParameterizedCaseHasNilArgumentIDs() {
-      #expect(Test.Case(body: {}).id.argumentIDs == nil)
+      #expect(Test.Case(values: [], parameters: [], body: {}).id.argumentIDs == nil)
     }
   }
 #endif
@@ -145,7 +145,7 @@ struct Test_CaseTests {
 private struct NonCodable {}
 
 private struct IssueRecordingEncodable: Encodable {
-  func encode(to encoder: any Encoder) throws {
+  func encode(to encoder: any Encoder) throws(any Error) {
     Issue.record("Unexpected attempt to encode an instance of \(Self.self)")
   }
 }

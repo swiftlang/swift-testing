@@ -93,15 +93,11 @@ public struct Test: Sendable {
       // Prevent programmatically adding suite traits to test functions or test
       // traits to test suites.
       func traitsAreCorrectlyTyped() -> Bool {
-#if !hasFeature(Embedded)
         if isSuite {
-          return newValue.allSatisfy { $0 is any SuiteTrait }
+          return newValue.allSatisfy { $0.__as((any SuiteTrait).self) != nil }
         } else {
-          return newValue.allSatisfy { $0 is any TestTrait }
+          return newValue.allSatisfy { $0.__as((any TestTrait).self) != nil }
         }
-#else
-        return newValue.allSatisfy { $0.__as((any TestTrait).self) != nil }
-#endif
       }
       precondition(traitsAreCorrectlyTyped(), "Programmatically added an inapplicable trait to test \(self)")
       _setValue(newValue, forKeyPath: \.traits)
@@ -164,7 +160,7 @@ public struct Test: Sendable {
     /// - Parameters:
     ///   - function: The function to call to evaluate the test's cases. The
     ///     result is a sequence of test cases.
-    case unevaluated(_ function: @Sendable () async throws -> AnySendableSequence<Test.Case>)
+    case unevaluated(_ function: nonisolated(nonsending) @Sendable () async throws -> AnySendableSequence<Test.Case>)
 
     /// The test's cases have been evaluated.
     ///
@@ -248,7 +244,7 @@ public struct Test: Sendable {
   /// re-evaluated.
   ///
   /// - Throws: Any error caught while first evaluating the test arguments.
-  mutating func evaluateTestCases() async throws {
+  mutating nonisolated(nonsending) func evaluateTestCases() async throws {
     if case let .unevaluated(function) = testCasesState {
       do {
         let sequence = try await function()
@@ -350,7 +346,7 @@ public struct Test: Sendable {
     sourceBounds: __SourceBounds,
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
-    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
+    testCases: nonisolated(nonsending) @escaping @Sendable () async throws -> Test.Case.Generator<S>,
     parameters: [Parameter]
   ) {
     let properties = _Properties(
@@ -365,34 +361,6 @@ public struct Test: Sendable {
       isSynthesized: false
     )
     _properties = Allocated(properties)
-  }
-
-  /// Initialize an instance of this type representing a test function.
-  init<Suite, S>(
-    name: String,
-    displayName: String? = nil,
-    traits: [any Trait],
-    sourceBounds: __SourceBounds,
-    in containingType: Suite.Type?,
-    xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
-    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
-    parameters: [Parameter]
-  ) where Suite: ~Copyable & ~Escapable {
-#if !hasFeature(Embedded)
-    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
-#else
-    let containingTypeInfo: TypeInfo? = nil
-#endif
-    self.init(
-      name: name,
-      displayName: displayName,
-      traits: traits,
-      sourceBounds: sourceBounds,
-      containingTypeInfo: containingTypeInfo,
-      xcTestCompatibleSelector: xcTestCompatibleSelector,
-      testCases: testCases,
-      parameters: parameters
-    )
   }
 
   /// Initialize an instance of this type representing a test function.

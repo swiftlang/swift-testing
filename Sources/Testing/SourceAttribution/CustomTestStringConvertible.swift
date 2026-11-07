@@ -37,6 +37,25 @@ extension String {
   @_unavailableInEmbedded
   public init(describingForTest value: some Any) {
 #if !hasFeature(Embedded)
+    self.init(describingForTest: value, reflectedBy: nil)
+#else
+    swt_unreachable()
+#endif
+  }
+
+#if !hasFeature(Embedded)
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///   - mirror: If not `nil`, an instance of ``Mirror`` previously created to
+  ///     reflect `value`. If `nil`, and a mirror is needed, this initializer
+  ///     will create a temporary one.
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  init(describingForTest value: some Any, reflectedBy mirror: Mirror?) {
     // The mangled type name SPI doesn't handle generic types very well, so we
     // ask for the dynamic type of `value` (type(of:)) instead of just T.self.
     lazy var valueTypeInfo = TypeInfo(describingTypeOf: value)
@@ -61,26 +80,49 @@ extension String {
       // Add a leading period to enumeration cases to more closely match their
       // source representation. SEE: _adHocPrint_unlocked() in the stdlib.
       self = ".\(value)"
+    } else if valueTypeInfo.isSwiftTuple,
+              case let mirror = Mirror(reflectingForTest: value),
+              mirror.displayStyle == .tuple {
+      self = "(" + mirror.children.lazy
+        .map { child in
+          if let label = child.label, label.utf8.first != UInt8(ascii: ".") {
+            "\(label): \(String(describingForTest: child.value))"
+          } else {
+            String(describingForTest: child.value)
+          }
+        }.joined(separator: ", ") + ")"
     } else {
       // Use the generic description of the value.
       self.init(describing: value)
     }
-#else
-    swt_unreachable()
-#endif
   }
+#endif
 
-#if hasFeature(Embedded)
-  public init(describingForTest value: borrowing some CustomTestStringConvertible) {
+  /// Initialize this instance so that it can be presented in a test's output.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// @Comment {
+  ///   This overload is used to trivially describe values that are statically
+  ///   known to conform to ``CustomTestStringConvertible``.
+  /// }
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomTestStringConvertible``
+  @_documentation(visibility: private)
+  @inlinable public init(describingForTest value: borrowing some CustomTestStringConvertible) {
     self = value.testDescription
   }
 
+#if hasFeature(Embedded)
   public init(describingForTest value: borrowing some CustomStringConvertible & CustomTestStringConvertible) {
     self = value.testDescription
   }
 
   public init(describingForTest value: borrowing some CustomStringConvertible) {
-    self = value.description
+    self = String(describing: copy value)
   }
 
   public init(describingForTest value: borrowing some CustomDebugStringConvertible & CustomTestStringConvertible) {
@@ -88,7 +130,7 @@ extension String {
   }
 
   public init(describingForTest value: borrowing some CustomDebugStringConvertible) {
-    self = value.debugDescription
+    self = value.debugDescription // BUG: swift-#93531
   }
 
   public init(describingForTest value: borrowing some CustomStringConvertible & CustomDebugStringConvertible & CustomTestStringConvertible) {
@@ -96,12 +138,11 @@ extension String {
   }
 
   public init(describingForTest value: borrowing some CustomStringConvertible & CustomDebugStringConvertible) {
-    self = value.description
+    self = String(describing: copy value)
   }
 
   @_disfavoredOverload
   @available(*, deprecated, message: "String representations of arbitrary values are not supported in Embedded Swift")
-  @usableFromInline
   init(describingForTest value: borrowing some ~Copyable & ~Escapable) {
     // FIXME: need some sort of description functionality for arbitrary values
     self = UnavailableInEmbeddedSwift.testDescription
@@ -137,27 +178,37 @@ extension String {
 private func _testDescription(of type: any Any.Type) -> String {
   TypeInfo(describing: type).unqualifiedName
 }
-#endif
 
 extension Optional: CustomTestStringConvertible {
   public var testDescription: String {
     switch self {
     case let .some(unwrappedValue):
-#if !hasFeature(Embedded)
       String(describingForTest: unwrappedValue)
-#else
-      // FIXME: need some sort of description functionality for arbitrary values
-      "<unknown value>"
-#endif
     case nil:
-      "nil"
+      _OptionalNilComparisonType.testDescription
     }
   }
 }
+#else
+extension Optional: CustomTestStringConvertible where Wrapped: CustomTestStringConvertible {
+  public var testDescription: String {
+    switch self {
+    case let .some(unwrappedValue):
+      String(describingForTest: unwrappedValue)
+    case nil:
+      _OptionalNilComparisonType.testDescription
+    }
+  }
+}
+#endif
 
 extension _OptionalNilComparisonType: CustomTestStringConvertible {
-  public var testDescription: String {
+  @inlinable static var testDescription: String {
     "nil"
+  }
+
+  public var testDescription: String {
+    Self.testDescription
   }
 }
 
@@ -284,6 +335,14 @@ extension CustomTestStringConvertible where Self: StringProtocol {
 
 extension String: CustomTestStringConvertible {}
 extension Substring: CustomTestStringConvertible {}
+
+#if hasFeature(Embedded)
+extension StaticString: CustomTestStringConvertible {
+  public var testDescription: String {
+    String(describing: self)
+  }
+}
+#endif
 
 #if !hasFeature(Embedded)
 // MARK: - Ranges

@@ -120,16 +120,6 @@ extension Test {
       _body = body
     }
 
-    /// Initialize a test case for a non-parameterized test function.
-    ///
-    /// - Parameters:
-    ///   - body: The body closure of this test case.
-    ///
-    /// The resulting test case will have zero arguments.
-    init(body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) {
-      self.init(kind: .nonParameterized, body: body)
-    }
-
     /// Initialize a test case by pairing values with their corresponding
     /// parameters to form the ``arguments`` array.
     ///
@@ -137,13 +127,20 @@ extension Test {
     ///   - values: The values passed to the parameters for this test case.
     ///   - parameters: The parameters of the test function for this test case.
     ///   - body: The body closure of this test case.
+    ///
+    /// If `values` and `parameters` are both empty arrays, the test function
+    /// `body` is non-parameterized.
     init(
       values: [Argument.Value],
       parameters: [Parameter],
       body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
     ) {
-      let (arguments, isStable) = Argument.makeArguments(withValues: values, for: parameters)
-      self.init(kind: .parameterized(arguments: arguments, discriminator: 0, isStable: isStable), body: body)
+      if values.isEmpty && parameters.isEmpty {
+        self.init(kind: .nonParameterized, body: body)
+      } else {
+        let (arguments, isStable) = Argument.makeArguments(withValues: values, for: parameters)
+        self.init(kind: .parameterized(arguments: arguments, discriminator: 0, isStable: isStable), body: body)
+      }
     }
 
     /// Whether or not this test case is from a parameterized test.

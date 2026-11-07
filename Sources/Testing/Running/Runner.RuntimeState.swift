@@ -103,9 +103,9 @@ extension Configuration {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(
+  static nonisolated(nonsending) func withCurrent<R>(
     _ configuration: Self,
-    perform body: () async throws -> R
+    perform body: nonisolated(nonsending) () async throws -> R
   ) async rethrows -> R {
     let id = configuration._addToAll()
     defer {
@@ -236,7 +236,7 @@ extension Test {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ test: Self, perform body: () async throws -> R) async rethrows -> R {
+  static nonisolated(nonsending) func withCurrent<R>(_ test: Self, perform body: nonisolated(nonsending) () async throws -> R) async rethrows -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.test = test
     runtimeState.testCase = nil
@@ -259,7 +259,7 @@ extension Test {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrentIteration<R>(_ iteration: Int?, perform body: () async throws -> R) async rethrows -> R {
+  static nonisolated(nonsending) func withCurrentIteration<R>(_ iteration: Int?, perform body: nonisolated(nonsending) () async throws -> R) async rethrows -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.iteration = iteration
     return try await Runner.RuntimeState.$current.withValue(runtimeState) {
@@ -294,7 +294,7 @@ extension Test.Case {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ testCase: Self, perform body: () async throws -> R) async rethrows -> R {
+  static nonisolated(nonsending) func withCurrent<R>(_ testCase: Self, perform body: nonisolated(nonsending) () async throws -> R) async rethrows -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.testCase = testCase
     return try await Runner.RuntimeState.$current.withValue(runtimeState) {

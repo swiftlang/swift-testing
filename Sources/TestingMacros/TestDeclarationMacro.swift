@@ -72,7 +72,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // Check if the lexical context is appropriate for a suite or test.
     let lexicalContext = context.lexicalContext
-    diagnostics += diagnoseIssuesWithLexicalContext(lexicalContext, containing: declaration, attribute: testAttribute)
+    diagnostics += diagnoseIssuesWithLexicalContext(lexicalContext, containing: declaration, attribute: testAttribute, in: context)
 
     // Suites inheriting from XCTest.XCTest are not supported. We are a bit
     // conservative here in this check and only check the immediate context.
@@ -85,10 +85,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         if inheritsFromXCTestClass == true {
           diagnostics.append(.containingNodeUnsupported(containingTypeDecl, whenUsing: testAttribute, on: declaration))
         }
-      } else {
-        // Because we cannot validate type names at macro expansion time,
-        // Embedded Swift does not support tests inside suite types.
-        diagnostics.append(.containingNodeUnsupported(containingTypeDecl, whenUsing: testAttribute, inEmbedded: true, on: declaration))
       }
     }
 
@@ -354,7 +350,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // Get the name of the type containing the function for passing to the test
     // factory function later.
-    let typeNameExpr: ExprSyntax = typeName.map { "\($0).self" } ?? "nil as Swift.Never.Type?"
+    let typeNameExpr = typeName.typeInfoExpr(in: context)
 
     if typeName != nil, let genericGuardDecl = makeGenericGuardDecl(guardingAgainst: functionDecl, in: context) {
       result.append(genericGuardDecl)

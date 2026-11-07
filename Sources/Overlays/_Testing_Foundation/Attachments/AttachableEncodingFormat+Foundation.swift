@@ -12,7 +12,7 @@
 import Testing
 public import Foundation
 
-#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+#if os(anyAppleOS) && canImport(UniformTypeIdentifiers)
 import UniformTypeIdentifiers
 #endif
 
@@ -43,7 +43,7 @@ extension AttachableEncodingFormat {
     .init(kind: .json)
   }
 
-#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+#if os(anyAppleOS) && canImport(UniformTypeIdentifiers)
   /// The content type corresponding to this instance.
   var contentType: UTType {
     switch kind {
@@ -87,7 +87,7 @@ extension AttachableEncodingFormat {
       return suggestedName
     }
 
-#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+#if os(anyAppleOS) && canImport(UniformTypeIdentifiers)
     return (suggestedName as NSString).appendingPathExtension(for: contentType)
 #else
     guard pathExtension.isEmpty else {

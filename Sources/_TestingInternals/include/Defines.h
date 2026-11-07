@@ -33,6 +33,9 @@
 /// An attribute that marks some value as being `Sendable` in Swift.
 #define SWT_SENDABLE __attribute__((swift_attr("@Sendable")))
 
+/// An attribute that marks some value as being `nonisolated(unsafe)` in Swift.
+#define SWT_NONISOLATED_UNSAFE __attribute__((__swift_attr__("nonisolated(unsafe)")))
+
 /// An attribute that renames a C symbol in Swift.
 #define SWT_SWIFT_NAME(name) __attribute__((swift_name(#name)))
 
@@ -44,6 +47,15 @@
 // `__block` to something benign to avoid the conflict.
 #undef __block
 #define __block __newlib_block
+#endif
+
+// Ensure that the linker includes support for TLS on Windows.
+#if defined(_WIN32)
+#if defined(__i386__)
+#pragma comment(linker, "/INCLUDE:__tls_used")
+#else
+#pragma comment(linker, "/INCLUDE:_tls_used")
+#endif
 #endif
 
 #endif // SWT_DEFINES_H

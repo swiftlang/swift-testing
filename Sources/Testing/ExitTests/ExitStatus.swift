@@ -121,7 +121,7 @@ extension ExitStatus: CustomStringConvertible {
     case let .exitCode(exitCode):
       result = swt_getExitCodeName(exitCode).flatMap(String.init(validatingCString:))
     case let .signal(signal):
-#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Android)
+#if os(anyAppleOS) || os(FreeBSD) || os(OpenBSD) || os(Android)
 #if !SWT_NO_SYS_SIGNAME
       // These platforms define sys_signame with a size, which is imported
       // into Swift as a tuple.

@@ -12,11 +12,10 @@ private import _TestingInternals
 
 /// A type representing an error that can occur when attaching an image.
 #if SWT_NO_IMAGE_ATTACHMENTS
-@_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 package enum ImageAttachmentError: Error {
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
   /// The image could not be converted to an instance of `CGImage`.
   case couldNotCreateCGImage
 
@@ -43,16 +42,27 @@ package enum ImageAttachmentError: Error {
 
   /// A property could not be written to a property bag.
   case propertyBagWritingFailed(String, CLong)
+
+  /// The `HRESULT` value underlying this error.
+  fileprivate var hresultValue: HRESULT {
+    switch self {
+    case let .queryInterfaceFailed(_, result),
+      let .comObjectCreationFailed(_, result),
+      let .imageWritingFailed(result),
+      let .globalFromStreamFailed(result),
+      let .propertyBagWritingFailed(_, result):
+      return result
+    }
+  }
 #endif
 }
 
 #if SWT_NO_IMAGE_ATTACHMENTS
-@_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 extension ImageAttachmentError: CustomStringConvertible {
   package var description: String {
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     switch self {
     case .couldNotCreateCGImage:
       "Could not create the corresponding Core Graphics image."
@@ -64,17 +74,18 @@ extension ImageAttachmentError: CustomStringConvertible {
       "Could not convert the image to the format '\(typeIdentifier)' because the system does not support it."
     }
 #elseif os(Windows)
+    let result = "0x\(String(hresultValue, radix: 16))"
     switch self {
-    case let .queryInterfaceFailed(type, result):
-      "Could not cast a COM object to type '\(type)' (HRESULT \(result))."
-    case let .comObjectCreationFailed(type, result):
-      "Could not create a COM object of type '\(type)' (HRESULT \(result))."
-    case let .imageWritingFailed(result):
-      "Could not write the image (HRESULT \(result))."
-    case let .globalFromStreamFailed(result):
-      "Could not access the buffer containing the encoded image (HRESULT \(result))."
-    case let .propertyBagWritingFailed(name, result):
-      "Could not set the property '\(name)' (HRESULT \(result))."
+    case let .queryInterfaceFailed(type, _):
+      return "Could not cast a COM object to type '\(type)' (HRESULT \(result))."
+    case let .comObjectCreationFailed(type, _):
+      return "Could not create a COM object of type '\(type)' (HRESULT \(result))."
+    case .imageWritingFailed:
+      return "Could not write the image (HRESULT \(result))."
+    case .globalFromStreamFailed:
+      return "Could not access the buffer containing the encoded image (HRESULT \(result))."
+    case let .propertyBagWritingFailed(name, _):
+      return "Could not set the property '\(name)' (HRESULT \(result))."
     }
 #else
     swt_unreachable()

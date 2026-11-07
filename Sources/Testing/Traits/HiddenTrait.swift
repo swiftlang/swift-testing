@@ -17,18 +17,11 @@
 /// except by the specific unit test(s) which have requested to run them.
 ///
 /// This type is not part of the public interface of the testing library.
-struct HiddenTrait: TestTrait {}
-
-#if !hasFeature(Embedded)
-// MARK: - SuiteTrait
-extension HiddenTrait: SuiteTrait {
+struct HiddenTrait: TestTrait, SuiteTrait {
   var isRecursive: Bool {
     true
   }
 }
-#endif
-
-// MARK: -
 
 extension Trait where Self == HiddenTrait {
   static var hidden: Self {
@@ -40,6 +33,6 @@ extension Test {
   /// Whether this test is hidden, whether directly or via a trait inherited
   /// from a parent test.
   var isHidden: Bool {
-    traits.contains { $0 is HiddenTrait }
+    traits.contains { ($0 as? HiddenTrait) != nil } // WORKAROUND: rdar://191300065
   }
 }

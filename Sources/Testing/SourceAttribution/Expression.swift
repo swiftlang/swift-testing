@@ -132,12 +132,14 @@ public struct __Expression: Sendable {
     ///
     /// - Parameters:
     ///   - subject: The subject this instance should describe.
-    init(describing subject: Any) {
-      description = String(describingForTest: subject)
+    ///   - mirror: An instance of ``Mirror`` that reflects `subject`, if
+    ///     available. If `nil`, this initializer creates a temporary mirror.
+    init(describing subject: Any, reflectedBy mirror: Mirror? = nil) {
+      let mirror = mirror ?? Mirror(reflectingForTest: subject)
+      description = String(describingForTest: subject, reflectedBy: mirror)
       debugDescription = String(reflecting: subject)
       typeInfo = TypeInfo(describingTypeOf: subject)
 
-      let mirror = Mirror(reflectingForTest: subject)
       isCollection = mirror.displayStyle?.isCollection ?? false
     }
 
@@ -219,10 +221,9 @@ public struct __Expression: Sendable {
         return
       }
 
-      self.init(describing: subject)
-      self.label = label
-
       let mirror = Mirror(reflectingForTest: subject)
+      self.init(describing: subject, reflectedBy: mirror)
+      self.label = label
 
       // If the subject being reflected is an instance of a reference type (e.g.
       // a class), keep track of whether it has been seen previously. Later
@@ -337,7 +338,7 @@ public struct __Expression: Sendable {
   ///   - firstValue: The first captured runtime value.
   ///   - additionalValues: Any additional captured runtime values after the
   ///     first.
-  private mutating func _captureRuntimeValues(_ firstValue: (any CapturableValue)?, _ additionalValues: [(any CapturableValue)?]) {
+  private mutating func _captureRuntimeValues(_ firstValue: (any CapturableValue)?, _ additionalValues: some Collection<(any CapturableValue)?>) {
     if isNegated {
       // A negated expression has an additional level of indirection between it
       // and any additional values.
@@ -363,24 +364,15 @@ public struct __Expression: Sendable {
   ///
   /// If the ``kind`` of `self` is ``Kind/generic`` or ``Kind/stringLiteral``,
   /// this function is equivalent to ``capturingRuntimeValue(_:)``.
-  ///
-  /// In Embedded Swift, variadic generic support is not yet complete, so we
-  /// instead fall back to a regular variadic function.
-#if !hasFeature(Embedded)
-  func capturingRuntimeValues<each T>(_ firstValue: (some CapturableValue)?, _ additionalValues: repeat (each T)?) -> Self where repeat each T: CapturableValue {
+  func capturingRuntimeValues<F, each A>(_ firstValue: F?, _ additionalValues: repeat (each A)?) -> Self where F: CapturableValue, repeat each A: CapturableValue {
     var result = self
     var additionalValuesCopy = [(any CapturableValue)?]()
     repeat additionalValuesCopy.append(each additionalValues)
     result._captureRuntimeValues(firstValue, additionalValuesCopy)
     return result
   }
-#else
-  func capturingRuntimeValues(_ firstValue: (some CapturableValue)?, _ additionalValues: (any CapturableValue)?...) -> Self {
-    var result = self
-    result._captureRuntimeValues(firstValue, additionalValues)
-    return result
-  }
 
+#if hasFeature(Embedded)
   func capturingRuntimeValues(_ error: (any Error)?) -> Self {
     var result = self
     if let error {
@@ -397,10 +389,14 @@ public struct __Expression: Sendable {
   }
 
   @_disfavoredOverload
-  func capturingRuntimeValues(_ firstValue: (some Any)?, _ additionalValues: Any?...) -> Self {
+  func capturingRuntimeValues<F, each A>(_ firstValue: F?, _ additionalValues: repeat (each A)?) -> Self {
     var result = self
-    let unavailable = UnavailableInEmbeddedSwift()
-    result._captureRuntimeValues(unavailable, additionalValues.map { _ in unavailable })
+    var additionalValuesCopy = [Any?]()
+    repeat additionalValuesCopy.append(each additionalValues)
+    result._captureRuntimeValues(
+      firstValue.map { _ in UnavailableInEmbeddedSwift() },
+      additionalValuesCopy.lazy.map { $0.map { _ in UnavailableInEmbeddedSwift() } },
+    )
     return result
   }
 #endif
@@ -439,10 +435,18 @@ public struct __Expression: Sendable {
       }
 #endif
       if addDescription {
-        let runtimeValueDescription = String(describingForTest: runtimeValue)
-        // Hack: don't print string representations of function calls.
-        if runtimeValueDescription != "(Function)" && runtimeValueDescription != result {
-          result = "\(result) → \(runtimeValueDescription)"
+#if !hasFeature(Embedded)
+        let isFunction = runtimeValue.typeInfo.isFunction
+#else
+        let isFunction = false
+#endif
+        if isFunction {
+          // Don't print string representations of function calls.
+        } else {
+          let runtimeValueDescription = String(describingForTest: runtimeValue)
+          if runtimeValueDescription != result {
+            result = "\(result) → \(runtimeValueDescription)"
+          }
         }
       }
     } else {

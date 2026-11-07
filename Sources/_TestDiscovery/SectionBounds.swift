@@ -40,7 +40,7 @@ struct SectionBounds: Sendable, BitwiseCopyable {
   }
 }
 
-#if SWT_TARGET_OS_APPLE && objectFormat(MachO) && !SWT_NO_DYNAMIC_LINKING
+#if os(anyAppleOS) && objectFormat(MachO) && !SWT_NO_DYNAMIC_LINKING
 // MARK: - Apple implementation
 
 extension SectionBounds.Kind {

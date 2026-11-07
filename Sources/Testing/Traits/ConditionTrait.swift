@@ -18,7 +18,7 @@
 /// - ``Trait/disabled(_:sourceLocation:)``
 /// - ``Trait/disabled(if:_:sourceLocation:)``
 /// - ``Trait/disabled(_:sourceLocation:_:)``
-public struct ConditionTrait: TestTrait {
+public struct ConditionTrait: TestTrait, SuiteTrait {
   /// An enumeration that describes the conditions that an instance of this type
   /// can represent.
   enum Kind: Sendable {
@@ -27,7 +27,7 @@ public struct ConditionTrait: TestTrait {
     /// - Parameters:
     ///   - body: The function to call. The result of this function determines
     ///     if the condition is satisfied or not.
-    case conditional(_ body: @Sendable () async throws -> Bool)
+    case conditional(_ body: nonisolated(nonsending) @Sendable () async throws -> Bool)
 
     /// The trait is unconditional and always has the same result.
     ///
@@ -94,17 +94,11 @@ public struct ConditionTrait: TestTrait {
       try Test.cancel(comments.first, sourceLocation: sourceLocation)
     }
   }
-}
 
-#if !hasFeature(Embedded)
-// MARK: - SuiteTrait
-
-extension ConditionTrait: SuiteTrait {
   public var isRecursive: Bool {
     true
   }
 }
-#endif
 
 // MARK: -
 

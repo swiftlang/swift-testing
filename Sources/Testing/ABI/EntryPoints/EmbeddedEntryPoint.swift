@@ -23,11 +23,13 @@ internal import Synchronization
 private func _asyncMainDrainQueue() -> Never
 
 @c @implementation
-public func swift_testing_embeddedMain(
+public func swift_testing_embeddedMainWithCompletionHandler(
   _ argc: CInt = 0,
   _ argv: UnsafeMutablePointer<UnsafeMutablePointer<CChar>>? = nil,
-  _ envp: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>? = nil
-) -> Never {
+  _ envp: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>? = nil,
+  _ context: UnsafeMutableRawPointer?,
+  _ completionHandler: @escaping @convention(c) @Sendable (_ context: UnsafeMutableRawPointer?, _ exitCode: CInt) -> Void
+) -> Void {
   if argc > 0, let argv {
     let argcArgv = swift_testing_argc_argv_t(argc: argc, argv: argv)
     CommandLine._argcArgv.withLock { $0 = argcArgv }
@@ -49,8 +51,20 @@ public func swift_testing_embeddedMain(
   }
 #endif
 
+  nonisolated(unsafe) let context = context
   _ = Task {
     let exitCode = await entryPoint(passing: nil, eventHandler: nil)
+    completionHandler(context, exitCode)
+  }
+}
+
+@c @implementation
+public func swift_testing_embeddedMain(
+  _ argc: CInt = 0,
+  _ argv: UnsafeMutablePointer<UnsafeMutablePointer<CChar>>? = nil,
+  _ envp: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>? = nil
+) -> Never {
+  swift_testing_embeddedMainWithCompletionHandler(argc, argv, envp, nil) { _, exitCode in
     exit(exitCode)
   }
   _asyncMainDrainQueue()

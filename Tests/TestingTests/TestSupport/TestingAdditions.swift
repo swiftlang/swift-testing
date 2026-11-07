@@ -206,7 +206,7 @@ extension Test {
     testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
   ) where C: Collection & Sendable, C.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
-    let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
+    let caseGenerator = Case.Generator(argumentList: __makeArgumentList(collection), parameters: parameters, testFunction: testFunction)
     self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
@@ -224,7 +224,7 @@ extension Test {
   ) where C: Collection & Sendable, C.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
     let caseGenerator = { @Sendable in
-      Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction)
+      Case.Generator(argumentList: try await __makeArgumentList(collection()), parameters: parameters, testFunction: testFunction)
     }
     self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
@@ -258,7 +258,7 @@ extension Test {
     testFunction: nonisolated(nonsending) @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
-    let caseGenerator = Case.Generator(arguments: collection1, collection2, parameters: parameters, testFunction: testFunction)
+    let caseGenerator = Case.Generator(argumentLists: __makeArgumentList(collection1), __makeArgumentList(collection2), parameters: parameters, testFunction: testFunction)
     self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
@@ -286,7 +286,7 @@ extension Test {
     testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceBounds = sourceBounds ?? __SourceBounds(lowerBoundOnly: sourceLocation)
-    let caseGenerator = Case.Generator(arguments: zippedCollections, parameters: parameters, testFunction: testFunction)
+    let caseGenerator = Case.Generator(argumentList: __makeArgumentList(zippedCollections), parameters: parameters, testFunction: testFunction)
     self.init(name: name, displayName: name, traits: traits, sourceBounds: sourceBounds, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 }
@@ -432,7 +432,7 @@ extension JSON {
   /// - Returns: A copy of `value` after encoding and decoding.
   ///
   /// - Throws: Any error encountered encoding or decoding `value`.
-  static func encodeAndDecode<T>(_ value: T) throws -> T where T: Codable {
+  static func encodeAndDecode<T>(_ value: T) throws(any Error) -> T where T: Codable {
     if let jsonEncodableValue = value as? any JSON.Encodable & Decodable {
       try JSON.withEncoding(of: jsonEncodableValue) { data in
         try JSON.decode(T.self, from: data)
@@ -452,7 +452,7 @@ extension JSON {
   /// - Returns: The encoded JSON string.
   ///
   /// - Throws: Any error encountered encoding or decoding `value`.
-  static func encode<T>(_ value: T) throws -> String where T: JSON.Encodable {
+  static func encode<T>(_ value: T) throws(any Error) -> String where T: JSON.Encodable {
     try JSON.withEncoding(of: value) { data in
       return String(decoding: data, as: UTF8.self)
     }
@@ -472,7 +472,7 @@ extension JSON {
   /// - Returns: An instance of `type` decoded from `json`.
   ///
   /// - Throws: Any error encountered while decoding `json`.
-  static func decode<T>(_ type: T.Type, from json: String) throws -> T where T: Decodable {
+  static func decode<T>(_ type: T.Type, from json: String) throws(any Error) -> T where T: Decodable {
     var json = json
     return try json.withUTF8 { json in
       try JSON.decode(T.self, from: UnsafeRawBufferPointer(json))

@@ -24,7 +24,7 @@ private import _TestingInternals
 ///
 /// This constant is not part of the public interface of the testing library.
 var EXIT_NO_TESTS_FOUND: CInt {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
   EX_UNAVAILABLE
 #elseif os(Windows)
   CInt(ERROR_NOT_FOUND)
@@ -51,7 +51,7 @@ var EXIT_NO_TESTS_FOUND: CInt {
 ///
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
-public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> CInt {
+public nonisolated(nonsending) func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> CInt {
 #if !SWT_NO_FILE_IO
   // Ensure that stdout is line- rather than block-buffered. Swift Package
   // Manager reroutes standard I/O through pipes, so we tend to end up with
@@ -79,7 +79,7 @@ public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) 
 ///
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
-public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> Never {
+public nonisolated(nonsending) func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> Never {
   let exitCode: CInt = await __swiftPMEntryPoint(passing: args)
   exit(exitCode)
 }

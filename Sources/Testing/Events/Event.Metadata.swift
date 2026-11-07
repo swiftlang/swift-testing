@@ -35,7 +35,7 @@ extension Event {
     /// - Returns: Whether or not this instance should be recorded.
     func shouldRecord(withVerbosity verbosity: Int) -> Bool {
       switch name {
-      case Self._testingLibraryVersionName, Self._targetPlatformName:
+      case Self._testingLibraryVersionName, Self._targetPlatformName, Self._embeddedTargetInfoName:
         true
       default:
         verbosity > 0
@@ -80,9 +80,9 @@ extension Event.Metadata {
       append(_swiftStandardLibraryVersionName, swiftStandardLibraryVersion)
     }
     append(_swiftCompilerVersionName, swiftCompilerVersion)
-#if os(Linux) && canImport(Glibc)
-    append(_gnuCLibraryVersionName, glibcVersion)
-#endif
+    if let glibcVersion {
+      append(_gnuCLibraryVersionName, glibcVersion)
+    }
     append(_testingLibraryVersionName, testingLibraryVersion)
     if let targetTriple {
       append(_targetPlatformName, targetTriple)

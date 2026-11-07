@@ -29,7 +29,7 @@
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
 /// }
-public struct IssueHandlingTrait: TestTrait {
+public struct IssueHandlingTrait: TestTrait, SuiteTrait {
   /// A function which handles an issue and returns an optional replacement.
   ///
   /// - Parameters:
@@ -61,27 +61,11 @@ public struct IssueHandlingTrait: TestTrait {
   public func handleIssue(_ issue: Issue) -> Issue? {
     _handler(issue)
   }
-}
 
-#if !hasFeature(Embedded)
-// MARK: - SuiteTrait
-
-/// @Metadata {
-///   @Available(Swift, introduced: 6.2)
-///   @Available(Xcode, introduced: 26.0)
-/// }
-extension IssueHandlingTrait: SuiteTrait {
-  /// @Metadata {
-  ///   @Available(Swift, introduced: 6.2)
-  ///   @Available(Xcode, introduced: 26.0)
-  /// }
   public var isRecursive: Bool {
     true
   }
 }
-#endif
-
-// MARK: - TestScoping
 
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
@@ -114,7 +98,7 @@ extension IssueHandlingTrait: TestScoping {
   /// intentionally returns `nil` (see the comment in that method), so this
   /// function can be called instead to ensure this trait can still handle that
   /// issue.
-  func provideScope(performing function: @Sendable () async throws -> Void) async throws {
+  nonisolated(nonsending) func provideScope(performing function: nonisolated(nonsending) @Sendable () async throws -> Void) async throws {
     guard var configuration = Configuration.current else {
       preconditionFailure("Configuration.current is nil when calling \(#function). \(fileABugMessage)")
     }

@@ -123,6 +123,12 @@ public protocol Trait: Sendable {
   /// - Warning: This function is used to implement traits under Embedded Swift.
   ///   Do not use it or provide an implementation for it.
   func __as(_: (any TestTrait).Type) -> (any TestTrait)?
+
+  /// Get this value as an instance of ``SuiteTrait``.
+  ///
+  /// - Warning: This function is used to implement traits under Embedded Swift.
+  ///   Do not use it or provide an implementation for it.
+  func __as(_: (any SuiteTrait).Type) -> (any SuiteTrait)?
 #endif
 }
 
@@ -212,7 +218,6 @@ extension Trait where Self: TestScoping {
   }
 }
 
-@_unavailableInEmbedded
 extension SuiteTrait where Self: TestScoping {
   /// Get this trait's scope provider for the specified test and optional test
   /// case.
@@ -261,7 +266,6 @@ public protocol TestTrait: Trait {}
 /// The testing library defines a number of traits that you can add to test
 /// suites. You can also define your own traits by creating types that
 /// conform to this protocol, or to the ``TestTrait`` protocol.
-@_unavailableInEmbedded
 public protocol SuiteTrait: Trait {
   /// Whether this instance should be applied recursively to child test suites
   /// and test functions.
@@ -305,22 +309,37 @@ extension Trait where TestScopeProvider == Never {
   }
 }
 
-@_unavailableInEmbedded
 extension SuiteTrait {
   public var isRecursive: Bool {
     false
   }
 }
 
-#if hasFeature(Embedded)
+#if !hasFeature(Embedded)
+extension Trait {
+  func __as<T>(_: T.Type) -> T? {
+    self as? T
+  }
+}
+#else
 extension Trait {
   public func __as(_: (any TestTrait).Type) -> (any TestTrait)? {
+    nil
+  }
+
+  public func __as(_: (any SuiteTrait).Type) -> (any SuiteTrait)? {
     nil
   }
 }
 
 extension Trait where Self: TestTrait {
   public func __as(_: (any TestTrait).Type) -> (any TestTrait)? {
+    self
+  }
+}
+
+extension Trait where Self: SuiteTrait {
+  public func __as(_: (any SuiteTrait).Type) -> (any SuiteTrait)? {
     self
   }
 }

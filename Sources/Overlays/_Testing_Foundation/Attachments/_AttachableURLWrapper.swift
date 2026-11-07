@@ -121,13 +121,13 @@ extension _AttachableURLWrapper: FileClonable {
   private static let _freeBSDVersion = getosreldate()
 #endif
 
-  public borrowing func clone(toFileAtPath filePath: String) -> Bool {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+  package borrowing func clone(toFileAtPath filePath: String) -> Bool {
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD)
     guard let srcFD = _fileHandle?.fileDescriptor else {
       return false
     }
 #endif
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
     return 0 == fclonefileat(srcFD, AT_FDCWD, filePath, 0)
 #elseif os(Linux) || os(FreeBSD)
     // Open the destination file for exclusive writing.

@@ -15,7 +15,7 @@ private import _TestingInternals
 private import Synchronization
 #endif
 
-#if SWT_TARGET_OS_APPLE && canImport(CrashReporterSupport)
+#if os(anyAppleOS) && canImport(CrashReporterSupport)
 private import CrashReporterSupport // NOTE: depends on Core Foundation!
 #endif
 
@@ -86,7 +86,7 @@ public struct ExitTest: Sendable, ~Copyable {
   ///
   /// - Parameters:
   ///   - exitTest: The exit test to which this body closure belongs.
-  fileprivate typealias Body = @Sendable (_ exitTest: inout Self) async throws -> Void
+  fileprivate typealias Body = nonisolated(nonsending) @Sendable (_ exitTest: inout Self) async throws -> Void
 
   /// The body closure of the exit test.
   ///
@@ -204,7 +204,7 @@ extension ExitTest {
   /// Disable crash reporting, crash logging, or core dumps for the current
   /// process.
   private static func _disableCrashReporting() {
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
 #if !SWT_NO_MACH_PORTS
     // We don't need to create a crash log (a "corpse notification") for an exit
     // test. In the future, we might want to investigate actually setting up a
@@ -253,13 +253,42 @@ extension ExitTest {
   /// call in a spawned exit test process.
   private static let _idEnvironmentVariableName = "SWT_EXIT_TEST_ID"
 
+#if os(Windows)
+  /// Whether or not we need to set thread-local signal handlers in the current
+  /// process.
+  private static let _needsThreadLocalSignalHandlers = Atomic<Bool>(false)
+
+  /// Set all thread-local signal handlers whenever a thread in an exit test
+  /// process is created ("attached" in Windows API parlance).
+  @section(".CRT$XLB") @used
+  private static let _setThreadLocalSignalHandlers: PIMAGE_TLS_CALLBACK = { _, reason, _ in
+    if reason == DWORD(DLL_PROCESS_ATTACH),
+       Environment.variable(named: _idEnvironmentVariableName) != nil {
+      _needsThreadLocalSignalHandlers.store(true, ordering: .sequentiallyConsistent)
+    }
+
+    // NOTE: The main thread will trigger `DLL_PROCESS_ATTACH` and other threads
+    // will trigger `DLL_THREAD_ATTACH`.
+    guard reason == DWORD(DLL_PROCESS_ATTACH) || reason == DWORD(DLL_THREAD_ATTACH),
+          _needsThreadLocalSignalHandlers.load(ordering: .sequentiallyConsistent) else {
+      return
+    }
+
+    for sig in windowsThreadLocalSignals {
+      _ = signal(sig) { sig in
+        _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
+      }
+    }
+  }
+#endif
+
   /// Call the exit test in the current process.
   ///
   /// This function invokes the closure originally passed to
   /// `#expect(processExitsWith:)` _in the current process_. That closure is
   /// expected to terminate the process; if it does not, the testing library
   /// will terminate the process as if its `main()` function returned naturally.
-  public consuming func callAsFunction() async -> Never {
+  public nonisolated(nonsending) consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
 #if os(Windows)
@@ -286,6 +315,11 @@ extension ExitTest {
     // repository doesn't have an official GitHub mirror, but you can manually
     // navigate to misc/signal.cpp:481 to see the implementation of SIG_DFL
     // (which, again, calls `_exit(3)` unconditionally.)
+    //
+    // See also `_setThreadLocalSignalHandlers` above, which we use to ensure
+    // thread-local signal handlers are set consistently across threads when
+    // said threads are created.
+    Self._needsThreadLocalSignalHandlers.store(true, ordering: .sequentiallyConsistent)
     for sig in windowsSignals.keys {
       _ = signal(sig) { sig in
         _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
@@ -367,7 +401,7 @@ extension ExitTest {
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
   @safe public static func __store<each T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
-    _ body: @escaping @Sendable (repeat each T) async throws -> Void,
+    _ body: nonisolated(nonsending) @escaping @Sendable (repeat each T) async throws -> Void,
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
@@ -462,7 +496,7 @@ extension ExitTest {
 /// This function contains the common implementation for all
 /// `await #expect(processExitsWith:) { }` invocations regardless of calling
 /// convention.
-func callExitTest(
+nonisolated(nonsending) func callExitTest(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
   processExitsWith expectedExitCondition: ExitTest.Condition,
@@ -470,7 +504,6 @@ func callExitTest(
   expression: @autoclosure () -> __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<ExitTest.Result?, any Error> {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
@@ -628,8 +661,10 @@ extension ExitTest {
   /// and standard error streams of the current process.
   private static func _writeBarrierValues() {
     let barrierValue = Self.barrierValue
-    try? FileHandle.stdout.write(barrierValue)
-    try? FileHandle.stderr.write(barrierValue)
+    barrierValue.withUnsafeBufferPointer { barrierValue in
+      try? FileHandle.stdout.write(barrierValue)
+      try? FileHandle.stderr.write(barrierValue)
+    }
   }
 
   /// A handler that is invoked when an exit test starts.
@@ -657,7 +692,7 @@ extension ExitTest {
   /// are available or the child environment is otherwise terminated. The parent
   /// environment is then responsible for interpreting those results and
   /// recording any issues that occur.
-  public typealias Handler = @Sendable (_ exitTest: borrowing Self) async throws -> ExitTest.Result
+  public typealias Handler = nonisolated(nonsending) @Sendable (_ exitTest: borrowing Self) async throws -> ExitTest.Result
 
   /// Make a file handle from the string contained in the given environment
   /// variable.
@@ -680,7 +715,7 @@ extension ExitTest {
     // Erase the environment variable so that it cannot accidentally be opened
     // twice (nor, in theory, affect the code of the exit test.)
     Environment.setVariable(nil, named: name)
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD)
     guard let fd = CInt(environmentVariable), fd >= 0 else {
       return nil
     }
@@ -704,7 +739,7 @@ extension ExitTest {
   ///   back to a (new) file handle with `_makeFileHandle()`, or `nil` if the
   ///   file handle could not be converted to a string.
   private static func _makeEnvironmentVariable(for fileHandle: borrowing FileHandle) -> String? {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if os(anyAppleOS) || os(Linux) || os(FreeBSD) || os(OpenBSD)
     return fileHandle.withUnsafePOSIXFileDescriptor { fd in
       fd.map(String.init(describing:))
     }
@@ -812,7 +847,7 @@ extension ExitTest {
       var result = [String]()
 
       let parentArguments = CommandLine.arguments
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
       lazy var xctestTargetPath = Environment.variable(named: "XCTestBundlePath")
         ?? parentArguments.dropFirst().last
       // If the running executable appears to be the XCTest runner executable in
@@ -855,13 +890,13 @@ extension ExitTest {
       return result
     }()
 
-    @Sendable func result(_ exitTest: borrowing ExitTest) async throws -> ExitTest.Result {
+    @Sendable nonisolated(nonsending) func result(_ exitTest: borrowing ExitTest) async throws -> ExitTest.Result {
       let childProcessExecutablePath = try childProcessExecutablePath.get()
 
       // Inherit the environment from the parent process and make any necessary
       // platform-specific changes.
       var childEnvironment = Environment.get()
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
       // If XCTest is hosting tests in an app, it uses DYLD_INSERT_LIBRARIES to
       // inject its startup code, then strips the injected library path from the
       // environment variable so as not to affect child processes. We want to
@@ -1017,7 +1052,7 @@ extension ExitTest {
   /// - Parameters:
   ///   - backChannel: The file handle to read from. Reading continues until an
   ///     error is encountered or the end of the file is reached.
-  private static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) async {
+  private nonisolated(nonsending) static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) async {
     var terminator: UInt8?
     repeat {
       let recordJSON: [UInt8]

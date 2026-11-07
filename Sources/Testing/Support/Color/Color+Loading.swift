@@ -14,7 +14,7 @@ private import _TestingInternals
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst)) || os(Linux) || os(FreeBSD) || os(OpenBSD)
 /// The path to the current user's home directory, if known.
 private var _homeDirectoryPath: String? {
-#if SWT_TARGET_OS_APPLE
+#if os(anyAppleOS)
   if let fixedHomeVariable = Environment.variable(named: "CFFIXED_USER_HOME") {
     return fixedHomeVariable
   }
@@ -61,7 +61,7 @@ var swiftTestingDirectoryPath: String? {
   if let homeDirectoryPath = _homeDirectoryPath {
     return appendPathComponent(swiftTestingDirectoryName, to: homeDirectoryPath)
   }
-#elseif SWT_TARGET_OS_APPLE || os(Android)
+#elseif os(anyAppleOS) || os(Android)
   // Other Apple/Darwin platforms do not support the concept of a home
   // directory. One exists for the current user, but it's not something that
   // actually contains user-configurable data like a .swift-testing directory.

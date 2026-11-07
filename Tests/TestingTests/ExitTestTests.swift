@@ -32,7 +32,7 @@ private let exit = Testing.exit
 
   @Test("Signal names are reported (where supported)") func signalName() {
     var hasSignalNames = false
-#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Android)
+#if os(anyAppleOS) || os(FreeBSD) || os(OpenBSD) || os(Android)
 #if !SWT_NO_SYS_SIGNAME
     hasSignalNames = true
 #endif
@@ -598,7 +598,7 @@ private let exit = Testing.exit
   @Test("Capture list (very long encoded form)")
   func longCaptureList() async {
     let count = 1 * 1024 * 1024
-    let buffer = Array(repeatElement(0 as UInt8, count: count))
+    let buffer = Array(repeating: 0 as UInt8, count: count)
     await #expect(processExitsWith: .success) { [count = count as Int, buffer = buffer as [UInt8]] in
       #expect(buffer.count == count)
     }
@@ -620,8 +620,8 @@ private let exit = Testing.exit
   class CapturableBaseClass: @unchecked Sendable, Codable {
     init() {}
 
-    required init(from decoder: any Decoder) throws {}
-    func encode(to encoder: any Encoder) throws {}
+    required init(from decoder: any Decoder) throws(any Error) {}
+    func encode(to encoder: any Encoder) throws(any Error) {}
   }
 
   final class CapturableDerivedClass: CapturableBaseClass, @unchecked Sendable {
@@ -632,13 +632,13 @@ private let exit = Testing.exit
       super.init()
     }
 
-    required init(from decoder: any Decoder) throws {
+    required init(from decoder: any Decoder) throws(any Error) {
       let container = try decoder.singleValueContainer()
       self.x = try container.decode(Int.self)
       super.init()
     }
 
-    override func encode(to encoder: any Encoder) throws {
+    override func encode(to encoder: any Encoder) throws(any Error) {
       var container = encoder.singleValueContainer()
       try container.encode(x)
     }
