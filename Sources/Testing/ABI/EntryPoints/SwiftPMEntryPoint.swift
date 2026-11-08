@@ -79,7 +79,16 @@ public nonisolated(nonsending) func __swiftPMEntryPoint(passing args: __CommandL
 ///
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
+#if compiler(<6.5.1) && os(Linux)
+@_spi(_)
+#endif
 public nonisolated(nonsending) func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> Never {
   let exitCode: CInt = await __swiftPMEntryPoint(passing: args)
   exit(exitCode)
 }
+
+#if compiler(<6.5.1) && os(Linux)
+@concurrent public func __swiftPMEntryPoint() async -> Never {
+  await __swiftPMEntryPoint(passing: nil) as Never
+}
+#endif
