@@ -14,5 +14,9 @@
 #error("This file requires that Approachable Concurrency be enabled")
 #endif
 
-@Test func `Tests run with Approachable Concurrency enabled (sync)`() {}
-@Test func `Tests run with Approachable Concurrency enabled (async)`() async {}
+struct `Tests run with Approachable Concurrency enabled` {
+  @Test func sync() {}
+  @Test func `async`() async {}
+  @Test nonisolated(nonsending) func `nonisolated(nonsending)`() async {}
+  @Test @concurrent func `@concurrent`() async {}
+}
