@@ -37,7 +37,7 @@ public protocol _AttachableByAddressAsIWICBitmapSource {
   static func _copyAttachableIWICBitmapSource(
     from imageAddress: UnsafeMutablePointer<Self>,
     using factory: UnsafeMutablePointer<IWICImagingFactory>
-  ) throws -> UnsafeMutablePointer<IWICBitmapSource>
+  ) throws(ImageAttachmentError) -> UnsafeMutablePointer<IWICBitmapSource>
 
   /// Make a copy of the instance of this type at the given address.
   ///
@@ -96,7 +96,7 @@ package protocol AttachableAsIWICBitmapSource: AttachableAsImage {
   /// - Throws: Any error that prevented the creation of the WIC bitmap.
   func copyAttachableIWICBitmapSource(
     using factory: UnsafeMutablePointer<IWICImagingFactory>
-  ) throws -> UnsafeMutablePointer<IWICBitmapSource>
+  ) throws(ImageAttachmentError) -> UnsafeMutablePointer<IWICBitmapSource>
 }
 
 extension AttachableAsIWICBitmapSource {
