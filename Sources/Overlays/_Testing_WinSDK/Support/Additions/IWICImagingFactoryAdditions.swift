@@ -19,8 +19,8 @@ extension IWICImagingFactory {
   ///
   /// - Throws: Any error that occurred while creating the object.
   static func create() throws(ImageAttachmentError) -> UnsafeMutablePointer<Self> {
-    try withUnsafePointer(to: CLSID_WICImagingFactory) { CLSID_WICImagingFactory in
-      try withUnsafePointer(to: IID_IWICImagingFactory) { IID_IWICImagingFactory in
+    try withUnsafePointer(to: CLSID_WICImagingFactory) { CLSID_WICImagingFactory throws(ImageAttachmentError) in
+      try withUnsafePointer(to: IID_IWICImagingFactory) { IID_IWICImagingFactory throws(ImageAttachmentError) in
         var factory: UnsafeMutableRawPointer?
         let rCreate = CoCreateInstance(
           CLSID_WICImagingFactory,
