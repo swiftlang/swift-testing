@@ -81,7 +81,7 @@ public protocol AttachableAsImage {
   ///   @Available(Swift, introduced: 6.3)
   ///   @Available(Xcode, introduced: 26.4)
   /// }
-  borrowing func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
+  borrowing func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R
 
   /// Make a copy of this instance to pass to an attachment.
   ///

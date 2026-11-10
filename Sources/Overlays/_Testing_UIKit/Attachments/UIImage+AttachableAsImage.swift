@@ -70,7 +70,7 @@ extension UIImage: AttachableAsImage, AttachableAsCGImage {
     scale
   }
 
-  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     try withUnsafeBytesImpl(as: imageFormat, body)
   }
 }

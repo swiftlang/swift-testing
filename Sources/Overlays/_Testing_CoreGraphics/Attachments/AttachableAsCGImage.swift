@@ -74,7 +74,7 @@ extension AttachableAsCGImage {
   /// used by types that conform to ``AttachableAsCGImage``.
   ///
   /// For documentation, see ``AttachableAsImage/withUnsafeBytes(as:_:)``.
-  package func withUnsafeBytesImpl<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  package func withUnsafeBytesImpl<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     let data = NSMutableData()
 
     // Convert the image to a CGImage.
