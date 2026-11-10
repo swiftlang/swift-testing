@@ -96,7 +96,7 @@ package protocol AttachableAsIWICBitmapSource: AttachableAsImage {
   /// - Throws: Any error that prevented the creation of the WIC bitmap.
   func copyAttachableIWICBitmapSource(
     using factory: UnsafeMutablePointer<IWICImagingFactory>
-  ) throws(ImageAttachmentError) -> UnsafeMutablePointer<IWICBitmapSource>
+  ) throws(any Error) -> UnsafeMutablePointer<IWICBitmapSource>
 }
 
 extension AttachableAsIWICBitmapSource {
