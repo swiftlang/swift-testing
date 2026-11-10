@@ -25,6 +25,9 @@ set(CMAKE_STATIC_LIBRARY_PREFIX_Swift "lib")
 _swift_testing_install_target(_TestDiscovery)
 
 if(NOT BUILD_SHARED_LIBS)
+  target_compile_options(_TestDiscovery PRIVATE
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals")
+
   # When building a static library, install the internal library archive
   # alongside the main library. In shared library builds, the internal library
   # is linked into the main library and does not need to be installed separately.
