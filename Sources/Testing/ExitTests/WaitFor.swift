@@ -107,7 +107,7 @@ private func _withLockedChildProcessContinuations<R, E>(
     _ lock: UnsafeMutablePointer<pthread_mutex_t>
   ) throws(E) -> R
 ) throws(E) -> R {
-  try _childProcessContinuations.withUnsafeMutablePointers { childProcessContinuations, lock in
+  try _childProcessContinuations.withUnsafeMutablePointers { childProcessContinuations, lock throws(E) in
     _ = pthread_mutex_lock(lock)
     defer {
       _ = pthread_mutex_unlock(lock)
