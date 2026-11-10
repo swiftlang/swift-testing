@@ -69,11 +69,11 @@ extension HMODULE {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  func withNTHeader<R>(_ body: (UnsafePointer<IMAGE_NT_HEADERS>?) throws -> R) rethrows -> R {
+  func withNTHeader<R, E>(_ body: (UnsafePointer<IMAGE_NT_HEADERS>?) throws(E) -> R) throws(E) -> R {
     // Get the DOS header (to which the HMODULE directly points, conveniently!)
     // and check it's sufficiently valid for us to walk. The DOS header then
     // tells us where to find the NT header.
-    try withMemoryRebound(to: IMAGE_DOS_HEADER.self, capacity: 1) { dosHeader in
+    try withMemoryRebound(to: IMAGE_DOS_HEADER.self, capacity: 1) { dosHeader throws(E) in
       guard dosHeader.pointee.e_magic == IMAGE_DOS_SIGNATURE,
             let e_lfanew = Int(exactly: dosHeader.pointee.e_lfanew), e_lfanew > 0 else {
         return try body(nil)
