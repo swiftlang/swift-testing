@@ -18,7 +18,7 @@ extension IWICImagingFactory {
   ///   responsible for releasing this object when done with it.
   ///
   /// - Throws: Any error that occurred while creating the object.
-  static func create() throws -> UnsafeMutablePointer<Self> {
+  static func create() throws(ImageAttachmentError) -> UnsafeMutablePointer<Self> {
     try withUnsafePointer(to: CLSID_WICImagingFactory) { CLSID_WICImagingFactory in
       try withUnsafePointer(to: IID_IWICImagingFactory) { IID_IWICImagingFactory in
         var factory: UnsafeMutableRawPointer?

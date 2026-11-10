@@ -58,7 +58,7 @@ extension UnsafeMutablePointer where Pointee: _IWICBitmapSourceProtocol {
   ///
   /// - Important: This function consumes a reference to `self` even if the cast
   ///   fails.
-  consuming func cast(to _: IWICBitmapSource.Type) throws -> UnsafeMutablePointer<IWICBitmapSource> {
+  consuming func cast(to _: IWICBitmapSource.Type) throws(ImageAttachmentError) -> UnsafeMutablePointer<IWICBitmapSource> {
     try self.withMemoryRebound(to: IUnknown.self, capacity: 1) { `self` in
       defer {
         _ = self.pointee.lpVtbl.pointee.Release(self)
@@ -82,7 +82,7 @@ extension _IWICBitmapSourceProtocol {
   public static func _copyAttachableIWICBitmapSource(
     from imageAddress: UnsafeMutablePointer<Self>,
     using factory: UnsafeMutablePointer<IWICImagingFactory>
-  ) throws -> UnsafeMutablePointer<IWICBitmapSource> {
+  ) throws(ImageAttachmentError) -> UnsafeMutablePointer<IWICBitmapSource> {
     try _copyAttachableValue(at: imageAddress).cast(to: IWICBitmapSource.self)
   }
 
@@ -104,7 +104,7 @@ extension IWICBitmapSource {
   public static func _copyAttachableIWICBitmapSource(
     from imageAddress: UnsafeMutablePointer<Self>,
     using factory: UnsafeMutablePointer<IWICImagingFactory>
-  ) throws -> UnsafeMutablePointer<IWICBitmapSource> {
+  ) throws(ImageAttachmentError) -> UnsafeMutablePointer<IWICBitmapSource> {
     _ = imageAddress.pointee.lpVtbl.pointee.AddRef(imageAddress)
     return imageAddress
   }
