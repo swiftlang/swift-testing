@@ -101,12 +101,12 @@ private nonisolated(unsafe) let _childProcessContinuations = {
 /// - Returns: Whatever is returned by `body`.
 ///
 /// - Throws: Whatever is thrown by `body`.
-private func _withLockedChildProcessContinuations<R>(
+private func _withLockedChildProcessContinuations<R, E>(
   _ body: (
     _ childProcessContinuations: inout [pid_t: CheckedContinuation<ExitStatus, any Error>],
     _ lock: UnsafeMutablePointer<pthread_mutex_t>
-  ) throws -> R
-) rethrows -> R {
+  ) throws(E) -> R
+) throws(E) -> R {
   try _childProcessContinuations.withUnsafeMutablePointers { childProcessContinuations, lock in
     _ = pthread_mutex_lock(lock)
     defer {

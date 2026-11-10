@@ -82,7 +82,7 @@ extension _IWICBitmapSourceProtocol {
   public static func _copyAttachableIWICBitmapSource(
     from imageAddress: UnsafeMutablePointer<Self>,
     using factory: UnsafeMutablePointer<IWICImagingFactory>
-  ) throws(ImageAttachmentError) -> UnsafeMutablePointer<IWICBitmapSource> {
+  ) throws(any Error) -> UnsafeMutablePointer<IWICBitmapSource> {
     try _copyAttachableValue(at: imageAddress).cast(to: IWICBitmapSource.self)
   }
 
@@ -104,7 +104,7 @@ extension IWICBitmapSource {
   public static func _copyAttachableIWICBitmapSource(
     from imageAddress: UnsafeMutablePointer<Self>,
     using factory: UnsafeMutablePointer<IWICImagingFactory>
-  ) throws(ImageAttachmentError) -> UnsafeMutablePointer<IWICBitmapSource> {
+  ) throws(any Error) -> UnsafeMutablePointer<IWICBitmapSource> {
     _ = imageAddress.pointee.lpVtbl.pointee.AddRef(imageAddress)
     return imageAddress
   }
