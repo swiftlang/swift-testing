@@ -138,14 +138,11 @@ extension JSON {
   static func withEncoding<R, E>(
     of value: some JSON.Encodable,
     in context: JSON.EncodingContext = JSON.EncodingContext(),
-    _ body: (UnsafeRawBufferPointer) throws(E) -> R
+    _ body: (Span<UInt8>) throws(E) -> R
   ) throws(any Error) -> R {
-    var buffer = [UInt8]()
+    var buffer = ContiguousArray<UInt8>()
     try value.jsonValue(in: context).encode(in: context, into: &buffer)
-
-    return try buffer.withUnsafeBytes { json in
-      return try body(json)
-    }
+    return try body(buffer.span)
   }
 
 #if !SWT_NO_CODABLE
@@ -166,7 +163,7 @@ extension JSON {
   /// `userInfo` argument.
   static func withEncoding<R, E>(
     of value: some Swift.Encodable & JSON.Encodable,
-    _ body: (UnsafeRawBufferPointer) throws(E) -> R
+    _ body: (Span<UInt8>) throws(E) -> R
   ) throws(any Error) -> R {
     try withEncoding(of: value, in: JSON.EncodingContext(), body)
   }
@@ -194,7 +191,7 @@ extension JSON.Value {
   ///   - string: The string to encode.
   ///   - buffer: The buffer to which the encoded form of `string` should be
   ///     appended.
-  private static func _encode(_ string: String, into buffer: inout [UInt8]) {
+  private static func _encode(_ string: String, into buffer: inout ContiguousArray<UInt8>) {
     func requiresEscaping(_ byte: UInt8) -> Bool {
       // All printable ASCII characters are in the range 0x20 ..< 0x7F. UTF-8
       // bytes outside ASCII do not require escaping.
@@ -228,13 +225,14 @@ extension JSON.Value {
         case UInt8(ascii: #"\"#), UInt8(ascii: #"""#):
           // These characters can be escaped verbatim. They can also be escaped as
           // Unicode code points, but that's not very idiomatic for JSON.
+          // Unicode code points, but that's not very idiomatic for JSON.
           buffer.append(c)
         default:
           buffer.append(UInt8(ascii: "u"))
           buffer.append(UInt8(ascii: "0"))
           buffer.append(UInt8(ascii: "0"))
 
-          func encodeNybble(_ nybble: UInt8, to buffer: inout [UInt8]) {
+          func encodeNybble(_ nybble: UInt8, to buffer: inout ContiguousArray<UInt8>) {
             if nybble < 0xA {
               buffer.append(UInt8(ascii: "0") + nybble)
             } else {
@@ -260,7 +258,7 @@ extension JSON.Value {
   ///
   /// - Throws: If `number` is a non-conforming floating-point value and the
   ///   value of `context.encodesNonConformingFloatingPointValues` is `false`.
-  private static func _encode(_ number: JSON.Number, in context: JSON.EncodingContext, into buffer: inout [UInt8]) throws(JSON.EncodingError) {
+  private static func _encode(_ number: JSON.Number, in context: JSON.EncodingContext, into buffer: inout ContiguousArray<UInt8>) throws(JSON.EncodingError) {
     switch number {
     case let .signedInteger(value):
       if value < 0 {
@@ -272,11 +270,16 @@ extension JSON.Value {
       if value == 0 {
         buffer.append(UInt8(ascii: "0"))
       } else {
-        withUnsafeTemporaryAllocation(of: UInt8.self, capacity: 48) { digits in
-          var i = digits.count - 1
+        withTemporaryAllocation(of: UInt8.self, capacity: 48) { digits in
+          // Zero-initialize the output span so that we can then write backwards
+          // into it. The cost of zero-initializing here is acceptable and the
+          // compiler may be able to eliminate the dead stores anyway.
+          digits.append(repeating: 0, count: digits.freeCapacity)
+
+          var i = digits.capacity - 1
           var value = value
           while value > 0 {
-            assert(i >= 0, "Ran out of space in a \(digits.count)-byte buffer to hold the string representation of \(originalValue). \(fileABugMessage)")
+            assert(i >= 0, "Ran out of space in a \(digits.capacity)-byte buffer to hold the string representation of \(originalValue). \(fileABugMessage)")
             defer { i -= 1 }
 
             let digit: JSON.Number.UnsignedInteger
@@ -284,7 +287,8 @@ extension JSON.Value {
             digits[i] = UInt8(ascii: "0") + UInt8(truncatingIfNeeded: digit)
           }
 
-          buffer += digits[i...].dropFirst()
+          let span = digits.span.extracting(i...).extracting(droppingFirst: 1)
+          buffer.append(contentsOf: span)
         }
       }
     case let .floatingPoint(value):
@@ -315,7 +319,7 @@ extension JSON.Value {
   ///
   /// - Throws: Any error thrown while encoding one of the keys or values in
   ///   `object`.
-  private static func _encode(_ object: [String: JSON.Value], in context: JSON.EncodingContext, into buffer: inout [UInt8]) throws(JSON.EncodingError) {
+  private static func _encode(_ object: [String: JSON.Value], in context: JSON.EncodingContext, into buffer: inout ContiguousArray<UInt8>) throws(JSON.EncodingError) {
     buffer.append(UInt8(ascii: "{"))
     defer {
       buffer.append(UInt8(ascii: "}"))
@@ -352,7 +356,7 @@ extension JSON.Value {
   ///     appended.
   ///
   /// - Throws: Any error thrown while encoding one of the elements of `array`.
-  private static func _encode(_ array: [JSON.Value], in context: JSON.EncodingContext, into buffer: inout [UInt8]) throws(JSON.EncodingError) {
+  private static func _encode(_ array: [JSON.Value], in context: JSON.EncodingContext, into buffer: inout ContiguousArray<UInt8>) throws(JSON.EncodingError) {
     buffer.append(UInt8(ascii: "["))
     defer {
       buffer.append(UInt8(ascii: "]"))
@@ -376,7 +380,7 @@ extension JSON.Value {
   ///     appended.
   ///
   /// - Throws: Any error thrown while encoding this JSON value.
-  fileprivate func encode(in context: JSON.EncodingContext, into buffer: inout [UInt8]) throws(JSON.EncodingError) {
+  fileprivate func encode(in context: JSON.EncodingContext, into buffer: inout ContiguousArray<UInt8>) throws(JSON.EncodingError) {
     switch self {
     case let .string(string):
       Self._encode(string, into: &buffer)

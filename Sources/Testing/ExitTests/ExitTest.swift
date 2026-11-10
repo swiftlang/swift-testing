@@ -760,7 +760,7 @@ extension ExitTest {
     }
 
     return try? idString.withUTF8 { idBuffer in
-      try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
+      try JSON.decode(ExitTest.ID.self, from: idBuffer.span)
     }
   }
 
@@ -1093,10 +1093,9 @@ extension ExitTest {
   ///
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
-    let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
+    let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: Span(viewing: recordJSON.bytes))
     guard case let .event(encodedEvent) = record.kind,
-      let event = Event(decoding: encodedEvent)
-    else {
+          let event = Event(decoding: encodedEvent) else {
       return
     }
 
@@ -1147,13 +1146,11 @@ extension ExitTest {
       var capturedValue = capturedValue
 
       func open<T>(_ type: T.Type) throws -> T where T: Codable & Sendable {
-        return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
-          try JSON.decode(
-            type,
-            from: capturedValueJSON,
-            userInfo: [.allowNonConformingFloatingPointValuesUserInfoKey: true]
-          )
-        }
+        try JSON.decode(
+          type,
+          from: capturedValueJSON.span,
+          userInfo: [.allowNonConformingFloatingPointValuesUserInfoKey: true]
+        )
       }
       capturedValue.wrappedValue = try open(capturedValue.typeOfWrappedValue)
 
@@ -1182,7 +1179,7 @@ extension ExitTest {
         of: capturedValue.wrappedValue!,
         userInfo: [.allowNonConformingFloatingPointValuesUserInfoKey: true]
       ) { capturedValueJSON in
-        try JSON.asJSONLine(capturedValueJSON, body)
+        try JSON.asJSONLine(capturedValueJSON) { try $0.withUnsafeBytes(body) }
       }
     }
   }

@@ -67,7 +67,7 @@ enum JSON {
   static func withEncoding<R, E>(
     of value: some Swift.Encodable,
     userInfo: [CodingUserInfoKey: any Sendable] = [:],
-    _ body: (UnsafeRawBufferPointer) throws(E) -> R
+    _ body: (Span<UInt8>) throws(E) -> R
   ) throws(any Error) -> R {
     let encoder: JSONEncoder = {
       if userInfo.isEmpty {
@@ -104,7 +104,7 @@ enum JSON {
 #endif
 
     let data = try encoder.encode(value)
-    return try data.withUnsafeBytes(body)
+    return try body(data.span)
   }
 #endif
 
@@ -118,16 +118,14 @@ enum JSON {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func asJSONLine<R, E>(_ json: UnsafeRawBufferPointer, _ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R {
+  static func asJSONLine<R, E>(_ json: Span<UInt8>, _ body: (Span<UInt8>) throws(E) -> R) throws(E) -> R {
     if _slowPath(json.contains(where: \.isASCIINewline)) {
       // Remove the newline characters to conform to JSON lines specification.
       // This is not actually expected to happen in practice with Foundation's
       // JSON encoder.
-      var json = Array(json)
+      var json = ContiguousArray(json)
       json.removeAll(where: \.isASCIINewline)
-      return try json.withUnsafeBufferPointer { bytes throws(E) in
-        try body(UnsafeRawBufferPointer(bytes))
-      }
+      return try body(json.span)
     } else {
       // No newlines found, no need to copy the buffer.
       return try body(json)
@@ -152,40 +150,42 @@ enum JSON {
   /// - Throws: Whatever is thrown by the decoding process.
   static func decode<T>(
     _ type: T.Type,
-    from jsonRepresentation: UnsafeRawBufferPointer,
+    from jsonRepresentation: Span<UInt8>,
     userInfo: [CodingUserInfoKey: any Sendable] = [:]
   ) throws(any Error) -> T where T: Decodable {
-    try withExtendedLifetime(jsonRepresentation) {
-      let byteCount = jsonRepresentation.count
-      let data = if byteCount > 0 {
-        Data(
+    let decoder: JSONDecoder = {
+      if userInfo.isEmpty {
+        return _defaultDecoder
+      }
+      let decoder = JSONDecoder()
+
+      // Set user info keys that clients want to use during decoding.
+      decoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
+
+      if decoder.userInfo[.allowNonConformingFloatingPointValuesUserInfoKey] as? Bool == true {
+        decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+          positiveInfinity: positiveInfinityString,
+          negativeInfinity: negativeInfinityString,
+          nan: nanString
+        )
+      }
+
+      return decoder
+    }()
+
+    let byteCount = jsonRepresentation.count
+    guard byteCount > 0 else {
+      return try decoder.decode(type, from: Data())
+    }
+    return try jsonRepresentation.withUnsafeBytes { jsonRepresentation in
+      try decoder.decode(
+        type,
+        from: Data(
           bytesNoCopy: .init(mutating: jsonRepresentation.baseAddress!),
           count: byteCount,
           deallocator: .none
         )
-      } else {
-        Data()
-      }
-      let decoder: JSONDecoder = {
-        if userInfo.isEmpty {
-          return _defaultDecoder
-        }
-        let decoder = JSONDecoder()
-
-        // Set user info keys that clients want to use during decoding.
-        decoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs })
-
-        if decoder.userInfo[.allowNonConformingFloatingPointValuesUserInfoKey] as? Bool == true {
-          decoder.nonConformingFloatDecodingStrategy = .convertFromString(
-            positiveInfinity: positiveInfinityString,
-            negativeInfinity: negativeInfinityString,
-            nan: nanString
-          )
-        }
-
-        return decoder
-      }()
-      return try decoder.decode(type, from: data)
+      )
     }
   }
 #endif

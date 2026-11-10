@@ -192,7 +192,7 @@ extension ABI.Version {
   public static func decodeEvent(fromRecordJSON recordJSON: UnsafeRawBufferPointer, in context: inout ABI.Context) -> (event: Event, context: Event.Context)? {
     var result: (event: Event, context: Event.Context)?
 
-    guard let record = try? JSON.decode(ABI.Record<Self>.self, from: recordJSON) else {
+    guard let record = try? JSON.decode(ABI.Record<Self>.self, from: Span(viewing: recordJSON.bytes)) else {
       return nil
     }
 
@@ -358,7 +358,8 @@ private enum _MetadataKey: String, Sendable, CaseIterable {
 func _swift_testing_copyMetadataValue(_ key: UnsafePointer<CChar>, _ reserved: UInt) -> UnsafeMutablePointer<CChar>? {
   func copyJSON(for value: some JSON.Encodable) -> UnsafeMutablePointer<CChar>? {
     try? JSON.withEncoding(of: value) { json in
-      json.withMemoryRebound(to: CChar.self) { json in
+      let json = Span<CChar>(viewing: json.bytes)
+      return json.withUnsafeBufferPointer { json in
         // The JSON produced by Foundation is not null-terminated, so to avoid
         // an intermediate copy we call `calloc()` instead of `strdup()`.
         let result = calloc(json.count + 1, MemoryLayout<CChar>.stride)

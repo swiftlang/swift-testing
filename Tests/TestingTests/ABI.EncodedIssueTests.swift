@@ -26,10 +26,7 @@ typealias FakeError = `ABI.EncodedIssue Tests`.FakeError
 ///
 /// - Throws: If the JSON doesn't represent a valid EncodedIssue.
 private func encodedIssue<V>(_ version: V.Type, _ json: String) throws -> ABI.EncodedIssue<V> {
-  var json = json
-  return try json.withUTF8 { json in
-    try JSON.decode(ABI.EncodedIssue<V>.self, from: UnsafeRawBufferPointer(json))
-  }
+  try JSON.decode(ABI.EncodedIssue<V>.self, from: json)
 }
 
 private let expectationFailedIssue: Issue = {

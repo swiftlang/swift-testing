@@ -269,7 +269,7 @@ extension ABI.VersionNumber: Codable {
     struct MinimalRecord: Decodable {
       var version: ABI.VersionNumber
     }
-    self = try JSON.decode(MinimalRecord.self, from: recordJSON).version
+    self = try JSON.decode(MinimalRecord.self, from: Span(viewing: recordJSON.bytes)).version
   }
 #endif
 }

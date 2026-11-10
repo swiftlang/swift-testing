@@ -17,7 +17,7 @@ struct `Color tests` {
   @Test func `Colors are read from disk`() throws {
     let tempDirPath = try temporaryDirectory()
     let jsonPath = appendPathComponent("tag-colors.json", to: tempDirPath)
-    var jsonContent = """
+    let jsonContent = """
     {
     "alpha": "red",
     "beta": "#00CCFF",
@@ -32,10 +32,8 @@ struct `Color tests` {
     "encode purple": "purple"
     }
     """
-    try jsonContent.withUTF8 { jsonContent in
-      let fileHandle = try Testing.FileHandle(forWritingAtPath: jsonPath)
-      try fileHandle.write(jsonContent.span)
-    }
+    let fileHandle = try Testing.FileHandle(forWritingAtPath: jsonPath)
+    try fileHandle.write(ContiguousArray(jsonContent.utf8).span)
     defer {
       _ = remove(jsonPath)
     }
@@ -65,7 +63,7 @@ struct `Color tests` {
     var colorJSON = colorJSON
     colorJSON.withUTF8 { colorJSON in
       _ = #expect(throws: (any Error).self) {
-        _ = try JSON.decode(Color.self, from: .init(colorJSON))
+        _ = try JSON.decode(Color.self, from: colorJSON.span)
       }
     }
   }

@@ -61,12 +61,16 @@ extension ABI.Version {
     // Encode as JSON Lines if requested.
     var recordHandlerCopy = recordHandler
     if encodeAsJSONLines {
-      recordHandlerCopy = { @Sendable in JSON.asJSONLine($0, recordHandler) }
+      recordHandlerCopy = { recordJSON in
+        JSON.asJSONLine(Span(viewing: recordJSON.bytes)) { recordJSON in
+          recordJSON.withUnsafeBytes(recordHandler)
+        }
+      }
     }
 
     return eventHandler { [recordHandler = recordHandlerCopy] record in
       try? JSON.withEncoding(of: record) { recordJSON in
-        recordHandler(recordJSON)
+        recordJSON.withUnsafeBytes(recordHandler)
       }
     }
   }
@@ -106,7 +110,7 @@ extension ABI.Xcode16 {
         eventContext: Event.Context.Snapshot(snapshotting: context)
       )
       try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
-        recordHandler(eventAndContextJSON)
+        eventAndContextJSON.withUnsafeBytes(recordHandler)
       }
     }
   }

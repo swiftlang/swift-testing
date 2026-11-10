@@ -40,7 +40,7 @@ struct Test_Case_Argument_IDTests {
     #expect(arguments.count == 1)
     let argument = try #require(arguments.first)
     try JSON.withEncoding(of: CustomArgumentWrapper(rawValue: argumentValue)) { data in
-      #expect(argument.id.bytes == SHA256.hash(data))
+      #expect(argument.id.bytes == SHA256.hash(ContiguousArray(data)))
     }
   }
 

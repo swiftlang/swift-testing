@@ -284,7 +284,7 @@ struct EventHandlingInteropTests {
           $0, "Fallback should have been called with non nil contents")
         let recordData = try #require(contents.record.map(\.utf8).map(Array.init))
         let record = try recordData.withUnsafeBytes { recordData in
-          try JSON.decode(ABI.Record<ABI.v6_3>.self, from: recordData)
+          try JSON.decode(ABI.Record<ABI.v6_3>.self, from: Span(viewing: recordData.bytes))
         }
         guard case .event(let event) = record.kind else {
           Issue.record("Wrong type of record: \(record)")
@@ -331,7 +331,7 @@ private func _FakeXCTFail(payload: [UInt8]? = nil, severity: Issue.Severity = .e
     let encodedEvent = ABI.Record<ABI.CurrentVersion>(
       encoding: event, in: .init(test: nil, testCase: nil, iteration: nil, configuration: nil),
       messages: [])
-    return try JSON.withEncoding(of: encodedEvent) { Array($0) }
+    return try JSON.withEncoding(of: encodedEvent) { Array(ContiguousArray($0)) }
   }
 
   let encodedIssue = try payload ?? wrapInEncodedEvent(issue: .init(kind: .unconditional, severity: severity))
