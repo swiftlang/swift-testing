@@ -384,7 +384,7 @@ extension __CommandLineArguments_v0: Codable {
 ///
 /// This function generally assumes that Swift Package Manager has already
 /// validated the passed arguments.
-func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArguments_v0 {
+func parseCommandLineArguments(from args: [String]) throws(any Error) -> __CommandLineArguments_v0 {
   var result = __CommandLineArguments_v0()
 
   // Do not consider the executable path AKA argv[0].
@@ -551,7 +551,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 ///
 /// - Throws: If an argument is invalid, such as a malformed regular expression.
 @_spi(ForToolsIntegrationOnly)
-public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emitWarnings: Bool = true) throws -> Configuration {
+public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emitWarnings: Bool = true) throws(any Error) -> Configuration {
   var configuration = Configuration()
 
   // Parallelization (on by default)
@@ -647,7 +647,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
     case tag = "tag:"
   }
   var filters = [Configuration.TestFilter]()
-  func testFilter(forOptionArguments optionArguments: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
+  func testFilter(forOptionArguments optionArguments: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws(any Error) -> Configuration.TestFilter {
     var tagPatterns = [String]()
     var idPatterns = [String]()
 
@@ -796,7 +796,7 @@ func eventHandlerForStreamingEvents(
   withVersionNumber versionNumber: VersionNumber?,
   encodeAsJSONLines: Bool,
   forwardingTo targetEventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
-) throws -> Event.Handler {
+) throws(any Error) -> Event.Handler {
   let versionNumber = versionNumber ?? ABI.CurrentVersion.versionNumber
   guard let abi = ABI.version(forVersionNumber: versionNumber) else {
     throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(versionNumber)")
