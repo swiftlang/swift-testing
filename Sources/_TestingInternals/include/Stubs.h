@@ -390,7 +390,7 @@ static const char *_Nullable swt_getExitCodeName(int exitCode) {
 ///   - recordJSONByteCount: The size of the encoded event in bytes.
 ///   - reserved: Reserved for future use.
 typedef void (* SWTFallbackEventHandler)(const char *recordJSONSchemaVersionNumber,
-                                      const void *recordJSONBaseAddress,
+                                      const uint8_t *recordJSONBaseAddress,
                                       size_t recordJSONByteCount,
                                       const void *_Nullable reserved);
 

@@ -336,7 +336,7 @@ private func _FakeXCTFail(payload: [UInt8]? = nil, severity: Issue.Severity = .e
 
   let encodedIssue = try payload ?? wrapInEncodedEvent(issue: .init(kind: .unconditional, severity: severity))
 
-  encodedIssue.withUnsafeBytes { ptr in
+  encodedIssue.withUnsafeBufferPointer { ptr in
     let vers = String(describing: ABI.CurrentVersion.versionNumber)
     currentHandler(vers, ptr.baseAddress!, ptr.count, nil)
   }

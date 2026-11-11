@@ -84,9 +84,9 @@ extension Event {
   /// - Throws: Any error that prevented handling the encoded record.
   ///
   /// - Important: This function only handles a subset of event kinds.
-  static func handle<V>(_ recordJSON: UnsafeRawBufferPointer, encodedWith version: V.Type) throws where V: ABI.Version {
+  static func handle<V>(_ recordJSON: Span<UInt8>, encodedWith version: V.Type) throws where V: ABI.Version {
 #if !SWT_NO_INTEROP
-    let record = try JSON.decode(ABI.Record<V>.self, from: Span(viewing: recordJSON.bytes))
+    let record = try JSON.decode(ABI.Record<V>.self, from: recordJSON)
     guard case .event(let event) = record.kind,
           var issue = Issue(decoding: event) else {
       return
@@ -131,9 +131,7 @@ extension Event {
   ///
   /// - Returns: A source location to use when reporting an issue about
   ///   `recordJSON`.
-  private static func _bestAvailableSourceLocation(
-    forInvalidRecordJSON recordJSON: UnsafeRawBufferPointer
-  ) -> SourceLocation {
+  private static func _bestAvailableSourceLocation(forInvalidRecordJSON recordJSON: Span<UInt8>) -> SourceLocation {
     // TODO: try to actually extract a source location from arbitrary JSON?
 
     // If there's a test associated with the current task, it should have a
@@ -154,8 +152,7 @@ extension Event {
       String(validatingCString: recordJSONSchemaVersionNumber)
       .flatMap(VersionNumber.init)
       .flatMap { ABI.version(forVersionNumber: $0) } ?? ABI.v0.self
-    let recordJSON = UnsafeRawBufferPointer(
-      start: recordJSONBaseAddress, count: recordJSONByteCount)
+    let recordJSON = unsafe Span<UInt8>(_unsafeStart: recordJSONBaseAddress, count: recordJSONByteCount)
     do {
       try Self.handle(recordJSON, encodedWith: version)
     } catch {
@@ -167,7 +164,7 @@ extension Event {
         \(error)
 
         Raw payload:
-        \(recordJSON)
+        \(ContiguousArray(recordJSON))
         """
 
       // Try to figure out a reasonable source context for this issue.
@@ -245,8 +242,8 @@ extension Event {
       return nil
     }
 
-    let fallbackEventHandlerAddress = castCFunction(fallbackEventHandler, to: UnsafeRawPointer.self)
-    let ourFallbackEventHandlerAddress = castCFunction(
+    let fallbackEventHandlerAddress = unsafe castCFunction(fallbackEventHandler, to: UnsafeRawPointer.self)
+    let ourFallbackEventHandlerAddress = unsafe castCFunction(
       Self._ourFallbackEventHandler, to: UnsafeRawPointer.self)
     if fallbackEventHandlerAddress == ourFallbackEventHandlerAddress {
       // The fallback event handler belongs to Swift Testing, so we don't want
@@ -257,12 +254,14 @@ extension Event {
     // Encode the event as JSON and pass it to the handler.
     let abiVersion = ABI.v6_3.self
     return abiVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
-      fallbackEventHandler(
-        String(describing: abiVersion.versionNumber),
-        recordJSON.baseAddress!,
-        recordJSON.count,
-        nil
-      )
+      recordJSON.withMemoryRebound(to: UInt8.self) { recordJSON in
+        fallbackEventHandler(
+          String(describing: abiVersion.versionNumber),
+          recordJSON.baseAddress!,
+          recordJSON.count,
+          nil
+        )
+      }
     }
   }()
 #endif

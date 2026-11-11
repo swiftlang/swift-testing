@@ -9,17 +9,16 @@
 //
 
 #if !SWT_NO_INTEROP
-#if os(anyAppleOS) && !hasFeature(Embedded)
 private import _TestingInternals
-#else
+#if canImport(Synchronization)
 private import Synchronization
 #endif
 
 /// `Atomic`-compatible storage for ``FallbackEventHandler``.
 private final class _FallbackEventHandlerStorage: Sendable, RawRepresentable {
-  let rawValue: FallbackEventHandler
+  let rawValue: SWTFallbackEventHandler
 
-  init(rawValue: FallbackEventHandler) {
+  init(rawValue: SWTFallbackEventHandler) {
     self.rawValue = rawValue
   }
 }
@@ -35,34 +34,11 @@ private nonisolated(unsafe) let _fallbackEventHandler = {
 private let _fallbackEventHandler = AtomicLazyReference<_FallbackEventHandlerStorage>()
 #endif
 
-/// A type describing a fallback event handler that testing API can invoke as an
-/// alternate method of reporting test events to the current test runner.
-///
-/// For example, an `XCTAssert` failure in the body of a Swift Testing test
-/// cannot record issues directly with the Swift Testing runner. Instead, the
-/// framework packages the assertion failure as a JSON `Event` and invokes this
-/// handler to report the failure.
-///
-/// - Parameters:
-///   - recordJSONSchemaVersionNumber: The JSON schema version used to encode
-///     the event record.
-///   - recordJSONBaseAddress: A pointer to the first byte of the encoded event.
-///   - recordJSONByteCount: The size of the encoded event in bytes.
-///   - reserved: Reserved for future use.
-@usableFromInline
-package typealias FallbackEventHandler = @Sendable @convention(c) (
-  _ recordJSONSchemaVersionNumber: UnsafePointer<CChar>,
-  _ recordJSONBaseAddress: UnsafeRawPointer,
-  _ recordJSONByteCount: Int,
-  _ reserved: UnsafeRawPointer?
-) -> Void
-
 /// Get the current fallback event handler.
 ///
 /// - Returns: The currently-set handler function, if any.
-@c
-@usableFromInline
-package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
+@c @implementation
+package func _swift_testing_getFallbackEventHandler() -> SWTFallbackEventHandler? {
 #if os(anyAppleOS) && !hasFeature(Embedded)
   guard let unmanaged = swt_atomicLoad(_fallbackEventHandler).map(Unmanaged<_FallbackEventHandlerStorage>.fromOpaque) else {
     return nil
@@ -89,9 +65,8 @@ package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
 /// The fallback event handler can only be installed once per process, typically
 /// by the first testing library to run. If this function has already been
 /// called and the handler set, it does not replace the previous handler.
-@c
-@usableFromInline
-package func _swift_testing_installFallbackEventHandler(_ handler: FallbackEventHandler) -> CBool {
+@c @implementation
+package func _swift_testing_installFallbackEventHandler(_ handler: SWTFallbackEventHandler) -> CBool {
   var result = false
 
   let handler = _FallbackEventHandlerStorage(rawValue: handler)
