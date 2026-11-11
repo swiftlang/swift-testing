@@ -527,7 +527,6 @@ struct EventRecorderTests {
     recorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: runContext)
 
     let xmlString = stream.buffer.rawValue
-    #expect(xmlString.hasPrefix("<?xml version=\"1.1\""))
     #expect(xmlString.contains(#"A\u{1B}B\0C\u{07}D\u{7F}E"#))
     #expect(!xmlString.contains("\u{1B}"))
     #expect(!xmlString.contains("\0"))

@@ -99,7 +99,7 @@ extension Event.JUnitXMLRecorder {
         context.runStartInstant = instant
       }
       return #"""
-        <?xml version="1.1" encoding="UTF-8"?>
+        <?xml version="1.0" encoding="UTF-8"?>
         <testsuites>
 
         """#
@@ -235,16 +235,16 @@ extension Event.JUnitXMLRecorder {
       "&gt;"
     case "&":
       "&amp;"
+    case _ where character.asciiValue.map((0x20..<0x7F).contains) == true:
+      String(character)
     default:
       character.unicodeScalars.lazy
         .map { scalar in
           switch scalar.value {
           case 0x00...0x08, 0x0B...0x0C, 0x0E...0x1F, 0x7F:
             scalar.escaped(asASCII: true)
-          case _ where !scalar.isASCII || Character(scalar).isNewline:
-            "&#\(scalar.value);"
           default:
-            String(scalar)
+            "&#\(scalar.value);"
           }
         }
         .joined()
