@@ -513,8 +513,7 @@ nonisolated(nonsending) func callExitTest<each T>(
   var result: ExitTest.Result
   do {
     // Construct a temporary/local exit test to pass to the exit test handler.
-    var exitTest = ExitTest(id: ExitTest.ID(exitTestID))
-    exitTest.observedValues = observedValues
+    var exitTest = ExitTest(id: ExitTest.ID(exitTestID), _observedValues: observedValues)
     repeat exitTest.capturedValues.append(ExitTest._CapturedValue(each capturedValues))
 
     // Invoke the exit test handler and wait for the child process to terminate.
