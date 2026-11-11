@@ -662,8 +662,8 @@ extension ExitTest {
   private static func _writeBarrierValues() {
     let barrierValue = Self.barrierValue
     barrierValue.withUnsafeBufferPointer { barrierValue in
-      try? FileHandle.stdout.write(barrierValue)
-      try? FileHandle.stderr.write(barrierValue)
+      try? FileHandle.stdout.write(barrierValue.span)
+      try? FileHandle.stderr.write(barrierValue.span)
     }
   }
 
@@ -798,7 +798,7 @@ extension ExitTest {
     // events in the future, we can forward them too.)
     let eventHandler = ABI.BackChannelVersion.eventHandler(encodeAsJSONLines: true) { json in
       _ = try? backChannel.withLock {
-        try backChannel.write(json)
+        try backChannel.write(json.bytes)
         try backChannel.write(.asciiNewlineCharacter)
       }
     }
@@ -995,7 +995,7 @@ extension ExitTest {
         // to worry about backwards-compatibility.)
         try capturedValuesWriteEnd.withLock {
           try exitTest._withEncodedCapturedValuesForEntryPoint { capturedValuesJSON in
-            try capturedValuesWriteEnd.write(capturedValuesJSON)
+            try capturedValuesWriteEnd.write(capturedValuesJSON.bytes)
             try capturedValuesWriteEnd.write(.asciiNewlineCharacter)
           }
         }

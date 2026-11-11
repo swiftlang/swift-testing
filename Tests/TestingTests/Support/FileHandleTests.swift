@@ -103,28 +103,24 @@ struct FileHandleTests {
   func canWrite() throws {
     try withTemporaryPath { path in
       let fileHandle = try FileHandle(forWritingAtPath: path)
-      let bytes: [UInt8] = [0, 1, 2, 3, 4, 5]
-      try bytes.withUnsafeBufferPointer { bytes in
-        try fileHandle.write(bytes)
-      }
+      let bytes: ContiguousArray<UInt8> = [0, 1, 2, 3, 4, 5]
+      try fileHandle.write(bytes.span)
       try fileHandle.write("Hello world!")
     }
   }
 
   @Test("Can read from a file")
   func canRead() throws {
-    let bytes: [UInt8] = (0 ..< 8192).map { _ in
+    let bytes = (0 ..< 8192).map { _ in
       UInt8.random(in: .min ... .max)
-    }
+    }[...]
     try withTemporaryPath { path in
       do {
         let fileHandle = try FileHandle(forWritingAtPath: path)
-        try bytes.withUnsafeBufferPointer { bytes in
-          try fileHandle.write(bytes)
-        }
+        try fileHandle.write(bytes.span)
       }
       let fileHandle = try FileHandle(forReadingAtPath: path)
-      let bytes2 = try fileHandle.readToEnd()
+      let bytes2 = try fileHandle.readToEnd()[...]
       #expect(bytes == bytes2)
     }
   }
@@ -133,10 +129,8 @@ struct FileHandleTests {
   func cannotWriteBytesToReadOnlyFile() throws {
     let fileHandle = try FileHandle.null(options: [.readAccess])
     #expect(throws: CError.self) {
-      let bytes: [UInt8] = [0, 1, 2, 3, 4, 5]
-      try bytes.withUnsafeBufferPointer { bytes in
-        try fileHandle.write(bytes)
-      }
+      let bytes: ContiguousArray<UInt8> = [0, 1, 2, 3, 4, 5]
+      try fileHandle.write(bytes.span)
     }
   }
 
