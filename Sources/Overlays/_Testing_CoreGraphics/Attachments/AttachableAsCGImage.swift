@@ -26,7 +26,7 @@ package protocol AttachableAsCGImage: AttachableAsImage {
   /// An instance of `CGImage` representing this image.
   ///
   /// - Throws: Any error that prevents the creation of an image.
-  var attachableCGImage: CGImage { get throws }
+  var attachableCGImage: CGImage { get throws(ImageAttachmentError) }
 
   /// The orientation of the image.
   ///
