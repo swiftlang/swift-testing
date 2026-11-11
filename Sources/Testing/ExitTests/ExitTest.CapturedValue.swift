@@ -58,18 +58,32 @@ extension ExitTest {
     ///
     /// In a child process created by the current exit test handler, the value
     /// of this property is `nil` until the entry point sets it.
-    var wrappedValue: Wrapped? { get set }
+    var wrappedValue: Wrapped? { get nonmutating set }
   }
 
   /// A concrete implementation of the ``CapturedValue`` protocol.
   ///
   /// This type is not part of the public interface of the testing library.
   /// Tools SPI uses the ``CapturedValue`` protocol instead.
-  struct _CapturedValue<Wrapped>: Sendable, CapturedValue where Wrapped: Codable & Sendable {
+  final class _CapturedValue<Wrapped>: Sendable, CapturedValue where Wrapped: Codable & Sendable {
     /// The type of the underlying value.
     typealias Wrapped = Wrapped
 
-    var wrappedValue: Wrapped?
+    /// Storage for ``wrappedValue``.
+    private let _wrappedValue: Mutex<Wrapped?>
+
+    var wrappedValue: Wrapped? {
+      get {
+        _wrappedValue.rawValue
+      }
+      set {
+        _wrappedValue.withLock { $0 = newValue }
+      }
+    }
+
+    init(_ wrappedValue: Wrapped? = nil) {
+      _wrappedValue = Mutex(wrappedValue)
+    }
   }
 }
 

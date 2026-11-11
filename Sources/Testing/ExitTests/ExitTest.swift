@@ -149,11 +149,8 @@ public struct ExitTest: Sendable, ~Copyable {
   ///   open(capturedValue)
   /// }
   /// ```
-  ///
-  /// The order of values in this array must be the same between the parent and
-  /// child processes.
   @_spi(ForToolsIntegrationOnly)
-  public var capturedValues = [any CapturedValue]()
+  public fileprivate(set) var capturedValues = [any CapturedValue]()
 
   /// Make a copy of this instance.
   ///
@@ -527,7 +524,7 @@ nonisolated(nonsending) func callExitTest<each T>(
     // Construct a temporary/local exit test to pass to the exit test handler.
     var exitTest = ExitTest(id: ExitTest.ID(exitTestID))
     exitTest.observedValues = observedValues
-    repeat exitTest.capturedValues.append(ExitTest._CapturedValue(wrappedValue: each capturedValues))
+    repeat exitTest.capturedValues.append(ExitTest._CapturedValue(each capturedValues))
 
     // Invoke the exit test handler and wait for the child process to terminate.
     result = try await configuration.exitTestHandler(exitTest)
