@@ -86,10 +86,9 @@ extension Event {
   /// - Important: This function only handles a subset of event kinds.
   static func handle<V>(_ recordJSON: UnsafeRawBufferPointer, encodedWith version: V.Type) throws where V: ABI.Version {
 #if !SWT_NO_INTEROP
-    let record = try JSON.decode(ABI.Record<V>.self, from: recordJSON)
+    let record = try JSON.decode(ABI.Record<V>.self, from: Span(viewing: recordJSON.bytes))
     guard case .event(let event) = record.kind,
-      var issue = Issue(decoding: event)
-    else {
+          var issue = Issue(decoding: event) else {
       return
     }
 

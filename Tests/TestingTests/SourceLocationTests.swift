@@ -69,13 +69,11 @@ struct SourceLocationTests {
   @Test("SourceLocation.fileID property is synthesized if not decoded")
   func sourceLocationFileIDSynthesizedWhenNeeded() throws {
 #if os(Windows)
-    var json = #"{"filePath": "C:\fake/dir/FileName.swift/", "line": 1, "column": 1}"#
+    let json = #"{"filePath": "C:\fake/dir/FileName.swift/", "line": 1, "column": 1}"#
 #else
-    var json = #"{"filePath": "/fake/dir/FileName.swift/", "line": 1, "column": 1}"#
+    let json = #"{"filePath": "/fake/dir/FileName.swift/", "line": 1, "column": 1}"#
 #endif
-    let esl = try json.withUTF8 { json in
-      try JSON.decode(ABI.EncodedSourceLocation<ABI.v6_3>.self, from: UnsafeRawBufferPointer(json))
-    }
+    let esl = try JSON.decode(ABI.EncodedSourceLocation<ABI.v6_3>.self, from: json)
     let sourceLocation = try #require(SourceLocation(decoding: esl))
     #expect(SourceLocation.synthesizedModuleName == "__C")
     #expect(sourceLocation.fileID == "\(SourceLocation.synthesizedModuleName)/FileName.swift")
@@ -86,13 +84,11 @@ struct SourceLocationTests {
   @Test("SourceLocation does not accept a bad file ID from an EncodedSourceLocation")
   func badFileIDInEncodedSourceLocation() throws {
 #if os(Windows)
-    var json = #"{"filePath": "C:\fake/dir/FileName.swift/", "fileID": "bad", "line": 1, "column": 1}"#
+    let json = #"{"filePath": "C:\fake/dir/FileName.swift/", "fileID": "bad", "line": 1, "column": 1}"#
 #else
-    var json = #"{"filePath": "/fake/dir/FileName.swift/", "fileID": "bad", "line": 1, "column": 1}"#
+    let json = #"{"filePath": "/fake/dir/FileName.swift/", "fileID": "bad", "line": 1, "column": 1}"#
 #endif
-    let esl = try json.withUTF8 { json in
-      try JSON.decode(ABI.EncodedSourceLocation<ABI.v6_3>.self, from: UnsafeRawBufferPointer(json))
-    }
+    let esl = try JSON.decode(ABI.EncodedSourceLocation<ABI.v6_3>.self, from: json)
     let sourceLocation = SourceLocation(decoding: esl)
     #expect(sourceLocation == nil)
   }

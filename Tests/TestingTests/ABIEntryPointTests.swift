@@ -25,7 +25,7 @@ struct ABIEntryPointTests {
     arguments.verbosity = .min
 
     let result = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
-      let record = try! JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
+      let record = try! JSON.decode(ABI.Record<ABI.v0>.self, from: Span(viewing: recordJSON.bytes))
       _ = record.kind
     }
 
@@ -53,7 +53,7 @@ struct ABIEntryPointTests {
 
     try await confirmation("Test matched", expectedCount: 1...) { testMatched in
       _ = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
-        let record = try! JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
+        let record = try! JSON.decode(ABI.Record<ABI.v0>.self, from: Span(viewing: recordJSON.bytes))
         if case .test = record.kind {
           testMatched()
         } else {
@@ -75,7 +75,7 @@ struct ABIEntryPointTests {
 
     _ = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
       #expect(throws: Never.self) {
-        let record = try JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
+        let record = try JSON.decode(ABI.Record<ABI.v0>.self, from: Span(viewing: recordJSON.bytes))
         guard case let .test(encodedTest) = record.kind else {
           Issue.record("Unexpected record \(record)")
           return
@@ -129,7 +129,7 @@ struct ABIEntryPointTests {
 
     let argumentsJSON = try JSON.withEncoding(of: arguments) { argumentsJSON in
       let result = UnsafeMutableRawBufferPointer.allocate(byteCount: argumentsJSON.count, alignment: 1)
-      result.copyMemory(from: argumentsJSON)
+      argumentsJSON.withUnsafeBytes { result.copyMemory(from: $0) }
       return result
     }
     defer {
@@ -143,7 +143,7 @@ struct ABIEntryPointTests {
   @Test func decodeEmptyConfiguration() throws {
     let emptyBuffer = UnsafeRawBufferPointer(start: nil, count: 0)
     #expect(throws: DecodingError.self) {
-      _ = try JSON.decode(__CommandLineArguments_v0.self, from: emptyBuffer)
+      _ = try JSON.decode(__CommandLineArguments_v0.self, from: Span(viewing: emptyBuffer.bytes))
     }
   }
 
@@ -243,7 +243,7 @@ struct ABIEntryPointTests {
       free(cString)
     }
     let byteCount = strlen(cString)
-    return try JSON.decode(type, from: UnsafeRawBufferPointer(start: cString, count: byteCount))
+    return try JSON.decode(type, from: Span(viewing: UnsafeRawBufferPointer(start: cString, count: byteCount).bytes))
   }
 
   @Test func copyMetadataValue() throws {

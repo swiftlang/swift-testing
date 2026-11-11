@@ -53,7 +53,7 @@ extension ABI.v0 {
     return { configurationJSON, recordHandler in
 #if !SWT_NO_CODABLE
       let args = try configurationJSON.map { configurationJSON in
-        try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
+        try JSON.decode(__CommandLineArguments_v0.self, from: Span(viewing: configurationJSON.bytes))
       }
 #else
       guard configurationJSON == nil else {

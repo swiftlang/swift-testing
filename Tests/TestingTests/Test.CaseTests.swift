@@ -65,17 +65,15 @@ struct Test_CaseTests {
     }
 
     @Test func decoding_nonParameterized() throws {
-      let encodedData = Array(#"{"isStable": true}"#.utf8)
-      let testCaseID = try encodedData.withUnsafeBytes { encodedData in
-        try JSON.decode(Test.Case.ID.self, from: encodedData)
-      }
+      let encodedData = ContiguousArray(#"{"isStable": true}"#.utf8)
+      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData.span)
       #expect(testCaseID.isStable)
       #expect(testCaseID.argumentIDs == nil)
       #expect(testCaseID.discriminator == nil)
     }
 
     @Test func decoding_parameterizedStable() throws {
-      let encodedData = Array("""
+      let encodedData = ContiguousArray("""
         {
           "isStable": true,
           "argIDs": [
@@ -84,9 +82,7 @@ struct Test_CaseTests {
           "discriminator": 0
         }
         """.utf8)
-      let testCaseID = try encodedData.withUnsafeBytes { encodedData in
-        try JSON.decode(Test.Case.ID.self, from: encodedData)
-      }
+      let testCaseID = try JSON.decode(Test.Case.ID.self, from: encodedData.span)
       #expect(testCaseID.isStable)
       #expect(testCaseID.argumentIDs?.count == 1)
       #expect(testCaseID.discriminator == 0)

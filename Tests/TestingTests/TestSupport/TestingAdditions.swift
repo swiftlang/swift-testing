@@ -475,7 +475,7 @@ extension JSON {
   static func decode<T>(_ type: T.Type, from json: String) throws(any Error) -> T where T: Decodable {
     var json = json
     return try json.withUTF8 { json in
-      try JSON.decode(T.self, from: UnsafeRawBufferPointer(json))
+      try JSON.decode(T.self, from: json.span)
     }
   }
 

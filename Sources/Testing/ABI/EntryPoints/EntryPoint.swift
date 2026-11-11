@@ -418,10 +418,8 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   if let path = args.option(withLabel: "--configuration-path") ?? args.option(withLabel: "--experimental-configuration-path") {
 #if !SWT_NO_CODABLE
     let file = try FileHandle(forReadingAtPath: path)
-    let configurationJSON = try file.readToEnd()
-    result = try configurationJSON.withUnsafeBufferPointer { configurationJSON in
-      try JSON.decode(__CommandLineArguments_v0.self, from: .init(configurationJSON))
-    }
+    let configurationJSON = try file.readToEnd()[...]
+    result = try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON.span)
 
     // NOTE: We don't return early or block other arguments here: a caller is
     // allowed to pass a configuration AND e.g. "--verbose" and they'll both be

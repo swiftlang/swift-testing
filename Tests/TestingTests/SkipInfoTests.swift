@@ -38,7 +38,7 @@ struct SkipInfoTests {
       "testSkipped",
     ]
   ) func roundTrip(kind: String) throws {
-    var json = #"""
+    let json = #"""
       {
         "kind": "\#(kind)",
         "instant": { "since1970": 0, "absolute": 0 },
@@ -47,9 +47,7 @@ struct SkipInfoTests {
         "sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
       }
       """#
-    let event = try json.withUTF8 { json in
-      try JSON.decode(ABI.EncodedEvent<ABI.CurrentVersion>.self, from: UnsafeRawBufferPointer(json))
-    }
+    let event = try JSON.decode(ABI.EncodedEvent<ABI.CurrentVersion>.self, from: json)
 
     let info = SkipInfo(decoding: event)
     let expected = SkipInfo(
@@ -59,7 +57,7 @@ struct SkipInfoTests {
   }
 
   @Test("SkipInfo nil for unsupported event kind") func decodeSkipInfoUnsupported() throws {
-    var json = #"""
+    let json = #"""
       {
         "kind": "testStarted",
         "instant": { "since1970": 0, "absolute": 0 },
@@ -68,9 +66,7 @@ struct SkipInfoTests {
         "sourceLocation": { "filePath": "/a/b/c", "line": 12345, "column": 67890 },
       }
       """#
-    let event = try json.withUTF8 { json in
-      try JSON.decode(ABI.EncodedEvent<ABI.CurrentVersion>.self, from: UnsafeRawBufferPointer(json))
-    }
+    let event = try JSON.decode(ABI.EncodedEvent<ABI.CurrentVersion>.self, from: json)
 
     let info = SkipInfo(decoding: event)
     #expect(info == nil)

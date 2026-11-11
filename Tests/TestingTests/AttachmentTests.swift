@@ -1103,10 +1103,8 @@ extension AttachmentTests {
 #if os(Windows)
       let path = path.replacing(#"\"#, with: #"\\"#)
 #endif
-      var json = #"{"path": "\#(path)"}"#
-      let eattachment = try json.withUTF8 { json in
-        try JSON.decode(ABI.EncodedAttachment<ABI.v6_3>.self, from: UnsafeRawBufferPointer(json))
-      }
+      let json = #"{"path": "\#(path)"}"#
+      let eattachment = try JSON.decode(ABI.EncodedAttachment<ABI.v6_3>.self, from: json)
       let attachment = Attachment(decoding: eattachment)
       #expect(attachment != nil)
       try attachment?.withUnsafeBytes { bytes in
@@ -1119,10 +1117,8 @@ extension AttachmentTests {
 
   @Test("Decoding an encoded attachment with bytes (experimental)")
   func decodingAnEncodedAttachmentWithBytes() throws {
-    var json = #"{"_bytes": "YWJjMTIz"}"#
-    let eattachment = try json.withUTF8 { json in
-      try JSON.decode(ABI.EncodedAttachment<ABI.ExperimentalVersion>.self, from: UnsafeRawBufferPointer(json))
-    }
+    let json = #"{"_bytes": "YWJjMTIz"}"#
+    let eattachment = try JSON.decode(ABI.EncodedAttachment<ABI.ExperimentalVersion>.self, from: json)
     let attachment = Attachment(decoding: eattachment)
     #expect(attachment != nil)
     try attachment?.withUnsafeBytes { bytes in
@@ -1133,10 +1129,8 @@ extension AttachmentTests {
 
   @Test("Decoding an encoded attachment with bytes as UInt8 array (experimental)")
   func decodingAnEncodedAttachmentWithBytesAsArray() throws {
-    var json = #"{"_bytes": [1, 2, 3, 4, 5, 6]}"#
-    let eattachment = try json.withUTF8 { json in
-      try JSON.decode(ABI.EncodedAttachment<ABI.ExperimentalVersion>.self, from: UnsafeRawBufferPointer(json))
-    }
+    let json = #"{"_bytes": [1, 2, 3, 4, 5, 6]}"#
+    let eattachment = try JSON.decode(ABI.EncodedAttachment<ABI.ExperimentalVersion>.self, from: json)
     let attachment = Attachment(decoding: eattachment)
     #expect(attachment != nil)
     try attachment?.withUnsafeBytes { bytes in
@@ -1147,10 +1141,8 @@ extension AttachmentTests {
 
   @Test("Decoding an encoded attachment with an error (experimental)")
   func decodingAnEncodedAttachmentWithError() throws {
-    var json = #"{"_error": {"code": 123, "domain": "domain", "description": "text"}}"#
-    let eattachment = try json.withUTF8 { json in
-      try JSON.decode(ABI.EncodedAttachment<ABI.ExperimentalVersion>.self, from: UnsafeRawBufferPointer(json))
-    }
+    let json = #"{"_error": {"code": 123, "domain": "domain", "description": "text"}}"#
+    let eattachment = try JSON.decode(ABI.EncodedAttachment<ABI.ExperimentalVersion>.self, from: json)
     let attachment = Attachment(decoding: eattachment)
     #expect(attachment != nil)
     let error = #expect(throws: (any Error).self) {
@@ -1164,7 +1156,7 @@ extension AttachmentTests {
 
   @Test("Decoding an encoded attachment from an event")
   func decodingAnEncodedAttachmentWithEvent() throws {
-    var json = #"""
+    let json = #"""
       {
         "kind": "valueAttached",
         "instant": { "since1970": 0, "absolute": 0 },
@@ -1172,9 +1164,7 @@ extension AttachmentTests {
         "attachment": { "_bytes": "YWJjMTIz" }
       }
       """#
-    let event = try json.withUTF8 { json in
-      try JSON.decode(ABI.EncodedEvent<ABI.ExperimentalVersion>.self, from: UnsafeRawBufferPointer(json))
-    }
+    let event = try JSON.decode(ABI.EncodedEvent<ABI.ExperimentalVersion>.self, from: json)
     let attachment = try #require(Attachment(decoding: event))
     #expect(attachment.sourceLocation.line == 12345)
   }

@@ -24,10 +24,7 @@
 ///
 /// - Throws: If the JSON doesn't represent a valid EncodedEvent.
 private func encodedEvent<V>(_ version: V.Type, _ json: String) throws -> ABI.EncodedEvent<V> {
-  var json = json
-  return try json.withUTF8 { json in
-    try JSON.decode(ABI.EncodedEvent<V>.self, from: UnsafeRawBufferPointer(json))
-  }
+  try JSON.decode(ABI.EncodedEvent<V>.self, from: json)
 }
 
 /// Creates an EncodedEvent from a JSON string.
@@ -467,7 +464,7 @@ extension `ABI.EncodedEvent Tests`.Messages {
 
     let eventHandler = ABI.ExperimentalVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
       #expect(throws: Never.self) {
-        let decodedRecord = try JSON.decode(ABI.Record<ABI.ExperimentalVersion>.self, from: recordJSON)
+        let decodedRecord = try JSON.decode(ABI.Record<ABI.ExperimentalVersion>.self, from: Span(viewing: recordJSON.bytes))
         guard case let .event(decodedEvent) = decodedRecord.kind else {
           Issue.record("Got the wrong kind '\(decodedRecord.kind)' of record back when encoding an event.")
           return

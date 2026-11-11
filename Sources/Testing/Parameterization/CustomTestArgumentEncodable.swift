@@ -134,8 +134,8 @@ extension Test.Case.Argument.ID {
   /// - Throws: Any error encountered during encoding.
   private static func _encode(_ value: some Encodable, parameter: Test.Parameter) throws -> [UInt8] {
     /// The encoded representation of an argument is the SHA256 hash of its Codable JSON representation.
-    try JSON.withEncoding(of: value, userInfo: [._testParameterUserInfoKey: parameter]) { buffer in
-      SHA256.hash(buffer)
+    try JSON.withEncoding(of: value, userInfo: [._testParameterUserInfoKey: parameter]) { json in
+      json.withUnsafeBytes(SHA256.hash)
     }
   }
 }
