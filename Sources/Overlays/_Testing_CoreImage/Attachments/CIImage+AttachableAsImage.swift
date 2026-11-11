@@ -23,7 +23,7 @@ extension CIImage: AttachableAsImage, AttachableAsCGImage {
   ///   @Available(Xcode, introduced: 26.4)
   /// }
   package var attachableCGImage: CGImage {
-    get throws {
+    get throws(ImageAttachmentError) {
       guard let result = CIContext().createCGImage(self, from: extent) else {
         throw ImageAttachmentError.couldNotCreateCGImage
       }

@@ -44,7 +44,7 @@ extension NSImage: AttachableAsImage, AttachableAsCGImage {
   ///   @Available(Xcode, introduced: 26.4)
   /// }
   package var attachableCGImage: CGImage {
-    get throws {
+    get throws(ImageAttachmentError) {
       let ctm = AffineTransform(scale: attachmentScaleFactor) as NSAffineTransform
       guard let result = cgImage(forProposedRect: nil, context: nil, hints: [.ctm: ctm]) else {
         throw ImageAttachmentError.couldNotCreateCGImage
