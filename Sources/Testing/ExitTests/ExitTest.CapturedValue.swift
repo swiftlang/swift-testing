@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 @_spi(ForToolsIntegrationOnly)
 #if SWT_NO_EXIT_TESTS
 @_unavailableInEmbedded
