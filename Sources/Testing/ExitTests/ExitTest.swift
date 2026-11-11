@@ -420,7 +420,7 @@ extension ExitTest {
     // Wrap the body function in a thunk that decodes any captured state and
     // passes it along.
     let body: ExitTest.Body = { exitTest in
-      let values: (repeat each T) = try exitTest.capturedValues.takeCapturedValues()
+      let values: (repeat each T) = exitTest.capturedValues.takeCapturedValues()
       try await body(repeat each values)
     }
 
