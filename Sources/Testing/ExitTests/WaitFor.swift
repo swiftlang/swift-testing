@@ -20,7 +20,7 @@ internal import _TestingInternals
 ///
 /// - Throws: If the exit status of the process with ID `pid` cannot be
 ///   determined (i.e. it does not represent an exit condition.)
-private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
+private func _blockAndWait(for pid: consuming pid_t) throws(any Error) -> ExitStatus {
   let pid = consume pid
 
   // Get the exit status of the process or throw an error (other than EINTR.)
@@ -61,7 +61,7 @@ private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
 /// - Note: The open-source implementation of libdispatch available on Linux
 ///   and other platforms does not support `DispatchSourceProcess`. Those
 ///   platforms use an alternate implementation below.
-nonisolated(nonsending) func wait(for pid: consuming pid_t) async throws -> ExitStatus {
+nonisolated(nonsending) func wait(for pid: consuming pid_t) async throws(any Error) -> ExitStatus {
   let pid = consume pid
 
   let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit)
@@ -233,7 +233,7 @@ private let _createWaitThread: Void = {
 ///
 /// On Apple platforms, the libdispatch-based implementation above is more
 /// efficient because it does not need to permanently reserve a thread.
-nonisolated(nonsending) func wait(for pid: consuming pid_t) async throws -> ExitStatus {
+nonisolated(nonsending) func wait(for pid: consuming pid_t) async throws(any Error) -> ExitStatus {
   let pid = consume pid
 
   // Ensure the waiter thread is running.
@@ -270,7 +270,7 @@ nonisolated(nonsending) func wait(for pid: consuming pid_t) async throws -> Exit
 /// This implementation of `wait(for:)` calls `RegisterWaitForSingleObject()` to
 /// wait for `processHandle`, suspends the calling task until the waiter's
 /// callback is called, then calls `GetExitCodeProcess()`.
-nonisolated(nonsending) func wait(for processHandle: consuming HANDLE) async throws -> ExitStatus {
+nonisolated(nonsending) func wait(for processHandle: consuming HANDLE) async throws(any Error) -> ExitStatus {
   let processHandle = consume processHandle
   defer {
     _ = CloseHandle(processHandle)
@@ -314,6 +314,6 @@ nonisolated(nonsending) func wait(for processHandle: consuming HANDLE) async thr
 }
 #else
 #warning("Platform-specific implementation missing: cannot wait for child processes to exit")
-nonisolated(nonsending) func wait(for processID: consuming Never) async throws -> ExitStatus {}
+nonisolated(nonsending) func wait(for processID: consuming Never) async throws(any Error) -> ExitStatus {}
 #endif
 #endif

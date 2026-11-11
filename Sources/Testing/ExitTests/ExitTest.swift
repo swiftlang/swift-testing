@@ -86,7 +86,7 @@ public struct ExitTest: Sendable, ~Copyable {
   ///
   /// - Parameters:
   ///   - exitTest: The exit test to which this body closure belongs.
-  fileprivate typealias Body = nonisolated(nonsending) @Sendable (_ exitTest: inout Self) async throws -> Void
+  fileprivate typealias Body = nonisolated(nonsending) @Sendable (_ exitTest: inout Self) async throws(any Error) -> Void
 
   /// The body closure of the exit test.
   ///
@@ -399,9 +399,9 @@ extension ExitTest {
   ///
   /// - Warning: This function is used to implement the
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
-  @safe public static func __store<each T>(
+  @safe public static func __store<each T, E>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
-    _ body: nonisolated(nonsending) @escaping @Sendable (repeat each T) async throws -> Void,
+    _ body: nonisolated(nonsending) @escaping @Sendable (repeat each T) async throws(E) -> Void,
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
@@ -420,7 +420,7 @@ extension ExitTest {
     // Wrap the body function in a thunk that decodes any captured state and
     // passes it along.
     let body: ExitTest.Body = { exitTest in
-      let values: (repeat each T) = try exitTest.capturedValues.takeCapturedValues()
+      let values: (repeat each T) = exitTest.capturedValues.takeCapturedValues()
       try await body(repeat each values)
     }
 
@@ -692,7 +692,7 @@ extension ExitTest {
   /// are available or the child environment is otherwise terminated. The parent
   /// environment is then responsible for interpreting those results and
   /// recording any issues that occur.
-  public typealias Handler = nonisolated(nonsending) @Sendable (_ exitTest: borrowing Self) async throws -> ExitTest.Result
+  public typealias Handler = nonisolated(nonsending) @Sendable (_ exitTest: borrowing Self) async throws(any Error) -> ExitTest.Result
 
   /// Make a file handle from the string contained in the given environment
   /// variable.
@@ -890,7 +890,7 @@ extension ExitTest {
       return result
     }()
 
-    @Sendable nonisolated(nonsending) func result(_ exitTest: borrowing ExitTest) async throws -> ExitTest.Result {
+    @Sendable nonisolated(nonsending) func result(_ exitTest: borrowing ExitTest) async throws(any Error) -> ExitTest.Result {
       let childProcessExecutablePath = try childProcessExecutablePath.get()
 
       // Inherit the environment from the parent process and make any necessary
@@ -1092,7 +1092,7 @@ extension ExitTest {
   ///   - backChannel: The file handle that `recordJSON` was read from.
   ///
   /// - Throws: Any error encountered attempting to decode or process the JSON.
-  private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
+  private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws(any Error) {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
     guard case let .event(encodedEvent) = record.kind,
       let event = Event(decoding: encodedEvent)
@@ -1131,7 +1131,7 @@ extension ExitTest {
   /// This function should only be used when the process was started via the
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
-  private mutating func _decodeCapturedValuesForEntryPoint() throws {
+  private mutating func _decodeCapturedValuesForEntryPoint() throws(any Error) {
     // Read the content of the captured values stream provided by the parent
     // process above.
     guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_CAPTURED_VALUES", options: [.readAccess]) else {
@@ -1146,7 +1146,7 @@ extension ExitTest {
     capturedValues = try zip(capturedValues, capturedValuesJSONLines).map { capturedValue, capturedValueJSON in
       var capturedValue = capturedValue
 
-      func open<T>(_ type: T.Type) throws -> T where T: Codable & Sendable {
+      func open<T>(_ type: T.Type) throws(any Error) -> T where T: Codable & Sendable {
         return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
           try JSON.decode(
             type,
@@ -1176,7 +1176,7 @@ extension ExitTest {
   /// This function should only be used when the process was started via the
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
-  private borrowing func _withEncodedCapturedValuesForEntryPoint(_ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void {
+  private borrowing func _withEncodedCapturedValuesForEntryPoint<E>(_ body: (UnsafeRawBufferPointer) throws(E) -> Void) throws(any Error) -> Void {
     for capturedValue in capturedValues {
       try JSON.withEncoding(
         of: capturedValue.wrappedValue!,

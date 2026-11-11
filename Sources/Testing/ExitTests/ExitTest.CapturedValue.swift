@@ -154,11 +154,11 @@ extension Collection where Element == ExitTest.CapturedValue {
   ///
   /// This function assumes that the entry point function has already set the
   /// ``wrappedValue`` property of each element in this collection.
-  func takeCapturedValues<each T>() throws -> (repeat each T) {
+  func takeCapturedValues<each T>() -> (repeat each T) {
     func nextValue<U>(
       as type: U.Type,
       from capturedValues: inout SubSequence
-    ) throws -> U {
+    ) -> U {
       // Get the next captured value in the collection. If we run out of values
       // before running out of parameter pack elements, then something in the
       // exit test handler or entry point is likely broken.
@@ -182,7 +182,7 @@ extension Collection where Element == ExitTest.CapturedValue {
     }
 
     var capturedValues = self[...]
-    return (repeat try nextValue(as: (each T).self, from: &capturedValues))
+    return (repeat nextValue(as: (each T).self, from: &capturedValues))
   }
 }
 #endif
