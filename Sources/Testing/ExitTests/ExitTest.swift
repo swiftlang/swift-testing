@@ -96,10 +96,6 @@ public struct ExitTest: Sendable, ~Copyable {
   fileprivate var body: Body = { _ in }
 
   /// Storage for ``observedValues``.
-  ///
-  /// Key paths are not sendable because the properties they refer to may or may
-  /// not be, so this property needs to be `nonisolated(unsafe)`. It is safe to
-  /// use it in this fashion because ``ExitTest/Result`` is sendable.
   fileprivate var _observedValues = [any PartialKeyPath<ExitTest.Result> & Sendable]()
 
   /// Key paths representing results from within this exit test that should be
@@ -159,10 +155,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// This function is unsafe because if the caller is not careful, it could
   /// invoke the same exit test twice.
   fileprivate borrowing func unsafeCopy() -> Self {
-    var result = Self(id: id, body: body)
-    result._observedValues = _observedValues
-    result.capturedValues = capturedValues
-    return result
+    Self(id: id, body: body, _observedValues: _observedValues, capturedValues: capturedValues)
   }
 }
 
@@ -388,9 +381,7 @@ extension ExitTest {
     ///
     /// - Returns: A new exit test as represented by this instance.
     func makeExitTest() -> ExitTest {
-      var exitTest = ExitTest(id: id, body: body)
-      exitTest.capturedValues = capturedValues
-      return exitTest
+      ExitTest(id: id, body: body, capturedValues: capturedValues)
     }
   }
 
