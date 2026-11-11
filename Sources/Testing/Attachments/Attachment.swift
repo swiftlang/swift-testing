@@ -152,9 +152,9 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
 
   /// The implementation of ``withUnsafeBytes(for:_:)`` borrowed from the
   /// original attachment.
-  private var _withUnsafeBytes: @Sendable ((UnsafeRawBufferPointer) throws -> Void) throws -> Void
+  private var _withUnsafeBytes: @Sendable ((UnsafeRawBufferPointer) throws(any Error) -> Void) throws(any Error) -> Void
 
-  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     var result: R!
     try _withUnsafeBytes { bytes in
       result = try body(bytes)
@@ -396,7 +396,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
-  @inlinable public borrowing func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  @inlinable public borrowing func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     try attachableValue.withUnsafeBytes(for: self, body)
   }
 }
@@ -436,7 +436,7 @@ extension Attachable where Self: ~Copyable {
   /// The testing library uses this function when saving an attachment. If there
   /// is already a file at `filePath`, the implementation throws an instance of
   /// ``CError`` with code `EEXIST`.
-  borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws {
+  borrowing func write(toFileAtPath filePath: String, for attachment: borrowing Attachment<Self>) throws(any Error) {
 #if !SWT_NO_FILE_CLONING
     if clone(toFileAtPath: filePath, for: attachment) {
       return
@@ -478,7 +478,7 @@ extension Attachment where AttachableValue: ~Copyable {
   /// attachments the same way that Swift Package Manager does. You are not
   /// required to use this function.
   @_spi(ForToolsIntegrationOnly)
-  public borrowing func write(toFileInDirectoryAtPath directoryPath: String) throws -> String {
+  public borrowing func write(toFileInDirectoryAtPath directoryPath: String) throws(any Error) -> String {
     try write(
       toFileInDirectoryAtPath: directoryPath,
       appending: String(UInt64.random(in: 0 ..< .max), radix: 36)
@@ -506,7 +506,7 @@ extension Attachment where AttachableValue: ~Copyable {
   /// attachments the same way that Swift Package Manager does. You are not
   /// required to use this function.
   @_spi(ForToolsIntegrationOnly)
-  public borrowing func write(toFileAtPath filePath: String) throws {
+  public borrowing func write(toFileAtPath filePath: String) throws(any Error) {
     try attachableValue.write(toFileAtPath: filePath, for: self)
   }
 
@@ -530,7 +530,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///
   /// If the argument `suffix` always produces the same string, the result of
   /// this function is undefined.
-  borrowing func write(toFileInDirectoryAtPath directoryPath: String, usingPreferredName: Bool = true, appending suffix: @autoclosure () -> String) throws -> String {
+  borrowing func write(toFileInDirectoryAtPath directoryPath: String, usingPreferredName: Bool = true, appending suffix: @autoclosure () -> String) throws(any Error) -> String {
     let result: String
 
     let preferredName = usingPreferredName ? preferredName : Self.defaultPreferredName

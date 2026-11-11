@@ -59,7 +59,7 @@ extension Attachable where Self: Encodable {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
-  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     let attachment = try Attachment(encoding: attachment.attachableValue, named: attachment.preferredName, sourceLocation: attachment.sourceLocation)
     return try attachment.withUnsafeBytes(body)
   }
