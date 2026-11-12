@@ -170,20 +170,45 @@ struct AttributeInfo {
     // closure so they may be evaluated lazily at runtime.
     if let testFunctionArguments {
       let argumentCount = testFunctionArguments.count
-      let parameterCount = declaration.as(FunctionDeclSyntax.self)?.signature.parameterClause.parameters.count
+      let parameters = declaration.as(FunctionDeclSyntax.self)?.signature.parameterClause.parameters
       arguments += testFunctionArguments.map { argument in
+        var isDesugared = false
+        if argumentCount == 1, let parameters, parameters.count != argumentCount {
+          isDesugared = true
+        }
+
+        // If the parameter list is a desugared tuple and the argument
+        // expression is an array literal (peering through effectful keyword
+        // wrapper expressions), explicitly specify the expression type to help
+        // the type checker.
+        //
+        // NOTE: since tuples cannot contain non-copyable elements, we don't
+        // need to be concerned with InlineArray when we add support in #2003.
+        var argumentExpr = argument.expression.trimmed
+        if isDesugared, let parameters,
+           argumentExpr.ignoringEffectKeywords.is(ArrayExprSyntax.self) {
+          let tupleType = TupleTypeSyntax(
+            elements: TupleTypeElementListSyntax {
+              for parameter in parameters {
+                TupleTypeElementSyntax(type: parameter.type.trimmed)
+              }
+            }
+          )
+          argumentExpr = "\(argumentExpr) as Swift.Array<\(tupleType)>"
+        }
+
         var copy = argument
         copy.expression = ExprSyntax(
           ClosureExprSyntax {
             FunctionCallExprSyntax(callee: "Testing.__makeArgumentList" as ExprSyntax) {
-              LabeledExprSyntax(expression: argument.expression.trimmed)
+              LabeledExprSyntax(expression: argumentExpr)
 
               // We only need to track the parameter count if tuple desugaring
               // is in play, which cannot happen with multiple argument lists
               // (because you can't desugar a tuple into a partial parameter
               // list alongside other parameters).
-              if argumentCount == 1, let parameterCount, parameterCount != argumentCount {
-                LabeledExprSyntax(label: "parameterCount", expression: IntegerLiteralExprSyntax(parameterCount))
+              if isDesugared, let parameters {
+                LabeledExprSyntax(label: "parameterCount", expression: IntegerLiteralExprSyntax(parameters.count))
               }
             }
           }

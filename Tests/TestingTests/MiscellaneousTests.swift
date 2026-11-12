@@ -288,6 +288,20 @@ extension Bool {
 
 @Test(.hidden, arguments: 0 ..< 10, 0 ..< 10) func `Cartesian products can be passed as 2-tuples`(xy: (Int, Int)) {}
 
+@Test(.hidden, arguments: [
+  (syrup: ["":""], of: ["":""], squill: 123, please: false),
+  (one: [:], ring: [:], to: 123, rule: false), (them: [:], all: [:], 123, false),
+  ([:], [:], 123, false), ([:], [:], 123, false), ([:], [:], 123, false),
+  ([:], [:], 123, false), ([:], [:], 123, false), ([:], [:], 123, false),
+  ([:], [:], 123, false), ([:], [:], 123, false), ([:], [:], 123, false),
+  ([:], [:], 123, false), ([:], [:], 123, false), ([:], [:], 123, false),
+  ([:], [:], 123, false), ([:], [:], 123, false), ([:], [:], 123, false),
+])
+func `Very long arrays type-check correctly`(a: [String: String], b: [String: String], c: Int, d: Bool) {}
+
+
+// MARK: -
+
 @Suite("Miscellaneous tests")
 struct MiscellaneousTests {
   @Test("Free function's name")
