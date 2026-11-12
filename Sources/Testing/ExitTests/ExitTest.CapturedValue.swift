@@ -62,6 +62,11 @@ extension ExitTest {
     ///
     /// In a child process created by the current exit test handler, the value
     /// of this property is `nil` until the entry point sets it.
+    ///
+    /// If the value of this property is `nil` when the corresponding exit test
+    /// is invoked (by calling ``ExitTest/callAsFunction()``), the testing
+    /// library records an issue for the current test and causes the current
+    /// (child) process to terminate abnormally.
     var wrappedValue: Wrapped? { get nonmutating set }
   }
 
@@ -98,7 +103,8 @@ extension ExitTest {
   /// Cast the elements in a collection to a tuple of their wrapped values.
   ///
   /// - Parameters:
-  ///   - collection
+  ///   - collection: A collection of values conforming to ``CapturedValue``
+  ///     whose wrapped values should be passed to the calling exit test.
   ///
   /// - Returns: A tuple containing the wrapped values of the elements in
   ///   `collection`.
@@ -108,18 +114,18 @@ extension ExitTest {
   ///
   /// This function assumes that the entry point function has already set the
   /// ``wrappedValue`` property of each element in `collection`.
-  static func takeCapturedValues<each T, C>(from collection: C) -> (repeat each T) where C: Collection<any CapturedValue> {
+  static func takeCapturedValues<each T, C>(from collection: C) throws(SystemError) -> (repeat each T) where C: Collection<any CapturedValue> {
     func nextValue<U>(
       as type: U.Type,
       from capturedValues: inout C.SubSequence
-    ) -> U {
+    ) throws(SystemError) -> U {
       // Get the next captured value in the collection. If we run out of values
       // before running out of parameter pack elements, then something in the
       // exit test handler or entry point is likely broken.
       guard let wrappedValue = capturedValues.first?.wrappedValue else {
         let actualCount = collection.count
         let expectedCount = parameterPackCount(repeat (each T).self)
-        fatalError("Found fewer captured values (\(actualCount)) than expected (\(expectedCount)) when passing them to the current exit test.")
+        throw SystemError(description: "Found fewer captured values (\(actualCount)) than expected (\(expectedCount)) when passing them to the current exit test.")
       }
 
       // Next loop, get the next element. (We're mutating a subsequence, not
@@ -129,14 +135,14 @@ extension ExitTest {
       // Make sure the value is of the correct type. If it's not, that's also
       // probably a problem with the exit test handler or entry point.
       guard let wrappedValue = wrappedValue as? U else {
-        fatalError("Expected captured value at index \(capturedValues.startIndex) with type '\(String(describingForTest: U.self))', but found an instance of '\(String(describingForTest: Swift.type(of: wrappedValue)))' instead.")
+        throw SystemError(description: "Expected captured value at index \(capturedValues.startIndex) with type '\(String(describingForTest: U.self))', but found an instance of '\(String(describingForTest: Swift.type(of: wrappedValue)))' instead.")
       }
       
       return wrappedValue
     }
 
     var capturedValues = collection[...]
-    return (repeat nextValue(as: (each T).self, from: &capturedValues))
+    return (repeat try nextValue(as: (each T).self, from: &capturedValues))
   }
 }
 #endif
