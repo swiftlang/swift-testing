@@ -171,6 +171,7 @@ struct AttributeInfo {
     if let testFunctionArguments {
       let argumentCount = testFunctionArguments.count
       let parameters = declaration.as(FunctionDeclSyntax.self)?.signature.parameterClause.parameters
+      let parametersAreAttributed = parameters?.contains { $0.type.is(AttributedTypeSyntax.self) } ?? false
       arguments += testFunctionArguments.map { argument in
         var isDesugared = false
         if argumentCount == 1, let parameters, parameters.count != argumentCount {
@@ -187,14 +188,29 @@ struct AttributeInfo {
         var argumentExpr = argument.expression.trimmed
         if isDesugared, let parameters,
            argumentExpr.ignoringEffectKeywords.is(ArrayExprSyntax.self) {
-          let tupleType = TupleTypeSyntax(
-            elements: TupleTypeElementListSyntax {
-              for parameter in parameters {
-                TupleTypeElementSyntax(type: parameter.type.trimmed)
+          if parametersAreAttributed {
+            // We currently do not try to handle these types because we can't
+            // distinguish attributes like `@Sendable` that are part of the
+            // formal type from attributes like `@escaping` that need to be
+            // stripped. Hence, if we encounter an attributed type, just specify
+            // `as Swift.Array` without the generic parameter.
+            argumentExpr = "\(argumentExpr) as Swift.Array"
+          } else {
+            let tupleType = TupleTypeSyntax(
+              elements: TupleTypeElementListSyntax {
+                for parameter in parameters {
+                  if let iuoType = parameter.type.as(ImplicitlyUnwrappedOptionalTypeSyntax.self) {
+                    // Convert to an optional rather than IUO type before
+                    // continuing.
+                    TupleTypeElementSyntax(type: OptionalTypeSyntax(wrappedType: iuoType.wrappedType.trimmed))
+                  } else {
+                    TupleTypeElementSyntax(type: parameter.type.trimmed)
+                  }
+                }
               }
-            }
-          )
-          argumentExpr = "\(argumentExpr) as Swift.Array<\(tupleType)>"
+            )
+            argumentExpr = "\(argumentExpr) as Swift.Array<\(tupleType)>"
+          }
         }
 
         var copy = argument

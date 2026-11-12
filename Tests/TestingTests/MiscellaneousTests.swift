@@ -297,8 +297,10 @@ extension Bool {
   ([:], [:], 123, false), ([:], [:], 123, false), ([:], [:], 123, false),
   ([:], [:], 123, false), ([:], [:], 123, false), ([:], [:], 123, false),
 ])
-func `Very long arrays type-check correctly`(a: [String: String], b: [String: String], c: Int, d: Bool) {}
+func `Very long arrays type-check correctly`(a: [String: String], b: [String: String], c: Int, d: Bool!) {}
 
+@Test(.hidden, arguments: [({ @Sendable in }, 0)])
+func `Tests with arguments of attributed type (AttributedTypeSyntax) parse correctly`(a: @Sendable () -> Void, b: borrowing Int) {}
 
 // MARK: -
 

@@ -132,38 +132,24 @@ extension BidirectionalCollection<Syntax> {
 
 // MARK: - Bypassing effect keywords
 
-/// A syntax visitor class that looks for the expression ignoring any
-/// effectful keywords.
-private final class _UnderlyingExpressionFinder: SyntaxAnyVisitor {
-  /// The deepest expression we've found that isn't an effect keyword or
-  /// parentheses guarding a single expression.
-  var expression: ExprSyntax?
-
-  override func visitAny(_ node: Syntax) -> SyntaxVisitorContinueKind {
-    guard let expr = node.as(ExprSyntax.self) else {
-      return .visitChildren
-    }
-
-    // Dig into effect keywords. Dig into tuple expressions if and only if their
-    // arity is 1 (i.e they're just parentheses, not an n-tuple). Otherwise,
-    // capture this expression if it's the shallowest one we've found.
-    if _effectKeyword(for: expr) != nil || removeParentheses(from: expr) != nil {
-      return .visitChildren
-    }
-    if expression == nil {
-      expression = expr
-    }
-    return .skipChildren
-  }
-}
-
 extension ExprSyntaxProtocol {
   /// This expression, removing any effect keywords like `await` and any
   /// extra outer parentheses.
   var ignoringEffectKeywords: ExprSyntax {
-    let exprFinder = _UnderlyingExpressionFinder(viewMode: .sourceAccurate)
-    exprFinder.walk(self)
-    return exprFinder.expression ?? ExprSyntax(self)
+    if let expr = self.as(TryExprSyntax.self) {
+      return expr.expression.ignoringEffectKeywords
+    } else if let expr = self.as(AwaitExprSyntax.self) {
+      return expr.expression.ignoringEffectKeywords
+    } else if let expr = self.as(ConsumeExprSyntax.self) {
+      return expr.expression.ignoringEffectKeywords
+    } else if let expr = self.as(BorrowExprSyntax.self) {
+      return expr.expression.ignoringEffectKeywords
+    } else if let expr = self.as(UnsafeExprSyntax.self) {
+      return expr.expression.ignoringEffectKeywords
+    } else if let expr = removeParentheses(from: ExprSyntax(self)) {
+      return expr.ignoringEffectKeywords
+    }
+    return ExprSyntax(self)
   }
 }
 

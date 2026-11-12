@@ -104,7 +104,7 @@ public func __makeArgumentList<S, each E>(_ arguments: S, parameterCount: Int = 
       var testDescriptions = [String]()
       repeat testDescriptions.append(String(describingForTest: each element))
 #else
-      let testDescriptions = repeatElement(UnavailableInEmbeddedSwift.testDescription, count: parameterPackCount(repeat (each E).self))
+      let testDescriptions = repeatElement(UnavailableInEmbeddedSwift.testDescription, count: parameterPackCount)
 #endif
       let testDescription = "(" + testDescriptions.joined(separator: ", ") + ")"
       return [Test.Case.Argument.Value(element, testDescription: testDescription)]
