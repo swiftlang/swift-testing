@@ -103,6 +103,12 @@ extension TypeInfo {
 /// attribute. Only a type's primary declaration may have the `@Suite` attribute
 /// applied to it.
 ///
+/// @Comment {
+///   This macro declaration is necessary to help the compiler disambiguate
+///   display names from traits. Its documentation is visible in Xcode even
+///   though it is hidden from the testing library's documentation bundle.
+/// }
+///
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
@@ -156,8 +162,20 @@ extension Test {
 
 // MARK: - @Test
 
-/// This macro declaration is necessary to help the compiler disambiguate
-/// display names from traits, but it does not need to be documented separately.
+/// Declare a test.
+///
+/// - Parameters:
+///   - traits: Zero or more traits to apply to this test.
+///
+/// @Comment {
+///   This macro declaration is necessary to help the compiler disambiguate
+///   display names from traits. Its documentation is visible in Xcode even
+///   though it is hidden from the testing library's documentation bundle.
+/// }
+///
+/// ## See Also
+///
+/// - <doc:DefiningTests>
 ///
 /// ## See Also
 ///
@@ -190,7 +208,7 @@ extension Test {
   /// - Warning: This type alias is used to implement the `@Test` macro. Do not
   ///   use it directly.
 #if !hasFeature(Embedded)
-  public typealias __Parameter = (firstName: String, secondName: String?, type: Any.Type)
+  public typealias __Parameter = (firstName: String, secondName: String?, type: any ~Copyable.Type)
 #else
   public typealias __Parameter = (firstName: String, secondName: String?, typeName: String)
 #endif
@@ -243,8 +261,26 @@ extension [Test.__Parameter] {
 
 // MARK: - @Test(arguments:)
 
-/// This macro declaration is necessary to help the compiler disambiguate
-/// display names from traits, but it does not need to be documented separately.
+/// Declare a test parameterized over a collection of values.
+///
+/// - Parameters:
+///   - displayName: The customized display name of this test. If the value of
+///     this argument is `nil`, the display name of the test is derived from the
+///     associated function's name.
+///   - traits: Zero or more traits to apply to this test.
+///   - collection: A collection of values to pass to the associated test
+///     function.
+///
+/// You can prefix the expression you pass to `collection` with `try` or `await`.
+/// The testing library evaluates the expression lazily only if it determines
+/// that the associated test will run. During testing, the testing library calls
+/// the associated test function once for each element in `collection`.
+///
+/// @Comment {
+///   This macro declaration is necessary to help the compiler disambiguate
+///   display names from traits. Its documentation is visible in Xcode even
+///   though it is hidden from the testing library's documentation bundle.
+/// }
 ///
 /// ## See Also
 ///
@@ -270,11 +306,6 @@ public macro Test<C>(
 /// The testing library evaluates the expression lazily only if it determines
 /// that the associated test will run. During testing, the testing library calls
 /// the associated test function once for each element in `collection`.
-///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
 ///
 /// ## See Also
 ///
@@ -316,6 +347,103 @@ extension Test {
   }
 }
 
+// MARK: - @Test(arguments:) (move-only)
+
+/// Declare a test parameterized over an inline array of values.
+///
+/// - Parameters:
+///   - displayName: The customized display name of this test. If the value of
+///     this argument is `nil`, the display name of the test is derived from the
+///     associated function's name.
+///   - traits: Zero or more traits to apply to this test.
+///   - inlineArray: An inline array of values to pass to the associated test
+///     function.
+///
+/// You can prefix the expression you pass to `inlineArray` with `try` or
+/// `await`. The testing library evaluates the expression lazily only if it
+/// determines that the associated test will run. During testing, the testing
+/// library calls the associated test function once for each element in
+/// `inlineArray`.
+///
+/// @Comment {
+///   This macro declaration is necessary to help the compiler disambiguate
+///   display names from traits. Its documentation is visible in Xcode even
+///   though it is hidden from the testing library's documentation bundle.
+/// }
+///
+/// ## See Also
+///
+/// - ``Test(_:arguments:)-35dat``
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@attached(peer)
+@_documentation(visibility: private)
+public macro Test<let count: Int, E>(
+  _ traits: any TestTrait...,
+  arguments inlineArray: consuming InlineArray<count, E>
+) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where E: Sendable & ~Copyable
+
+/// Declare a test parameterized over an inline array of values.
+///
+/// - Parameters:
+///   - displayName: The customized display name of this test. If the value of
+///     this argument is `nil`, the display name of the test is derived from the
+///     associated function's name.
+///   - traits: Zero or more traits to apply to this test.
+///   - inlineArray: An inline array of values to pass to the associated test
+///     function.
+///
+/// You can prefix the expression you pass to `inlineArray` with `try` or
+/// `await`. The testing library evaluates the expression lazily only if it
+/// determines that the associated test will run. During testing, the testing
+/// library calls the associated test function once for each element in
+/// `inlineArray`.
+///
+/// ## See Also
+///
+/// - <doc:DefiningTests>
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+@attached(peer)
+public macro Test<let count: Int, E>(
+  _ displayName: _const String? = nil,
+  _ traits: any TestTrait...,
+  arguments inlineArray: consuming InlineArray<count, E>
+) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where E: Sendable & ~Copyable
+
+@_spi(Experimental)
+@available(_inlineArrayAPI, *)
+extension Test {
+  /// Create an instance of ``Test`` for a parameterized function.
+  ///
+  /// - Warning: This function is used to implement the `@Test` macro. Do not
+  ///   call it directly.
+  public static func __function<S, let count: Int, E>(
+    named testFunctionName: String,
+    in containingType: __TypeInfo<S>?,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
+    displayName: String? = nil,
+    traits: __TraitArray<any TestTrait>,
+    arguments inlineArray: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<InlineArray<count, E>, E>,
+    sourceBounds: __SourceBounds,
+    parameters paramTuples: [__Parameter],
+    testFunction: nonisolated(nonsending) @escaping @Sendable (borrowing E) async throws -> Void
+  ) -> Self where S: ~Copyable & ~Escapable, E: Sendable & ~Copyable {
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
+    let parameters = paramTuples.parameters
+    return Self(
+      name: testFunctionName,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: { Case.Generator(argumentList: try await inlineArray(), parameters: parameters, testFunction: testFunction) },
+      parameters: parameters
+    )
+  }
+}
+
 // MARK: - @Test(arguments:_:)
 
 /// Declare a test parameterized over two collections of values.
@@ -331,11 +459,6 @@ extension Test {
 /// testing library calls the associated test function once for each pair of
 /// elements in `collection1` and `collection2`.
 ///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
-///
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
@@ -362,11 +485,6 @@ public macro Test<C1, C2>(
 /// testing library calls the associated test function once for each pair of
 /// elements in `collection1` and `collection2`.
 ///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
-///
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
@@ -374,66 +492,6 @@ public macro Test<C1, C2>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
   arguments collection1: C1, _ collection2: C2
-) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable
-
-// MARK: - @Test(arguments: zip(...))
-
-/// Declare a test parameterized over two zipped collections of values.
-///
-/// - Parameters:
-///   - traits: Zero or more traits to apply to this test.
-///   - zippedCollections: Two zipped collections of values to pass to
-///     `testFunction`.
-///
-/// You can prefix the expression you pass to `zippedCollections` with `try` or
-/// `await`. The testing library evaluates the expression lazily only if it
-/// determines that the associated test will run. During testing, the testing
-/// library calls the associated test function once for each element in
-/// `zippedCollections`.
-///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
-///
-/// ## See Also
-///
-/// - <doc:DefiningTests>
-@attached(peer)
-@_documentation(visibility: private)
-public macro Test<C1, C2>(
-  _ traits: any TestTrait...,
-  arguments zippedCollections: Zip2Sequence<C1, C2>
-) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable
-
-/// Declare a test parameterized over two zipped collections of values.
-///
-/// - Parameters:
-///   - displayName: The customized display name of this test. If the value of
-///     this argument is `nil`, the display name of the test is derived from the
-///     associated function's name.
-///   - traits: Zero or more traits to apply to this test.
-///   - zippedCollections: Two zipped collections of values to pass to
-///     `testFunction`.
-///
-/// You can prefix the expression you pass to `zippedCollections` with `try` or
-/// `await`. The testing library evaluates the expression lazily only if it
-/// determines that the associated test will run. During testing, the testing
-/// library calls the associated test function once for each element in
-/// `zippedCollections`.
-///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
-///
-/// ## See Also
-///
-/// - <doc:DefiningTests>
-@attached(peer) public macro Test<C1, C2>(
-  _ displayName: _const String? = nil,
-  _ traits: any TestTrait...,
-  arguments zippedCollections: Zip2Sequence<C1, C2>
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable
 
 extension Test {
@@ -466,6 +524,56 @@ extension Test {
     )
   }
 }
+
+// MARK: - @Test(arguments: zip(...))
+
+/// Declare a test parameterized over two zipped collections of values.
+///
+/// - Parameters:
+///   - traits: Zero or more traits to apply to this test.
+///   - zippedCollections: Two zipped collections of values to pass to
+///     `testFunction`.
+///
+/// You can prefix the expression you pass to `zippedCollections` with `try` or
+/// `await`. The testing library evaluates the expression lazily only if it
+/// determines that the associated test will run. During testing, the testing
+/// library calls the associated test function once for each element in
+/// `zippedCollections`.
+///
+/// ## See Also
+///
+/// - <doc:DefiningTests>
+@attached(peer)
+@_documentation(visibility: private)
+public macro Test<C1, C2>(
+  _ traits: any TestTrait...,
+  arguments zippedCollections: Zip2Sequence<C1, C2>
+) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable
+
+/// Declare a test parameterized over two zipped collections of values.
+///
+/// - Parameters:
+///   - displayName: The customized display name of this test. If the value of
+///     this argument is `nil`, the display name of the test is derived from the
+///     associated function's name.
+///   - traits: Zero or more traits to apply to this test.
+///   - zippedCollections: Two zipped collections of values to pass to
+///     `testFunction`.
+///
+/// You can prefix the expression you pass to `zippedCollections` with `try` or
+/// `await`. The testing library evaluates the expression lazily only if it
+/// determines that the associated test will run. During testing, the testing
+/// library calls the associated test function once for each element in
+/// `zippedCollections`.
+///
+/// ## See Also
+///
+/// - <doc:DefiningTests>
+@attached(peer) public macro Test<C1, C2>(
+  _ displayName: _const String? = nil,
+  _ traits: any TestTrait...,
+  arguments zippedCollections: Zip2Sequence<C1, C2>
+) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable
 
 // MARK: - Test pragmas
 

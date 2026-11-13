@@ -10,7 +10,7 @@
 
 extension Test.Case {
   /// A type describing a lazily-generated sequence of test cases generated from
-  /// a known sequence of argument values.
+  /// a known collection of argument values.
   ///
   /// Instances of this type can be iterated over multiple times.
   struct Generator<S>: Sendable where S: Sequence & Sendable, S.Element: Sendable {
@@ -101,6 +101,31 @@ extension Test.Case.Generator {
       }
       return Test.Case(values: values, parameters: parameters) {
         try await testFunction(element)
+      }
+    }
+  }
+
+  /// Initialize an instance of this type that iterates over the specified
+  /// inline array of argument values.
+  ///
+  /// - Parameters:
+  ///   - argumentList: An argument list representing the set of argument values
+  ///     for which test cases should be generated.
+  ///   - parameters: The parameters of the test function for which test cases
+  ///     should be generated.
+  ///   - testFunction: The test function to which each generated test case
+  ///     passes an argument value from `argumentList`.
+  @available(_inlineArrayAPI, *)
+  init<let count: Int, E>(
+    argumentList: consuming Test.Case.Argument.List<InlineArray<count, E>, E>,
+    parameters: [Test.Parameter],
+    testFunction: nonisolated(nonsending) @escaping @Sendable (borrowing E) async throws -> Void
+  ) where S == Range<Int>, E: Sendable & ~Copyable {
+    let argumentList = consume argumentList
+    self.init(_sequence: 0 ..< count) { i in
+      let values = argumentList.makeArgumentValues(argumentList.wrappedValue[i])
+      return Test.Case(values: values, parameters: parameters) {
+        try await testFunction(argumentList.wrappedValue[i])
       }
     }
   }

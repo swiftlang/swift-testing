@@ -626,14 +626,32 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// - Parameters:
   ///   - specifier: The invalid specifier token.
   ///   - parameter: The incorrectly-specified parameter.
+  ///   - isMoveOnly: Whether or not the type of `parameter` is move-only.
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///
   /// - Returns: A diagnostic message.
-  static func specifierNotSupported(_ specifier: TokenSyntax, on parameter: FunctionParameterSyntax, whenUsing attribute: AttributeSyntax) -> Self {
-    Self(
+  static func specifierNotSupported(_ specifier: TokenSyntax, on parameter: FunctionParameterSyntax, isMoveOnly: Bool = false, whenUsing attribute: AttributeSyntax) -> Self {
+    var fixIts: [FixIt] = [
+      FixIt(
+        message: MacroExpansionFixItMessage("Remove '\(specifier.textWithoutBackticks)'"),
+        changes: [.replace(oldNode: Syntax(specifier), newNode: Syntax("" as ExprSyntax))]
+      ),
+    ]
+    var moveOnlyTypeInfo = ""
+    if isMoveOnly {
+      moveOnlyTypeInfo = " of noncopyable type '\(parameter.type.trimmed)"
+      fixIts = [
+        FixIt(
+          message: MacroExpansionFixItMessage("Replace '\(specifier.textWithoutBackticks)' with 'borrowing'"),
+          changes: [.replace(oldNode: Syntax(specifier), newNode: Syntax(TokenSyntax.keyword(.borrowing)))]
+        ),
+      ]
+    }
+    return Self(
       syntax: Syntax(parameter),
-      message: "Attribute \(_macroName(attribute)) cannot be applied to a function with a parameter marked '\(specifier.textWithoutBackticks)'",
-      severity: .error
+      message: "Attribute \(_macroName(attribute)) cannot be applied to a function with a parameter\(moveOnlyTypeInfo) marked '\(specifier.textWithoutBackticks)'",
+      severity: .error,
+      fixIts: fixIts
     )
   }
 
