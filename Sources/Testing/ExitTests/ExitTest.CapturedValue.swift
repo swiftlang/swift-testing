@@ -10,6 +10,10 @@
 
 private import _TestingInternals
 
+#if canImport(Synchronization)
+private import Synchronization
+#endif
+
 @_spi(ForToolsIntegrationOnly)
 #if SWT_NO_EXIT_TESTS
 @_unavailableInEmbedded
@@ -50,80 +54,44 @@ extension ExitTest {
   /// type information but no values. The child process decodes the values it
   /// encoded in the parent process and then updates the ``wrappedValue``
   /// property of each element in the array before calling the exit test's body.
-  public struct CapturedValue: Sendable {
-#if !SWT_NO_EXIT_TESTS
-    /// An enumeration of the different states a captured value can have.
-    private enum _Kind: Sendable {
-      /// The runtime value of the captured value is known.
-      case wrappedValue(any Codable & Sendable)
-
-      /// Only the type of the captured value is known.
-      case typeOnly(any (Codable & Sendable).Type)
-    }
-
-    /// The current state of this instance.
-    private var _kind: _Kind
-
-    init(wrappedValue: some Codable & Sendable) {
-      _kind = .wrappedValue(wrappedValue)
-    }
-
-    init(typeOnly type: (some Codable & Sendable).Type) {
-      _kind = .typeOnly(type)
-    }
-#endif
+  public protocol CapturedValue: Sendable {
+    /// The type of the underlying value.
+    associatedtype Wrapped: Codable & Sendable
 
     /// The underlying value captured by this instance at runtime.
     ///
     /// In a child process created by the current exit test handler, the value
     /// of this property is `nil` until the entry point sets it.
-    public var wrappedValue: (any Codable & Sendable)? {
+    ///
+    /// If the value of this property is `nil` when the corresponding exit test
+    /// is invoked (by calling ``ExitTest/callAsFunction()``), the testing
+    /// library records an issue for the current test and causes the current
+    /// (child) process to terminate abnormally.
+    var wrappedValue: Wrapped? { get nonmutating set }
+  }
+
+  /// A concrete implementation of the ``CapturedValue`` protocol.
+  ///
+  /// This type is not part of the public interface of the testing library.
+  /// Tools SPI uses the ``CapturedValue`` protocol instead.
+  final class _CapturedValue<Wrapped>: Sendable, CapturedValue where Wrapped: Codable & Sendable {
+    /// The type of the underlying value.
+    typealias Wrapped = Wrapped
+
+    /// Storage for ``wrappedValue``.
+    private let _wrappedValue: Mutex<Wrapped?>
+
+    var wrappedValue: Wrapped? {
       get {
-#if !SWT_NO_EXIT_TESTS
-        if case let .wrappedValue(wrappedValue) = _kind {
-          return wrappedValue
-        }
-        return nil
-#else
-        swt_unreachable()
-#endif
+        _wrappedValue.rawValue
       }
-
       set {
-#if !SWT_NO_EXIT_TESTS
-        let type = typeOfWrappedValue
-
-        func validate<T, U>(_ newValue: T, is expectedType: U.Type) {
-          assert(newValue is U, "Attempted to set a captured value to an instance of '\(String(describingForTest: T.self))', but an instance of '\(String(describingForTest: U.self))' was expected.")
-        }
-        validate(newValue, is: type)
-
-        if let newValue {
-          _kind = .wrappedValue(newValue)
-        } else {
-          _kind = .typeOnly(type)
-        }
-#else
-        swt_unreachable()
-#endif
+        _wrappedValue.withLock { $0 = newValue }
       }
     }
 
-    /// The type of the underlying value captured by this instance.
-    ///
-    /// This type is known at compile time and is always available, even before
-    /// this instance's ``wrappedValue`` property is set.
-    public var typeOfWrappedValue: any (Codable & Sendable).Type {
-#if !SWT_NO_EXIT_TESTS
-      switch _kind {
-      case let .wrappedValue(wrappedValue):
-        type(of: wrappedValue)
-      case let .typeOnly(type):
-        type
-      }
-#else
-      swt_unreachable()
-#endif
+    init(_ wrappedValue: Wrapped? = nil) {
+      _wrappedValue = Mutex(wrappedValue)
     }
   }
 }
@@ -131,41 +99,33 @@ extension ExitTest {
 #if !SWT_NO_EXIT_TESTS
 // MARK: - Collection conveniences
 
-extension Array where Element == ExitTest.CapturedValue {
-  init<each T>(_ wrappedValues: repeat each T) where repeat each T: Codable & Sendable {
-    self.init()
-    repeat self.append(ExitTest.CapturedValue(wrappedValue: each wrappedValues))
-  }
-
-  init<each T>(_ typesOfWrappedValues: repeat (each T).Type) where repeat each T: Codable & Sendable {
-    self.init()
-    repeat self.append(ExitTest.CapturedValue(typeOnly: (each typesOfWrappedValues).self))
-  }
-}
-
-extension Collection where Element == ExitTest.CapturedValue {
-  /// Cast the elements in this collection to a tuple of their wrapped values.
+extension ExitTest {
+  /// Cast the elements in a collection to a tuple of their wrapped values.
   ///
-  /// - Returns: A tuple containing the wrapped values of the elements in this
-  ///   collection.
+  /// - Parameters:
+  ///   - collection: A collection of values conforming to ``CapturedValue``
+  ///     whose wrapped values should be passed to the calling exit test.
+  ///
+  /// - Returns: A tuple containing the wrapped values of the elements in
+  ///   `collection`.
   ///
   /// - Throws: If an expected value could not be found or was not of the
   ///   type the caller expected.
   ///
   /// This function assumes that the entry point function has already set the
-  /// ``wrappedValue`` property of each element in this collection.
-  func takeCapturedValues<each T>() -> (repeat each T) {
+  /// ``wrappedValue`` property of each element in `collection`.
+  static func takeCapturedValues<each T, C>(from collection: C) throws(SystemError) -> (repeat each T) where C: Collection<any CapturedValue> {
     func nextValue<U>(
       as type: U.Type,
-      from capturedValues: inout SubSequence
-    ) -> U {
+      from capturedValues: inout C.SubSequence
+    ) throws(SystemError) -> U {
       // Get the next captured value in the collection. If we run out of values
       // before running out of parameter pack elements, then something in the
       // exit test handler or entry point is likely broken.
       guard let wrappedValue = capturedValues.first?.wrappedValue else {
-        let actualCount = self.count
+        let actualCount = collection.count
         let expectedCount = parameterPackCount(repeat (each T).self)
-        fatalError("Found fewer captured values (\(actualCount)) than expected (\(expectedCount)) when passing them to the current exit test.")
+        throw SystemError(description: "Found fewer captured values (\(actualCount)) than expected (\(expectedCount)) when passing them to the current exit test.")
       }
 
       // Next loop, get the next element. (We're mutating a subsequence, not
@@ -175,14 +135,14 @@ extension Collection where Element == ExitTest.CapturedValue {
       // Make sure the value is of the correct type. If it's not, that's also
       // probably a problem with the exit test handler or entry point.
       guard let wrappedValue = wrappedValue as? U else {
-        fatalError("Expected captured value at index \(capturedValues.startIndex) with type '\(String(describingForTest: U.self))', but found an instance of '\(String(describingForTest: Swift.type(of: wrappedValue)))' instead.")
+        throw SystemError(description: "Expected captured value at index \(capturedValues.startIndex) with type '\(String(describingForTest: U.self))', but found an instance of '\(String(describingForTest: Swift.type(of: wrappedValue)))' instead.")
       }
       
       return wrappedValue
     }
 
-    var capturedValues = self[...]
-    return (repeat nextValue(as: (each T).self, from: &capturedValues))
+    var capturedValues = collection[...]
+    return (repeat try nextValue(as: (each T).self, from: &capturedValues))
   }
 }
 #endif

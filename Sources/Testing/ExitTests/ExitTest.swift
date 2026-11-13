@@ -96,10 +96,6 @@ public struct ExitTest: Sendable, ~Copyable {
   fileprivate var body: Body = { _ in }
 
   /// Storage for ``observedValues``.
-  ///
-  /// Key paths are not sendable because the properties they refer to may or may
-  /// not be, so this property needs to be `nonisolated(unsafe)`. It is safe to
-  /// use it in this fashion because ``ExitTest/Result`` is sendable.
   fileprivate var _observedValues = [any PartialKeyPath<ExitTest.Result> & Sendable]()
 
   /// Key paths representing results from within this exit test that should be
@@ -138,10 +134,19 @@ public struct ExitTest: Sendable, ~Copyable {
   /// value of this property unless you are implementing a custom exit test
   /// handler or entry point function.
   ///
-  /// The order of values in this array must be the same between the parent and
-  /// child processes.
+  /// You can access the concrete type information for the elements in this
+  /// array by using Swift's "existential opening" language feature:
+  ///
+  /// ```swift
+  /// func open<C>(_ capturedValue: C) where C: ExitTest.CapturedValue {
+  ///   print("This captured value is of type \(C.Wrapped.self).")
+  /// }
+  /// for capturedValue in exitTest.capturedValues {
+  ///   open(capturedValue)
+  /// }
+  /// ```
   @_spi(ForToolsIntegrationOnly)
-  public var capturedValues = [CapturedValue]()
+  public fileprivate(set) var capturedValues = [any CapturedValue]()
 
   /// Make a copy of this instance.
   ///
@@ -150,10 +155,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// This function is unsafe because if the caller is not careful, it could
   /// invoke the same exit test twice.
   fileprivate borrowing func unsafeCopy() -> Self {
-    var result = Self(id: id, body: body)
-    result._observedValues = _observedValues
-    result.capturedValues = capturedValues
-    return result
+    Self(id: id, body: body, _observedValues: _observedValues, capturedValues: capturedValues)
   }
 }
 
@@ -373,15 +375,13 @@ extension ExitTest {
 
     /// The set of values captured in the parent process before the exit test is
     /// called.
-    var capturedValues = [CapturedValue]()
+    var capturedValues = [any CapturedValue]()
 
     /// Make the exit test represented by this instance.
     ///
     /// - Returns: A new exit test as represented by this instance.
     func makeExitTest() -> ExitTest {
-      var exitTest = ExitTest(id: id, body: body)
-      exitTest.capturedValues = capturedValues
-      return exitTest
+      ExitTest(id: id, body: body, capturedValues: capturedValues)
     }
   }
 
@@ -420,13 +420,13 @@ extension ExitTest {
     // Wrap the body function in a thunk that decodes any captured state and
     // passes it along.
     let body: ExitTest.Body = { exitTest in
-      let values: (repeat each T) = exitTest.capturedValues.takeCapturedValues()
+      let values: (repeat each T) = try takeCapturedValues(from: exitTest.capturedValues)
       try await body(repeat each values)
     }
 
     // Construct and return the record.
     var record = Record(id: id, body: body)
-    record.capturedValues = Array(repeat (each T).self)
+    repeat record.capturedValues.append(_CapturedValue<each T>())
     outValue.initializeMemory(as: Record.self, to: record)
     return true
   }
@@ -496,16 +496,16 @@ extension ExitTest {
 /// This function contains the common implementation for all
 /// `await #expect(processExitsWith:) { }` invocations regardless of calling
 /// convention.
-nonisolated(nonsending) func callExitTest(
+nonisolated(nonsending) func callExitTest<each T>(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
-  encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
+  encodingCapturedValues capturedValues: (repeat each T),
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
   expression: @autoclosure () -> __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) async -> Result<ExitTest.Result?, any Error> {
+) async -> Result<ExitTest.Result?, any Error> where repeat each T: Codable & Sendable {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
     preconditionFailure("A test must be running on the current task to use #expect(processExitsWith:).")
   }
@@ -513,9 +513,8 @@ nonisolated(nonsending) func callExitTest(
   var result: ExitTest.Result
   do {
     // Construct a temporary/local exit test to pass to the exit test handler.
-    var exitTest = ExitTest(id: ExitTest.ID(exitTestID))
-    exitTest.observedValues = observedValues
-    exitTest.capturedValues = capturedValues
+    var exitTest = ExitTest(id: ExitTest.ID(exitTestID), _observedValues: observedValues)
+    repeat exitTest.capturedValues.append(ExitTest._CapturedValue(each capturedValues))
 
     // Invoke the exit test handler and wait for the child process to terminate.
     result = try await configuration.exitTestHandler(exitTest)
@@ -1146,16 +1145,16 @@ extension ExitTest {
     capturedValues = try zip(capturedValues, capturedValuesJSONLines).map { capturedValue, capturedValueJSON in
       var capturedValue = capturedValue
 
-      func open<T>(_ type: T.Type) throws(any Error) -> T where T: Codable & Sendable {
-        return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
+      func open<C>(_ capturedValue: inout C) throws(any Error) where C: CapturedValue {
+        capturedValue.wrappedValue = try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
           try JSON.decode(
-            type,
+            C.Wrapped.self,
             from: capturedValueJSON,
             userInfo: [.allowNonConformingFloatingPointValuesUserInfoKey: true]
           )
         }
       }
-      capturedValue.wrappedValue = try open(capturedValue.typeOfWrappedValue)
+      try open(&capturedValue)
 
       return capturedValue
     }
