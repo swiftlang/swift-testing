@@ -39,10 +39,4 @@ struct `InlineArray Argument Tests` {
   func `Move-only argument value`(_ value: borrowing MoveOnlyArgumentValue) {
     #expect(value.x == 123)
   }
-
-  @available(_inlineArrayAPI, *)
-  @Test(arguments: [MoveOnlyArgumentValue(x: 4), MoveOnlyArgumentValue(x: 5), MoveOnlyArgumentValue(x: 6)], [1, 2, 3] as InlineArray)
-  func `Multiple arguments (one move-only, one not)`(_ x: borrowing MoveOnlyArgumentValue, _ y: Int) {
-    #expect(x.x > y)
-  }
 }

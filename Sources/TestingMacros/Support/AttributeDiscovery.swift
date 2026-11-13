@@ -240,8 +240,7 @@ struct AttributeInfo {
           // We do allow `consuming`, but only for copyable values. Move-only
           // values must be `borrowing`. In order to enforce this distinction,
           // we apply a secondary macro here that emits a diagnostic if the type
-          // of the argument list's elements is `~Copyable`. In a future
-          // language mode, we will always disallow `consuming` here.
+          // of the argument list's elements is `~Copyable`.
           makeArgumentListExpr = "#Testing::__consumeArgumentList(\(makeArgumentListExpr), \(literal: consumedParameterTypeName))"
         }
 
