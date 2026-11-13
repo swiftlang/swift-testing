@@ -27,6 +27,9 @@
 /// not yet support typed throws and needs to be updated. Do not use this
 /// function with calls whose thrown error type is not documented or is equal to
 /// `any Error` or `Never`, as it is redundant in those cases.
+#if os(Windows)
+@inline(never)
+#endif
 nonisolated(nonsending) func withUnsafeTypedThrowsEmulation<R, E>(
   throwing errorType: E.Type,
   becauseOf bug: @autoclosure () -> Bug,
