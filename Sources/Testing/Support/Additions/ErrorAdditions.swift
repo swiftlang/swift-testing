@@ -28,7 +28,7 @@
 /// function with calls whose thrown error type is not documented or is equal to
 /// `any Error` or `Never`, as it is redundant in those cases.
 #if os(Windows)
-@inline(never)
+@inline(never) // WORKAROUND: rdar://192701000
 #endif
 nonisolated(nonsending) func withUnsafeTypedThrowsEmulation<R, E>(
   throwing errorType: E.Type,
