@@ -93,9 +93,9 @@ public struct CommandLineArgumentList: Sendable {
   private static func _parseArgument(
     _ arg: String,
     describedBy descriptors: [Descriptor],
-    describingUnrecognizedArgumentWith describeUnrecognizedArgument: ((String) throws -> Descriptor)?,
+    describingUnrecognizedArgumentWith describeUnrecognizedArgument: ((String) throws(any Error) -> Descriptor)?,
     gettingValueWith getValue: () -> String?
-  ) throws -> (descriptor: Descriptor, value: String?) {
+  ) throws(any Error) -> (descriptor: Descriptor, value: String?) {
     var descriptor: Descriptor?
     var value: String?
 
@@ -170,8 +170,8 @@ public struct CommandLineArgumentList: Sendable {
   init(
     parsing arguments: some Sequence<String>,
     describedBy descriptors: [Descriptor],
-    describingUnrecognizedArgumentWith describeUnrecognizedArgument: ((String) throws -> Descriptor)? = nil
-  ) throws {
+    describingUnrecognizedArgumentWith describeUnrecognizedArgument: ((String) throws(any Error) -> Descriptor)? = nil
+  ) throws(any Error) {
     var i = arguments.makeIterator()
     _ = i.next() // drop argv[0]
     while let arg = i.next() {

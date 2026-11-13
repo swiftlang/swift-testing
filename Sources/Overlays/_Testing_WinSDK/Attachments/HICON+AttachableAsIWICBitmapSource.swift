@@ -15,7 +15,7 @@ extension HICON__: _AttachableByAddressAsIWICBitmapSource {
   public static func _copyAttachableIWICBitmapSource(
     from imageAddress: UnsafeMutablePointer<Self>,
     using factory: UnsafeMutablePointer<IWICImagingFactory>
-  ) throws -> UnsafeMutablePointer<IWICBitmapSource> {
+  ) throws(any Error) -> UnsafeMutablePointer<IWICBitmapSource> {
     var bitmap: UnsafeMutablePointer<IWICBitmap>?
     let rCreate = factory.pointee.lpVtbl.pointee.CreateBitmapFromHICON(factory, imageAddress, &bitmap)
     guard rCreate == S_OK, let bitmap else {

@@ -19,7 +19,7 @@ extension UnsafeMutablePointer<IPropertyBag2> {
   ///   - propertyName: The name of the property.
   ///
   /// - Throws: If any error occurred writing the property.
-  func write(_ value: Float, named propertyName: String) throws {
+  func write(_ value: Float, named propertyName: String) throws(ImageAttachmentError) {
     let rWrite = propertyName.withCString(encodedAs: UTF16.self) { propertyName in
       var option = PROPBAG2()
       option.pstrName = .init(mutating: propertyName)

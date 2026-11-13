@@ -23,7 +23,7 @@ extension CIImage: AttachableAsImage, AttachableAsCGImage {
   ///   @Available(Xcode, introduced: 26.4)
   /// }
   package var attachableCGImage: CGImage {
-    get throws {
+    get throws(ImageAttachmentError) {
       guard let result = CIContext().createCGImage(self, from: extent) else {
         throw ImageAttachmentError.couldNotCreateCGImage
       }
@@ -31,7 +31,7 @@ extension CIImage: AttachableAsImage, AttachableAsCGImage {
     }
   }
 
-  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     try withUnsafeBytesImpl(as: imageFormat, body)
   }
 
