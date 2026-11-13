@@ -270,35 +270,28 @@ extension Test {
 /// and `body` is cancelled.
 ///
 /// This function is not part of the public interface of the testing library.
-nonisolated(nonsending) func withTimeLimit<E>(
+nonisolated(nonsending) func withTimeLimit(
   _ timeLimit: Duration,
   taskName: String? = nil,
-  _ body: nonisolated(nonsending) @escaping @Sendable () async throws(E) -> Void,
+  _ body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void,
   timeoutHandler: @escaping @Sendable () -> Void
-) async throws(E) {
-  try await withUnsafeTypedThrowsEmulation(
-    throwing: E.self,
-    becauseOf: .bug("https://github.com/swiftlang/swift/issues/87810")
-  ) {
-    try await withThrowingTaskGroup { group in
-      group.addTask(name: decorateTaskName(taskName, withAction: "waiting for timeout")) {
-        do {
-          // If sleep() returns instead of throwing a CancellationError, that
-          // means the timeout was reached before this task could be cancelled,
-          // so call the timeout handler.
-          try await Test.Clock().sleep(for: timeLimit, tolerance: nil)
-          timeoutHandler()
-        } catch {}
-      }
-      group.addTask(name: decorateTaskName(taskName, withAction: "running")) {
-        try await body()
-      }
-
-      defer {
-        group.cancelAll()
-      }
-      try await group.next()!
+) async throws {
+  try await withThrowingTaskGroup { group in
+    group.addTask(name: decorateTaskName(taskName, withAction: "waiting for timeout")) {
+      // If sleep() returns instead of throwing a CancellationError, that means
+      // the timeout was reached before this task could be cancelled, so call
+      // the timeout handler.
+      try await Test.Clock().sleep(for: timeLimit)
+      timeoutHandler()
     }
+    group.addTask(name: decorateTaskName(taskName, withAction: "running")) {
+      try await body()
+    }
+
+    defer {
+      group.cancelAll()
+    }
+    try await group.next()!
   }
 }
 #endif
@@ -320,15 +313,15 @@ nonisolated(nonsending) func withTimeLimit<E>(
 /// with no time limit.
 ///
 /// This function is not part of the public interface of the testing library.
-nonisolated(nonsending) func withTimeLimit<E>(
+nonisolated(nonsending) func withTimeLimit(
   for test: Test,
   configuration: Configuration,
-  _ body: nonisolated(nonsending) @escaping @Sendable () async throws(E) -> Void,
+  _ body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void,
   timeoutHandler: @escaping @Sendable (_ timeLimit: Duration) -> Void
-) async throws(E) {
+) async throws {
   if let timeLimit = test.adjustedTimeLimit(configuration: configuration) {
 #if !SWT_NO_UNSTRUCTURED_TASKS
-    return try await withTimeLimit(timeLimit) { () throws(E) in
+    return try await withTimeLimit(timeLimit) {
       try await body()
     } timeoutHandler: {
       timeoutHandler(timeLimit)
