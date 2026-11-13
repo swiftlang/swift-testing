@@ -130,6 +130,29 @@ extension BidirectionalCollection<Syntax> {
   }
 }
 
+// MARK: - Bypassing effect keywords
+
+extension ExprSyntaxProtocol {
+  /// This expression, removing any effect keywords like `await` and any
+  /// extra outer parentheses.
+  var ignoringEffectKeywords: ExprSyntax {
+    if let expr = self.as(TryExprSyntax.self) {
+      return expr.expression.ignoringEffectKeywords
+    } else if let expr = self.as(AwaitExprSyntax.self) {
+      return expr.expression.ignoringEffectKeywords
+    } else if let expr = self.as(ConsumeExprSyntax.self) {
+      return expr.expression.ignoringEffectKeywords
+    } else if let expr = self.as(BorrowExprSyntax.self) {
+      return expr.expression.ignoringEffectKeywords
+    } else if let expr = self.as(UnsafeExprSyntax.self) {
+      return expr.expression.ignoringEffectKeywords
+    } else if let expr = removeParentheses(from: ExprSyntax(self)) {
+      return expr.ignoringEffectKeywords
+    }
+    return ExprSyntax(self)
+  }
+}
+
 // MARK: - Inserting effect keywords/thunks
 
 /// Make a function call expression to an effectful thunk function provided by
