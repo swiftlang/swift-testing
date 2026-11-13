@@ -11,6 +11,12 @@
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
+extension TypeInfo {
+  func withStringsOnly() -> Self {
+    Self(fullyQualifiedNameComponents: fullyQualifiedNameComponents, unqualifiedName: unqualifiedName, mangledName: mangledName)
+  }
+}
+
 @Suite("TypeInfo Tests")
 struct TypeInfoTests {
   @Test(arguments: [
@@ -28,11 +34,11 @@ struct TypeInfoTests {
     ),
     (
       (key: String, value: Int).self,
-      TypeInfo(fullyQualifiedName: "(key: Swift.String, value: Swift.Int)", unqualifiedName: "(key: String, value: Int)", mangledName: "")
+      TypeInfo(fullyQualifiedNameComponents: ["(key: Swift.String, value: Swift.Int)"], unqualifiedName: "(key: String, value: Int)", mangledName: "")
     ),
     (
       (() -> String).self,
-      TypeInfo(fullyQualifiedName: "() -> Swift.String", unqualifiedName: "() -> String", mangledName: "")
+      TypeInfo(fullyQualifiedNameComponents: ["() -> Swift.String"], unqualifiedName: "() -> String", mangledName: "")
     ),
   ] as [(Any.Type, TypeInfo)])
   func initWithType(type: Any.Type, expectedTypeInfo: TypeInfo) {
@@ -122,8 +128,69 @@ struct TypeInfoTests {
   }
 
   @Test func isSwiftEnumeration() {
-    #expect(!TypeInfo(describing: String.self).isSwiftEnumeration)
-    #expect(TypeInfo(describing: SomeEnum.self).isSwiftEnumeration)
+    let typeInfo = TypeInfo(describing: SomeEnum.self)
+    #expect(typeInfo.isSwiftEnumeration)
+    #expect(!typeInfo.withStringsOnly().isSwiftEnumeration) // doesn't work with mangled names
+  }
+
+  @Test(
+    arguments: [
+      String.self,
+      ObjectIdentifier.self,
+    ] as [Any.Type]
+  ) func isNotSwiftEnumeration(type: Any.Type) {
+    let typeInfo = TypeInfo(describing: type)
+    #expect(!typeInfo.isSwiftEnumeration)
+    #expect(!typeInfo.withStringsOnly().isSwiftEnumeration) // doesn't work with mangled names
+  }
+
+  @Test(
+    arguments: [
+      Void.self,
+      (Int, String).self,
+      (x: Int, y: String).self,
+    ] as [Any.Type]
+  ) func isSwiftTuple(type: Any.Type) {
+    let typeInfo = TypeInfo(describing: type)
+    #expect(typeInfo.isSwiftTuple)
+    #expect(!typeInfo.withStringsOnly().isSwiftTuple) // doesn't work with mangled names
+  }
+
+  @Test(
+    arguments: [
+      SomeEnum.self,
+      UnsafeCurrentTask.self,
+      (@convention(thin) () -> ()).self,
+    ] as [Any.Type]
+  ) func isNotSwiftTuple(type: Any.Type) {
+    let typeInfo = TypeInfo(describing: type)
+    #expect(!typeInfo.isSwiftTuple)
+    #expect(!typeInfo.withStringsOnly().isSwiftTuple) // doesn't work with mangled names
+  }
+
+  @Test(
+    arguments: [
+      (() -> ()).self,
+      (@Sendable () -> ()).self,
+      (@convention(c) () -> ()).self,
+      (@Sendable () async throws -> ()).self,
+    ] as [Any.Type]
+  ) func isFunction(type: Any.Type) {
+    let typeInfo = TypeInfo(describing: type)
+    #expect(typeInfo.isFunction)
+    #expect(!typeInfo.withStringsOnly().isFunction) // doesn't work with mangled names
+  }
+
+  @Test(
+    arguments: [
+      String.self,
+      SomeEnum.self,
+      UnsafeCurrentTask.self,
+    ] as [Any.Type]
+  ) func isNotFunction(type: Any.Type) {
+    let typeInfo = TypeInfo(describing: type)
+    #expect(!typeInfo.isFunction)
+    #expect(!typeInfo.withStringsOnly().isSwiftTuple) // doesn't work with mangled names
   }
 
   @Test func typeOfMoveOnlyValueIsInferred() {
@@ -146,6 +213,36 @@ struct TypeInfoTests {
   @Test func typeNameWithGenericClausesAndBackTicks() {
     let nameComponents = TypeInfo(fullyQualifiedName: "A.`B<C>`<D`>`>.E<`F`.G>", mangledName: nil).fullyQualifiedNameComponents
     #expect(nameComponents == ["A", "`B<C>`<D`>`>", "E<`F`.G>"])
+  }
+
+  @Test func typeNameWithTuple() {
+    let type = (Int, Double).self
+    let nameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
+    #expect(nameComponents == ["(Swift.Int, Swift.Double)"])
+  }
+
+  @Test func typeNameWithTupleInGenericClause() {
+    let type = Array<(Int, Double)>.self
+    let nameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
+    #expect(nameComponents == ["Swift", "Array<(Swift.Int, Swift.Double)>"])
+  }
+
+  @Test func typeNameWithFunction() {
+    let type = (@Sendable (Int) -> String).self
+    let nameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
+    #expect(nameComponents == ["@Sendable (Swift.Int) -> Swift.String"])
+  }
+
+  @Test func typeNameWithTupleAndFunction() {
+    let type = (lhs: @Sendable (Int) -> String, rhs: (Int, Double)).self
+    let nameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
+    #expect(nameComponents == ["(lhs: @Sendable (Swift.Int) -> Swift.String, rhs: (Swift.Int, Swift.Double))"])
+  }
+
+  @Test func typeNameWithTupleAndFunctionAndSomeGenericsForGoodMeasure() {
+    let type = (lhs: @Sendable (Array<Int>) -> String, rhs: (Int, Set<Double>)).self
+    let nameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
+    #expect(nameComponents == ["(lhs: @Sendable (Swift.Array<Swift.Int>) -> Swift.String, rhs: (Swift.Int, Swift.Set<Swift.Double>))"])
   }
 }
 

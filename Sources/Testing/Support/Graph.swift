@@ -411,7 +411,7 @@ extension Graph {
   ///     key path and leaf value of each node are passed to the closure.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  private func _forEach<E>(keyPath: inout [K], _ body: (Element) async throws(E) -> Void) async throws(E) {
+  private nonisolated(nonsending) func _forEach<E>(keyPath: inout [K], _ body: nonisolated(nonsending) (Element) async throws(E) -> Void) async throws(E) {
     try await body((keyPath, value))
     for (key, child) in children {
       keyPath.append(key)
@@ -445,7 +445,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `body`.
   ///
   /// This function iterates depth-first.
-  func forEach<E>(_ body: (Element) async throws(E) -> Void) async throws(E) {
+  nonisolated(nonsending) func forEach<E>(_ body: nonisolated(nonsending) (Element) async throws(E) -> Void) async throws(E) {
     var keyPath: [K] = []
     try await _forEach(keyPath: &keyPath) { (element) async throws(E) in
       try await body(element)
@@ -520,7 +520,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func compactMapValues<U, E>(_ transform: (Element) async throws(E) -> U?) async throws(E) -> Graph<K, U>? {
+  nonisolated(nonsending) func compactMapValues<U, E>(_ transform: nonisolated(nonsending) (Element) async throws(E) -> U?) async throws(E) -> Graph<K, U>? {
     try await compactMapValues { (element) async throws(E) in
       try await transform(element).map { ($0, false) }
     }
@@ -605,7 +605,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func compactMapValues<U, E>(_ transform: (Element) async throws(E) -> (U, recursivelyApply: Bool)?) async throws(E) -> Graph<K, U>? {
+  nonisolated(nonsending) func compactMapValues<U, E>(_ transform: nonisolated(nonsending) (Element) async throws(E) -> (U, recursivelyApply: Bool)?) async throws(E) -> Graph<K, U>? {
     var keyPath: [K] = []
     return try await _compactMapValues(keyPath: &keyPath) { (element) async throws(E) in
       try await transform(element)
@@ -625,7 +625,7 @@ extension Graph {
   ///     child nodes are omitted from the new graph.
   ///
   /// - Throws: Whatever is thrown by `transform`.
-  private func _compactMapValues<U, E>(keyPath: inout [K], _ transform: (Element) async throws(E) -> (U, recursivelyApply: Bool)?) async throws(E) -> Graph<K, U>? {
+  private nonisolated(nonsending) func _compactMapValues<U, E>(keyPath: inout [K], _ transform: nonisolated(nonsending) (Element) async throws(E) -> (U, recursivelyApply: Bool)?) async throws(E) -> Graph<K, U>? {
     guard let (newValue, recursivelyApply) = try await transform((keyPath, value)) else {
       return nil
     }
@@ -678,7 +678,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func mapValues<U, E>(_ transform: (Element) async throws(E) -> U) async throws(E) -> Graph<K, U> {
+  nonisolated(nonsending) func mapValues<U, E>(_ transform: nonisolated(nonsending) (Element) async throws(E) -> U) async throws(E) -> Graph<K, U> {
     try await compactMapValues(transform)!
   }
 
@@ -722,7 +722,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func mapValues<U, E>(_ transform: (Element) async throws(E) -> (U, recursivelyApply: Bool)) async throws(E) -> Graph<K, U> {
+  nonisolated(nonsending) func mapValues<U, E>(_ transform: nonisolated(nonsending) (Element) async throws(E) -> (U, recursivelyApply: Bool)) async throws(E) -> Graph<K, U> {
     try await compactMapValues(transform)!
   }
 
@@ -758,7 +758,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func map<U, E>(_ transform: (Element) async throws(E) -> U) async throws(E) -> [U] {
+  nonisolated(nonsending) func map<U, E>(_ transform: nonisolated(nonsending) (Element) async throws(E) -> U) async throws(E) -> [U] {
     try await compactMap(transform)
   }
 
@@ -806,7 +806,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func compactMap<U, E>(_ transform: (Element) async throws(E) -> U?) async throws(E) -> [U] {
+  nonisolated(nonsending) func compactMap<U, E>(_ transform: nonisolated(nonsending) (Element) async throws(E) -> U?) async throws(E) -> [U] {
     var result = [U]()
 
     try await forEach { (keyPath, value) async throws(E) in
@@ -848,7 +848,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func flatMap<S, E>(_ transform: (Element) async throws(E) -> S) async throws(E) -> [S.Element] where S: Sequence {
+  nonisolated(nonsending) func flatMap<S, E>(_ transform: nonisolated(nonsending) (Element) async throws(E) -> S) async throws(E) -> [S.Element] where S: Sequence {
     try await map(transform).flatMap { $0 }
   }
 }

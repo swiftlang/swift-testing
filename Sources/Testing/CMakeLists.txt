@@ -98,6 +98,7 @@ add_library(Testing
   Support/Additions/CollectionDifferenceAdditions.swift
   Support/Additions/CommandLineAdditions.swift
   Support/Additions/CopyableAdditions.swift
+  Support/Additions/ErrorAdditions.swift
   Support/Additions/MutexAdditions.swift
   Support/Additions/NumericAdditions.swift
   Support/Additions/ResultAdditions.swift
@@ -178,6 +179,14 @@ target_compile_options(Testing PRIVATE
   -enable-library-evolution
   -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:Testing,Swift_MODULE_DIRECTORY>/Testing.swiftinterface)
 
+set(SWT_PUBLIC_HEADERS
+)
+if(SwiftTesting_BuildPALAnnexComponents)
+  list(APPEND SWT_PUBLIC_HEADERS "../_TestingInternals/include/EmbeddedPlatform+Testing.h")
+endif()
+
+set_target_properties(Testing PROPERTIES
+  PUBLIC_HEADER "${SWT_PUBLIC_HEADERS}")
 _swift_testing_install_target(Testing)
 
 # Install the Swift cross-import overlay directory.

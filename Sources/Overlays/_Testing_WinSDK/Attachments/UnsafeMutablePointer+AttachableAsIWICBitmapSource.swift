@@ -16,11 +16,11 @@ package import WinSDK
 ///   @Available(Xcode, introduced: 26.4)
 /// }
 extension UnsafeMutablePointer: AttachableAsImage, AttachableAsIWICBitmapSource where Pointee: _AttachableByAddressAsIWICBitmapSource {
-  package func copyAttachableIWICBitmapSource(using factory: UnsafeMutablePointer<IWICImagingFactory>) throws -> UnsafeMutablePointer<IWICBitmapSource> {
+  package func copyAttachableIWICBitmapSource(using factory: UnsafeMutablePointer<IWICImagingFactory>) throws(any Error) -> UnsafeMutablePointer<IWICBitmapSource> {
     try Pointee._copyAttachableIWICBitmapSource(from: self, using: factory)
   }
 
-  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     try withUnsafeBytesImpl(as: imageFormat, body)
   }
 

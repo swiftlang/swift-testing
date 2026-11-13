@@ -63,7 +63,7 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
     contentsOf url: URL,
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #Testing::sourceLocation
-  ) async throws {
+  ) async throws(any Error) {
     guard url.isFileURL else {
       // TODO: network URLs?
       throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "Attaching downloaded files is not supported"])
@@ -158,7 +158,7 @@ private let _archiverPath: String? = {
 ///
 /// This function asynchronously compresses the contents of `directoryURL` into
 /// an archive (currently of `.zip` format, although this is subject to change.)
-private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> _AttachableURLWrapper {
+private nonisolated(nonsending) func _compressContentsOfDirectory(at directoryURL: URL) async throws(any Error) -> _AttachableURLWrapper {
 #if !SWT_NO_PROCESS_SPAWNING
   let temporaryName = "\(UUID().uuidString).zip"
   let temporaryURL = FileManager.default.temporaryDirectory.appendingPathComponent(temporaryName)

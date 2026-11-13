@@ -51,7 +51,7 @@ var EXIT_NO_TESTS_FOUND: CInt {
 ///
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
-public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> CInt {
+public nonisolated(nonsending) func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> CInt {
 #if !SWT_NO_FILE_IO
   // Ensure that stdout is line- rather than block-buffered. Swift Package
   // Manager reroutes standard I/O through pipes, so we tend to end up with
@@ -79,7 +79,16 @@ public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) 
 ///
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
-public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> Never {
+#if compiler(<6.5.1) && os(Linux)
+@_spi(_)
+#endif
+public nonisolated(nonsending) func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> Never {
   let exitCode: CInt = await __swiftPMEntryPoint(passing: args)
   exit(exitCode)
 }
+
+#if compiler(<6.5.1) && os(Linux)
+@concurrent public func __swiftPMEntryPoint() async -> Never {
+  await __swiftPMEntryPoint(passing: nil) as Never
+}
+#endif

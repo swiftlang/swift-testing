@@ -45,7 +45,7 @@ extension _AttachableNSSecureCodingWrapper: AttachableWrapper {
     _encodableValue
   }
 
-  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableNSSecureCodingWrapper>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableNSSecureCodingWrapper>, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     var data = try NSKeyedArchiver.archivedData(withRootObject: _encodableValue, requiringSecureCoding: true)
 
     // BUG: Foundation does not offer a variant of

@@ -81,7 +81,7 @@ func spawnExecutable(
   standardOutput: borrowing FileHandle? = nil,
   standardError: borrowing FileHandle? = nil,
   additionalFileHandles: [UnsafePointer<FileHandle>] = []
-) throws -> ProcessID {
+) throws(any Error) -> ProcessID {
   // Darwin and Linux differ in their optionality for the posix_spawn types we
   // use, so use this typealias to paper over the differences.
 #if os(anyAppleOS) || os(FreeBSD) || os(OpenBSD)
@@ -137,7 +137,7 @@ func spawnExecutable(
 
       // Forward standard I/O streams and any explicitly added file handles.
       var highestFD = max(STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO)
-      func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws {
+      func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws(any Error) {
         try fileHandle.withUnsafePOSIXFileDescriptor { fd in
           guard let fd else {
             throw SystemError(description: "A child process cannot inherit a file handle without an associated file descriptor. \(fileABugMessage)")
@@ -166,7 +166,7 @@ func spawnExecutable(
           }
         }
       }
-      func inherit(_ fileHandle: borrowing FileHandle?, as standardFD: CInt? = nil) throws {
+      func inherit(_ fileHandle: borrowing FileHandle?, as standardFD: CInt? = nil) throws(any Error) {
         if fileHandle != nil {
           try inherit(fileHandle!, as: standardFD)
         } else if let standardFD {
@@ -263,7 +263,7 @@ func spawnExecutable(
   }
 #elseif os(Windows)
   return try _withStartupInfoEx(attributeCount: 1) { startupInfo in
-    func inherit(_ fileHandle: borrowing FileHandle) throws -> HANDLE? {
+    func inherit(_ fileHandle: borrowing FileHandle) throws(any Error) -> HANDLE? {
       try fileHandle.withUnsafeWindowsHANDLE { windowsHANDLE in
         guard let windowsHANDLE else {
           throw SystemError(description: "A child process cannot inherit a file handle without an associated Windows handle. \(fileABugMessage)")
@@ -277,7 +277,7 @@ func spawnExecutable(
         return windowsHANDLE
       }
     }
-    func inherit(_ fileHandle: borrowing FileHandle?) throws -> HANDLE? {
+    func inherit(_ fileHandle: borrowing FileHandle?) throws(any Error) -> HANDLE? {
       if fileHandle != nil {
         return try inherit(fileHandle!)
       } else {
@@ -398,7 +398,7 @@ func spawnExecutable(
 ///
 /// - Throws: Whatever is thrown while creating the startup info structure or
 ///   its attribute list, or whatever is thrown by `body`.
-private func _withStartupInfoEx<R>(attributeCount: Int = 0, _ body: (UnsafeMutablePointer<STARTUPINFOEXW>) throws -> R) throws -> R {
+private func _withStartupInfoEx<R, E>(attributeCount: Int = 0, _ body: (UnsafeMutablePointer<STARTUPINFOEXW>) throws(E) -> R) throws(any Error) -> R {
   // Initialize the startup info structure.
   var startupInfo = STARTUPINFOEXW()
   startupInfo.StartupInfo.cb = DWORD(MemoryLayout.size(ofValue: startupInfo))
@@ -490,11 +490,11 @@ private func _escapeCommandLine(_ arguments: [String]) -> String {
 /// This function is a convenience that spawns the given process and waits for
 /// it to terminate. It is primarily for use by other targets in this package
 /// such as its cross-import overlays.
-package func spawnExecutableAtPathAndWait(
+package nonisolated(nonsending) func spawnExecutableAtPathAndWait(
   _ executablePath: String,
   arguments: [String] = [],
   environment: [String: String] = [:]
-) async throws -> ExitStatus {
+) async throws(any Error) -> ExitStatus {
   let processID = try spawnExecutable(atPath: executablePath, arguments: arguments, environment: environment)
   return try await wait(for: processID)
 }

@@ -266,7 +266,7 @@ extension Runner.Plan {
   ///   - test: The test whose action will be determined.
   ///
   /// - Returns:The action to take for `test`.
-  private static func _determineAction(for test: inout Test) async -> Action {
+  private nonisolated(nonsending) static func _determineAction(for test: inout Test) async -> Action {
     let result: Action
 
     // We use a task group here with a single child task so that, if the trait
@@ -350,7 +350,7 @@ extension Runner.Plan {
   ///   - configuration: The configuration to use for planning.
   ///
   /// - Returns: A graph of the steps corresponding to `tests`.
-  private static func _constructStepGraph(from tests: some Sequence<Test>, configuration: Configuration) async -> Graph<String, Step?> {
+  private nonisolated(nonsending) static func _constructStepGraph(from tests: some Sequence<Test>, configuration: Configuration) async -> Graph<String, Step?> {
 #if !hasFeature(Embedded)
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
@@ -455,7 +455,7 @@ extension Runner.Plan {
   ///   - configuration: The configuration to use for planning.
   ///
   /// This function produces a new runner plan for the provided tests.
-  public init(tests: some Sequence<Test>, configuration: Configuration) async {
+  public nonisolated(nonsending) init(tests: some Sequence<Test>, configuration: Configuration) async {
     let stepGraph = await Self._constructStepGraph(from: tests, configuration: configuration)
     self.init(stepGraph: stepGraph)
   }
@@ -465,7 +465,7 @@ extension Runner.Plan {
   ///
   /// - Parameters:
   ///   - configuration: The configuration to use for planning.
-  public init(configuration: Configuration) async {
+  public nonisolated(nonsending) init(configuration: Configuration) async {
     await self.init(tests: Test.all, configuration: configuration)
   }
 }
@@ -478,14 +478,14 @@ extension Runner.Plan.Action.RunOptions: Codable {
     case isParallelizationEnabled
   }
 
-  public init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws(any Error) {
     // No-op. This initializer cannot be synthesized since `CodingKeys` includes
     // a case representing a non-stored property. See comment about the
     // `isParallelizationEnabled` property in `encode(to:)`.
     self.init()
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     var container = encoder.container(keyedBy: CodingKeys.self)
 
     // The `isParallelizationEnabled` property was removed after this type was
@@ -534,7 +534,7 @@ extension Runner.Plan.Snapshot: Codable {
     case tests
   }
 
-  public init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws(any Error) {
     let container = try decoder.container(keyedBy: _CodingKeys.self)
 
     var testsContainer = try container.nestedUnkeyedContainer(forKey: .tests)
@@ -548,7 +548,7 @@ extension Runner.Plan.Snapshot: Codable {
     }
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws(any Error) {
     var container = encoder.container(keyedBy: _CodingKeys.self)
 
     var testsContainer = container.nestedUnkeyedContainer(forKey: .tests)

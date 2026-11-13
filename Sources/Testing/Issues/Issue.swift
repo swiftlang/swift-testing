@@ -370,7 +370,7 @@ extension Issue {
       self.isKnown = issue.isKnown
     }
 
-    public init(from decoder: any Decoder) throws {
+    public init(from decoder: any Decoder) throws(any Error) {
       let container = try decoder.container(keyedBy: CodingKeys.self)
       self.kind = try container.decode(Issue.Kind.Snapshot.self, forKey: .kind)
       self.comments = try container.decode([Comment].self, forKey: .comments)
@@ -520,7 +520,7 @@ extension Issue.Kind {
       }
     }
 
-    public init(from decoder: any Decoder) throws {
+    public init(from decoder: any Decoder) throws(any Error) {
       let container = try decoder.container(keyedBy: _CodingKeys.self)
       if try container.decodeIfPresent(Bool.self, forKey: .unconditional) != nil {
         self = .unconditional
@@ -555,7 +555,7 @@ extension Issue.Kind {
       }
     }
 
-    public func encode(to encoder: any Encoder) throws {
+    public func encode(to encoder: any Encoder) throws(any Error) {
       var container = encoder.container(keyedBy: _CodingKeys.self)
       switch self {
       case .unconditional:

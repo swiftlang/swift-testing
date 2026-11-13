@@ -170,7 +170,8 @@ struct AttributeInfo {
     // closure so they may be evaluated lazily at runtime.
     if let testFunctionArguments, let functionDecl = declaration.as(FunctionDeclSyntax.self) {
       let argumentCount = testFunctionArguments.count
-      let parameterCount = functionDecl.signature.parameterClause.parameters.count
+      let parameters = declaration.as(FunctionDeclSyntax.self)?.signature.parameterClause.parameters
+      let parametersAreAttributed = parameters?.contains { $0.type.is(AttributedTypeSyntax.self) } ?? false
       let consumedParameterTypeName = functionDecl.signature.parameterClause.parameters
         .compactMap { $0.type.as(AttributedTypeSyntax.self) }
         .first { type in
@@ -181,20 +182,60 @@ struct AttributeInfo {
         }.map { $0.with(\.specifiers, TypeSpecifierListSyntax()) }
         .map(\.trimmedDescription)
       arguments += testFunctionArguments.map { argument in
-        var argumentCopy = argument
+        var isDesugared = false
+        if argumentCount == 1, let parameters, parameters.count != argumentCount {
+          isDesugared = true
+        }
+
+        // If the parameter list is a desugared tuple and the argument
+        // expression is an array literal (peering through effectful keyword
+        // wrapper expressions), explicitly specify the expression type to help
+        // the type checker.
+        //
+        // NOTE: since tuples cannot contain non-copyable elements, we don't
+        // need to be concerned with InlineArray when we add support in #2003.
+        var argumentExpr = argument.expression.trimmed
+        if isDesugared, let parameters,
+           argumentExpr.ignoringEffectKeywords.is(ArrayExprSyntax.self) {
+          if parametersAreAttributed {
+            // We currently do not try to handle these types because we can't
+            // distinguish attributes like `@Sendable` that are part of the
+            // formal type from attributes like `@escaping` that need to be
+            // stripped. Hence, if we encounter an attributed type, just specify
+            // `as Swift.Array` without the generic parameter.
+            argumentExpr = "\(argumentExpr) as Swift.Array"
+          } else {
+            let tupleType = TupleTypeSyntax(
+              elements: TupleTypeElementListSyntax {
+                for parameter in parameters {
+                  if let iuoType = parameter.type.as(ImplicitlyUnwrappedOptionalTypeSyntax.self) {
+                    // Convert to an optional rather than IUO type before
+                    // continuing.
+                    TupleTypeElementSyntax(type: OptionalTypeSyntax(wrappedType: iuoType.wrappedType.trimmed))
+                  } else {
+                    TupleTypeElementSyntax(type: parameter.type.trimmed)
+                  }
+                }
+              }
+            )
+            argumentExpr = "\(argumentExpr) as Swift.Array<\(tupleType)>"
+          }
+        }
+
         var makeArgumentListExpr = ExprSyntax(
           FunctionCallExprSyntax(callee: "Testing.__makeArgumentList" as ExprSyntax) {
-            LabeledExprSyntax(expression: argument.expression.trimmed)
+            LabeledExprSyntax(expression: argumentExpr)
 
             // We only need to track the parameter count if tuple desugaring
             // is in play, which cannot happen with multiple argument lists
             // (because you can't desugar a tuple into a partial parameter
             // list alongside other parameters).
-            if argumentCount == 1, parameterCount != argumentCount {
-              LabeledExprSyntax(label: "parameterCount", expression: IntegerLiteralExprSyntax(parameterCount))
+            if isDesugared, let parameters {
+              LabeledExprSyntax(label: "parameterCount", expression: IntegerLiteralExprSyntax(parameters.count))
             }
           }
         )
+
         if let consumedParameterTypeName {
           // We do allow `consuming`, but only for copyable values. Move-only
           // values must be `borrowing`. In order to enforce this distinction,
@@ -203,10 +244,12 @@ struct AttributeInfo {
           // language mode, we will always disallow `consuming` here.
           makeArgumentListExpr = "#Testing::__consumeArgumentList(\(makeArgumentListExpr), \(literal: consumedParameterTypeName))"
         }
-        argumentCopy.expression = ExprSyntax(
+
+        var copy = argument
+        copy.expression = ExprSyntax(
           ClosureExprSyntax { makeArgumentListExpr }
         )
-        return argumentCopy
+        return copy
       }
     }
 

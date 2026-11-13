@@ -51,7 +51,7 @@ public struct AttachmentSavingTrait: TestTrait, SuiteTrait {
     /// - Returns: An instance of ``AttachmentSavingTrait/Condition`` that
     ///   evaluates `issueMatcher`.
     public static func testRecordsIssue(
-      matching issueMatcher: @escaping @Sendable (_ issue: Issue) async throws -> Bool
+      matching issueMatcher: nonisolated(nonsending) @escaping @Sendable (_ issue: Issue) async throws -> Bool
     ) -> Self {
       Self(inspectsIssues: true) { context in
         for issue in context.issues {
@@ -68,7 +68,7 @@ public struct AttachmentSavingTrait: TestTrait, SuiteTrait {
     fileprivate var inspectsIssues = false
 
     /// The condition function.
-    fileprivate var body: @Sendable (borrowing Context) async throws -> Bool
+    fileprivate var body: nonisolated(nonsending) @Sendable (borrowing Context) async throws -> Bool
   }
 
   /// This instance's condition.
@@ -112,7 +112,7 @@ extension AttachmentSavingTrait: TestScoping {
     testCase != nil ? self : nil
   }
 
-  public func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
+  public nonisolated(nonsending) func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
     guard var configuration = Configuration.current else {
       throw SystemError(description: "There is no current Configuration when attempting to provide scope for test '\(test.name)'. \(fileABugMessage)")
     }
@@ -178,7 +178,7 @@ extension AttachmentSavingTrait: TestScoping {
   ///   - test: The test for which events were recorded.
   ///   - testCase The test case for which events were recorded, if any.
   ///   - configuration: The configuration to pass events to.
-  private func _handleDeferredEvents(in context: consuming Context, for test: Test, testCase: Test.Case?, configuration: Configuration) async {
+  private nonisolated(nonsending) func _handleDeferredEvents(in context: consuming Context, for test: Test, testCase: Test.Case?, configuration: Configuration) async {
     if context.deferredEvents.isEmpty {
       // Never mind...
       return
@@ -283,7 +283,7 @@ extension Trait where Self == AttachmentSavingTrait {
   ///     ([103037177](rdar://103037177))
   /// }
   public static func savingAttachments(
-    if condition: @escaping @Sendable () async throws -> Bool,
+    if condition: nonisolated(nonsending) @escaping @Sendable () async throws -> Bool,
     sourceLocation: SourceLocation = #Testing::sourceLocation
   ) -> Self {
     let condition = Self.Condition { _ in try await condition() }

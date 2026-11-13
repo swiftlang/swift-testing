@@ -28,7 +28,7 @@ extension UIImage: AttachableAsImage, AttachableAsCGImage {
   ///   @Available(Xcode, introduced: 26.4)
   /// }
   package var attachableCGImage: CGImage {
-    get throws {
+    get throws(ImageAttachmentError) {
 #if canImport(UIKitCore_Private)
       // _UIImageGetCGImageRepresentation() is an internal UIKit function that
       // flattens any (most) UIImage instances to a CGImage. BUG: rdar://155449485
@@ -70,7 +70,7 @@ extension UIImage: AttachableAsImage, AttachableAsCGImage {
     scale
   }
 
-  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     try withUnsafeBytesImpl(as: imageFormat, body)
   }
 }

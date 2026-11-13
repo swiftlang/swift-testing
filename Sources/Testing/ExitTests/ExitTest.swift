@@ -86,7 +86,7 @@ public struct ExitTest: Sendable, ~Copyable {
   ///
   /// - Parameters:
   ///   - exitTest: The exit test to which this body closure belongs.
-  fileprivate typealias Body = @Sendable (_ exitTest: inout Self) async throws -> Void
+  fileprivate typealias Body = nonisolated(nonsending) @Sendable (_ exitTest: inout Self) async throws(any Error) -> Void
 
   /// The body closure of the exit test.
   ///
@@ -96,10 +96,6 @@ public struct ExitTest: Sendable, ~Copyable {
   fileprivate var body: Body = { _ in }
 
   /// Storage for ``observedValues``.
-  ///
-  /// Key paths are not sendable because the properties they refer to may or may
-  /// not be, so this property needs to be `nonisolated(unsafe)`. It is safe to
-  /// use it in this fashion because ``ExitTest/Result`` is sendable.
   fileprivate var _observedValues = [any PartialKeyPath<ExitTest.Result> & Sendable]()
 
   /// Key paths representing results from within this exit test that should be
@@ -138,10 +134,19 @@ public struct ExitTest: Sendable, ~Copyable {
   /// value of this property unless you are implementing a custom exit test
   /// handler or entry point function.
   ///
-  /// The order of values in this array must be the same between the parent and
-  /// child processes.
+  /// You can access the concrete type information for the elements in this
+  /// array by using Swift's "existential opening" language feature:
+  ///
+  /// ```swift
+  /// func open<C>(_ capturedValue: C) where C: ExitTest.CapturedValue {
+  ///   print("This captured value is of type \(C.Wrapped.self).")
+  /// }
+  /// for capturedValue in exitTest.capturedValues {
+  ///   open(capturedValue)
+  /// }
+  /// ```
   @_spi(ForToolsIntegrationOnly)
-  public var capturedValues = [CapturedValue]()
+  public fileprivate(set) var capturedValues = [any CapturedValue]()
 
   /// Make a copy of this instance.
   ///
@@ -150,10 +155,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// This function is unsafe because if the caller is not careful, it could
   /// invoke the same exit test twice.
   fileprivate borrowing func unsafeCopy() -> Self {
-    var result = Self(id: id, body: body)
-    result._observedValues = _observedValues
-    result.capturedValues = capturedValues
-    return result
+    Self(id: id, body: body, _observedValues: _observedValues, capturedValues: capturedValues)
   }
 }
 
@@ -253,13 +255,42 @@ extension ExitTest {
   /// call in a spawned exit test process.
   private static let _idEnvironmentVariableName = "SWT_EXIT_TEST_ID"
 
+#if os(Windows)
+  /// Whether or not we need to set thread-local signal handlers in the current
+  /// process.
+  private static let _needsThreadLocalSignalHandlers = Atomic<Bool>(false)
+
+  /// Set all thread-local signal handlers whenever a thread in an exit test
+  /// process is created ("attached" in Windows API parlance).
+  @section(".CRT$XLB") @used
+  private static let _setThreadLocalSignalHandlers: PIMAGE_TLS_CALLBACK = { _, reason, _ in
+    if reason == DWORD(DLL_PROCESS_ATTACH),
+       Environment.variable(named: _idEnvironmentVariableName) != nil {
+      _needsThreadLocalSignalHandlers.store(true, ordering: .sequentiallyConsistent)
+    }
+
+    // NOTE: The main thread will trigger `DLL_PROCESS_ATTACH` and other threads
+    // will trigger `DLL_THREAD_ATTACH`.
+    guard reason == DWORD(DLL_PROCESS_ATTACH) || reason == DWORD(DLL_THREAD_ATTACH),
+          _needsThreadLocalSignalHandlers.load(ordering: .sequentiallyConsistent) else {
+      return
+    }
+
+    for sig in windowsThreadLocalSignals {
+      _ = signal(sig) { sig in
+        _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
+      }
+    }
+  }
+#endif
+
   /// Call the exit test in the current process.
   ///
   /// This function invokes the closure originally passed to
   /// `#expect(processExitsWith:)` _in the current process_. That closure is
   /// expected to terminate the process; if it does not, the testing library
   /// will terminate the process as if its `main()` function returned naturally.
-  public consuming func callAsFunction() async -> Never {
+  public nonisolated(nonsending) consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
 #if os(Windows)
@@ -286,6 +317,11 @@ extension ExitTest {
     // repository doesn't have an official GitHub mirror, but you can manually
     // navigate to misc/signal.cpp:481 to see the implementation of SIG_DFL
     // (which, again, calls `_exit(3)` unconditionally.)
+    //
+    // See also `_setThreadLocalSignalHandlers` above, which we use to ensure
+    // thread-local signal handlers are set consistently across threads when
+    // said threads are created.
+    Self._needsThreadLocalSignalHandlers.store(true, ordering: .sequentiallyConsistent)
     for sig in windowsSignals.keys {
       _ = signal(sig) { sig in
         _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
@@ -339,15 +375,13 @@ extension ExitTest {
 
     /// The set of values captured in the parent process before the exit test is
     /// called.
-    var capturedValues = [CapturedValue]()
+    var capturedValues = [any CapturedValue]()
 
     /// Make the exit test represented by this instance.
     ///
     /// - Returns: A new exit test as represented by this instance.
     func makeExitTest() -> ExitTest {
-      var exitTest = ExitTest(id: id, body: body)
-      exitTest.capturedValues = capturedValues
-      return exitTest
+      ExitTest(id: id, body: body, capturedValues: capturedValues)
     }
   }
 
@@ -365,9 +399,9 @@ extension ExitTest {
   ///
   /// - Warning: This function is used to implement the
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
-  @safe public static func __store<each T>(
+  @safe public static func __store<each T, E>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
-    _ body: @escaping @Sendable (repeat each T) async throws -> Void,
+    _ body: nonisolated(nonsending) @escaping @Sendable (repeat each T) async throws(E) -> Void,
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
@@ -386,13 +420,13 @@ extension ExitTest {
     // Wrap the body function in a thunk that decodes any captured state and
     // passes it along.
     let body: ExitTest.Body = { exitTest in
-      let values: (repeat each T) = try exitTest.capturedValues.takeCapturedValues()
+      let values: (repeat each T) = try takeCapturedValues(from: exitTest.capturedValues)
       try await body(repeat each values)
     }
 
     // Construct and return the record.
     var record = Record(id: id, body: body)
-    record.capturedValues = Array(repeat (each T).self)
+    repeat record.capturedValues.append(_CapturedValue<each T>())
     outValue.initializeMemory(as: Record.self, to: record)
     return true
   }
@@ -462,17 +496,16 @@ extension ExitTest {
 /// This function contains the common implementation for all
 /// `await #expect(processExitsWith:) { }` invocations regardless of calling
 /// convention.
-func callExitTest(
+nonisolated(nonsending) func callExitTest<each T>(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
-  encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
+  encodingCapturedValues capturedValues: (repeat each T),
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
   expression: @autoclosure () -> __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTest.Result?, any Error> {
+) async -> Result<ExitTest.Result?, any Error> where repeat each T: Codable & Sendable {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
     preconditionFailure("A test must be running on the current task to use #expect(processExitsWith:).")
   }
@@ -480,9 +513,8 @@ func callExitTest(
   var result: ExitTest.Result
   do {
     // Construct a temporary/local exit test to pass to the exit test handler.
-    var exitTest = ExitTest(id: ExitTest.ID(exitTestID))
-    exitTest.observedValues = observedValues
-    exitTest.capturedValues = capturedValues
+    var exitTest = ExitTest(id: ExitTest.ID(exitTestID), _observedValues: observedValues)
+    repeat exitTest.capturedValues.append(ExitTest._CapturedValue(each capturedValues))
 
     // Invoke the exit test handler and wait for the child process to terminate.
     result = try await configuration.exitTestHandler(exitTest)
@@ -659,7 +691,7 @@ extension ExitTest {
   /// are available or the child environment is otherwise terminated. The parent
   /// environment is then responsible for interpreting those results and
   /// recording any issues that occur.
-  public typealias Handler = @Sendable (_ exitTest: borrowing Self) async throws -> ExitTest.Result
+  public typealias Handler = nonisolated(nonsending) @Sendable (_ exitTest: borrowing Self) async throws(any Error) -> ExitTest.Result
 
   /// Make a file handle from the string contained in the given environment
   /// variable.
@@ -857,7 +889,7 @@ extension ExitTest {
       return result
     }()
 
-    @Sendable func result(_ exitTest: borrowing ExitTest) async throws -> ExitTest.Result {
+    @Sendable nonisolated(nonsending) func result(_ exitTest: borrowing ExitTest) async throws(any Error) -> ExitTest.Result {
       let childProcessExecutablePath = try childProcessExecutablePath.get()
 
       // Inherit the environment from the parent process and make any necessary
@@ -1019,7 +1051,7 @@ extension ExitTest {
   /// - Parameters:
   ///   - backChannel: The file handle to read from. Reading continues until an
   ///     error is encountered or the end of the file is reached.
-  private static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) async {
+  private nonisolated(nonsending) static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) async {
     var terminator: UInt8?
     repeat {
       let recordJSON: [UInt8]
@@ -1059,7 +1091,7 @@ extension ExitTest {
   ///   - backChannel: The file handle that `recordJSON` was read from.
   ///
   /// - Throws: Any error encountered attempting to decode or process the JSON.
-  private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
+  private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws(any Error) {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
     guard case let .event(encodedEvent) = record.kind,
       let event = Event(decoding: encodedEvent)
@@ -1098,7 +1130,7 @@ extension ExitTest {
   /// This function should only be used when the process was started via the
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
-  private mutating func _decodeCapturedValuesForEntryPoint() throws {
+  private mutating func _decodeCapturedValuesForEntryPoint() throws(any Error) {
     // Read the content of the captured values stream provided by the parent
     // process above.
     guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_CAPTURED_VALUES", options: [.readAccess]) else {
@@ -1113,16 +1145,16 @@ extension ExitTest {
     capturedValues = try zip(capturedValues, capturedValuesJSONLines).map { capturedValue, capturedValueJSON in
       var capturedValue = capturedValue
 
-      func open<T>(_ type: T.Type) throws -> T where T: Codable & Sendable {
-        return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
+      func open<C>(_ capturedValue: inout C) throws(any Error) where C: CapturedValue {
+        capturedValue.wrappedValue = try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
           try JSON.decode(
-            type,
+            C.Wrapped.self,
             from: capturedValueJSON,
             userInfo: [.allowNonConformingFloatingPointValuesUserInfoKey: true]
           )
         }
       }
-      capturedValue.wrappedValue = try open(capturedValue.typeOfWrappedValue)
+      try open(&capturedValue)
 
       return capturedValue
     }
@@ -1143,7 +1175,7 @@ extension ExitTest {
   /// This function should only be used when the process was started via the
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
-  private borrowing func _withEncodedCapturedValuesForEntryPoint(_ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void {
+  private borrowing func _withEncodedCapturedValuesForEntryPoint<E>(_ body: (UnsafeRawBufferPointer) throws(E) -> Void) throws(any Error) -> Void {
     for capturedValue in capturedValues {
       try JSON.withEncoding(
         of: capturedValue.wrappedValue!,

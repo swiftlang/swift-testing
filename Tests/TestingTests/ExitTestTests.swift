@@ -620,8 +620,8 @@ private let exit = Testing.exit
   class CapturableBaseClass: @unchecked Sendable, Codable {
     init() {}
 
-    required init(from decoder: any Decoder) throws {}
-    func encode(to encoder: any Encoder) throws {}
+    required init(from decoder: any Decoder) throws(any Error) {}
+    func encode(to encoder: any Encoder) throws(any Error) {}
   }
 
   final class CapturableDerivedClass: CapturableBaseClass, @unchecked Sendable {
@@ -632,13 +632,13 @@ private let exit = Testing.exit
       super.init()
     }
 
-    required init(from decoder: any Decoder) throws {
+    required init(from decoder: any Decoder) throws(any Error) {
       let container = try decoder.singleValueContainer()
       self.x = try container.decode(Int.self)
       super.init()
     }
 
-    override func encode(to encoder: any Encoder) throws {
+    override func encode(to encoder: any Encoder) throws(any Error) {
       var container = encoder.singleValueContainer()
       try container.encode(x)
     }

@@ -327,7 +327,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments collection: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C, C.Element>,
+    arguments collection: nonisolated(nonsending) @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C, C.Element>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
@@ -505,7 +505,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: __TraitArray<any TestTrait>,
-    arguments collection1: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C1, C1.Element>, _ collection2: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C2, C2.Element>,
+    arguments collection1: nonisolated(nonsending) @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C1, C1.Element>, _ collection2: nonisolated(nonsending) @escaping @Sendable () async throws -> Test.Case.__ArgumentList<C2, C2.Element>,
     sourceBounds: __SourceBounds,
     parameters paramTuples: [__Parameter],
     testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
@@ -768,7 +768,7 @@ public macro Test<C1, C2>(
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not call
 ///   it directly.
-@inlinable public func __invokeXCTestMethod<T>(
+@inlinable public nonisolated(nonsending) func __invokeXCTestMethod<T>(
   _ selector: __XCTestCompatibleSelector?,
   onInstanceOf type: T.Type,
   sourceLocation: SourceLocation
@@ -794,7 +794,7 @@ let xcTestClass: AnyClass? = {
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not call
 ///   it directly.
-public func __invokeXCTestMethod<T>(
+public nonisolated(nonsending) func __invokeXCTestMethod<T>(
   _ selector: __XCTestCompatibleSelector?,
   onInstanceOf xcTestSubclass: T.Type,
   sourceLocation: SourceLocation

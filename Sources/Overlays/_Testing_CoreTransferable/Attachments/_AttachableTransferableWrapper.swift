@@ -37,7 +37,7 @@ public struct _AttachableTransferableWrapper<T>: Sendable where T: Transferable 
   /// The exported form of the transferable value.
   private var _bytes: Data
 
-  init(exporting transferableValue: T, as contentType: UTType?) async throws {
+  nonisolated(nonsending) init(exporting transferableValue: T, as contentType: UTType?) async throws(any Error) {
     let contentType = contentType ?? transferableValue.exportedContentTypes()
       .first { $0.conforms(to: .data) }
     guard let contentType else {
@@ -70,7 +70,7 @@ extension _AttachableTransferableWrapper: AttachableWrapper {
   ///   @Available(Swift, introduced: 6.4)
   ///   @Available(Xcode, introduced: 27.0)
   /// }
-  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     try _bytes.withUnsafeBytes(body)
   }
 
