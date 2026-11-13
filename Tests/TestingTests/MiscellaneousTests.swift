@@ -670,4 +670,15 @@ struct MiscellaneousTests {
       #expect(true as Bool, comment)
     }
   }
+
+#if !SWT_NO_EXIT_TESTS
+  @Test func `withUnsafeTypedThrowsEmulation() terminates if the wrong error type is caught`() async throws {
+    let result = try await #require(processExitsWith: .failure, observing: [\.standardErrorContent]) {
+      try? await withUnsafeTypedThrowsEmulation(throwing: MyError.self, becauseOf: .bug(id: "ABCD12345")) {
+        throw MyParameterizedError(index: 0)
+      }
+    }
+    #expect(result.standardErrorContent.contains("ABCD12345".utf8))
+  }
+#endif
 }
