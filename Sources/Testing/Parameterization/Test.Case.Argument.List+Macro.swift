@@ -176,16 +176,6 @@ public func __makeArgumentList<S, each E>(_ arguments: S, parameterCount: Int = 
   }
 }
 
-public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element == (E1, E2), E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
-  Test.Case.__ArgumentList(arguments) { element in
-    if parameterCount > 1 {
-      return [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
-    }
-    let testDescription = "(\(String(describingForTest: element.0)), \(String(describingForTest: element.1)))"
-    return [Test.Case.Argument.Value(element, testDescription: testDescription)]
-  }
-}
-
 public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence & ExpressibleByDictionaryLiteral, S.Element == (key: K, value: V), K: CustomTestStringConvertible, V: CustomTestStringConvertible {
   Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
