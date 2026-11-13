@@ -78,6 +78,7 @@ public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Te
   }
 }
 
+#if !hasFeature(Embedded)
 /// Make an argument list from the given sequence of arguments.
 ///
 /// - Parameters:
@@ -112,6 +113,7 @@ public func __makeArgumentList<S, each E>(_ arguments: S, parameterCount: Int = 
     return [Test.Case.Argument.Value(element)]
   }
 }
+#endif
 
 /// Make an argument list from the given sequence of arguments.
 ///
@@ -159,20 +161,23 @@ public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Te
   }
 }
 
-public func __makeArgumentList<S, each E>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element == (repeat each E), repeat each E: CustomTestStringConvertible {
-  let parameterPackCount = parameterPackCount(repeat (each E).self)
-  return Test.Case.__ArgumentList(arguments) { element in
+public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element == (E1, E2) {
+  Test.Case.__ArgumentList(arguments) { element in
     if parameterCount > 1 {
-      var result = [Test.Case.Argument.Value]()
-      repeat result.append(Test.Case.Argument.Value(each element))
-      return result
-    } else if parameterPackCount > 1 {
-      var testDescriptions = [String]()
-      repeat testDescriptions.append(String(describingForTest: each element))
-      let testDescription = "(" + testDescriptions.joined(separator: ", ") + ")"
-      return [Test.Case.Argument.Value(element, testDescription: testDescription)]
+      return [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
     }
-    return [Test.Case.Argument.Value(element)]
+    let testDescription = "(\(UnavailableInEmbeddedSwift.testDescription), \(UnavailableInEmbeddedSwift.testDescription))"
+    return [Test.Case.Argument.Value(element, testDescription: testDescription)]
+  }
+}
+
+public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element == (E1, E2), E1: CustomTestStringConvertible, E2: CustomTestStringConvertible {
+  Test.Case.__ArgumentList(arguments) { element in
+    if parameterCount > 1 {
+      return [Test.Case.Argument.Value(element.0), Test.Case.Argument.Value(element.1)]
+    }
+    let testDescription = "(\(String(describingForTest: element.0)), \(String(describingForTest: element.1)))"
+    return [Test.Case.Argument.Value(element, testDescription: testDescription)]
   }
 }
 
