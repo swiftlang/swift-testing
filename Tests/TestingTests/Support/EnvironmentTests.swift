@@ -37,6 +37,20 @@ struct EnvironmentTests {
     #expect(Environment.variable(named: name) == value)
   }
 
+  @Test("Environment variable whose name is a prefix of the requested name is ignored")
+  func ignoresVariableWhoseNameIsPrefixOfRequestedName() throws {
+    let prefixName = String(name.dropLast())
+    try #require(nil == Environment.variable(named: name))
+    try #require(nil == Environment.variable(named: prefixName))
+    defer {
+      Environment.setVariable(nil, named: prefixName)
+    }
+    try #require(Environment.setVariable("value", named: prefixName))
+    #expect(Environment.variable(named: prefixName) == "value")
+    #expect(Environment.variable(named: name) == nil)
+    #expect(Environment.flag(named: name) == nil)
+  }
+
   @Test("Read true environment flags",
     arguments: [
       "1", String(describing: UInt64.max), String(describing: Int64.min),
