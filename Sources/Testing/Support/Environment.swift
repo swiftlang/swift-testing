@@ -86,7 +86,10 @@ package enum Environment {
 
         if let equals = strchr(rowp, CInt(UInt8(ascii: "="))) {
           let keyLength = UnsafeRawPointer(equals) - UnsafeRawPointer(rowp)
-          if 0 == strncmp(rowp, name, keyLength) {
+          // Check that `name` ends where the key ends. `strncmp()` alone would
+          // also match a key that is only a prefix of `name`. The `&&` short
+          // circuits, so `name[keyLength]` is in bounds whenever it is read.
+          if 0 == strncmp(rowp, name, keyLength) && name[keyLength] == 0 {
             return String(validatingCString: equals + 1)
           }
         }
