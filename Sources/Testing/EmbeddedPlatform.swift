@@ -99,7 +99,7 @@ extension JSON {
     func write(_ json: UnsafeRawBufferPointer, terminatedBy terminator: UInt8?) throws(CError) {
 #if !hasFeature(Embedded)
       _ = try _file.withLock { () throws(CError) in
-        try _file.write(json)
+        try _file.write(json.bytes)
         if let terminator {
           try _file.write(terminator)
         }
