@@ -10,26 +10,35 @@ See https://swift.org/LICENSE.txt for license information
 See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
-<!-- NOTE: The voice of this document is directed at the second person ("you")
-because it provides instructions the reader must follow directly. -->
-
 To run tests for Android on your own machine, you build them with the Swift SDK
 for Android, copy them to an Android emulator, and run them there with `adb`.
 
 Install a Swift toolchain and the matching Swift SDK for Android by following
 [these instructions](https://www.swift.org/documentation/articles/swift-sdk-for-android-getting-started.html).
-You also need the Android SDK command-line tools, which include `sdkmanager`,
-`avdmanager`, `emulator` and `adb`. The examples below use Swift 6.4.1 and
-Android API level 33, and assume `$ANDROID_HOME` points at your Android SDK.
-Use API level 33 or later: on earlier versions of Android, the testing library
-can't capture backtraces.
+The examples below use the `swift-DEVELOPMENT-SNAPSHOT-2026-11-01-a` snapshot of
+the main branch. You can also use a later snapshot, such as a
+`swift-6.5.x-DEVELOPMENT-SNAPSHOT-2026-11-dd-a` snapshot of the release branch,
+or the `swift-6.5-RELEASE` release when they're available. Install the toolchain
+and the Swift SDK for Android with the same tag. Snapshots are listed under
+[Development Snapshots](https://www.swift.org/install/macos/#development-snapshots)
+on swift.org. With `swiftly`, use `swiftly install main-snapshot` for the
+toolchain.
+
+You also need the
+[Android SDK command-line tools](https://developer.android.com/studio#command-line-tools-only),
+which include `sdkmanager` and `avdmanager` and are available for macOS, Linux
+and Windows. The commands below use `sdkmanager` to install `adb` and the
+emulator. The emulator runs on macOS, x86-64 Linux and x86-64 Windows. The
+examples use Android API level 33 and assume `$ANDROID_HOME` points at your
+Android SDK. Use API level 33 or later: on earlier versions of Android, the
+testing library can't capture backtraces.
 
 ## Start an emulator
 
 The emulator runs at full speed only when its architecture matches your
-machine: use `arm64-v8a` on Apple silicon and `x86_64` on an x86-64 machine.
-To install a system image and create an emulator on Apple silicon, use the
-following commands:
+machine: use `arm64-v8a` on Apple silicon (or other ARM64-based hardware) and
+`x86_64` on an x86-64 machine. To install a system image and create an emulator
+on Apple silicon, use the following commands:
 
 ```sh
 export PATH="$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools"
@@ -49,13 +58,21 @@ to list their serial numbers.
 
 ## Build the tests
 
-Build the tests with the Swift SDK for Android, using the target triple that
-matches the emulator's architecture and API level. On an x86-64 machine, use
-`x86_64-unknown-linux-android33` here and below:
+Build the tests with the Swift SDK for Android. Set `SWIFT_SDK` to its name as
+`swift sdk list` shows it, and `TRIPLE` to the target triple that matches the
+emulator's architecture and API level. On an x86-64 machine, use
+`x86_64-unknown-linux-android33`. The commands below use both variables, so run
+them in the same shell:
 
 ```sh
-swift build --build-tests --swift-sdk aarch64-unknown-linux-android33
+SWIFT_SDK=swift-DEVELOPMENT-SNAPSHOT-2026-11-01-a_android
+TRIPLE=aarch64-unknown-linux-android33
+swift build --build-tests --swift-sdk "$SWIFT_SDK" --triple "$TRIPLE"
 ```
+
+If only one Swift SDK for Android is installed, `--swift-sdk "$TRIPLE"` also
+works. With more than one, the triple alone matches all of them and the build
+stops with an error.
 
 ## Copy the tests to the emulator
 
@@ -66,13 +83,12 @@ the Swift SDK keeps them. Copy everything into one folder and push it to the
 emulator:
 
 ```sh
-SWIFT_SDK=swift-6.4.1-RELEASE_android
-TRIPLE=aarch64-unknown-linux-android33
 CONFIG="$(swift sdk configure --show-configuration "$SWIFT_SDK" "$TRIPLE")"
 SDK_ROOT="$(echo "$CONFIG" | sed -n 's/^sdkRootPath: //p')"
 SWIFT_RESOURCES="$(echo "$CONFIG" | sed -n 's/^swiftResourcesPath: //p')"
 ARCH="${TRIPLE%%-*}"
-BIN="$(swift build --show-bin-path --swift-sdk "$TRIPLE")"
+BIN="$(swift build --show-bin-path \
+  --swift-sdk "$SWIFT_SDK" --triple "$TRIPLE")"
 
 mkdir -p android-tests
 cp "$BIN"/*-test-runner "$BIN"/*.so android-tests/
@@ -101,19 +117,13 @@ run each of them. For example, this repository's tests build into
 `TestingTests-test-runner`, `TestingMacrosTests-test-runner` and
 `NonisolatedNonsendingByDefaultTests-test-runner`.
 
-> [!NOTE]
-> With the Swift SDKs for Android from Swift 6.4.1 and 6.4.2, a test runner that
-> imports `FoundationXML` fails to start with the error `cannot locate symbol
-> "deflateInit2_"`. To work around this, load the system's `libz.so` first by
-> adding `LD_PRELOAD=libz.so` before the runner's name.
-
 You can pass command-line options of the testing library after the runner's
 name. For example, to list all tests and to filter them by name, use the
 following commands:
 
 ```sh
 adb shell "cd /data/local/tmp/android-tests && \
-  ./{YOURTARGET}-test-runner --testing-library swift-testing --list-tests"
+  ./{YOURTARGET}-test-runner --testing-library swift-testing list"
 adb shell "cd /data/local/tmp/android-tests && \
   ./{YOURTARGET}-test-runner --testing-library swift-testing \
   --filter foodTruckExists"
