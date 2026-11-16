@@ -92,13 +92,12 @@ stops with an error.
 
 The emulator needs the test runner and the libraries it loads: the ones built
 for your package, the Swift runtime from the Swift SDK, and `libc++_shared.so`
-from the Android NDK. `swift sdk configure --show-configuration` prints where
-the Swift SDK keeps them. Copy everything into one folder and push it to the
-emulator:
+from the Android NDK that `$ANDROID_NDK_HOME` points at.
+`swift sdk configure --show-configuration` prints where the Swift SDK keeps the
+Swift runtime. Copy everything into one folder and push it to the emulator:
 
 ```sh
 CONFIG="$(swift sdk configure --show-configuration "$SWIFT_SDK" "$TRIPLE")"
-SDK_ROOT="$(echo "$CONFIG" | sed -n 's/^sdkRootPath: //p')"
 SWIFT_RESOURCES="$(echo "$CONFIG" | sed -n 's/^swiftResourcesPath: //p')"
 ARCH="${TRIPLE%%-*}"
 BIN="$(swift build --show-bin-path \
@@ -107,7 +106,9 @@ BIN="$(swift build --show-bin-path \
 mkdir -p android-tests
 cp "$BIN"/*-test-runner "$BIN"/*.so android-tests/
 cp "$SWIFT_RESOURCES"/android/*.so android-tests/
-cp "$SDK_ROOT"/usr/lib/"$ARCH"-linux-android/libc++_shared.so android-tests/
+NDK_PREBUILT="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt"
+cp "$NDK_PREBUILT"/*/sysroot/usr/lib/"$ARCH"-linux-android/libc++_shared.so \
+  android-tests/
 adb push android-tests /data/local/tmp/android-tests
 ```
 
