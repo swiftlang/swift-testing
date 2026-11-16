@@ -58,6 +58,8 @@ there.
 
 - Instructions are provided for running tests against a
   [WASI/WebAssembly target](https://github.com/swiftlang/swift-testing/blob/main/Documentation/WASI.md).
+- Instructions are provided for running tests on an
+  [Android emulator](https://github.com/swiftlang/swift-testing/blob/main/Documentation/Android.md).
 
 ## Testing library ABI
 
