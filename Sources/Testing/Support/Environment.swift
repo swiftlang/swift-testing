@@ -74,7 +74,7 @@ package enum Environment {
   /// - Returns: The value of the given environment variable, or `nil` if it was
   ///   not found in `environ`.
   private static func _get(_ name: String, fromEnviron environ: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?) -> String? {
-    guard let environ = Self.unsafeAddress else {
+    guard let environ else {
       return nil
     }
 
