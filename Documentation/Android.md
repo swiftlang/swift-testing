@@ -32,11 +32,15 @@ To install a system image and create an emulator on Apple silicon, use the
 following commands:
 
 ```sh
-export PATH="$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin"
-sdkmanager --install "emulator" "platform-tools" "system-images;android-33;default;arm64-v8a"
-echo no | avdmanager create avd -n swift-tests -k "system-images;android-33;default;arm64-v8a"
+export PATH="$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools"
+export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
+sdkmanager --install "emulator" "platform-tools" \
+  "system-images;android-33;default;arm64-v8a"
+echo no | avdmanager create avd -n swift-tests \
+  -k "system-images;android-33;default;arm64-v8a"
 emulator -avd swift-tests -no-window -no-snapshot -no-audio &
-adb wait-for-device shell 'while [ "$(getprop sys.boot_completed)" != 1 ]; do sleep 1; done'
+adb wait-for-device shell \
+  'while [ "$(getprop sys.boot_completed)" != 1 ]; do sleep 1; done'
 ```
 
 If more than one emulator or device is connected, set `ANDROID_SERIAL` to the
@@ -88,7 +92,8 @@ Run the test runner on the emulator with `adb shell`, replacing
 `{YOURTARGET}` with the name of your test target, such as `FoodTruckTests`:
 
 ```sh
-adb shell "cd /data/local/tmp/android-tests && ./{YOURTARGET}-test-runner --testing-library swift-testing"
+adb shell "cd /data/local/tmp/android-tests && \
+  ./{YOURTARGET}-test-runner --testing-library swift-testing"
 ```
 
 Each test target has its own test runner. If your package has more than one,
@@ -107,8 +112,11 @@ name. For example, to list all tests and to filter them by name, use the
 following commands:
 
 ```sh
-adb shell "cd /data/local/tmp/android-tests && ./{YOURTARGET}-test-runner --testing-library swift-testing --list-tests"
-adb shell "cd /data/local/tmp/android-tests && ./{YOURTARGET}-test-runner --testing-library swift-testing --filter foodTruckExists"
+adb shell "cd /data/local/tmp/android-tests && \
+  ./{YOURTARGET}-test-runner --testing-library swift-testing --list-tests"
+adb shell "cd /data/local/tmp/android-tests && \
+  ./{YOURTARGET}-test-runner --testing-library swift-testing \
+  --filter foodTruckExists"
 ```
 
 The pull request checks for this repository run the same steps in CI, using
