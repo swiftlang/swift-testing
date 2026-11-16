@@ -33,6 +33,20 @@ examples use Android API level 33 and assume `$ANDROID_HOME` points at your
 Android SDK. Use API level 33 or later: on earlier versions of Android, the
 testing library can't capture backtraces.
 
+The command-line tools need JDK 17 or later. If you're installing them for the
+first time, choose a directory for the Android SDK and move the tools into
+`cmdline-tools/latest` inside it, as the
+[`sdkmanager` documentation](https://developer.android.com/tools/sdkmanager)
+describes:
+
+```sh
+export ANDROID_HOME="$HOME/android-sdk"
+mkdir -p "$ANDROID_HOME/cmdline-tools"
+unzip commandlinetools-*_latest.zip -d "$ANDROID_HOME/cmdline-tools"
+mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" \
+  "$ANDROID_HOME/cmdline-tools/latest"
+```
+
 ## Start an emulator
 
 The emulator runs at full speed only when its architecture matches your
