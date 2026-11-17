@@ -183,7 +183,6 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
 ///   it directly.
 @_spi(Experimental)
 @available(_iterableAPI, *)
-@_disfavoredOverload
 public func __makeArgumentList<I>(_ arguments: consuming I, parameterCount: Int = 1) -> Test.Case.__ArgumentList<I, I.Element> where I: Iterable & ~Copyable, I.Element: Copyable, I.BorrowingIterator == Span<I.Element>.BorrowingIterator {
   Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
@@ -203,7 +202,6 @@ public func __makeArgumentList<I>(_ arguments: consuming I, parameterCount: Int 
 ///   it directly.
 @_spi(Experimental)
 @available(_iterableAPI, *)
-@_disfavoredOverload
 public func __makeArgumentList<I>(_ arguments: consuming I, parameterCount: Int = 1) -> Test.Case.__ArgumentList<I, I.Element> where I: Iterable & ~Copyable, I.Element: ~Copyable, I.BorrowingIterator == Span<I.Element>.BorrowingIterator {
   Test.Case.__ArgumentList(arguments) { [Test.Case.Argument.Value($0)] }
 }
@@ -212,15 +210,7 @@ public func __makeArgumentList<I>(_ arguments: consuming I, parameterCount: Int 
 // MARK: - Overloads for conformance to CustomTestStringConvertible (Embedded Swift only)
 
 public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element: CustomTestStringConvertible {
-  Test.Case.__ArgumentList(arguments) { element in
-    // We can't break down the tuple in Embedded Swift, but we can at
-    // least present the correct number of arguments.
-    if parameterCount > 1 {
-      let unavailable = Test.Case.Argument.Value(UnavailableInEmbeddedSwift())
-      return Array(repeating: unavailable, count: parameterCount)
-    }
-    return [Test.Case.Argument.Value(element)]
-  }
+  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
 
 public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element == (E1, E2) {
@@ -255,7 +245,6 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
 
 @_spi(Experimental)
 @available(_iterableAPI, *)
-@_disfavoredOverload
 public func __makeArgumentList<I>(_ arguments: consuming I, parameterCount: Int = 1) -> Test.Case.__ArgumentList<I, I.Element> where I: Iterable & ~Copyable, I.Element: Copyable & CustomTestStringConvertible, I.BorrowingIterator == Span<I.Element>.BorrowingIterator {
   Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
 }
