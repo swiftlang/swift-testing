@@ -86,9 +86,9 @@ TRIPLE=aarch64-unknown-linux-android33  # or x86_64-unknown-linux-android33
 swift build --build-tests --swift-sdk "$SWIFT_SDK" --triple "$TRIPLE"
 ```
 
-If only one Swift SDK for Android is installed, `--swift-sdk "$TRIPLE"` also
-works. With more than one, the triple alone matches all of them and the build
-stops with an error.
+If only one snapshot or release of the Swift SDK for Android is installed,
+`--swift-sdk "$TRIPLE"` also works. With more than one, the triple alone
+matches all of them and the build stops with an error.
 
 ## Copy the tests to the emulator
 
