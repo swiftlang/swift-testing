@@ -32,6 +32,7 @@ fileprivate let allMacros: [String: any (Macro & Sendable).Type] = [
   "requireExitTest": ExitTestRequireMacro.self, // different name needed only for unit testing
   "Suite": SuiteDeclarationMacro.self,
   "Test": TestDeclarationMacro.self,
+  "NonCopyableTest": NonCopyableTestDeclarationMacro.self, // different name needed only for unit testing
   "Tag": TagMacro.self,
   "__testing": PragmaMacro.self,
 ]
