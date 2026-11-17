@@ -10,13 +10,6 @@
 
 #if _runtime(_ObjC)
 public import ObjectiveC
-#if canImport(SwiftPackagesInternal)
-public import SwiftPackagesInternal
-#elseif canImport(_FoundationContainersPreview)
-public import _FoundationContainersPreview
-#elseif canImport(Containers)
-public import Containers
-#endif
 
 /// An XCTest-compatible Objective-C selector.
 ///
