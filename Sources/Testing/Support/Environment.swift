@@ -74,7 +74,7 @@ package enum Environment {
   /// - Returns: The value of the given environment variable, or `nil` if it was
   ///   not found in `environ`.
   private static func _get(_ name: String, fromEnviron environ: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?) -> String? {
-    guard let environ = Self.unsafeAddress else {
+    guard let environ else {
       return nil
     }
 
@@ -86,7 +86,10 @@ package enum Environment {
 
         if let equals = strchr(rowp, CInt(UInt8(ascii: "="))) {
           let keyLength = UnsafeRawPointer(equals) - UnsafeRawPointer(rowp)
-          if 0 == strncmp(rowp, name, keyLength) {
+          // Check that `name` ends where the key ends. `strncmp()` alone would
+          // also match a key that is only a prefix of `name`. The `&&` short
+          // circuits, so `name[keyLength]` is in bounds whenever it is read.
+          if 0 == strncmp(rowp, name, keyLength) && name[keyLength] == 0 {
             return String(validatingCString: equals + 1)
           }
         }
