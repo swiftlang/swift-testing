@@ -34,7 +34,7 @@ public struct _AttachableEncodableWrapper<T> where T: Encodable {
   /// must pass `encodableValue` as an existential box instead of an instance of
   /// `T` because otherwise `_encode` captures a reference to the generic type
   /// `T` which is not guaranteed to conform to `SendableMetatype`.
-  private var _encode: @Sendable (_ encodableValue: any Encodable, _ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void
+  private var _encode: @Sendable (_ encodableValue: any Encodable, _ body: (UnsafeRawBufferPointer) throws(any Error) -> Void) throws(any Error) -> Void
 
 #if canImport(Combine)
   /// Initialize an instance of this type representing a given encodable value
@@ -85,7 +85,7 @@ extension _AttachableEncodableWrapper: AttachableWrapper {
     _encodableValue
   }
 
-  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableEncodableWrapper>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableEncodableWrapper>, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     var result: R!
     try _encode(_encodableValue) { buffer in
       result = try body(buffer)

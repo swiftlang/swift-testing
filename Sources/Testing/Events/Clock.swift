@@ -179,25 +179,35 @@ extension Test.Clock: _Concurrency.Clock {
   /// This function is not part of the public interface of the testing library.
   /// It is primarily used by the testing library's own tests. External clients
   /// can use ``sleep(for:tolerance:)`` or ``sleep(until:tolerance:)`` instead.
-  static nonisolated(nonsending) func sleep(for duration: Duration) async throws {
+  static nonisolated(nonsending) func sleep(for duration: Duration) async throws(CancellationError) {
+    try await withUnsafeTypedThrowsEmulation(
+      throwing: CancellationError.self,
+      becauseOf: .bug("https://github.com/swiftlang/swift/issues/87810")
+    ) {
 #if !SWT_NO_SUSPENDING_CLOCK
-    return try await SuspendingClock().sleep(for: duration)
+      return try await SuspendingClock().sleep(for: duration)
 #elseif !SWT_NO_TIMESPEC
-    var ts = timespec(tv_sec: .init(duration.components.seconds), tv_nsec: .init(duration.components.attoseconds / 1_000_000_000))
-    var tsRemaining = ts
-    while 0 != nanosleep(&ts, &tsRemaining) {
-      try Task.checkCancellation()
-      ts = tsRemaining
-    }
+      var ts = timespec(tv_sec: .init(duration.components.seconds), tv_nsec: .init(duration.components.attoseconds / 1_000_000_000))
+      var tsRemaining = ts
+      while 0 != nanosleep(&ts, &tsRemaining) {
+        try Task.checkCancellation()
+        ts = tsRemaining
+      }
 #else
 #warning("Platform-specific implementation missing: task sleep unavailable")
 #endif
+    }
   }
 
-  public nonisolated(nonsending) func sleep(until deadline: Instant, tolerance: Duration?) async throws {
+  public nonisolated(nonsending) func sleep(until deadline: Instant, tolerance: Duration?) async throws(CancellationError) {
     let duration = Instant.now.duration(to: deadline)
 #if !SWT_NO_SUSPENDING_CLOCK
-    try await SuspendingClock().sleep(for: duration, tolerance: tolerance)
+    try await withUnsafeTypedThrowsEmulation(
+      throwing: CancellationError.self,
+      becauseOf: .bug("https://github.com/swiftlang/swift/issues/87810")
+    ) {
+      try await SuspendingClock().sleep(for: duration, tolerance: tolerance)
+    }
 #else
     try await Self.sleep(for: duration)
 #endif

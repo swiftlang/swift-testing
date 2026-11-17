@@ -163,8 +163,14 @@ extension FunctionParameterSyntax {
   /// For example, for the parameter `y` of `func x(y: Int)`, the value of this
   /// property is an expression equivalent to `Int.self`.
   private var typeMetatypeExpression: some ExprSyntaxProtocol {
+    var baseType = baseType
+    if let iuoType = baseType.as(ImplicitlyUnwrappedOptionalTypeSyntax.self) {
+      // Convert to an optional rather than IUO type before continuing.
+      baseType = TypeSyntax(OptionalTypeSyntax(wrappedType: iuoType.wrappedType))
+    }
+
     // Construct a member access expression, referencing the base type name.
-    let baseTypeDeclReferenceExpr = DeclReferenceExprSyntax(baseName: .identifier(baseTypeName))
+    let baseTypeExpr = TypeExprSyntax(type: baseType.trimmed)
 
     // Enclose the base type declaration reference in a 1-element tuple, e.g.
     // `(<baseType>)`. It will be used in a member access expression below, and
@@ -174,19 +180,23 @@ extension FunctionParameterSyntax {
     // a bug which affected a range of Swift compilers (including the one
     // currently used to build swift-syntax in the toolchain) and caused one of
     // these APIs to have an incorrect representation in the module interface.
-    let metatypeMemberAccessBase = TupleExprSyntax(elements: [LabeledExprSyntax(expression: baseTypeDeclReferenceExpr)])
+    let metatypeMemberAccessBase = TupleExprSyntax(elements: [LabeledExprSyntax(expression: baseTypeExpr)])
 
     return MemberAccessExprSyntax(base: metatypeMemberAccessBase, name: .identifier("self"))
   }
 }
 
 extension FunctionParameterSyntax {
-  /// The base type name of this parameter.
+  /// The base type of this parameter, ignoring attributes such as `@Sendable`
+  /// and `@escaping`, and specifiers such as `inout` and `borrowing`.
+  var baseType: TypeSyntax {
+    type.as(AttributedTypeSyntax.self)?.baseType ?? type
+  }
+
+  /// The base type name of this parameter, ignoring attributes such as
+  /// `@Sendable` and `@escaping`, and specifiers such as `inout`.
   var baseTypeName: String {
-    // Discard any specifiers such as `inout` or `borrowing`, since we're only
-    // trying to obtain the base type to reference it in an expression.
-    let baseType = type.as(AttributedTypeSyntax.self)?.baseType ?? type
-    return baseType.trimmedDescription
+    baseType.trimmedDescription
   }
 }
 

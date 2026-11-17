@@ -57,7 +57,7 @@ extension CommandLine {
 
   /// The path to the current process' executable.
   static var executablePath: String {
-    get throws {
+    get throws(any Error) {
 #if hasFeature(Embedded) || os(WASI)
       // Embedded Swift and WASI do not currently support getting the executable
       // path via the standard library.

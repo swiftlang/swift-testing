@@ -34,11 +34,11 @@ struct TypeInfoTests {
     ),
     (
       (key: String, value: Int).self,
-      TypeInfo(fullyQualifiedName: "(key: Swift.String, value: Swift.Int)", unqualifiedName: "(key: String, value: Int)", mangledName: "")
+      TypeInfo(fullyQualifiedNameComponents: ["(key: Swift.String, value: Swift.Int)"], unqualifiedName: "(key: String, value: Int)", mangledName: "")
     ),
     (
       (() -> String).self,
-      TypeInfo(fullyQualifiedName: "() -> Swift.String", unqualifiedName: "() -> String", mangledName: "")
+      TypeInfo(fullyQualifiedNameComponents: ["() -> Swift.String"], unqualifiedName: "() -> String", mangledName: "")
     ),
   ] as [(Any.Type, TypeInfo)])
   func initWithType(type: Any.Type, expectedTypeInfo: TypeInfo) {
@@ -213,6 +213,36 @@ struct TypeInfoTests {
   @Test func typeNameWithGenericClausesAndBackTicks() {
     let nameComponents = TypeInfo(fullyQualifiedName: "A.`B<C>`<D`>`>.E<`F`.G>", mangledName: nil).fullyQualifiedNameComponents
     #expect(nameComponents == ["A", "`B<C>`<D`>`>", "E<`F`.G>"])
+  }
+
+  @Test func typeNameWithTuple() {
+    let type = (Int, Double).self
+    let nameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
+    #expect(nameComponents == ["(Swift.Int, Swift.Double)"])
+  }
+
+  @Test func typeNameWithTupleInGenericClause() {
+    let type = Array<(Int, Double)>.self
+    let nameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
+    #expect(nameComponents == ["Swift", "Array<(Swift.Int, Swift.Double)>"])
+  }
+
+  @Test func typeNameWithFunction() {
+    let type = (@Sendable (Int) -> String).self
+    let nameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
+    #expect(nameComponents == ["@Sendable (Swift.Int) -> Swift.String"])
+  }
+
+  @Test func typeNameWithTupleAndFunction() {
+    let type = (lhs: @Sendable (Int) -> String, rhs: (Int, Double)).self
+    let nameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
+    #expect(nameComponents == ["(lhs: @Sendable (Swift.Int) -> Swift.String, rhs: (Swift.Int, Swift.Double))"])
+  }
+
+  @Test func typeNameWithTupleAndFunctionAndSomeGenericsForGoodMeasure() {
+    let type = (lhs: @Sendable (Array<Int>) -> String, rhs: (Int, Set<Double>)).self
+    let nameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
+    #expect(nameComponents == ["(lhs: @Sendable (Swift.Array<Swift.Int>) -> Swift.String, rhs: (Swift.Int, Swift.Set<Swift.Double>))"])
   }
 }
 

@@ -51,7 +51,7 @@ public struct _AttachableURLWrapper: Sendable {
   /// - Throws: Any error that occurs trying to open `url` or `copyURL` for
   ///   mapping. On platforms that support file cloning, an error may also be
   ///   thrown if a file descriptor to `url` or `copyURL` cannot be created.
-  init(url: URL, copiedToFileAt copyURL: URL? = nil, isCompressedDirectory: Bool) throws {
+  init(url: URL, copiedToFileAt copyURL: URL? = nil, isCompressedDirectory: Bool) throws(any Error) {
     if isCompressedDirectory && copyURL == nil {
       preconditionFailure("When attaching a directory to a test, the URL to its compressed copy must be supplied. \(fileABugMessage)")
     }
@@ -84,7 +84,7 @@ extension _AttachableURLWrapper: AttachableWrapper {
     data.count
   }
 
-  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     try data.withUnsafeBytes(body)
   }
 

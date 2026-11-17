@@ -26,7 +26,7 @@ package protocol AttachableAsCGImage: AttachableAsImage {
   /// An instance of `CGImage` representing this image.
   ///
   /// - Throws: Any error that prevents the creation of an image.
-  var attachableCGImage: CGImage { get throws }
+  var attachableCGImage: CGImage { get throws(ImageAttachmentError) }
 
   /// The orientation of the image.
   ///
@@ -74,7 +74,7 @@ extension AttachableAsCGImage {
   /// used by types that conform to ``AttachableAsCGImage``.
   ///
   /// For documentation, see ``AttachableAsImage/withUnsafeBytes(as:_:)``.
-  package func withUnsafeBytesImpl<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  package func withUnsafeBytesImpl<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     let data = NSMutableData()
 
     // Convert the image to a CGImage.

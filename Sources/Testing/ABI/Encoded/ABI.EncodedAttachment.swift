@@ -180,7 +180,7 @@ extension ABI.EncodedAttachment: Attachable {
   /// a request for the underlying attachment's bytes.
   fileprivate struct BytesUnavailableError: Error {}
 
-  public borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     switch kind {
     case let .savedAtPath(path):
 #if !SWT_NO_FILE_IO

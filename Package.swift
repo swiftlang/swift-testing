@@ -206,6 +206,13 @@ let package = Package(
         .linkedLibrary("util", .when(platforms: [.openbsd]))
       ]
     ),
+    .testTarget(
+      name: "NonisolatedNonsendingByDefaultTests",
+      dependencies: [
+        "Testing",
+      ],
+      swiftSettings: [.enableUpcomingFeature("NonisolatedNonsendingByDefault")]
+    ),
 
     // Use a plain `.target` instead of a `.testTarget` to avoid the unnecessary
     // overhead of having a separate test target for this module. Conceptually,

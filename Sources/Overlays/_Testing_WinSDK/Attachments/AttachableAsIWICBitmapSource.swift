@@ -37,7 +37,7 @@ public protocol _AttachableByAddressAsIWICBitmapSource {
   static func _copyAttachableIWICBitmapSource(
     from imageAddress: UnsafeMutablePointer<Self>,
     using factory: UnsafeMutablePointer<IWICImagingFactory>
-  ) throws -> UnsafeMutablePointer<IWICBitmapSource>
+  ) throws(any Error) -> UnsafeMutablePointer<IWICBitmapSource>
 
   /// Make a copy of the instance of this type at the given address.
   ///
@@ -96,7 +96,7 @@ package protocol AttachableAsIWICBitmapSource: AttachableAsImage {
   /// - Throws: Any error that prevented the creation of the WIC bitmap.
   func copyAttachableIWICBitmapSource(
     using factory: UnsafeMutablePointer<IWICImagingFactory>
-  ) throws -> UnsafeMutablePointer<IWICBitmapSource>
+  ) throws(any Error) -> UnsafeMutablePointer<IWICBitmapSource>
 }
 
 extension AttachableAsIWICBitmapSource {
@@ -104,7 +104,7 @@ extension AttachableAsIWICBitmapSource {
   /// used by types that conform to ``AttachableAsIWICBitmapSource``.
   ///
   /// For documentation, see ``AttachableAsImage/withUnsafeBytes(as:_:)``.
-  func withUnsafeBytesImpl<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBytesImpl<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws(any Error) -> R) throws(any Error) -> R {
     // Create an in-memory stream to write the image data to. Note that Windows
     // documentation recommends SHCreateMemStream() instead, but that function
     // does not provide a mechanism to access the underlying memory directly.

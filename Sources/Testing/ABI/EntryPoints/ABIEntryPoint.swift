@@ -33,7 +33,7 @@ extension ABI.v0 {
   public typealias EntryPoint = @convention(thin) @Sendable (
     _ configurationJSON: UnsafeRawBufferPointer?,
     _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
-  ) async throws -> Bool
+  ) async throws(any Error) -> Bool
 
   /// The entry point to the testing library used by tools that want to remain
   /// version-agnostic regarding the testing library.

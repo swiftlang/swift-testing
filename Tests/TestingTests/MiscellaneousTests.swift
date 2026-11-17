@@ -288,6 +288,22 @@ extension Bool {
 
 @Test(.hidden, arguments: 0 ..< 10, 0 ..< 10) func `Cartesian products can be passed as 2-tuples`(xy: (Int, Int)) {}
 
+@Test(.hidden, arguments: [
+  (syrup: ["":""], of: ["":""], squill: 123, please: false),
+  (one: [:], ring: [:], to: 123, rule: false), (them: [:], all: [:], 123, false),
+  ([:], [:], 123, false), ([:], [:], 123, false), ([:], [:], 123, false),
+  ([:], [:], 123, false), ([:], [:], 123, false), ([:], [:], 123, false),
+  ([:], [:], 123, false), ([:], [:], 123, false), ([:], [:], 123, false),
+  ([:], [:], 123, false), ([:], [:], 123, false), ([:], [:], 123, false),
+  ([:], [:], 123, false), ([:], [:], 123, false), ([:], [:], 123, false),
+])
+func `Very long arrays type-check correctly`(a: [String: String], b: [String: String], c: Int, d: Bool!) {}
+
+@Test(.hidden, arguments: [({ @Sendable in }, 0)])
+func `Tests with arguments of attributed type (AttributedTypeSyntax) parse correctly`(a: @Sendable () -> Void, b: borrowing Int) {}
+
+// MARK: -
+
 @Suite("Miscellaneous tests")
 struct MiscellaneousTests {
   @Test("Free function's name")
@@ -654,4 +670,15 @@ struct MiscellaneousTests {
       #expect(true as Bool, comment)
     }
   }
+
+#if !SWT_NO_EXIT_TESTS
+  @Test func `withUnsafeTypedThrowsEmulation() terminates if the wrong error type is caught`() async throws {
+    let result = try await #require(processExitsWith: .failure, observing: [\.standardErrorContent]) {
+      try? await withUnsafeTypedThrowsEmulation(throwing: MyError.self, becauseOf: .bug(id: "ABCD12345")) {
+        throw MyParameterizedError(index: 0)
+      }
+    }
+    #expect(result.standardErrorContent.contains("ABCD12345".utf8))
+  }
+#endif
 }

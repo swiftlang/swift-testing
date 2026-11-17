@@ -326,7 +326,13 @@ extension TypeInfo {
         return cachedResult
       }
 
-      let result = Self.fullyQualifiedNameComponents(ofTypeWithName: String(reflecting: type))
+      let result = if isSwiftTuple || isFunction {
+        // These types are non-nominal and so not really have fully-qualified
+        // names (though they may _contain_ fully-qualified names).
+        [String(reflecting: type)]
+      } else {
+        Self.fullyQualifiedNameComponents(ofTypeWithName: String(reflecting: type))
+      }
 
       Self._fullyQualifiedNameComponentsCache.withLock { cache in
         cache[.type(ObjectIdentifier(type))] = result

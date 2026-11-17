@@ -47,6 +47,15 @@ extension Tag {
   )
   func stringsAndNumbers(xAndY: (String, Double?)) {}
 
+  @Test(
+    arguments: [
+      ("abc", 1.0),
+      ("def", 2.0),
+      ("ghi", 3.0),
+    ]
+  )
+  func tupleDestructuring(x: String, y: Double) {}
+
   @Test func willFail() {
     let sprocketCount = 123
     let widgetCount = 456

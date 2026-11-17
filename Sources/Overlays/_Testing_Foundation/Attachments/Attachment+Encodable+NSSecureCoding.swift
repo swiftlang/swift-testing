@@ -43,7 +43,7 @@ extension Attachment {
     _ encodingFormat: AttachableEncodingFormat?,
     forPreferredName preferredName: String?,
     `default`: AttachableEncodingFormat
-  ) throws -> AttachableEncodingFormat {
+  ) throws(CocoaError) -> AttachableEncodingFormat {
     if let encodingFormat {
       // The caller explicitly supplied an encoding format.
       if encodingFormat == .propertyListFormat(.openStep) {
@@ -136,7 +136,7 @@ extension Attachment {
     as encodingFormat: AttachableEncodingFormat? = nil,
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) throws where AttachableValue == _AttachableEncodableWrapper<T> {
+  ) throws(any Error) where AttachableValue == _AttachableEncodableWrapper<T> {
     let encodingFormat = try Self._encodingFormat(encodingFormat, forPreferredName: preferredName, default: .json)
     switch encodingFormat.kind {
     case let .propertyListFormat(propertyListFormat):
@@ -188,7 +188,7 @@ extension Attachment {
     using encoder: E,
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) throws where AttachableValue == _AttachableEncodableWrapper<T>, E: TopLevelEncoder & Sendable, E.Output: ContiguousBytes {
+  ) throws(any Error) where AttachableValue == _AttachableEncodableWrapper<T>, E: TopLevelEncoder & Sendable, E.Output: ContiguousBytes {
     let wrapper = _AttachableEncodableWrapper(encoding: encodableValue, using: encoder)
     self.init(wrapper, named: preferredName, sourceLocation: sourceLocation)
   }
@@ -198,7 +198,7 @@ extension Attachment {
     using encoder: E,
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) throws where AttachableValue == _AttachableEncodableWrapper<T>, E: PropertyListEncoder & Sendable {
+  ) throws(any Error) where AttachableValue == _AttachableEncodableWrapper<T>, E: PropertyListEncoder & Sendable {
     let wrapper = _AttachableEncodableWrapper(encoding: encodableValue, using: encoder)
     self.init(wrapper, named: preferredName, sourceLocation: sourceLocation)
   }
@@ -208,7 +208,7 @@ extension Attachment {
     using encoder: E,
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) throws where AttachableValue == _AttachableEncodableWrapper<T>, E: JSONEncoder & Sendable {
+  ) throws(any Error) where AttachableValue == _AttachableEncodableWrapper<T>, E: JSONEncoder & Sendable {
     let wrapper = _AttachableEncodableWrapper(encoding: encodableValue, using: encoder)
     self.init(wrapper, named: preferredName, sourceLocation: sourceLocation)
   }
@@ -266,7 +266,7 @@ extension Attachment {
     as propertyListFormat: PropertyListSerialization.PropertyListFormat? = nil,
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) throws where AttachableValue == _AttachableNSSecureCodingWrapper<T> {
+  ) throws(any Error) where AttachableValue == _AttachableNSSecureCodingWrapper<T> {
     // Convert the property list format to an instance of
     // AttachableEncodingFormat. This is a bit roundabout, but it allows us to
     // reuse logic in EncodingFormat to translate to/from path extensions and
