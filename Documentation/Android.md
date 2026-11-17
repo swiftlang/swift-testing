@@ -51,16 +51,18 @@ mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" \
 
 The emulator runs at full speed only when its architecture matches your
 machine: use `arm64-v8a` on Apple silicon (or other ARM64-based hardware) and
-`x86_64` on an x86-64 machine. To install a system image and create an emulator
-on Apple silicon, use the following commands:
+`x86_64` on an x86-64 machine. To install a system image and create an
+emulator, use the following commands, setting `ABI` to your machine's
+architecture:
 
 ```sh
+ABI=arm64-v8a  # or x86_64
 export PATH="$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools"
 export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
 sdkmanager --install "emulator" "platform-tools" \
-  "system-images;android-33;default;arm64-v8a"
+  "system-images;android-33;default;$ABI"
 echo no | avdmanager create avd -n swift-tests \
-  -k "system-images;android-33;default;arm64-v8a"
+  -k "system-images;android-33;default;$ABI"
 emulator -avd swift-tests -no-window -no-snapshot -no-audio &
 adb wait-for-device shell \
   'while [ "$(getprop sys.boot_completed)" != 1 ]; do sleep 1; done'
@@ -80,7 +82,7 @@ them in the same shell:
 
 ```sh
 SWIFT_SDK=swift-DEVELOPMENT-SNAPSHOT-2026-11-01-a_android
-TRIPLE=aarch64-unknown-linux-android33
+TRIPLE=aarch64-unknown-linux-android33  # or x86_64-unknown-linux-android33
 swift build --build-tests --swift-sdk "$SWIFT_SDK" --triple "$TRIPLE"
 ```
 
@@ -92,7 +94,8 @@ stops with an error.
 
 The emulator needs the test runner and the libraries it loads: the ones built
 for your package, the Swift runtime from the Swift SDK, and `libc++_shared.so`
-from the Android NDK that `$ANDROID_NDK_HOME` points at.
+from the Android NDK. Set `ANDROID_NDK_HOME` to the NDK's directory in this
+shell, as in the getting-started instructions above.
 `swift sdk configure --show-configuration` prints where the Swift SDK keeps the
 Swift runtime. Copy everything into one folder and push it to the emulator:
 
