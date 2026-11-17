@@ -16,7 +16,7 @@ private import _TestingInternals
 /// ## See Also
 ///
 /// - ``Swift/String/init(describingForTest:)``
-public protocol CustomTestStringConvertible {
+public protocol CustomTestStringConvertible: ~Copyable & ~Escapable {
   /// A description of this instance to use when presenting it in a test's
   /// output.
   ///
@@ -35,7 +35,7 @@ extension String {
   ///
   /// - ``CustomTestStringConvertible``
   @_unavailableInEmbedded
-  public init(describingForTest value: some Any) {
+  public init(describingForTest value: Any) {
 #if !hasFeature(Embedded)
     self.init(describingForTest: value, reflectedBy: nil)
 #else
@@ -55,7 +55,7 @@ extension String {
   /// ## See Also
   ///
   /// - ``CustomTestStringConvertible``
-  init(describingForTest value: some Any, reflectedBy mirror: Mirror?) {
+  init(describingForTest value: Any, reflectedBy mirror: Mirror?) {
     // The mangled type name SPI doesn't handle generic types very well, so we
     // ask for the dynamic type of `value` (type(of:)) instead of just T.self.
     lazy var valueTypeInfo = TypeInfo(describingTypeOf: value)
@@ -112,9 +112,31 @@ extension String {
   ///
   /// - ``CustomTestStringConvertible``
   @_documentation(visibility: private)
-  @inlinable public init(describingForTest value: borrowing some CustomTestStringConvertible) {
-    self = value.testDescription
+  public init(describingForTest value: borrowing some CustomTestStringConvertible & ~Copyable & ~Escapable) {
+    if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
+      self.init(describingForTest: value)
+    } else {
+      self = value.testDescription
+    }
   }
+
+#if !hasFeature(Embedded)
+  @_disfavoredOverload
+  public init(describingForTest value: borrowing some ~Copyable & ~Escapable) {
+    if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
+      self.init(describingForTest: value)
+    } else {
+      self = TypeInfo(describingTypeOf: value).instanceDescription
+    }
+  }
+#else
+  @_disfavoredOverload
+  @available(*, deprecated, message: "String representations of arbitrary values are not supported in Embedded Swift")
+  init(describingForTest value: borrowing some ~Copyable & ~Escapable) {
+    // FIXME: need some sort of description functionality for arbitrary values
+    self = UnavailableInEmbeddedSwift.testDescription
+  }
+#endif
 
 #if hasFeature(Embedded)
   public init(describingForTest value: borrowing some CustomStringConvertible & CustomTestStringConvertible) {
@@ -139,13 +161,6 @@ extension String {
 
   public init(describingForTest value: borrowing some CustomStringConvertible & CustomDebugStringConvertible) {
     self = String(describing: copy value)
-  }
-
-  @_disfavoredOverload
-  @available(*, deprecated, message: "String representations of arbitrary values are not supported in Embedded Swift")
-  init(describingForTest value: borrowing some ~Copyable & ~Escapable) {
-    // FIXME: need some sort of description functionality for arbitrary values
-    self = UnavailableInEmbeddedSwift.testDescription
   }
 
   init(describingForTest value: (some ~Copyable & ~Escapable).Type) {
@@ -190,7 +205,7 @@ extension Optional: CustomTestStringConvertible {
   }
 }
 #else
-extension Optional: CustomTestStringConvertible where Wrapped: CustomTestStringConvertible {
+extension Optional: CustomTestStringConvertible where Wrapped: CustomTestStringConvertible & ~Copyable & ~Escapable {
   public var testDescription: String {
     switch self {
     case let .some(unwrappedValue):
@@ -339,7 +354,7 @@ extension Substring: CustomTestStringConvertible {}
 #if hasFeature(Embedded)
 extension StaticString: CustomTestStringConvertible {
   public var testDescription: String {
-    String(describing: self)
+    String(describing: self).testDescription
   }
 }
 #endif

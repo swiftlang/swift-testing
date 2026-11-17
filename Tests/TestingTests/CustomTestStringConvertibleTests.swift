@@ -50,11 +50,20 @@ struct CustomTestStringConvertibleTests {
     #expect(String(describingForTest: TextOutputStreamableType()) == "Dolor sit amet")
     #expect(String(describingForTest: CustomDebugStringConvertibleType()) == "Consectetur adipiscing")
   }
+
+  @Test func nonCopyableValues() {
+    #expect(String(describingForTest: NonCopyableType()) == "instance of 'NonCopyableType'")
+    #expect(String(describingForTest: NonCopyableTypeWithDescription(testDescription: "ABC123")) == "ABC123")
+  }
 }
 
 // MARK: - Fixtures
 
 private struct NonCopyableType: ~Copyable {}
+
+private struct NonCopyableTypeWithDescription: ~Copyable, CustomTestStringConvertible {
+  var testDescription: String
+}
 
 private struct CustomStringConvertibleType: CustomStringConvertible {
   var description: String {

@@ -82,6 +82,29 @@ struct CommentTests {
     let comment: Comment = "abc\(S())def\(S() as S?)ghi\(S.self)jkl\("string")"
     #expect(comment.rawValue == "abcright!defright!ghiSjklstring")
   }
+
+  @Test("String interpolation with strings")
+  func stringInterpolationWithStrings() {
+    let a: String = "abc123"
+    let b: Substring = "def456"[...]
+    let c: StaticString = "ghi789"
+    let comment: Comment = "\(a)\(b)\(c)"
+    #expect(comment.rawValue == "abc123def456ghi789")
+  }
+
+  @Test("String interpolation with a custom non-copyable type")
+  func stringInterpolationWithCustomNonCopyableType() {
+    struct S: ~Copyable, CustomTestStringConvertible {
+      var testDescription: String {
+        "non-copyable!"
+      }
+    }
+
+    let s = S()
+    let comment: Comment = "\(s)"
+    #expect(comment.rawValue == "non-copyable!")
+  }
+  
 }
 
 // MARK: - Fixtures

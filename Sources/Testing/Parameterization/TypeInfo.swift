@@ -506,6 +506,14 @@ extension TypeInfo: CustomStringConvertible, CustomDebugStringConvertible {
   public var debugDescription: String {
     fullyQualifiedName
   }
+
+  /// A description of a non-specific instance of this type.
+  ///
+  /// The testing library uses this property to describe non-copyable values
+  /// whose types not conform to ``CustomTestStringConvertible``.
+  var instanceDescription: String {
+    "instance of '\(unqualifiedName)'"
+  }
 }
 
 // MARK: - Equatable, Hashable

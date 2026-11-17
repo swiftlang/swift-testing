@@ -83,20 +83,14 @@ extension Test.Case.__ArgumentList where S: ~Copyable, E: Copyable {
       return [Test.Case.Argument.Value(element)]
     }
   }
-#else
-  init(_ wrappedValue: consuming S, parameterCount: Int) where E: CustomTestStringConvertible {
-    if parameterCount > 1 {
-      self.init(wrappedValue) { element in
-        // We can't break down the tuple in Embedded Swift, but we can at
-        // least present the correct number of arguments.
-        let unavailable = Test.Case.Argument.Value(UnavailableInEmbeddedSwift())
-        return Array(repeating: unavailable, count: parameterCount)
-      }
-    } else {
-      self.init(wrappedValue: wrappedValue) { [Test.Case.Argument.Value($0)] }
-    }
-  }
 #endif
+}
+
+extension Test.Case.__ArgumentList where S: ~Copyable, E: CustomTestStringConvertible & ~Copyable {
+  init(describableElementsOf wrappedValue: consuming S, parameterCount: Int) {
+    assert(parameterCount == 1, "Nominal type conforming to 'CustomTestStringConvertible' was desugared to multiple parameters. \(fileABugMessage)")
+    self.init(wrappedValue: wrappedValue) { [Test.Case.Argument.Value($0)] }
+  }
 }
 
 // MARK: -
@@ -206,11 +200,17 @@ public func __makeArgumentList<I>(_ arguments: consuming I, parameterCount: Int 
   Test.Case.__ArgumentList(arguments) { [Test.Case.Argument.Value($0)] }
 }
 
+@_spi(Experimental)
+@available(_iterableAPI, *)
+public func __makeArgumentList<I>(_ arguments: consuming I, parameterCount: Int = 1) -> Test.Case.__ArgumentList<I, I.Element> where I: Iterable & ~Copyable, I.Element: CustomTestStringConvertible & ~Copyable, I.BorrowingIterator == Span<I.Element>.BorrowingIterator {
+  Test.Case.__ArgumentList(describableElementsOf: arguments, parameterCount: parameterCount)
+}
+
 #if hasFeature(Embedded)
 // MARK: - Overloads for conformance to CustomTestStringConvertible (Embedded Swift only)
 
 public func __makeArgumentList<S>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element: CustomTestStringConvertible {
-  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
+  Test.Case.__ArgumentList(describableElementsOf: arguments, parameterCount: parameterCount)
 }
 
 public func __makeArgumentList<S, E1, E2>(_ arguments: S, parameterCount: Int = 1) -> Test.Case.__ArgumentList<S, S.Element> where S: Sequence, S.Element == (E1, E2) {
@@ -242,11 +242,4 @@ public func __makeArgumentList<S, K, V>(_ arguments: S, parameterCount: Int = 1)
     return [Test.Case.Argument.Value(element, testDescription: testDescription)]
   }
 }
-
-@_spi(Experimental)
-@available(_iterableAPI, *)
-public func __makeArgumentList<I>(_ arguments: consuming I, parameterCount: Int = 1) -> Test.Case.__ArgumentList<I, I.Element> where I: Iterable & ~Copyable, I.Element: Copyable & CustomTestStringConvertible, I.BorrowingIterator == Span<I.Element>.BorrowingIterator {
-  Test.Case.__ArgumentList(arguments, parameterCount: parameterCount)
-}
-
 #endif
