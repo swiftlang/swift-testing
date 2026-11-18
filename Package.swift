@@ -472,6 +472,9 @@ extension Array where Element == PackageDescription.SwiftSetting {
     if buildingForEmbedded && target.type != .macro {
       result.append(.enableExperimentalFeature("Embedded"))
 
+      // `ConstCell` needed for section bounds discovery.
+      result.append(.enableExperimentalFeature("Cells"))
+
       // Swift's concurrency module is not implicitly imported when building for
       // Embedded, so we must explicitly import it since this project uses
       // async and other concurrency-related language features.
