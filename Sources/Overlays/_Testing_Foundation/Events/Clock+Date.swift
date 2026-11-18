@@ -9,7 +9,7 @@
 //
 
 #if !hasFeature(Embedded)
-#if !SWT_NO_FOUNDATION && !SWT_NO_UTC_CLOCK
+#if !SWT_NO_FOUNDATION && !SWT_NO_UTC_CLOCK && !SWT_NO_DOUBLE_PRECISION_FLOATING_POINT
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) public import Testing
 public import Foundation
 

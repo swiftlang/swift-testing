@@ -126,10 +126,12 @@ struct ClockTests {
 
     // Instant -> EncodedInstant loses some precision when converting from Duration -> Double
 #if !SWT_NO_SUSPENDING_CLOCK
-    #expect(abs((now.suspending.rawValue - decoded.suspending.rawValue) / .seconds(1)) < 0.001)
+    let suspendingDelta = now.suspending.rawValue - decoded.suspending.rawValue
+    #expect(TimeValue(rawValue: suspendingDelta).floatingPointValue.magnitude < 0.001)
 #endif
 #if !SWT_NO_UTC_CLOCK
-    #expect(abs((now.durationSince1970 - decoded.durationSince1970) / .seconds(1)) < 0.001)
+    let clockDelta = now.durationSince1970 - decoded.durationSince1970
+    #expect(TimeValue(rawValue: clockDelta).floatingPointValue.magnitude < 0.001)
 #endif
   }
 #endif

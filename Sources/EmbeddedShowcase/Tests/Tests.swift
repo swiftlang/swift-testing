@@ -45,7 +45,7 @@ extension Tag {
       "jkl": nil,
     ]
   )
-  func stringsAndNumbers(xAndY: (String, Double?)) {}
+  func stringsAndNumbers(xAndY: (String, Float?)) {}
 
   @Test(
     arguments: [
@@ -54,7 +54,7 @@ extension Tag {
       ("ghi", 3.0),
     ]
   )
-  func tupleDestructuring(x: String, y: Double) {}
+  func tupleDestructuring(x: String, y: Float) {}
 
   @Test func willFail() {
     let sprocketCount = 123

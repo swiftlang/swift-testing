@@ -152,7 +152,7 @@ extension TimeLimitTrait.Duration {
   ///
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
-  public static func seconds(_ seconds: Double) -> Self {
+  public static func seconds(_ seconds: FloatLiteralType) -> Self {
     swt_unreachable()
   }
 
@@ -168,7 +168,7 @@ extension TimeLimitTrait.Duration {
   ///
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
-  public static func milliseconds(_ milliseconds: Double) -> Self {
+  public static func milliseconds(_ milliseconds: FloatLiteralType) -> Self {
     swt_unreachable()
   }
 
@@ -184,7 +184,7 @@ extension TimeLimitTrait.Duration {
   ///
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
-  public static func microseconds(_ microseconds: Double) -> Self {
+  public static func microseconds(_ microseconds: FloatLiteralType) -> Self {
     swt_unreachable()
   }
 

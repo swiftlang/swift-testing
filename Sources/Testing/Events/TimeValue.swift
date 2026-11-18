@@ -48,6 +48,32 @@ extension TimeValue {
   init(_ components: (seconds: Int64, attoseconds: Int64)) {
     self.init(rawValue: Duration(secondsComponent: components.seconds, attosecondsComponent: components.attoseconds))
   }
+
+  /// Construct an instance of this type from a floating-point value (where
+  /// `1.0` is one whole second).
+  ///
+  /// - Parameters:
+  ///   - seconds: The number of seconds, including fractional seconds, since
+  ///     the time value's epoch.
+  ///
+  /// The precision and accuracy of this initializer are ultimately determined
+  /// by the definition of `FloatLiteralType` used at compile time.
+  init(_ seconds: FloatLiteralType) {
+    let components = (
+      seconds: Int64(seconds.rounded(.towardZero)),
+      attoseconds: Int64(seconds.remainder(dividingBy: 1.0).magnitude * 1_000_000_000_000_000_000.0)
+    )
+    self.init(components)
+  }
+
+  /// This instance as a floating-point value (where `1.0` is one whole second).
+  ///
+  /// The precision and accuracy of this property are ultimately determined by
+  /// the definition of `FloatLiteralType` used at compile time.
+  var floatingPointValue: FloatLiteralType {
+    let components = rawValue.components
+    return FloatLiteralType(components.seconds) + (FloatLiteralType(components.attoseconds) / 1_000_000_000_000_000_000.0)
+  }
 }
 
 #if !SWT_NO_SNAPSHOT_TYPES

@@ -76,7 +76,7 @@ extension ABI {
     var confirmationMiscount: EncodedConfirmationMiscount<V>?
 
     /// The exceeded time limit associated with this issue, if applicable.
-    var exceededTimeLimit: Double?
+    var exceededTimeLimit: FloatLiteralType?
 
     init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
       // >= v0
@@ -100,7 +100,7 @@ extension ABI {
         case .expectationFailed(let expectation):
           expression = EncodedExpression(encoding: expectation.evaluatedExpression)
         case .timeLimitExceeded(let components):
-          exceededTimeLimit = Double(components.seconds)
+          exceededTimeLimit = FloatLiteralType(components.seconds)
         case .confirmationMiscounted(let actual, let expected):
           confirmationMiscount = EncodedConfirmationMiscount(encoding: (actual: actual, expected: expected))
         default:
@@ -196,7 +196,7 @@ extension ABI.EncodedIssue: Codable {
     _backtrace = try container.decodeIfPresent(ABI.EncodedBacktrace<V>.self, forKey: ._backtrace)
     error = try container.decodeIfPresent(ABI.EncodedError<V>.self, forKey: .error)
     expression = try container.decodeIfPresent(ABI.EncodedExpression<V>.self, forKey: .expression)
-    exceededTimeLimit = try container.decodeIfPresent(Double.self, forKey: .exceededTimeLimit)
+    exceededTimeLimit = try container.decodeIfPresent(FloatLiteralType.self, forKey: .exceededTimeLimit)
     confirmationMiscount = try container.decodeIfPresent(
       ABI.EncodedConfirmationMiscount<V>.self, forKey: .confirmationMiscount)
   }
@@ -310,8 +310,8 @@ extension Issue {
       )
       issueKind = .expectationFailed(expectation)
     } else if let exceededTimeLimit = issue.exceededTimeLimit {
-      let duration = Duration.seconds(exceededTimeLimit)
-      issueKind = .timeLimitExceeded(timeLimitComponents: duration.components)
+      let duration = TimeValue(exceededTimeLimit)
+      issueKind = .timeLimitExceeded(timeLimitComponents: duration.rawValue.components)
     } else if let miscount = issue.confirmationMiscount {
       issueKind = .confirmationMiscounted(actual: miscount.actual, expected: miscount.expected)
     } else {

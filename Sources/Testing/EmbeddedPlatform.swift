@@ -13,6 +13,11 @@ internal import _TestingInternals
 /// This file contains abstractions over functionality that, under Embedded
 /// Swift, is provided by Swift Testing's Platform Abstraction Layer annex.
 
+//#if hasFeature(Embedded)
+//@_documentation(visibility: private)
+//public typealias FloatLiteralType = Float
+//#endif
+
 // MARK: - Console output
 
 /// Writes a Swift string to the current system's console.

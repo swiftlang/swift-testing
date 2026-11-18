@@ -30,7 +30,7 @@ extension JSON {
     case unsignedInteger(_ value: UnsignedInteger)
 
     /// The type this enumeration uses to represent floating-point numbers.
-    typealias FloatingPoint = Double
+    typealias FloatingPoint = FloatLiteralType
 
     /// A floating-point number.
     ///

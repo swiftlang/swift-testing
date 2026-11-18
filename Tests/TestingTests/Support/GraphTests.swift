@@ -577,7 +577,7 @@ struct GraphTests {
       #expect(graph[sharedPrefix + ["Argument 0"]] == 0)
       #expect(graph[sharedPrefix + ["Argument \(itemCount - 1)"]] == itemCount - 1)
 
-      let elapsedTime = startTime.duration(to: clock.now) / .seconds(1)
+      let elapsedTime = TimeValue(rawValue: startTime.duration(to: clock.now)).floatingPointValue
       perItemTimes[itemCount] = elapsedTime / Double(itemCount)
     }
 

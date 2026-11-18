@@ -110,7 +110,7 @@ extension ABI {
     ///   @Available(Swift, introduced: 6.4)
     ///   @Available(Xcode, introduced: 27.0)
     /// }
-    var timeLimit: Double?
+    var timeLimit: FloatLiteralType?
   }
 }
 
@@ -276,7 +276,7 @@ extension ABI.EncodedTest {
         self.bugs = bugs
       }
 #if !hasFeature(Embedded)
-      self.timeLimit = test.timeLimit.map { $0 / .seconds(1) }
+      self.timeLimit = test.timeLimit.map { TimeValue(rawValue: $0).floatingPointValue }
 #endif
     }
   }

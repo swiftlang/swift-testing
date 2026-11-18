@@ -821,10 +821,10 @@ extension Event.AdvancedConsoleOutputRecorder {
   ///
   /// - Parameter duration: The duration to format.
   /// - Returns: A formatted duration string (e.g., "1.80s", "0.05s").
-  private func _formatDuration(_ duration: Double) -> String {
+  private func _formatDuration(_ duration: FloatLiteralType) -> String {
     // Always format to exactly 2 decimal places
     let wholePart = Int(duration)
-    let fractionalPart = Int((duration - Double(wholePart)) * 100 + 0.5) // Round to nearest hundredth
+    let fractionalPart = Int((duration - FloatLiteralType(wholePart)) * 100 + 0.5) // Round to nearest hundredth
     
     // Handle rounding overflow (e.g., 0.999 -> 1.00)
     if fractionalPart >= 100 {
