@@ -1,0 +1,37 @@
+name: Pull request (CMake Validation)
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - branch: development
+            tag: DEVELOPMENT-SNAPSHOT-2026-05-20-a
+
+    steps:
+      - uses: compnerd/gha-setup-swift@main
+        with:
+          swift-build: ${{ matrix.tag }}
+          swift-version: ${{ matrix.branch }}
+
+      - uses: actions/checkout@v7.0.0
+
+      - name: Configure
+        run: cmake -B out -G Ninja -S .
+
+      - name: Build
+        run: cmake --build out
