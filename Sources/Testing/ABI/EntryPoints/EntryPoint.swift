@@ -575,7 +575,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
 #if !SWT_NO_BACKTRACE_SYMBOLICATION
   // Whether or not to symbolicate backtraces in the event stream.
   if let symbolicateBacktraces = args.symbolicateBacktraces {
-    switch symbolicateBacktraces.lowercased() {
+    switch symbolicateBacktraces.lowercasedASCII() {
     case "mangled", "on", "true":
       configuration.backtraceSymbolicationMode = .mangled
     case "demangled":
@@ -736,7 +736,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
     hadExplicitRepetitionCount = true
   }
   if let repeatUntil = args.repeatUntil {
-    switch repeatUntil.lowercased() {
+    switch repeatUntil.lowercasedASCII() {
     case "pass":
       repetitionPolicy.continuationCondition = .whileIssueRecorded
     case "fail":
