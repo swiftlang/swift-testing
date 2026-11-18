@@ -351,7 +351,7 @@ func diagnoseExpansionInLibraryTarget(of macro: some FreestandingMacroExpansionS
   var targetName = "<unknown>"
   if let location = context.location(of: macro, at: .afterLeadingTrivia, filePathMode: .fileID),
      let fileID = location.file.as(StringLiteralExprSyntax.self)?.representedLiteralValue,
-     let slashIndex = fileID.firstIndex(of: "/") {
+     let slashIndex = fileID.utf8.firstIndex(of: UInt8(ascii: "/")) {
     targetName = String(fileID[..<slashIndex])
   }
   context.diagnose(.macroExpansionNotAllowed(macro, inLibraryTargetNamed: targetName))

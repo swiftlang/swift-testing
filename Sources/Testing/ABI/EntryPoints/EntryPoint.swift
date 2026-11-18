@@ -657,9 +657,10 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
     // user expects and strip the backticks for them.
     func stripBackticksAndReportIfEncountered(string: inout String) {
       let backtickASCIICharacter = UInt8(ascii: "`")
-      if string.utf8.first == backtickASCIICharacter && string.utf8.last == backtickASCIICharacter {
+      if string.utf8.first == backtickASCIICharacter && string.utf8.last == backtickASCIICharacter,
+         let stringWithoutBackticks = String(string.utf8.dropFirst().dropLast()) {
         let originalString = string
-        string = String(string.dropFirst().dropLast())
+        string = stringWithoutBackticks
         if emitWarnings {
           let warning = Event.ConsoleOutputRecorder.warning(
             "Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.",

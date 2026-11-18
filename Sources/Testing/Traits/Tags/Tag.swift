@@ -55,8 +55,9 @@ public struct Tag: Sendable {
   /// - Parameters:
   ///   - stringValue: The previously-encoded string.
   private init(_codableStringValue stringValue: String) {
-    if stringValue.first == "." {
-      self.init(kind: .staticMember(String(stringValue.dropFirst())))
+    let utf8 = stringValue.utf8
+    if utf8.first == UInt8(ascii: "."), let stringValueWithoutPeriod = String(utf8.dropFirst()) {
+      self.init(kind: .staticMember(stringValueWithoutPeriod))
     } else {
       self.init(kind: .staticMember(stringValue))
     }

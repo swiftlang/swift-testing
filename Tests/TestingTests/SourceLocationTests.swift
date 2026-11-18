@@ -50,6 +50,8 @@ struct SourceLocationTests {
       ("`Foo`/Bar.swift", "`Foo`", "Bar.swift"),
       ("`Foo.Bar`/Quux.swift", "`Foo.Bar`", "Quux.swift"),
       ("`Foo./.Bar`/Quux.swift", "`Foo./.Bar`", "Quux.swift"),
+      ("`\u{301}Foo`/Bar.swift", "`\u{301}Foo`", "Bar.swift"),
+      ("Foo/\u{301}Bar.swift", "Foo", "\u{301}Bar.swift"),
     ]
   )
   func sourceLocationModuleNameWithRawIdentifier(fileID: String, expectedModuleName: String, expectedFileName: String) throws {

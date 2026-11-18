@@ -16,8 +16,10 @@ extension TokenSyntax {
   /// removed and whether or not they were removed.
   private var _textWithoutBackticks: (String, backticksRemoved: Bool) {
     let text = text
-    if case .identifier = tokenKind, text.first == "`" && text.last == "`" && text.count >= 2 {
-      return (String(text.dropFirst().dropLast()), true)
+    if case .identifier = tokenKind, case let utf8 = text.utf8,
+       utf8.first == UInt8(ascii: "`") && utf8.last == UInt8(ascii: "`") && utf8.count >= 2,
+       let textWithoutBackticks = String(utf8.dropFirst().dropLast()) {
+      return (textWithoutBackticks, true)
     }
 
     return (text, false)

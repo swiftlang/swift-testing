@@ -170,21 +170,29 @@ func rawIdentifierAwareSplit<S>(_ string: S, separator: Character, maxSplits: In
   var result = [S.SubSequence]()
 
   // Characters with special consideration in this function.
-  let backtick: Character = "`"
-  let openAngleBracket: Character = "<"
-  let closeAngleBracket: Character = ">"
+  let backtick = UInt8(ascii: "`")
+  let openAngleBracket = UInt8(ascii: "<")
+  let closeAngleBracket = UInt8(ascii: ">")
+
+  let utf8 = string.utf8
+  let isSeparatorAt: (String.Index) -> Bool
+  if let separator = separator.asciiValue {
+    isSeparatorAt = { utf8[$0] == separator }
+  } else {
+    isSeparatorAt = { string[$0] == separator }
+  }
 
   var inRawIdentifier = false
   var genericClauseDepth = 0
   var componentStartIndex = string.startIndex
-  for i in string.indices {
-    let c = string[i]
+  for i in utf8.indices {
+    let c = utf8[i]
     if c == backtick {
       // We are either entering or exiting a raw identifier. While inside a raw
       // identifier, separator characters are ignored.
       inRawIdentifier.toggle()
     } else if !inRawIdentifier {
-      if c == separator && genericClauseDepth == 0 {
+      if isSeparatorAt(i) && genericClauseDepth == 0 {
         // Add everything up to this separator as the next component, then start
         // a new component after the separator.
         result.append(string[componentStartIndex ..< i])

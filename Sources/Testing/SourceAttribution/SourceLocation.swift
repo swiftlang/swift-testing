@@ -45,7 +45,7 @@ public struct SourceLocation: Sendable {
   /// - ``fileID``
   /// - ``moduleName``
   public var fileName: String {
-    let lastSlash = fileID.lastIndex(of: "/")!
+    let lastSlash = fileID.utf8.lastIndex(of: UInt8(ascii: "/"))!
     return String(fileID[lastSlash...].dropFirst())
   }
 
@@ -263,16 +263,16 @@ extension SourceLocation {
       // On Windows, replace backslashes in the path with slashes. (This is an
       // admittedly naïve approach, but this function is not a hot path.)
       do {
-        let characters = filePath.map { $0 == #"\"# ? "/" : $0 }
-        filePath = String(characters)[...]
+        let characters = filePath.lazy.utf8.map { $0 == UInt8(ascii: #"\"#) ? UInt8(ascii: "/") : $0 }
+        filePath = String(decoding: characters, as: UTF8.self)[...]
       }
 #endif
 
       // Trim any trailing slashes, then take the substring following the last
       // (remaining) slash, if any.
-      if let lastNonSlashCharacter = filePath.lastIndex(where: { $0 != "/" }) {
+      if let lastNonSlashCharacter = filePath.utf8.lastIndex(where: { $0 != UInt8(ascii: "/") }) {
         filePath = filePath[...lastNonSlashCharacter]
-        if let lastSlashCharacter = filePath.lastIndex(of: "/") {
+        if let lastSlashCharacter = filePath.utf8.lastIndex(of: UInt8(ascii: "/")) {
           filePath = filePath[lastSlashCharacter...].dropFirst()
         }
         return String(filePath)

@@ -104,10 +104,10 @@ public struct CommandLineArgumentList: Sendable {
       // Looks like an argument label like -f or --foo.
       descriptor = descriptors.first { $0.label == arg }
       if descriptor == nil,
-         case let splitByEquals = arg.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false),
-         splitByEquals.count > 1 {
+         case let splitByEquals = arg.utf8.split(separator: UInt8(ascii: "="), maxSplits: 1, omittingEmptySubsequences: false),
+         splitByEquals.count > 1,
+         let label = String(splitByEquals[0]) {
         // It appears to be of the form "--foo=bar".
-        let label = String(splitByEquals[0])
         let possibleDescriptor: Descriptor = .option(label)
         if descriptors.contains(possibleDescriptor) {
           descriptor = possibleDescriptor

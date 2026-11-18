@@ -134,7 +134,7 @@ extension Runner.Plan {
     inModuleOf fileID: String = #fileID,
     configuration: Configuration = .init()
   ) async {
-    let moduleName = String(fileID[..<fileID.lastIndex(of: "/")!])
+    let moduleName = String(fileID[..<fileID.utf8.lastIndex(of: UInt8(ascii: "/"))!])
 
     var configuration = configuration
     let selection = [Test.ID(moduleName: moduleName, nameComponents: [testName], sourceLocation: nil)]

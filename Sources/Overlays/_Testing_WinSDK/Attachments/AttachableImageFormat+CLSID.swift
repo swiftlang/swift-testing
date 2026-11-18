@@ -108,15 +108,15 @@ extension AttachableImageFormat {
       return []
     }
 
-    return extensions
-      .split(separator: ",")
+    return extensions.utf8
+      .split(separator: UInt8(ascii: ","))
       .map { ext in
-        if ext.starts(with: ".") {
-          ext.dropFirst(1)
+        if ext.utf8.starts(with: UInt8(ascii: ".")) {
+          String(ext.utf8.dropFirst(1))
         } else {
-          ext
+          String(ext)
         }
-      }.map(String.init)
+      }
   }
 
   /// Get the `CLSID` value of the WIC image encoder corresponding to the same

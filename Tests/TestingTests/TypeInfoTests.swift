@@ -110,6 +110,13 @@ struct TypeInfoTests {
     #expect(typeInfo.fullyQualifiedNameComponents == expectedComponents)
   }
 
+  @Test("Raw identifier with a combining character on its backtick")
+  func rawIdentifierWithCombiningCharacter() {
+    let fullyQualifiedName = "`\u{301}foo\u{301}`\u{301}.bar"
+    let typeInfo = TypeInfo(fullyQualifiedName: fullyQualifiedName, mangledName: nil)
+    #expect(typeInfo.fullyQualifiedNameComponents == ["`\u{0301}foo\u{301}`\u{301}", "bar"])
+  }
+
   @Test(
     arguments: [
       String.self,

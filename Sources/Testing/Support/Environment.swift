@@ -30,7 +30,7 @@ package enum Environment {
   /// - Returns: The name and value of the environment variable, or `nil` if it
   ///   could not be parsed.
   private static func _splitEnvironmentVariable(_ row: String) -> (key: String, value: String)? {
-    row.firstIndex(of: "=").map { equalsIndex in
+    row.utf8.firstIndex(of: UInt8(ascii: "=")).map { equalsIndex in
       let key = String(row[..<equalsIndex])
       let value = String(row[equalsIndex...].dropFirst())
       return (key, value)
