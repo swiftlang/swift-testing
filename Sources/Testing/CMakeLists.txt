@@ -103,6 +103,7 @@ add_library(Testing
   Support/Additions/NumericAdditions.swift
   Support/Additions/ResultAdditions.swift
   Support/Additions/SequenceAdditions.swift
+  Support/Additions/StringAdditions.swift
   Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
   Support/Color/Color.swift
