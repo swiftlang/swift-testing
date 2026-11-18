@@ -49,6 +49,20 @@ mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" \
 
 ## Start an emulator
 
+The emulator needs hardware virtualization. To run it in a virtual machine,
+turn on nested virtualization in the hypervisor's settings, so that the virtual
+machine has `/dev/kvm` on Linux. On Ubuntu, a server image without a desktop
+also needs the `libx11-6` package.
+
+If you can't run the emulator, use an Android device instead.
+[Turn on USB debugging](https://developer.android.com/studio/debug/dev-options)
+on the device and connect it. Then, instead of the commands below,
+install only `adb` with `sdkmanager --install "platform-tools"` and add
+`$ANDROID_HOME/platform-tools` to `PATH`. In the next section, set `TRIPLE` to
+the device's architecture, which `adb shell getprop ro.product.cpu.abi`
+prints: use `aarch64-unknown-linux-android33` for `arm64-v8a`. The other steps
+are the same.
+
 The emulator runs at full speed only when its architecture matches your
 machine: use `arm64-v8a` on Apple silicon (or other ARM64-based hardware) and
 `x86_64` on an x86-64 machine. To install a system image and create an
