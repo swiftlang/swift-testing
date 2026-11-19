@@ -447,7 +447,7 @@ extension Attachable where Self: ~Copyable {
       // The underlying `fopen()` call should fail with `EEXIST` if a file
       // exists at `filePath`.
       let file = try FileHandle(atPath: filePath, options: [.writeAccess, .creationRequired])
-      try file.write(buffer)
+      try file.write(buffer.bytes)
     }
   }
 }
