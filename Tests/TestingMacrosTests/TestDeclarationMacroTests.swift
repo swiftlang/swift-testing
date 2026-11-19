@@ -402,6 +402,20 @@ struct TestDeclarationMacroTests {
     #expect(TokenSyntax.identifier("`class struct`").rawIdentifier != nil)
   }
 
+  @Test(
+    "Raw identifiers with combining characters are extracted correctly",
+    arguments: [
+      ("`\u{301}abc`", "\u{301}abc"),
+      ("`\u{301}abc 123`", "\u{301}abc 123"),
+    ]
+  )
+  func rawIdentifierWithCombiningCharacter(_ text: String, _ rawID: String) {
+    let token: TokenSyntax = .identifier(text)
+    #expect(token.rawIdentifier == rawID)
+    #expect(token.textWithoutBackticks == rawID)
+    #expect(token.text == text)
+  }
+
   @Test("Raw function name components")
   func rawFunctionNameComponents() throws {
     let decl = """

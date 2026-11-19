@@ -43,4 +43,8 @@ extension String {
     }
     return String(decoding: utf8, as: UTF8.self)
   }
+
+  package init(_ unicodeScalars: some Sequence<UnicodeScalar>) {
+    self.init(UnicodeScalarView(unicodeScalars))
+  }
 }

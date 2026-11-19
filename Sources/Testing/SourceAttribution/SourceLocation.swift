@@ -45,6 +45,7 @@ public struct SourceLocation: Sendable {
   /// - ``fileID``
   /// - ``moduleName``
   public var fileName: String {
+    let fileID = fileID.unicodeScalars
     let lastSlash = fileID.lastIndex(of: "/")!
     return String(fileID[lastSlash...].dropFirst())
   }
@@ -257,14 +258,14 @@ extension SourceLocation {
   /// - Returns: A file path constructed from `filePath` and `moduleName`.
   private static func _synthesizeFileID(fromFilePath filePath: String, inModuleNamed moduleName: String = synthesizedModuleName) -> String {
     let fileName: String? = {
-      var filePath = filePath[...]
+      var filePath = filePath.unicodeScalars[...]
 
 #if os(Windows)
       // On Windows, replace backslashes in the path with slashes. (This is an
       // admittedly naïve approach, but this function is not a hot path.)
       do {
         let characters = filePath.map { $0 == #"\"# ? "/" : $0 }
-        filePath = String(characters)[...]
+        filePath = String.UnicodeScalarView(characters)[...]
       }
 #endif
 
