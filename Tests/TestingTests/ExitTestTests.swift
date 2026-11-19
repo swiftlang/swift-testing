@@ -780,6 +780,53 @@ private let exit = Testing.exit
       some_noasync_function()
     }
   }
+
+  @Test("Invalid exit test ID caught in parent process")
+  func badTestIDGeneratesSystemIssueInParentProcess() async throws {
+    await confirmation("Exit test ID not found") { exitTestIDNotFound in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        guard case let .issueRecorded(issue) = event.kind else {
+          return
+        }
+        if case .system = issue.kind,
+           let comment = issue.comments.first, comment.rawValue.contains("test with ID") {
+          exitTestIDNotFound()
+        }
+      }
+
+      // Intentionall call an exit test with an invalid ID.
+      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+      await Test {
+        await callExitTest(
+          identifiedBy: (0, 0, 0, 0),
+          encodingCapturedValues: (),
+          processExitsWith: .success,
+          observing: [],
+          expression: .__fromSyntaxNode(""),
+          comments: [],
+          isRequired: false,
+          sourceLocation: .__here()
+        ).__expected()
+      }.run(configuration: configuration)
+    }
+  }
+
+  @Test("Invalid exit test ID caught in child process")
+  func badTestIDGeneratesSystemIssueInChildProcess() async throws {
+    let result: ExitTest.Result = try await callExitTest(
+      identifiedBy: (0, 0, 0, 0),
+      validatingID: false,
+      encodingCapturedValues: (),
+      processExitsWith: .failure,
+      observing: [\.standardErrorContent],
+      expression: .__fromSyntaxNode(""),
+      comments: [],
+      isRequired: true,
+      sourceLocation: .__here()
+    ).__required()
+    #expect(result.standardErrorContent.contains("test with ID".utf8))
+  }
 }
 
 // MARK: - Fixtures

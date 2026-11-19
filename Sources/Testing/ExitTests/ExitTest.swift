@@ -478,6 +478,10 @@ extension ExitTest {
 ///
 /// - Parameters:
 ///   - exitTestID: The unique identifier of the exit test.
+///   - validatingID: Whether or not this function validates that `exitTestID`
+///     refers to an actual exit test discoverable at runtime. Some of the
+///     testing library's tests pass `false`, but in general calling code should
+///     pass `true` (or just use the default value).
 ///   - capturedValues: Any values captured by the exit test.
 ///   - expectedExitCondition: The expected exit condition.
 ///   - observedValues: An array of key paths representing results from within
@@ -498,6 +502,7 @@ extension ExitTest {
 /// convention.
 nonisolated(nonsending) func callExitTest<each T>(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
+  validatingID: Bool = true,
   encodingCapturedValues capturedValues: (repeat each T),
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
@@ -512,8 +517,14 @@ nonisolated(nonsending) func callExitTest<each T>(
 
   var result: ExitTest.Result
   do {
+    // Check if `exitTestID` is valid in the first place.
+    let exitTestID = ExitTest.ID(exitTestID)
+    if validatingID && nil == ExitTest.find(identifiedBy: exitTestID) {
+      throw SystemError(description: "Exit test with ID '\(exitTestID)' expected but not found. \(fileABugMessage)")
+    }
+
     // Construct a temporary/local exit test to pass to the exit test handler.
-    var exitTest = ExitTest(id: ExitTest.ID(exitTestID), _observedValues: observedValues)
+    var exitTest = ExitTest(id: exitTestID, _observedValues: observedValues)
     repeat exitTest.capturedValues.append(ExitTest._CapturedValue(each capturedValues))
 
     // Invoke the exit test handler and wait for the child process to terminate.
@@ -773,8 +784,14 @@ extension ExitTest {
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
   static func findInEnvironmentForEntryPoint() -> Self? {
-    guard let id = environmentIDForEntryPoint, var result = find(identifiedBy: id) else {
+    guard let id = environmentIDForEntryPoint else {
       return nil
+    }
+
+    guard var result = find(identifiedBy: id) else {
+      // There was an exit test ID, but no matching exit test. This is
+      // unexpected and should likely have been caught in the parent process.
+      fatalError("Exit test with ID '\(id)' expected but not found. \(fileABugMessage)")
     }
 
     // Since an exit test was found, clear the environment variable. It's an
