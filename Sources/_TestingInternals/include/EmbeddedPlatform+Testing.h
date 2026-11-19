@@ -229,6 +229,11 @@ typedef struct swift_testing_argc_argv_t {
 /// before running any tests. For more information about valid command-line
 /// arguments, review the documentation for the `swift test` command.
 ///
+/// ### Default implementation
+///
+/// The default implementation returns `false`, indicating no command-line
+/// arguments are available.
+///
 /// ### Reference implementations
 ///
 /// An implementation that has access to the command-line arguments of the
@@ -280,6 +285,11 @@ SWIFT_TESTING_EXTERN SWIFT_TESTING_NODISCARD bool _swift_testing_getArgcArgv(swi
 /// before running any tests. For more information about environment variables
 /// that the testing library uses, review `EnvironmentVariables.md` in this
 /// repository's `Documentation` folder.
+///
+/// ### Default implementation
+///
+/// The default implementation returns `false`, indicating no environment block
+/// is available.
 ///
 /// ### Reference implementations
 ///
@@ -339,6 +349,11 @@ SWIFT_TESTING_EXTERN SWIFT_TESTING_NODISCARD bool _swift_testing_getEnvironment(
 /// string's meaning is implementation-defined, but where possible should
 /// include useful information about the system's hardware, software, or other
 /// defining characteristics.
+///
+/// ### Default implementation
+///
+/// The default implementation returns `false`, indicating no platform-specific
+/// information is available.
 ///
 /// ### Reference implementations
 ///
@@ -412,7 +427,7 @@ typedef struct swift_testing_console_capabilities_t {
 /// - Returns: Whether or not `*outConsoleCapabilities` was successfully
 ///   initialized. If the function returns `false`, the value of
 ///   `*outConsoleCapabilities` is undefined and the testing library assumes the
-///   system console has none of the supported capabilities.
+///   system console has none of the enumerated capabilities.
 ///
 /// The testing library uses this function to determine what, if any,
 /// capabilities the system console has.
@@ -427,10 +442,34 @@ typedef struct swift_testing_console_capabilities_t {
 ///   swift_testing_console_capabilities_t bad;
 ///   ```
 ///
+/// ### Default implementation
+///
+/// The default implementation returns `false`, indicating the current system's
+/// console has none of the enumerated capabilities.
+///
 /// ### Reference implementations
 ///
+/// If you write console output to `stderr` and the system supports the POSIX
+/// [`isatty()`](https://pubs.opengroup.org/onlinepubs/9799919799/functions/isatty.html)
+/// function, you could implement this function as follows to enable 16-color
+/// output:
+///
+/// ```c
+/// bool _swift_testing_getConsoleCapabilities(swift_testing_console_capabilities_t *outConsoleCapabilities) {
+///   if (isatty(STDERR_FILENO)) {
+///     const char *term = getenv("TERM");
+///     if (term && 0 != strcmp(term, "dumb")) {
+///       outConsoleCapabilities->useANSIEscapeCodes = true;
+///       outConsoleCapabilities->ansiColorBitDepth = 4;
+///       return true;
+///     }
+///   }
+///   return false;
+/// }
+/// ```
+///
 /// This function can be implemented to simply return `false` if the current
-/// system's console has none of the supported capabilities:
+/// system's console has none of the enumerated capabilities:
 ///
 /// ```c
 /// bool _swift_testing_getConsoleCapabilities(swift_testing_console_capabilities_t *outConsoleCapabilities) {
@@ -460,6 +499,11 @@ SWIFT_TESTING_EXTERN SWIFT_TESTING_NODISCARD bool _swift_testing_getConsoleCapab
 ///   `chars` may contain ANSI escape codes or other metacontent in addition to
 ///   human-readable text. If the current system's console only supports plain
 ///   text, make sure your implementation of that function returns `false`.
+///
+/// ### Default implementation
+///
+/// The testing library does not provide a default implementation of this
+/// function.
 ///
 /// ### Reference implementations
 ///
@@ -513,6 +557,11 @@ SWIFT_TESTING_EXTERN void _swift_testing_writeToConsole(const uint8_t *SWIFT_TES
 /// string representation of some other destination (for example, the virtual
 /// address of a hardware register) if appropriate to the platform. Ultimately,
 /// the semantic meaning of this string is unspecified by the testing library.
+///
+/// ### Default implementation
+///
+/// The default implementation returns `false`, indicating the current system
+/// does not handle the JSON event stream.
 ///
 /// ### Reference implementations
 ///
@@ -594,6 +643,11 @@ typedef struct swift_testing_duration_t {
 /// - Note: Where possible, the implementation should use a suspending clock
 ///   rather than a continuous clock (that is, time the system spends asleep
 ///   should not, ideally, count toward the result of this function).
+///
+/// ### Default implementation
+///
+/// The default implementation of this function calls the core Platform
+/// Abstraction Layer function `_swift_clockSuspending_getTime()`.
 ///
 /// ### Reference implementations
 ///
