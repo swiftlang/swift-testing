@@ -165,20 +165,23 @@ public struct TypeInfo: Sendable {
 /// between pairs of backtick characters. This is useful when splitting strings
 /// containing raw identifiers.
 ///
+/// - Important: This function walks `string` as a sequence of Unicode scalars
+///   (`UnicodeScalar`), not grapheme clusters (`Character`).
+///
 /// - Complexity: O(_n_), where _n_ is the length of `string`.
-func rawIdentifierAwareSplit<S>(_ string: S, separator: Character, maxSplits: Int = .max) -> [S.SubSequence] where S: StringProtocol {
+func rawIdentifierAwareSplit<S>(_ string: S, separator: UnicodeScalar, maxSplits: Int = .max) -> [S.SubSequence] where S: StringProtocol {
   var result = [S.SubSequence]()
 
   // Characters with special consideration in this function.
-  let backtick: Character = "`"
-  let openAngleBracket: Character = "<"
-  let closeAngleBracket: Character = ">"
+  let backtick: UnicodeScalar = "`"
+  let openAngleBracket: UnicodeScalar = "<"
+  let closeAngleBracket: UnicodeScalar = ">"
 
+  let unicodeScalars = string.unicodeScalars
   var inRawIdentifier = false
   var genericClauseDepth = 0
   var componentStartIndex = string.startIndex
-  for i in string.indices {
-    let c = string[i]
+  for (i, c) in zip(unicodeScalars.indices, unicodeScalars) {
     if c == backtick {
       // We are either entering or exiting a raw identifier. While inside a raw
       // identifier, separator characters are ignored.
@@ -188,7 +191,7 @@ func rawIdentifierAwareSplit<S>(_ string: S, separator: Character, maxSplits: In
         // Add everything up to this separator as the next component, then start
         // a new component after the separator.
         result.append(string[componentStartIndex ..< i])
-        componentStartIndex = string.index(after: i)
+        componentStartIndex = unicodeScalars.index(after: i)
 
         if result.count == maxSplits {
           // We don't need to find more separators. We'll add the remainder of
@@ -234,7 +237,7 @@ extension TypeInfo {
     // Replace non-breaking spaces, then construct a new string from the
     // resulting sequence.
     let result = unicodeScalars.lazy.map { $0 == nbsp ? " " : $0 }
-    return String(String.UnicodeScalarView(result))
+    return String(result)
   }
 
   /// Keys into the fully-qualified name cache.

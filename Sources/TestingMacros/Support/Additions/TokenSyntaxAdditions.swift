@@ -15,8 +15,8 @@ extension TokenSyntax {
   /// A tuple containing the text of this instance with enclosing backticks
   /// removed and whether or not they were removed.
   private var _textWithoutBackticks: (String, backticksRemoved: Bool) {
-    let text = text
-    if case .identifier = tokenKind, text.first == "`" && text.last == "`" && text.count >= 2 {
+    if case let text = text.unicodeScalars,
+       case .identifier = tokenKind, text.first == "`" && text.last == "`" && text.count >= 2 {
       return (String(text.dropFirst().dropLast()), true)
     }
 

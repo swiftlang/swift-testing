@@ -656,10 +656,11 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0, emi
     // case, we should alert the user that it's not going to match what the
     // user expects and strip the backticks for them.
     func stripBackticksAndReportIfEncountered(string: inout String) {
-      let backtickASCIICharacter = UInt8(ascii: "`")
-      if string.utf8.first == backtickASCIICharacter && string.utf8.last == backtickASCIICharacter {
+      let backtick: UnicodeScalar = "`"
+      let unicodeScalars = string.unicodeScalars
+      if unicodeScalars.first == backtick && unicodeScalars.last == backtick {
         let originalString = string
-        string = String(string.dropFirst().dropLast())
+        string = String(unicodeScalars.dropFirst().dropLast())
         if emitWarnings {
           let warning = Event.ConsoleOutputRecorder.warning(
             "Backticks aren't a valid part of a Swift symbol. Replacing '\(originalString)' with '\(string)'.",
