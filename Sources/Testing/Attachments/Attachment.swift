@@ -208,11 +208,7 @@ extension Attachment: CustomStringConvertible where AttachableValue: ~Copyable {
   /// }
   public var description: String {
 #if !hasFeature(Embedded)
-    if #available(_castingWithNonCopyableGenerics, *), let attachableValue = makeExistential(attachableValue) {
-      return #""\#(preferredName)": \#(String(describingForTest: attachableValue))"#
-    }
-    let typeInfo = TypeInfo(describing: AttachableValue.self)
-    return #""\#(preferredName)": instance of '\#(typeInfo.unqualifiedName)'"#
+    #""\#(preferredName)": \#(String(describingForTest: attachableValue))"#
 #else
     return #""\#(preferredName)""#
 #endif

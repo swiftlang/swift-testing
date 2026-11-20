@@ -48,13 +48,19 @@ extension Test.Case {
         ///
         /// - Parameters:
         ///   - typeInfo: The type of the wrapped value.
+        ///   - testDescription: A description of the wrapped value, if
+        ///     available.
         ///
         /// In the future, we may want to make this case store a yield-once
         /// function so it can represent `~Copyable` values directly.
-        indirect case moveOnlyValue(_ typeInfo: TypeInfo)
+        indirect case moveOnlyValue(_ typeInfo: TypeInfo, testDescription: String?)
 #else
         /// A move-only value.
-        case moveOnlyValue
+        ///
+        /// - Parameters:
+        ///   - testDescription: A description of the wrapped value, if
+        ///     available.
+        indirect case moveOnlyValue(testDescription: String?)
 #endif
 
         /// A value decoded from the JSON event stream.
@@ -88,7 +94,7 @@ extension Test.Case {
 #if !hasFeature(Embedded)
         case let .default(value), let .withCustomTestDescription(value, _):
           TypeInfo(describingTypeOf: value)
-        case let .moveOnlyValue(typeInfo):
+        case let .moveOnlyValue(typeInfo, _):
           typeInfo
 #else
         case .default, .withCustomTestDescription, .moveOnlyValue:
@@ -109,15 +115,24 @@ extension Test.Case {
 
       init<W>(_ wrappedValue: borrowing W, testDescription: String? = nil) where W: Sendable & ~Copyable {
 #if !hasFeature(Embedded)
-        _kind = .moveOnlyValue(TypeInfo(describing: W.self))
+        _kind = .moveOnlyValue(TypeInfo(describing: W.self), testDescription: testDescription)
 #else
-        _kind = .moveOnlyValue
+        _kind = .moveOnlyValue(testDescription: testDescription)
 #endif
       }
 
       init<W>(_ wrappedValue: W, testDescription: String? = nil) where W: Sendable & CustomTestStringConvertible {
         let testDescription = testDescription ?? String(describingForTest: wrappedValue)
         _kind = .withCustomTestDescription(wrappedValue, testDescription: testDescription)
+      }
+
+      init<W>(_ wrappedValue: borrowing W, testDescription: String? = nil) where W: Sendable & CustomTestStringConvertible & ~Copyable {
+        let testDescription = testDescription ?? String(describingForTest: wrappedValue)
+#if !hasFeature(Embedded)
+        _kind = .moveOnlyValue(TypeInfo(describing: W.self), testDescription: testDescription)
+#else
+        _kind = .moveOnlyValue(testDescription: testDescription)
+#endif
       }
 
       /// Construct an instance of this type representing a tuple of two other
@@ -264,12 +279,11 @@ extension Test.Case.Argument.Value: CustomTestStringConvertible {
     case let .withCustomTestDescription(_, testDescription), let .decoded(testDescription, _):
       testDescription
 #if !hasFeature(Embedded)
-    case let .moveOnlyValue(typeInfo):
-      // TODO: extend CustomTestStringConvertible to ~Copyable
-      "(instance of \(typeInfo))"
+    case let .moveOnlyValue(typeInfo, testDescription):
+      testDescription ?? typeInfo.instanceDescription
 #else
-    case .moveOnlyValue:
-      UnavailableInEmbeddedSwift.testDescription
+    case let .moveOnlyValue(testDescription):
+      testDescription ?? UnavailableInEmbeddedSwift.testDescription
 #endif
     }
   }

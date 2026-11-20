@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-import Testing
+@_spi(Experimental) import Testing
 
 // A minimal set of tests used to confirm that a whole program which links Swift
 // Testing can be built for an Embedded Swift target.
@@ -72,5 +72,19 @@ extension Tag {
   @Test func recordAttachment() {
     let loremIpsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
     Attachment.record(loremIpsum, named: "Lorem Ipsum.txt")
+  }
+
+  struct MoveOnlyArgumentValue: Sendable, ~Copyable, CustomTestStringConvertible {
+    var x: Int
+
+    var testDescription: String {
+      "Move-Only \(x)"
+    }
+  }
+
+  @available(_iterableAPI, *)
+  @Test(arguments: [MoveOnlyArgumentValue(x: 123), MoveOnlyArgumentValue(x: 456)] as InlineArray)
+  func moveOnlyArgumentValue(_ value: borrowing MoveOnlyArgumentValue) {
+    #expect(value.x == 123)
   }
 }

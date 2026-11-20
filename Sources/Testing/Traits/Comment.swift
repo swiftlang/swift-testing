@@ -167,6 +167,16 @@ extension Comment: ExpressibleByStringInterpolation {
       rawValue += description()
     }
 
+    @_disfavoredOverload
+    public mutating func appendInterpolation(_ value: borrowing some CustomTestStringConvertible & ~Copyable & ~Escapable) {
+#if !hasFeature(Embedded)
+      if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
+        return appendInterpolation(value, description: String(describingForTest: value))
+      }
+#endif
+      rawValue += String(describingForTest: value)
+    }
+
 #if !hasFeature(Embedded)
     @inlinable public mutating func appendInterpolation(_ value: (some Any)?) {
       appendInterpolation(value, description: String(describingForTest: value))
