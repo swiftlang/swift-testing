@@ -14,11 +14,14 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
-/// A type describing the expansion of the `@Test` attribute macro.
+/// A protocol describing types that implement various expansions of the `@Test`
+/// attribute macro.
 ///
-/// This type is used to implement the `@Test` attribute macro. Do not use it
-/// directly.
-public struct TestDeclarationMacro: PeerMacro, Sendable {
+/// This protocol is used to implement the `@Test` attribute macro. Do not use
+/// it directly.
+public protocol TestDeclarationMacroProtocol: PeerMacro, Sendable {}
+
+extension TestDeclarationMacroProtocol {
   public static func expansion(
     of node: AttributeSyntax,
     providingPeersOf declaration: some DeclSyntaxProtocol,
@@ -106,6 +109,15 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
           }
           if invalidSpecifierKeywords.contains(specifier.specifier.tokenKind) {
             diagnostics.append(.specifierNotSupported(specifier.specifier, on: parameter, whenUsing: testAttribute))
+          }
+
+          // We do allow `consuming`, but only for copyable values. Move-only
+          // values must be `borrowing`. In order to enforce this distinction,
+          // we check if the macro being expanded is a variant that takes an
+          // `Iterable` container rather than a `Sequence` or `Collection`.
+          if specifier.specifier.tokenKind == .keyword(.consuming),
+             Self.self == NonCopyableTestDeclarationMacro.self {
+            context.diagnose(.specifierNotSupported(.keyword(.consuming), on: parameter, isMoveOnly: true, whenUsing: testAttribute))
           }
         }
       }
@@ -460,3 +472,19 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     return result
   }
 }
+
+// MARK: -
+
+/// A type describing the expansion of the `@Test` attribute macro.
+///
+/// This type is used to implement the `@Test` attribute macro. Do not use it
+/// directly.
+public struct TestDeclarationMacro: TestDeclarationMacroProtocol {}
+
+/// A type describing the expansion of the `@Test` attribute macro when used
+/// with a container type conforming to ``Iterable`` (which can contain
+/// non-copyable elements).
+///
+/// This type is used to implement the `@Test` attribute macro. Do not use it
+/// directly.
+public struct NonCopyableTestDeclarationMacro: TestDeclarationMacroProtocol {}

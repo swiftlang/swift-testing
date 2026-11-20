@@ -118,6 +118,8 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function with a parameter marked 'isolated'",
       "@Test(arguments: [0.0]) func f(i: _const Double) {}":
         "Attribute 'Test' cannot be applied to a function with a parameter marked '_const'",
+      "@NonCopyableTest(arguments: []) func f(i: consuming T) {}":
+        "Attribute 'NonCopyableTest' cannot be applied to a function with a parameter of type 'T' marked 'consuming'",
 
       // Argument count mismatches.
       "@Test(arguments: []) func f() {}":

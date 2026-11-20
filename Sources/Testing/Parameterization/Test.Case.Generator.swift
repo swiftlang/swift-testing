@@ -10,7 +10,7 @@
 
 extension Test.Case {
   /// A type describing a lazily-generated sequence of test cases generated from
-  /// a known sequence of argument values.
+  /// a known collection of argument values.
   ///
   /// Instances of this type can be iterated over multiple times.
   struct Generator<S>: Sendable where S: Sequence & Sendable, S.Element: Sendable {
@@ -101,6 +101,34 @@ extension Test.Case.Generator {
       }
       return Test.Case(values: values, parameters: parameters) {
         try await testFunction(element)
+      }
+    }
+  }
+
+  /// Initialize an instance of this type that iterates over the specified
+  /// inline array of argument values.
+  ///
+  /// - Parameters:
+  ///   - argumentList: An argument list representing the set of argument values
+  ///     for which test cases should be generated.
+  ///   - parameters: The parameters of the test function for which test cases
+  ///     should be generated.
+  ///   - testFunction: The test function to which each generated test case
+  ///     passes an argument value from `argumentList`.
+  @available(_iterableAPI, *)
+  init<I>(
+    argumentList: consuming Test.Case.Argument.List<I, I.Element>,
+    parameters: [Test.Parameter],
+    testFunction: nonisolated(nonsending) @escaping @Sendable (borrowing I.Element) async throws -> Void
+  ) where S == Range<Int>, I: Iterable & Sendable & ~Copyable, I.Element: Sendable & ~Copyable, I.BorrowingIterator == Span<I.Element>.BorrowingIterator {
+    let argumentList = consume argumentList
+    var iterator = argumentList.wrappedValue.makeBorrowingIterator()
+    self.init(_sequence: 0 ..< iterator.nextSpan().count) { i in
+      var iterator = argumentList.wrappedValue.makeBorrowingIterator()
+      let values = argumentList.makeArgumentValues(iterator.nextSpan()[i])
+      return Test.Case(values: values, parameters: parameters) {
+        var iterator = argumentList.wrappedValue.makeBorrowingIterator()
+        try await testFunction(iterator.nextSpan()[i])
       }
     }
   }

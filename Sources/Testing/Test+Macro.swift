@@ -103,6 +103,12 @@ extension TypeInfo {
 /// attribute. Only a type's primary declaration may have the `@Suite` attribute
 /// applied to it.
 ///
+/// @Comment {
+///   This macro declaration is necessary to help the compiler disambiguate
+///   display names from traits. Its documentation is visible in Xcode even
+///   though it is hidden from the testing library's documentation bundle.
+/// }
+///
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
@@ -156,8 +162,20 @@ extension Test {
 
 // MARK: - @Test
 
-/// This macro declaration is necessary to help the compiler disambiguate
-/// display names from traits, but it does not need to be documented separately.
+/// Declare a test.
+///
+/// - Parameters:
+///   - traits: Zero or more traits to apply to this test.
+///
+/// @Comment {
+///   This macro declaration is necessary to help the compiler disambiguate
+///   display names from traits. Its documentation is visible in Xcode even
+///   though it is hidden from the testing library's documentation bundle.
+/// }
+///
+/// ## See Also
+///
+/// - <doc:DefiningTests>
 ///
 /// ## See Also
 ///
@@ -223,9 +241,9 @@ extension Test {
   }
 }
 
-extension [Test.__Parameter] {
-  /// An array of ``Test/Parameter`` values based on this array of parameter
-  /// tuples.
+extension Collection<Test.__NonCopyableParameter> {
+  /// An array of ``Test/Parameter`` values based on this array of non-copyable
+  /// parameter tuples.
   ///
   /// This conversion derives the value of the `index` property of the resulting
   /// parameter instances from the position of the tuple in the original array.
@@ -243,8 +261,26 @@ extension [Test.__Parameter] {
 
 // MARK: - @Test(arguments:)
 
-/// This macro declaration is necessary to help the compiler disambiguate
-/// display names from traits, but it does not need to be documented separately.
+/// Declare a test parameterized over a collection of values.
+///
+/// - Parameters:
+///   - displayName: The customized display name of this test. If the value of
+///     this argument is `nil`, the display name of the test is derived from the
+///     associated function's name.
+///   - traits: Zero or more traits to apply to this test.
+///   - collection: A collection of values to pass to the associated test
+///     function.
+///
+/// You can prefix the expression you pass to `collection` with `try` or `await`.
+/// The testing library evaluates the expression lazily only if it determines
+/// that the associated test will run. During testing, the testing library calls
+/// the associated test function once for each element in `collection`.
+///
+/// @Comment {
+///   This macro declaration is necessary to help the compiler disambiguate
+///   display names from traits. Its documentation is visible in Xcode even
+///   though it is hidden from the testing library's documentation bundle.
+/// }
 ///
 /// ## See Also
 ///
@@ -270,11 +306,6 @@ public macro Test<C>(
 /// The testing library evaluates the expression lazily only if it determines
 /// that the associated test will run. During testing, the testing library calls
 /// the associated test function once for each element in `collection`.
-///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
 ///
 /// ## See Also
 ///
@@ -302,7 +333,7 @@ extension Test {
     testFunction: nonisolated(nonsending) @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C: Sequence & Sendable, C.Element: Sendable {
     let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
-    let parameters = paramTuples.parameters
+    let parameters = paramTuples.lazy.map { $0 as Test.__NonCopyableParameter }.parameters
     return Self(
       name: testFunctionName,
       displayName: displayName,
@@ -311,6 +342,114 @@ extension Test {
       containingTypeInfo: containingTypeInfo,
       xcTestCompatibleSelector: xcTestCompatibleSelector,
       testCases: { Case.Generator(argumentList: try await collection(), parameters: parameters, testFunction: testFunction) },
+      parameters: parameters
+    )
+  }
+}
+
+// MARK: - @Test(arguments:) (move-only)
+
+/// Declare a test parameterized over a non-copyable sequence of values.
+///
+/// - Parameters:
+///   - displayName: The customized display name of this test. If the value of
+///     this argument is `nil`, the display name of the test is derived from the
+///     associated function's name.
+///   - traits: Zero or more traits to apply to this test.
+///   - container: A non-copyable sequence of values, such as an inline array,
+///     to pass to the associated test function.
+///
+/// You can prefix the expression you pass to `container` with `try` or `await`.
+/// The testing library evaluates the expression lazily only if it determines
+/// that the associated test will run. During testing, the testing library calls
+/// the associated test function once for each element in `container`.
+///
+/// @Comment {
+///   This macro declaration is necessary to help the compiler disambiguate
+///   display names from traits. Its documentation is visible in Xcode even
+///   though it is hidden from the testing library's documentation bundle.
+/// }
+///
+/// ## See Also
+///
+/// - <doc:DefiningTests>
+@_spi(Experimental)
+@available(_iterableAPI, *)
+@attached(peer)
+@_documentation(visibility: private)
+public macro Test<I>(
+  _ traits: any TestTrait...,
+  arguments container: consuming I
+) = #externalMacro(module: "TestingMacros", type: "NonCopyableTestDeclarationMacro") where I: Iterable & Sendable & ~Copyable, I.Element: Sendable & ~Copyable, I.BorrowingIterator == Span<I.Element>.BorrowingIterator
+
+/// Declare a test parameterized over a non-copyable sequence of values.
+///
+/// - Parameters:
+///   - displayName: The customized display name of this test. If the value of
+///     this argument is `nil`, the display name of the test is derived from the
+///     associated function's name.
+///   - traits: Zero or more traits to apply to this test.
+///   - container: A non-copyable sequence of values, such as an inline array,
+///     to pass to the associated test function.
+///
+/// You can prefix the expression you pass to `container` with `try` or `await`.
+/// The testing library evaluates the expression lazily only if it determines
+/// that the associated test will run. During testing, the testing library calls
+/// the associated test function once for each element in `container`.
+///
+/// ## See Also
+///
+/// - <doc:DefiningTests>
+@_spi(Experimental)
+@available(_iterableAPI, *)
+@attached(peer)
+public macro Test<I>(
+  _ displayName: _const String? = nil,
+  _ traits: any TestTrait...,
+  arguments container: consuming I,
+) = #externalMacro(module: "TestingMacros", type: "NonCopyableTestDeclarationMacro") where I: Iterable & Sendable & ~Copyable, I.Element: Sendable & ~Copyable, I.BorrowingIterator == Span<I.Element>.BorrowingIterator
+
+@_spi(Experimental)
+extension Test {
+  /// Information about a non-copyable parameter to a test function.
+  ///
+  /// - Warning: This type alias is used to implement the `@Test` macro. Do not
+  ///   use it directly.
+#if !hasFeature(Embedded)
+  public typealias __NonCopyableParameter = (firstName: String, secondName: String?, type: any ~Copyable.Type)
+#else
+  public typealias __NonCopyableParameter = __Parameter
+#endif
+}
+
+@_spi(Experimental)
+@available(_iterableAPI, *)
+extension Test {
+  /// Create an instance of ``Test`` for a parameterized function.
+  ///
+  /// - Warning: This function is used to implement the `@Test` macro. Do not
+  ///   call it directly.
+  public static func __function<S, I>(
+    named testFunctionName: String,
+    in containingType: __TypeInfo<S>?,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
+    displayName: String? = nil,
+    traits: __TraitArray<any TestTrait>,
+    arguments container: @escaping @Sendable () async throws -> Test.Case.__ArgumentList<I, I.Element>,
+    sourceBounds: __SourceBounds,
+    parameters paramTuples: [__NonCopyableParameter],
+    testFunction: nonisolated(nonsending) @escaping @Sendable (borrowing I.Element) async throws -> Void
+  ) -> Self where S: ~Copyable & ~Escapable, I: Iterable & Sendable & ~Copyable, I.Element: Sendable & ~Copyable, I.BorrowingIterator == Span<I.Element>.BorrowingIterator {
+    let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
+    let parameters = paramTuples.parameters
+    return Self(
+      name: testFunctionName,
+      displayName: displayName,
+      traits: traits,
+      sourceBounds: sourceBounds,
+      containingTypeInfo: containingTypeInfo,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      testCases: { Case.Generator(argumentList: try await container(), parameters: parameters, testFunction: testFunction) },
       parameters: parameters
     )
   }
@@ -330,11 +469,6 @@ extension Test {
 /// only if it determines that the associated test will run. During testing, the
 /// testing library calls the associated test function once for each pair of
 /// elements in `collection1` and `collection2`.
-///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
 ///
 /// ## See Also
 ///
@@ -362,11 +496,6 @@ public macro Test<C1, C2>(
 /// testing library calls the associated test function once for each pair of
 /// elements in `collection1` and `collection2`.
 ///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
-///
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
@@ -390,11 +519,6 @@ public macro Test<C1, C2>(
 /// determines that the associated test will run. During testing, the testing
 /// library calls the associated test function once for each element in
 /// `zippedCollections`.
-///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
 ///
 /// ## See Also
 ///
@@ -421,11 +545,6 @@ public macro Test<C1, C2>(
 /// determines that the associated test will run. During testing, the testing
 /// library calls the associated test function once for each element in
 /// `zippedCollections`.
-///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
 ///
 /// ## See Also
 ///
@@ -453,7 +572,7 @@ extension Test {
     testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
   ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let containingTypeInfo = containingType.map { TypeInfo($0, sourceBounds: sourceBounds) }
-    let parameters = paramTuples.parameters
+    let parameters = paramTuples.lazy.map { $0 as Test.__NonCopyableParameter }.parameters
     return Self(
       name: testFunctionName,
       displayName: displayName,
