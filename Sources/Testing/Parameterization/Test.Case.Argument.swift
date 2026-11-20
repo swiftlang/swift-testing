@@ -56,6 +56,13 @@ extension Test.Case {
         /// A move-only value.
         case moveOnlyValue
 #endif
+
+        /// A value decoded from the JSON event stream.
+        ///
+        /// - Parameters:
+        ///   - testDescription: A description of the original value.
+        ///   - typeInfo: The type of the wrapped value, if available.
+        case decoded(testDescription: String, typeInfo: TypeInfo?)
       }
 
       /// The kind of value.
@@ -66,25 +73,31 @@ extension Test.Case {
         switch _kind {
         case let .default(value), let .withCustomTestDescription(value, _):
           value
-        case .moveOnlyValue:
+        case .moveOnlyValue, .decoded:
           ()
         }
       }
 
-#if !hasFeature(Embedded)
-      /// The type of ``wrappedValue``.
+      /// The type of ``wrappedValue``, or `nil` if that information is not
+      /// available.
       ///
       /// This property is necessary to support move-only values as they are
       /// borrowed and cannot be stored directly in an instance of ``Value``.
-      var typeInfo: TypeInfo {
+      var typeInfo: TypeInfo? {
         switch _kind {
+#if !hasFeature(Embedded)
         case let .default(value), let .withCustomTestDescription(value, _):
           TypeInfo(describingTypeOf: value)
         case let .moveOnlyValue(typeInfo):
           typeInfo
+#else
+        case .default, .withCustomTestDescription, .moveOnlyValue:
+          nil
+#endif
+        case let .decoded(_, typeInfo):
+          typeInfo
         }
       }
-#endif
 
       init<W>(_ wrappedValue: W, testDescription: String? = nil) where W: Sendable {
         if let testDescription {
@@ -125,6 +138,11 @@ extension Test.Case {
         let testDescription = "(\(value1.testDescription), \(value2.testDescription))"
         self.init(wrappedValue, testDescription: testDescription)
       }
+
+      init<V>(decoding argument: ABI.EncodedTestCase<V>.Argument) {
+        let typeInfo = argument.type.flatMap(TypeInfo.init(decoding:))
+        _kind = .decoded(testDescription: argument.value, typeInfo: typeInfo)
+      }
     }
 
     /// Storage for ``value``.
@@ -137,11 +155,7 @@ extension Test.Case {
 
     /// The type of this parameterized test argument's value.
     var typeInfo: TypeInfo {
-#if !hasFeature(Embedded)
-      _value.typeInfo
-#else
-      parameter.typeInfo
-#endif
+      _value.typeInfo ?? parameter.typeInfo
     }
 
     /// The ID of this parameterized test argument.
@@ -247,7 +261,7 @@ extension Test.Case.Argument.Value: CustomTestStringConvertible {
 #else
       UnavailableInEmbeddedSwift.testDescription
 #endif
-    case let .withCustomTestDescription(_, testDescription):
+    case let .withCustomTestDescription(_, testDescription), let .decoded(testDescription, _):
       testDescription
 #if !hasFeature(Embedded)
     case let .moveOnlyValue(typeInfo):

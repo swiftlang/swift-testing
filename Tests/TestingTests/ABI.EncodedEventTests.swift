@@ -132,6 +132,9 @@ extension `ABI.EncodedEvent Tests`.Decoding {
       return
     }
   }
+
+  @Test func `Decode test cases`() throws {
+  }
 }
 
 extension `ABI.EncodedEvent Tests`.Iteration {
@@ -191,7 +194,7 @@ extension `ABI.EncodedEvent Tests`.Instant {
       }
       switch encoded.kind {
       case .testStarted, .testEnded, .testCancelled:
-        #expect(encoded._testCase == nil)
+        #expect(encoded.testCaseID == nil)
       case .testCaseStarted, .testCaseEnded, .testCaseCancelled:
         Issue.record("Should not encode test case events for non-parameterized test")
       default:

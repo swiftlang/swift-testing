@@ -67,7 +67,7 @@ extension ABI {
   }
 
   /// The current supported ABI version (ignoring any experimental versions.)
-  public typealias CurrentVersion = v6_5
+  public typealias CurrentVersion = v6_6
 
   /// Get the type representing a given ABI version.
   ///
@@ -121,6 +121,8 @@ extension ABI {
     }
 
     return switch versionNumber {
+    case ABI.v6_6.versionNumber...:
+      ABI.v6_6.self
     case ABI.v6_5.versionNumber...:
       ABI.v6_5.self
     case ABI.v6_4.versionNumber...:
@@ -141,9 +143,10 @@ extension ABI {
   }
 }
 
-#if !SWT_NO_ABI_JSON_SCHEMA && !SWT_NO_CODABLE
+#if !SWT_NO_ABI_JSON_SCHEMA
 // MARK: - Decoding record JSON
 
+#if !SWT_NO_CODABLE
 extension ABI {
   /// Decode an event from the given record JSON.
   ///
@@ -159,6 +162,8 @@ extension ABI {
   ///   was invalid or could not be decoded, this function returns `nil`.
   ///
   /// Records of kind `"test"` are decoded as events of kind `testDiscovered`.
+  /// Records of kind `"testCase"` are decoded as events of kind
+  /// `testCaseDiscovered`.
   ///
   /// This function infers the ABI version to use from the contents of
   /// `recordJSON`.
@@ -170,8 +175,10 @@ extension ABI {
     return abi.decodeEvent(fromRecordJSON: recordJSON, in: &context)
   }
 }
+#endif
 
 extension ABI.Version {
+#if !SWT_NO_CODABLE
   /// Decode an event from the given record JSON.
   ///
   /// - Parameters:
@@ -186,15 +193,37 @@ extension ABI.Version {
   ///   was invalid or could not be decoded, this function returns `nil`.
   ///
   /// Records of kind `"test"` are decoded as events of kind `testDiscovered`.
+  /// Records of kind `"testCase"` are decoded as events of kind
+  /// `testCaseDiscovered`.
   ///
   /// If `recordJSON` was encoded with an incompatible ABI version, this
   /// function returns `nil`.
   public static func decodeEvent(fromRecordJSON recordJSON: UnsafeRawBufferPointer, in context: inout ABI.Context) -> (event: Event, context: Event.Context)? {
-    var result: (event: Event, context: Event.Context)?
-
     guard let record = try? JSON.decode(ABI.Record<Self>.self, from: recordJSON) else {
       return nil
     }
+    return decodeEvent(fromRecord: record, in: &context)
+  }
+#endif
+
+  /// Decode an event from the given ABI record.
+  ///
+  /// - Parameters:
+  ///   - record: The record to decode.
+  ///   - context: A context value that tracks decoded tests and events.
+  ///
+  /// - Returns: A tuple containing the decoded event and an associated event
+  ///   context. The event context's ``Event/Context/test`` and
+  ///   ``Event/Context/iteration`` properties are set if the encoded event has
+  ///   its corresponding properties set. The caller is responsible for setting
+  ///   any other properties of the context value that it needs. If `record` was
+  ///   invalid or could not be decoded, this function returns `nil`.
+  ///
+  /// Records of kind `"test"` are decoded as events of kind `testDiscovered`.
+  /// Records of kind `"testCase"` are decoded as events of kind
+  /// `testCaseDiscovered`.
+  public static func decodeEvent(fromRecord record: ABI.Record<Self>, in context: inout ABI.Context) -> (event: Event, context: Event.Context)? {
+    var result: (event: Event, context: Event.Context)?
 
     switch record.kind {
     case let .test(encodedTest):
@@ -205,14 +234,30 @@ extension ABI.Version {
         Event(.testDiscovered, testID: test.id, testCaseID: nil),
         Event.Context(test: test, testCase: nil, iteration: nil, configuration: nil)
       )
+    case let .testCase(encodedTestCase):
+      guard let test = context.test(identifiedBy: encodedTestCase.testID),
+        let testCase = Test.Case(decoding: encodedTestCase, in: &context) else {
+        return nil
+      }
+      result = (
+        Event(.testCaseDiscovered, testID: test.id, testCaseID: testCase.id),
+        Event.Context(test: test, testCase: testCase, iteration: nil, configuration: nil)
+      )
     case let .event(encodedEvent):
       guard let event = Event(decoding: encodedEvent, in: &context) else {
         return nil
       }
-      let test = encodedEvent.testID.flatMap(context.test(identifiedBy:))
+      var test: Test?
+      var testCase: Test.Case?
+      if let testID = encodedEvent.testID {
+        test = context.test(identifiedBy: testID)
+        if let testCaseID = encodedEvent.testCaseID {
+          testCase = context.testCase(identifiedBy: testID, testCaseID)
+        }
+      }
       result = (
         event,
-        Event.Context(test: test, testCase: nil, iteration: encodedEvent.iteration, configuration: nil)
+        Event.Context(test: test, testCase: testCase, iteration: encodedEvent.iteration, configuration: nil)
       )
     case let .metadata(encodedMetadata):
       guard let metadata = Event.Metadata(decoding: encodedMetadata) else {
@@ -317,6 +362,17 @@ extension ABI {
   public enum v6_5: Sendable, Version {
     public static var versionNumber: VersionNumber {
       VersionNumber(6, 5)
+    }
+  }
+
+  /// A namespace and type for ABI version 6.6 symbols.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.6)
+  /// }
+  public enum v6_6: Sendable, Version {
+    public static var versionNumber: VersionNumber {
+      VersionNumber(6, 6)
     }
   }
 

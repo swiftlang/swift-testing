@@ -378,8 +378,8 @@ extension Event.HumanReadableOutputRecorder {
 
     // Finally, produce any messages for the event.
     switch event.kind {
-    case .testDiscovered:
-      // Suppress events of this kind from output as they are not generally
+    case .testDiscovered, .testCaseDiscovered:
+      // Suppress events of these kinds from output as they are not generally
       // interesting in human-readable output.
       break
 
@@ -663,23 +663,11 @@ extension Event.HumanReadableOutputRecorder {
     in context: inout ABI.Context,
     configuration: Configuration? = nil
   ) -> [Message] {
-    guard let event = Event(decoding: copy encodedEvent, in: &context) else {
+    guard let eventAndContext = V.decodeEvent(fromRecord: ABI.Record<V>(encoding: encodedEvent), in: &context) else {
       return []
     }
-
-    switch event.kind {
-    case .testCaseStarted, .testCaseEnded, .testCaseCancelled:
-      // FIXME: handle test cases here (not supported in the JSON event stream)
-      return []
-    default:
-      let eventContext = Event.Context(
-        test: encodedEvent.testID.flatMap(context.test(identifiedBy:)),
-        testCase: nil,
-        iteration: encodedEvent.iteration,
-        configuration: nil
-      )
-      return record(event, in: eventContext, configuration: configuration)
-    }
+    let (event, eventContext) = eventAndContext
+    return record(event, in: eventContext, configuration: configuration)
   }
 #endif
 }

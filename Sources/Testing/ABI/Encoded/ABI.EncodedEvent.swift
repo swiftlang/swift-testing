@@ -151,15 +151,17 @@ extension ABI {
     /// The ID of the test associated with this event, if any.
     var testID: EncodedTest<V>.ID?
 
+    /// The ID of the test case associated with this event, if any.
+    ///
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.6)
+    /// }
+    var testCaseID: EncodedTestCase<V>.ID?
+
     /// The iteration of the `testID` being executed.
     ///
     /// This value is one-indexed; the first iteration is `1`.
     public var iteration: Int?
-
-    /// The ID of the test case associated with this event, if any.
-    ///
-    /// - Warning: Test cases are not yet part of the JSON schema.
-    var _testCase: EncodedTestCase<V>?
 
     /// The comments the test author provided for this event, if any.
     ///
@@ -229,11 +231,9 @@ extension ABI {
         }
       }
 
-      // Experimental fields
-      if V.includesExperimentalFields {
-        if eventContext.test?.isParameterized == true {
-          _testCase = eventContext.testCase.map(EncodedTestCase.init)
-        }
+      // Fields introduced in 6.6
+      if V.versionNumber >= ABI.v6_6.versionNumber {
+        testCaseID = event.testCaseID.map(EncodedTestCase<V>.ID.init)
       }
     }
   }
@@ -251,8 +251,8 @@ extension ABI.EncodedEvent: Codable {
     case attachment
     case messages
     case testID
+    case testCaseID
     case iteration
-    case testCase = "_testCase"
     case comments
     case sourceLocation
   }
@@ -273,8 +273,8 @@ extension ABI.EncodedEvent: Codable {
       messages = try container.decodeIfPresent([ABI.EncodedMessage<V>].self, forKey: .messages) ?? []
     }
     testID = try container.decodeIfPresent(ABI.EncodedTest<V>.ID.self, forKey: .testID)
+    testCaseID = try container.decodeIfPresent(ABI.EncodedTestCase<V>.ID.self, forKey: .testCaseID)
     iteration = try container.decodeIfPresent(Int.self, forKey: .iteration)
-    _testCase = try container.decodeIfPresent(ABI.EncodedTestCase<V>.self, forKey: .testCase)
     comments = try container.decodeIfPresent([String].self, forKey: .comments)
     sourceLocation = try container.decodeIfPresent(ABI.EncodedSourceLocation<V>.self, forKey: .sourceLocation)
   }
@@ -299,8 +299,8 @@ extension ABI.EncodedEvent: JSON.Encodable {
       result["messages"] = messages.jsonValue(in: context)
     }
     result["testID"] = testID?.stringValue.jsonValue(in: context)
+    result["testCaseID"] = testCaseID?.stringValue.jsonValue(in: context)
     result["iteration"] = iteration?.jsonValue(in: context)
-    result["_testCase"] = _testCase?.jsonValue(in: context)
     result["comments"] = comments?.jsonValue(in: context)
     result["sourceLocation"] = sourceLocation?.jsonValue(in: context)
 
@@ -376,9 +376,6 @@ extension Event {
   /// - Parameters:
   ///   - event: The encoded event to initialize this instance from.
   ///   - context: A context value that tracks decoded tests and events.
-  ///
-  /// ``testCaseID`` is always `nil` because test cases are not currently
-  /// supported in the JSON event stream.
   public init?<V>(decoding event: ABI.EncodedEvent<V>, in context: inout ABI.Context) {
     self.init(decoding: event)
 
@@ -390,6 +387,14 @@ extension Event {
         return nil
       }
       self.testID = testID
+
+      if let encodedTestCaseID = event.testCaseID {
+        guard let testCaseID = context.testCase(identifiedBy: encodedTestID, encodedTestCaseID)?.id else {
+          // As above, but for the test case ID.
+          return nil
+        }
+        self.testCaseID = testCaseID
+      }
     }
   }
 }

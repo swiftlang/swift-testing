@@ -611,6 +611,7 @@ struct SwiftPMTests {
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_4.versionNumber),
           ("--event-stream-output-path", "--event-stream-version", ABI.v6_4.versionNumber),
           ("--event-stream-output-path", "--event-stream-version", ABI.v6_5.versionNumber),
+          ("--event-stream-output-path", "--event-stream-version", ABI.v6_6.versionNumber),
         ])
   func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: VersionNumber) async throws {
     let version = try #require(ABI.version(forVersionNumber: version))
@@ -660,15 +661,6 @@ struct SwiftPMTests {
     }
     #expect(testRecords.count == 1)
     for testRecord in testRecords {
-      if version.includesExperimentalFields {
-        let actualTestCases = testRecord._testCases
-        let testCases = try #require(actualTestCases)
-        #expect(testCases.count == expectedArgs.count)
-        #expect(testRecord._tags != nil)
-      } else {
-        #expect(testRecord._testCases == nil)
-      }
-
       if version.versionNumber >= ABI.v6_4.versionNumber {
         let testTags = try #require(testRecord.tags)
         #expect(testTags.count >= 1)
