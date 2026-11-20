@@ -466,6 +466,9 @@ extension Runner {
     within step: Plan.Step,
     in context: _Context,
   ) async {
+    if step.test.isParameterized {
+      Event.post(.testCaseDiscovered, for: (step.test, testCase), configuration: _configuration)
+    }
     await applyRepetitionPolicy(_configuration.repetitionPolicy) {
       await _runSingleTestCaseIteration(testCase, within: step)
     } didRecordIssue: {

@@ -53,6 +53,7 @@ struct Test_CaseTests {
     #expect(!testCase.id.isStable)
   }
 
+#if !SWT_NO_SNAPSHOT_TYPES
   @Suite("Test.Case.ID Tests")
   struct IDTests {
     @Test(arguments: [
@@ -61,13 +62,14 @@ struct Test_CaseTests {
       Test.Case.ID(argumentIDs: [.init(bytes: #""abc""#.utf8)], discriminator: 0, isStable: true),
     ])
     func roundTripping(id: Test.Case.ID) throws {
-      #expect(try JSON.encodeAndDecode(id) == id)
+      let id = Test.Case.ID.Snapshot(rawValue: id)
+      #expect(try JSON.encodeAndDecode(id).rawValue == id.rawValue)
     }
 
     @Test func decoding_nonParameterized() throws {
       let encodedData = Array(#"{"isStable": true}"#.utf8)
       let testCaseID = try encodedData.withUnsafeBytes { encodedData in
-        try JSON.decode(Test.Case.ID.self, from: encodedData)
+        try JSON.decode(Test.Case.ID.Snapshot.self, from: encodedData).rawValue
       }
       #expect(testCaseID.isStable)
       #expect(testCaseID.argumentIDs == nil)
@@ -85,13 +87,14 @@ struct Test_CaseTests {
         }
         """.utf8)
       let testCaseID = try encodedData.withUnsafeBytes { encodedData in
-        try JSON.decode(Test.Case.ID.self, from: encodedData)
+        try JSON.decode(Test.Case.ID.Snapshot.self, from: encodedData).rawValue
       }
       #expect(testCaseID.isStable)
       #expect(testCaseID.argumentIDs?.count == 1)
       #expect(testCaseID.discriminator == 0)
     }
   }
+#endif
 
   @Suite("Combined argument ID Tests")
   struct CombinedArgumentIDTests {

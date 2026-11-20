@@ -22,6 +22,13 @@ extension ABI {
       /// A test record.
       case test(EncodedTest<V>)
 
+      /// A test case record.
+      ///
+      /// @Metadata {
+      ///   @Available(Swift, introduced: 6.6)
+      /// }
+      case testCase(EncodedTestCase<V>)
+
       /// An event record.
       case event(EncodedEvent<V>)
 
@@ -37,6 +44,16 @@ extension ABI {
 
     public init(encoding test: borrowing EncodedTest<V>) {
       kind = .test(copy test)
+    }
+
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.6)
+    /// }
+    public init?(encoding testCase: borrowing EncodedTestCase<V>) {
+      guard V.versionNumber >= ABI.v6_6.versionNumber else {
+        return nil
+      }
+      kind = .testCase(copy testCase)
     }
 
     public init(encoding event: borrowing EncodedEvent<V>) {
@@ -60,6 +77,11 @@ extension ABI.Record {
     self.init(encoding: test)
   }
 
+  init?(encoding testCase: borrowing Test.Case, of test: borrowing Test) {
+    let testCase = ABI.EncodedTestCase<V>(encoding: testCase, of: test)
+    self.init(encoding: testCase)
+  }
+
   init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message] = []) {
     switch event.kind {
     case .testDiscovered:
@@ -67,6 +89,11 @@ extension ABI.Record {
         return nil
       }
       self.init(encoding: test)
+    case .testCaseDiscovered:
+      guard let test = eventContext.test, let testCase = eventContext.testCase else {
+        return nil
+      }
+      self.init(encoding: testCase, of: test)
     case let .metadataRecorded(metadata):
       self.init(encoding: metadata)
     default:
@@ -127,6 +154,9 @@ extension ABI.Record: Codable {
     case "test":
       let test = try container.decode(ABI.EncodedTest<V>.self, forKey: .payload)
       kind = .test(test)
+    case "testCase" where V.versionNumber >= ABI.v6_6.versionNumber:
+      let testCase = try container.decode(ABI.EncodedTestCase<V>.self, forKey: .payload)
+      kind = .testCase(testCase)
     case "event":
       let event = try container.decode(ABI.EncodedEvent<V>.self, forKey: .payload)
       kind = .event(event)
@@ -154,6 +184,9 @@ extension ABI.Record: JSON.Encodable {
     case let .test(test):
       result["kind"] = .string("test")
       result["payload"] = test.jsonValue(in: context)
+    case let .testCase(testCase) where V.versionNumber >= ABI.v6_6.versionNumber:
+      result["kind"] = .string("testCase")
+      result["payload"] = testCase.jsonValue(in: context)
     case let .event(event):
       result["kind"] = .string("event")
       result["payload"] = try event.jsonValue(in: context)

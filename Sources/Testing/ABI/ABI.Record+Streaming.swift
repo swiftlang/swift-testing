@@ -88,8 +88,8 @@ extension ABI.Xcode16 {
   ) -> Event.Handler {
     return { event, context in
       switch event.kind {
-      case .testDiscovered, .metadataRecorded:
-        // Discard events of this kind rather than forwarding them to avoid a
+      case .testDiscovered, .metadataRecorded, .testCaseDiscovered:
+        // Discard events of these kinds rather than forwarding them to avoid a
         // crash in Xcode 16 (which does not expect any events to occur before
         // .runStarted.)
         return

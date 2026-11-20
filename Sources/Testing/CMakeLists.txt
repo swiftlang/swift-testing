@@ -30,6 +30,7 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedMetadata.swift
   ABI/Encoded/ABI.EncodedSourceLocation.swift
   ABI/Encoded/ABI.EncodedTest.swift
+  ABI/Encoded/ABI.EncodedTestCase.swift
   ABI/Encoded/ABI.EncodedTypeInfo.swift
   Attachments/Images/AttachableAsImage.swift
   Attachments/Images/_AttachableImageWrapper.swift

@@ -56,6 +56,13 @@ public struct Event: Sendable {
     /// available from this event's ``Event/testID`` property.
     case testStarted
 
+    /// A test case was discovered during test run planning.
+    ///
+    /// This event is recorded the first time a test case is encountered as part
+    /// of a test run, immediately before it is run (i.e. when its argument
+    /// values are passed to its corresponding test function).
+    case testCaseDiscovered
+
     /// A test case started.
     ///
     /// The test case that started is contained in the ``Event/Context``
@@ -386,14 +393,31 @@ extension Event {
     /// cannot be determined, the value of this property is `nil`.
     public var testID: Test.ID?
 
+    /// Storage for ``testCaseID``.
+    private var _testCaseID: Test.Case.ID.Snapshot?
+
     /// The ID of the test case for which this event occurred, if any.
     ///
     /// If an event occurred independently of any test case, or if the running
     /// test case cannot be determined, the value of this property is `nil`.
-    public var testCaseID: Test.Case.ID?
+    public var testCaseID: Test.Case.ID? {
+      get {
+        _testCaseID?.rawValue
+      }
+      set {
+        _testCaseID = newValue.map(Test.Case.ID.Snapshot.init(rawValue:))
+      }
+    }
 
     /// The instant at which the event occurred.
     public var instant: Test.Clock.Instant
+
+    private enum CodingKeys: String, CodingKey {
+      case kind
+      case testID
+      case _testCaseID = "testCaseID"
+      case instant
+    }
 
     /// Snapshots an ``Event``.
     ///
@@ -402,7 +426,7 @@ extension Event {
     public init(snapshotting event: borrowing Event) {
       kind = Event.Kind.Snapshot(snapshotting: event.kind)
       testID = event.testID
-      testCaseID = event.testCaseID
+      _testCaseID = event.testCaseID.map(Test.Case.ID.Snapshot.init(rawValue:))
       instant = event.instant
     }
   }
@@ -446,6 +470,9 @@ extension Event.Kind {
 
     /// A test started.
     case testStarted
+
+    /// A test case was discovered.
+    case testCaseDiscovered
 
     /// A test case started.
     case testCaseStarted
@@ -558,6 +585,8 @@ extension Event.Kind.Snapshot {
       self = .planStepStarted
     case .testStarted:
       self = .testStarted
+    case .testCaseDiscovered:
+      self = .testCaseDiscovered
     case .testCaseStarted:
       self = .testCaseStarted
     case .testCaseEnded:

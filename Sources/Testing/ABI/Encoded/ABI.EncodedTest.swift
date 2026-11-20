@@ -55,11 +55,6 @@ extension ABI {
     /// The unique identifier of this test.
     var id: ID
 
-    /// The test cases in this test, if it is a parameterized test function.
-    ///
-    /// - Warning: Test cases are not yet part of the JSON schema.
-    var _testCases: [EncodedTestCase<V>]?
-
     /// Whether or not the test is parameterized.
     ///
     /// If this instance represents a test _suite_, the value of this property
@@ -68,22 +63,38 @@ extension ABI {
 
     /// A type describing a parameter to a parameterized test function.
     ///
-    /// - Warning: Parameter info is not yet part of the JSON schema.
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.6)
+    /// }
     struct Parameter: Sendable {
-      /// The name of the parameter, if known.
+      /// The parameter's externally-visible label.
+      ///
+      /// @Metadata {
+      ///   @Available(Swift, introduced: 6.6)
+      /// }
+      var label: String?
+
+      /// The parameter's internally-visible name.
+      ///
+      /// @Metadata {
+      ///   @Available(Swift, introduced: 6.6)
+      /// }
       var name: String?
 
-      /// The fully-qualified name of the parameter's type.
-      var typeName: String
+      /// The parameter's type, if known.
+      ///
+      /// @Metadata {
+      ///   @Available(Swift, introduced: 6.6)
+      /// }
+      var type: ABI.EncodedTypeInfo<V>?
     }
 
-    /// Information about the parameters to this test.
+    /// The test function's parameters, if any.
     ///
-    /// If this instance does not represent a _parameterized test function_, the
-    /// value of this property is `nil`.
-    ///
-    /// - Warning: Parameter info is not yet part of the JSON schema.
-    var _parameters: [Parameter]?
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.6)
+    /// }
+    var parameters: [Parameter]?
 
     /// An equivalent of ``tags`` that preserves ABIv6.3 support.
     var _tags: [String]?
@@ -114,35 +125,6 @@ extension ABI {
   }
 }
 
-extension ABI {
-  /// A type implementing the JSON encoding of ``Test/Case`` for the ABI entry
-  /// point and event stream output.
-  ///
-  /// The properties and members of this type are documented in ABI/JSON.md.
-  ///
-  /// This type is not part of the public interface of the testing library. It
-  /// assists in converting values to JSON; clients that consume this JSON are
-  /// expected to write their own decoders.
-  ///
-  /// - Warning: Test cases are not yet part of the JSON schema.
-  struct EncodedTestCase<V>: Sendable where V: ABI.Version {
-    var id: String
-    var displayName: String
-
-    init(encoding testCase: borrowing Test.Case) {
-      guard let arguments = testCase.arguments else {
-        preconditionFailure("Attempted to initialize an EncodedTestCase encoding a test case which is not parameterized: \(testCase). \(fileABugMessage)")
-      }
-
-      // TODO: define an encodable form of Test.Case.ID
-      id = String(describing: testCase.id)
-      displayName = arguments.lazy
-        .map(String.init(describingForTest:))
-        .joined(separator: ", ")
-    }
-  }
-}
-
 // MARK: - Codable, JSON.Encodable
 
 #if !SWT_NO_CODABLE
@@ -159,12 +141,6 @@ extension ABI.EncodedTest.Kind: Codable {
 }
 
 extension ABI.EncodedTest.Parameter: Codable {
-  public func encode(to encoder: any Encoder) throws(any Error) {
-    try encoder.encodeJSONEncodableValue(self)
-  }
-}
-
-extension ABI.EncodedTestCase: Codable {
   public func encode(to encoder: any Encoder) throws(any Error) {
     try encoder.encodeJSONEncodableValue(self)
   }
@@ -190,9 +166,8 @@ extension ABI.EncodedTest: JSON.Encodable {
     result["displayName"] = displayName?.jsonValue(in: context)
     result["sourceLocation"] = sourceLocation.jsonValue(in: context)
     result["id"] = id.stringValue.jsonValue(in: context)
-    result["_testCases"] = _testCases?.jsonValue(in: context)
     result["isParameterized"] = isParameterized?.jsonValue(in: context)
-    result["_parameters"] = _parameters?.jsonValue(in: context)
+    result["parameters"] = parameters?.jsonValue(in: context)
     result["_tags"] = _tags?.jsonValue(in: context)
     result["tags"] = tags?.jsonValue(in: context)
     result["bugs"] = bugs?.jsonValue(in: context)
@@ -208,19 +183,9 @@ extension ABI.EncodedTest.Parameter: JSON.Encodable {
   func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
     var result = [String: JSON.Value]()
 
+    result["label"] = label?.jsonValue(in: context)
     result["name"] = name?.jsonValue(in: context)
-    result["typeName"] = typeName.jsonValue(in: context)
-
-    return .object(result)
-  }
-}
-
-extension ABI.EncodedTestCase: JSON.Encodable {
-  func jsonValue(in context: borrowing JSON.EncodingContext) -> JSON.Value {
-    var result = [String: JSON.Value]()
-
-    result["id"] = id.jsonValue(in: context)
-    result["displayName"] = displayName.jsonValue(in: context)
+    result["type"] = type?.jsonValue(in: context)
 
     return .object(result)
   }
@@ -238,7 +203,9 @@ extension ABI.EncodedTest {
       kind = .suite
     } else {
       kind = .function
-      isParameterized = test.isParameterized
+      if V.versionNumber < ABI.v6_6.versionNumber {
+        isParameterized = test.isParameterized
+      }
     }
     name = test.name
     displayName = test.displayName
@@ -247,15 +214,6 @@ extension ABI.EncodedTest {
 
     // Experimental fields
     if V.includesExperimentalFields {
-      if isParameterized == true {
-        _testCases = test.uncheckedTestCases?.map(ABI.EncodedTestCase.init(encoding:))
-        _parameters = test.parameters?.map { parameter in
-          Parameter(
-            name: parameter.secondName ?? parameter.firstName,
-            typeName: parameter.typeInfo.fullyQualifiedName
-          )
-        }
-      }
       let tags = test.tags
       if !tags.isEmpty {
         self._tags = tags.map(String.init(describing:))
@@ -278,6 +236,18 @@ extension ABI.EncodedTest {
 #if !hasFeature(Embedded)
       self.timeLimit = test.timeLimit.map { $0 / .seconds(1) }
 #endif
+    }
+
+    if V.versionNumber >= ABI.v6_6.versionNumber {
+      if let parameters = test.parameters, !parameters.isEmpty {
+        self.parameters = parameters.map { parameter in
+          Parameter(
+            label: parameter.firstName,
+            name: parameter.secondName,
+            type: ABI.EncodedTypeInfo<V>(encoding: parameter.typeInfo)
+          )
+        }
+      }
     }
   }
 }
@@ -343,12 +313,13 @@ extension Test {
         isSynthesized: true
       )
     case .function:
-      let parameters = test._parameters.map { parameters in
+      let parameters = test.parameters.map { parameters in
         parameters.enumerated().map { i, parameter in
           Testing.Test.Parameter(
             index: i,
-            firstName: parameter.name ?? "_",
-            typeInfo: TypeInfo(fullyQualifiedName: parameter.typeName, mangledName: nil)
+            firstName: parameter.label ?? "_",
+            secondName: parameter.name,
+            typeInfo: parameter.type.map(TypeInfo.init(decoding:)) ?? .any
           )
         }
       }

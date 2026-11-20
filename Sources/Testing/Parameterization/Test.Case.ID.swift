@@ -12,13 +12,12 @@
 private import Synchronization
 #endif
 
-extension Test.Case {
+extension Test.Case: Identifiable {
   /// The ID of a test case.
   ///
   /// Instances of this type are considered unique within the scope of a given
   /// parameterized test function. They are not necessarily unique across two
   /// different ``Test`` instances.
-  @_spi(ForToolsIntegrationOnly)
   public struct ID: Sendable {
     /// The IDs of the arguments of this instance's associated ``Test/Case``.
     ///
@@ -26,6 +25,7 @@ extension Test.Case {
     /// ``Test/Case/Argument/ID-swift.struct`` that combines the IDs of every
     /// argument. The value of this property is `nil` for the ID of the single
     /// test case associated with a non-parameterized test function.
+    @_spi(ForToolsIntegrationOnly)
     public var argumentIDs: [Argument.ID]?
 
     /// A number used to distinguish this test case from others associated with
@@ -37,10 +37,12 @@ extension Test.Case {
     /// ## See Also
     ///
     /// - ``Test/Case/discriminator``
+    @_spi(ForToolsIntegrationOnly)
     public var discriminator: Int?
 
     /// Whether or not this test case ID is considered stable across successive
     /// runs.
+    @_spi(ForToolsIntegrationOnly)
     public var isStable: Bool
 
     init(argumentIDs: [Argument.ID]?, discriminator: Int?, isStable: Bool) {
@@ -59,10 +61,28 @@ extension Test.Case {
   }
 }
 
-// MARK: - CustomStringConvertible
+// MARK: - CustomStringConvertible, CustomTestStringConvertible
 
 extension Test.Case.ID: CustomStringConvertible {
   public var description: String {
+    // The description of a test case ID is opaque. We currently implement it as
+    // a SHA-256 hash of its properties, but this is subject to change.
+    let argumentIDs = argumentIDs ?? []
+    var bytes: [UInt8] = Array(argumentIDs.lazy.map(\.bytes).joined())
+    if let discriminator {
+      withUnsafeBytes(of: discriminator.littleEndian) { bytes += $0 }
+    }
+    bytes.append(isStable ? 1 : 0)
+    let hash = SHA256.hash(bytes)
+    return hash.map { byte in
+      byte >= 0x10 ? String(byte, radix: 16) : "0\(String(byte, radix: 16))"
+    }.joined()
+  }
+}
+
+#if DEBUG
+extension Test.Case.ID: CustomTestStringConvertible {
+  public var testDescription: String {
     // Pass through Comment to make sure string interpolation uses
     // CustomTestStringConvertible instead of just CustomStringConvertible in
     // Embedded Swift.
@@ -74,16 +94,24 @@ extension Test.Case.ID: CustomStringConvertible {
     return result.rawValue
   }
 }
+#endif
 
-#if !SWT_NO_CODABLE
+#if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Codable
 
-extension Test.Case.ID: Codable {
-  private enum CodingKeys: String, CodingKey {
+extension Test.Case.ID {
+  /// A snapshot equivalent of a test case ID.
+  struct Snapshot: Sendable, RawRepresentable {
+    var rawValue: Test.Case.ID
+  }
+}
+
+extension Test.Case.ID.Snapshot: Codable {
+  private enum _CodingKeys: String, CodingKey {
     /// A coding key for ``Test/Case/ID/argumentIDs``.
     ///
-    /// This case's string value is non-standard because a previous legacy argument ID
-    /// key used it, and clients have adjusted to this one.
+    /// This case's string value is non-standard because a previous legacy
+    /// argument ID key used it, and clients have adjusted to this one.
     case argumentIDs = "argIDs"
 
     /// A coding key for ``Test/Case/ID/discriminator``.
@@ -91,6 +119,22 @@ extension Test.Case.ID: Codable {
 
     /// A coding key for ``Test/Case/ID/isStable``.
     case isStable
+  }
+
+  func encode(to encoder: any Encoder) throws(any Error) {
+    var container = encoder.container(keyedBy: _CodingKeys.self)
+    try container.encodeIfPresent(rawValue.argumentIDs, forKey: .argumentIDs)
+    try container.encodeIfPresent(rawValue.discriminator, forKey: .discriminator)
+    try container.encode(rawValue.isStable, forKey: .isStable)
+  }
+
+  init(from decoder: any Decoder) throws(any Error) {
+    let container = try decoder.container(keyedBy: _CodingKeys.self)
+    rawValue = try Test.Case.ID(
+      argumentIDs: container.decodeIfPresent([Test.Case.Argument.ID].self, forKey: .argumentIDs),
+      discriminator: container.decodeIfPresent(Int.self, forKey: .discriminator),
+      isStable: container.decode(Bool.self, forKey: .isStable)
+    )
   }
 }
 #endif

@@ -21,6 +21,19 @@ extension ABI {
     /// Those tests memoized by this instance, keyed by encoded test ID.
     private var _testsByEncodedID = [String: Test]()
 
+    /// A type describing the keys of the `_testCasesByEncodedID` property.
+    private struct _TestCaseKey: Sendable, Equatable, Hashable {
+      /// The string value of the corresponding test ID.
+      var testID: String
+
+      /// The string value of the corresponding test case ID.
+      var testCaseID: String
+    }
+
+    /// Those test cases memoized by this instance, keyed by encoded test ID and
+    /// then by encoded test case ID.
+    private var _testCasesByEncodedID = [_TestCaseKey: Test.Case]()
+
     public init() {}
 
     /// Memoize the given test so it can be looked up later by its encoded ID.
@@ -35,12 +48,41 @@ extension ABI {
     /// Find a test previously passed to ``setTest(_:identifiedBy:)``.
     ///
     /// - Parameters:
-    ///   - encodedTestID: The previously-encoded ID of `test`.
+    ///   - encodedTestID: The previously-encoded ID of the test to find.
     ///
     /// - Returns: An instance of ``Test`` corresponding to `encodedTestID`, or
     ///   `nil` if none was previously passed to ``setTest(_:identifiedBy:)``.
     func test<V>(identifiedBy encodedTestID: ABI.EncodedTest<V>.ID) -> Test? {
       _testsByEncodedID[encodedTestID.stringValue]
+    }
+
+    /// Memoize the given test case so it can be looked up later by its encoded
+    /// ID.
+    ///
+    /// - Parameters:
+    ///   - testCase: The test case to memoize.
+    ///   - encodedTestID: The previously-encoded ID of the test containing
+    ///     `testCase`.
+    ///   - encodedTestCaseID: The previously-encoded ID of `testCase`.
+    mutating func setTestCase<V>(_ testCase: Test.Case, identifiedBy encodedTestID: ABI.EncodedTest<V>.ID, _ encodedTestCaseID: ABI.EncodedTestCase<V>.ID) {
+      let key = _TestCaseKey(testID: encodedTestID.stringValue, testCaseID: encodedTestCaseID.stringValue)
+      _testCasesByEncodedID[key] = testCase
+    }
+
+    /// Find a test case previously passed to ``setTestCase(_:identifiedBy:)``.
+    ///
+    /// - Parameters:
+    ///   - encodedTestID: The previously-encoded ID of the test containing
+    ///     the test case to find.
+    ///   - encodedTestCaseID: The previously-encoded ID of the test case to
+    ///     find.
+    ///
+    /// - Returns: An instance of ``Test/Case`` corresponding to
+    ///   `encodedTestID` and `encodedTestCaseID`, or `nil` if none was
+    ///   previously passed to ``setTestCase(_:identifiedBy:)``.
+    func testCase<V>(identifiedBy encodedTestID: ABI.EncodedTest<V>.ID, _ encodedTestCaseID: ABI.EncodedTestCase<V>.ID) -> Test.Case? {
+      let key = _TestCaseKey(testID: encodedTestID.stringValue, testCaseID: encodedTestCaseID.stringValue)
+      return _testCasesByEncodedID[key]
     }
   }
 }

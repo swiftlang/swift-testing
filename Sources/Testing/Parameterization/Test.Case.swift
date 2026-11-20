@@ -239,8 +239,18 @@ extension Test.Case {
   /// A serializable snapshot of a ``Test/Case`` instance.
   @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable, Codable {
+    /// Storage for ``id``.
+    private var _id: ID.Snapshot
+
     /// The ID of this test case.
-    public var id: ID
+    public var id: ID {
+      get {
+        _id.rawValue
+      }
+      set {
+        _id = ID.Snapshot(rawValue: newValue)
+      }
+    }
 
     /// The arguments passed to this test case.
     public var arguments: [Argument.Snapshot]
@@ -250,13 +260,18 @@ extension Test.Case {
       !arguments.isEmpty
     }
 
+    private enum CodingKeys: String, CodingKey {
+      case _id = "id"
+      case arguments
+    }
+
     /// Initialize an instance of this type by snapshotting the specified test
     /// case.
     ///
     /// - Parameters:
     ///   - testCase: The original test case to snapshot.
     public init(snapshotting testCase: borrowing Test.Case) {
-      id = testCase.id
+      _id = ID.Snapshot(rawValue: testCase.id)
       arguments = if let arguments = testCase.arguments {
         arguments.map(Test.Case.Argument.Snapshot.init)
       } else {

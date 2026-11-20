@@ -614,32 +614,36 @@ struct EventRecorderTests {
 #if !SWT_NO_ABI_JSON_SCHEMA
   @Test("HumanReadableOutputRecorder with encoded events")
   func encodedEvents() async throws {
-    let test = Test(name: "Test Name") {}
+    let parameters = [Test.Parameter(index: 0, firstName: "greeting", type: String.self),]
+    let test = Test(arguments: [any Sendable](), parameters: parameters, name: "Test Name") { _ in }
+    let testCase = Test.Case(values: [.init("Hello World")], parameters: parameters) {}
     let encodedTest = ABI.EncodedTest<ABI.CurrentVersion>(encoding: test)
+    let encodedTestCase = ABI.EncodedTestCase<ABI.CurrentVersion>(encoding: testCase, of: test)
     let encodedEvents = [
       Event(.runStarted, testID: nil, testCaseID: nil),
       Event(.testStarted, testID: test.id, testCaseID: nil),
-      Event(.testCaseStarted, testID: test.id, testCaseID: nil),
-      Event(.issueRecorded(.init(kind: .unconditional)), testID: test.id, testCaseID: nil),
-      Event(.testCaseEnded, testID: test.id, testCaseID: nil),
+      Event(.testCaseStarted, testID: test.id, testCaseID: testCase.id),
+      Event(.issueRecorded(.init(kind: .unconditional)), testID: test.id, testCaseID: testCase.id),
+      Event(.testCaseEnded, testID: test.id, testCaseID: testCase.id),
       Event(.testEnded, testID: test.id, testCaseID: nil),
       Event(.runEnded, testID: nil, testCaseID: nil),
-    ].compactMap { event in
+    ].map { event in
       return ABI.EncodedEvent<ABI.CurrentVersion>(
         encoding: event,
         in: Event.Context(
           test: event.testID != nil ? test : nil,
-          testCase: nil,
+          testCase: event.testCaseID != nil ? testCase : nil,
           iteration: event.testID != nil ? 0 : nil,
           configuration: nil
         ),
         messages: []
-      )
+      )!
     }
 
-    // Memoize the test (we don't need the resulting `Test` instance though).
+    // Memoize the test and test case (we don't need the resulting values though).
     var context = ABI.Context()
     _ = Test(decoding: encodedTest, in: &context)
+    _ = Test.Case(decoding: encodedTestCase, in: &context)
 
     // Generate the messages to compare against.
     let recorder = Event.HumanReadableOutputRecorder()
@@ -648,8 +652,9 @@ struct EventRecorderTests {
     let expectedMessages = [
       "Test run started.",
       #"Test "Test Name" started."#,
+      #"Test case passing 1 argument greeting → "Hello World" to "Test Name" started."#,
       "Issue recorded",
-      #"Test "Test Name" failed"#,
+      #"Test "Test Name" with 1 test case failed"#,
       "Test run with 1 test in 0 suites failed",
     ]
     for (message, expectedMessage) in zip(messages, expectedMessages) {
