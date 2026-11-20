@@ -40,8 +40,8 @@ extension Test.Case.Generator {
   ///
   /// - Parameters:
   ///   - testFunction: The test function called by the generated test case.
-  init(
-    testFunction: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
+  init<E>(
+    testFunction: nonisolated(nonsending) @escaping @Sendable () async throws(E) -> Void
   ) where S == CollectionOfOne<Void> {
     // A beautiful hack to give us the right number of cases: iterate over a
     // collection containing a single Void value.
@@ -60,10 +60,10 @@ extension Test.Case.Generator {
   ///     should be generated.
   ///   - testFunction: The test function to which each generated test case
   ///     passes an argument value from `sequence`.
-  init(
+  init<E>(
     argumentList: Test.Case.Argument.List<S, S.Element>,
     parameters: [Test.Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable (S.Element) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable (S.Element) async throws(E) -> Void
   ) {
     self.init(_sequence: argumentList.wrappedValue) { element in
       Test.Case(values: argumentList.makeArgumentValues(element), parameters: parameters) {
@@ -88,10 +88,10 @@ extension Test.Case.Generator {
   ///
   /// - Bug: The testing library should support variadic generics.
   ///     ([103416861](rdar://103416861))
-  init<C1, C2>(
+  init<C1, C2, E>(
     argumentLists argumentList1: Test.Case.Argument.List<C1, C1.Element>, _ argumentList2: Test.Case.Argument.List<C2, C2.Element>,
     parameters: [Test.Parameter],
-    testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
+    testFunction: nonisolated(nonsending) @escaping @Sendable ((C1.Element, C2.Element)) async throws(E) -> Void
   ) where S == CartesianProduct<C1, C2> {
     let parameterCount = parameters.count
     self.init(_sequence: cartesianProduct(argumentList1.wrappedValue, argumentList2.wrappedValue)) { element in

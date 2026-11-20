@@ -70,7 +70,7 @@ extension Test.Case.Argument.ID {
   /// ## See Also
   ///
   /// - ``CustomTestArgumentEncodable``
-  init?(identifying value: any Sendable, parameter: Test.Parameter) throws {
+  init?(identifying value: any Sendable, parameter: Test.Parameter) throws(any Error) {
 #if !SWT_NO_CODABLE
     func customArgumentWrapper(for value: some CustomTestArgumentEncodable) -> some Encodable {
       CustomArgumentWrapper(rawValue: value)
@@ -132,7 +132,7 @@ extension Test.Case.Argument.ID {
   /// - Returns: An array of bytes containing the encoded representation.
   ///
   /// - Throws: Any error encountered during encoding.
-  private static func _encode(_ value: some Encodable, parameter: Test.Parameter) throws -> [UInt8] {
+  private static func _encode(_ value: some Encodable, parameter: Test.Parameter) throws(any Error) -> [UInt8] {
     /// The encoded representation of an argument is the SHA256 hash of its Codable JSON representation.
     try JSON.withEncoding(of: value, userInfo: [._testParameterUserInfoKey: parameter]) { buffer in
       SHA256.hash(buffer)
