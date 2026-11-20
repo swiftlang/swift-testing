@@ -8,12 +8,20 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(_TestingInternals)
+private import _TestingInternals
+#endif
+
 /// The contents of this file were copied more-or-less verbatim from
 /// [swift-tools-support-core](https://github.com/swiftlang/swift-tools-support-core/blob/add9e1518ac37a8e52b7612d3eb2f009ae8f6ce8/Sources/TSCBasic/HashAlgorithms.swift).
 
 /// SHA-256 implementation from Secure Hash Algorithm 2 (SHA-2) set of
 /// cryptographic hash functions (FIPS PUB 180-2).
-enum SHA256 {
+///
+/// On Apple platforms, this type is implemented over the CommonCrypto library
+/// to improve performance.
+struct SHA256: ~Copyable {
+#if !(canImport(_TestingInternals) && canImport(CommonCrypto))
   /// The length of the output digest (in bits).
   private static let _digestLength = 256
 
@@ -36,8 +44,14 @@ enum SHA256 {
     0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
   ]
+#endif
 
   public static func hash(_ bytes: some Sequence<UInt8>) -> [UInt8] {
+#if canImport(_TestingInternals) && canImport(CommonCrypto)
+    var hasher = Self()
+    hasher.update(bytes)
+    return hasher.finalize()
+#else
     var input = Array(bytes)
 
     // Pad the input.
@@ -65,8 +79,10 @@ enum SHA256 {
     }
 
     return result
+#endif
   }
 
+#if !(canImport(_TestingInternals) && canImport(CommonCrypto))
   /// Process and compute hash from a block.
   private static func _process(_ block: ArraySlice<UInt8>, hash: inout [UInt32]) {
     // Compute message schedule.
@@ -151,8 +167,73 @@ enum SHA256 {
     }
     assert((input.count * 8) % 512 == 0, "Expected padded length to be 512.")
   }
+#endif
+
+  // MARK: - Piecemeal hashing
+
+#if canImport(_TestingInternals) && canImport(CommonCrypto)
+  /// Storage for the SHA-256 context.
+  private var _ctx = CC_SHA256_CTX()
+#else
+  /// Storage for the bytes to be hashed.
+  private var _buffer = [UInt8]()
+#endif
+
+  init() {
+#if canImport(_TestingInternals) && canImport(CommonCrypto)
+    CC_SHA256_Init(&_ctx)
+#endif
+  }
+
+  /// Add the given sequence of bytes to the buffer to be hashed.
+  ///
+  /// - Parameters:
+  ///   - bytes: The bytes to mix into the hash.
+  mutating func update(_ bytes: some Sequence<UInt8>) {
+#if canImport(_TestingInternals) && canImport(CommonCrypto)
+    let hadContiguous: Void? = bytes.withContiguousStorageIfAvailable { bytes in
+      if !bytes.isEmpty {
+        if let count = CC_LONG(exactly: bytes.count) {
+          _ = CC_SHA256_Update(&_ctx, bytes.baseAddress!, count)
+        } else {
+          // There are more than 2^32 bytes to be hashed. (This is likely a dead
+          // branch, but on the other hand somebody out there is going to hit it
+          // if we mark it unreachable.)
+          let sliceWidth = Int(CC_LONG.max)
+          let slices = stride(from: 0, to: bytes.count, by: sliceWidth).lazy
+            .map { bytes[$0 ..< min($0 + sliceWidth, bytes.count - $0)] }
+          for slice in slices {
+            update(slice)
+          }
+        }
+      }
+    }
+    if hadContiguous == nil {
+      for var byte in bytes {
+        _ = CC_SHA256_Update(&_ctx, &byte, 1)
+      }
+    }
+#else
+    _buffer += bytes
+#endif
+  }
+
+  /// Perform the hash operation over all bytes added to this instance.
+  ///
+  /// - Returns: The computed SHA-256 digest.
+  consuming func finalize() -> [UInt8] {
+#if canImport(_TestingInternals) && canImport(CommonCrypto)
+    return Array(unsafeUninitializedCapacity: Int(CC_SHA256_DIGEST_LENGTH)) { digest, initializedCount in
+      CC_SHA256_Final(digest.baseAddress!, &_ctx)
+      initializedCount = digest.count
+    }
+#else
+    return Self.hash(_buffer)
+#endif
+  }
 }
 
+#if !(canImport(_TestingInternals) && canImport(CommonCrypto))
 // MARK:- Helpers
 
 extension UInt64 {
@@ -183,3 +264,4 @@ extension Array {
     }
   }
 }
+#endif

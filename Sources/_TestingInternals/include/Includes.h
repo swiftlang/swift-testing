@@ -158,6 +158,10 @@
 #if defined(__OBJC2__)
 #include <objc/runtime.h>
 #endif
+
+#if __has_include(<CommonCrypto/CommonCrypto.h>)
+#include <CommonCrypto/CommonCrypto.h>
+#endif
 #endif
 
 #if defined(__linux__)
