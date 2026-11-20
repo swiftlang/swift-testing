@@ -64,19 +64,33 @@ extension Test.Case: Identifiable {
 // MARK: - CustomStringConvertible, CustomTestStringConvertible
 
 extension Test.Case.ID: CustomStringConvertible {
+  /// The SHA-256 digest of this test case ID, as a hexadecimal string.
+  private var _sha256Digest: String {
+    var hasher = SHA256()
+
+    if let argumentIDs {
+      for argumentID in argumentIDs {
+        hasher.update(argumentID.bytes)
+      }
+    }
+
+    if let discriminator {
+      withUnsafeBytes(of: discriminator.littleEndian) { discriminator in
+        hasher.update(discriminator)
+      }
+    }
+
+    hasher.update(CollectionOfOne(isStable ? 1 : 0))
+
+    return hasher.finalize().lazy.map { byte in
+      byte >= 0x10 ? String(byte, radix: 16) : "0\(String(byte, radix: 16))"
+    }.joined()
+  }
+
   public var description: String {
     // The description of a test case ID is opaque. We currently implement it as
     // a SHA-256 hash of its properties, but this is subject to change.
-    let argumentIDs = argumentIDs ?? []
-    var bytes: [UInt8] = Array(argumentIDs.lazy.map(\.bytes).joined())
-    if let discriminator {
-      withUnsafeBytes(of: discriminator.littleEndian) { bytes += $0 }
-    }
-    bytes.append(isStable ? 1 : 0)
-    let hash = SHA256.hash(bytes)
-    return hash.map { byte in
-      byte >= 0x10 ? String(byte, radix: 16) : "0\(String(byte, radix: 16))"
-    }.joined()
+    _sha256Digest
   }
 }
 
@@ -91,7 +105,7 @@ extension Test.Case.ID: CustomTestStringConvertible {
     } else {
       "Non-parameterized test case ID"
     }
-    return result.rawValue
+    return "\(result.rawValue) (\(_sha256Digest))"
   }
 }
 #endif
