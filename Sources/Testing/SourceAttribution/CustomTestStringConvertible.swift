@@ -113,11 +113,7 @@ extension String {
   /// - ``CustomTestStringConvertible``
   @_documentation(visibility: private)
   public init(describingForTest value: borrowing some CustomTestStringConvertible & ~Copyable & ~Escapable) {
-    if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
-      self.init(describingForTest: value)
-    } else {
-      self = value.testDescription
-    }
+    self = value.testDescription
   }
 
 #if !hasFeature(Embedded)
