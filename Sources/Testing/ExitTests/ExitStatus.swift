@@ -129,7 +129,7 @@ extension ExitStatus: CustomStringConvertible {
         sys_signame.withMemoryRebound(to: UnsafePointer<CChar>.self) { sys_signame in
           if signal > 0 && signal < sys_signame.count {
             return String(validatingCString: sys_signame[Int(signal)])
-              .map { "SIG\($0.uppercased())" }
+              .map { "SIG\($0.uppercasedASCII())" }
           }
           return nil
         }
