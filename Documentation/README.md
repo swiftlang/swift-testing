@@ -56,8 +56,13 @@ there.
 
 ## Experimental platform support
 
-- Instructions are provided for running tests against a
-  [WASI/WebAssembly target](https://github.com/swiftlang/swift-testing/blob/main/Documentation/WASI.md).
+Swift Testing also supports these platforms experimentally. Running tests for
+them takes extra steps, which these documents describe:
+
+| **Platform**     | **Instructions** |
+| ---------------- | ---------------- |
+| WASI/WebAssembly | [Running tests against a WASI/WebAssembly target](https://github.com/swiftlang/swift-testing/blob/main/Documentation/WASI.md) |
+| Android          | [Running tests on an Android emulator](https://github.com/swiftlang/swift-testing/blob/main/Documentation/Android.md) |
 
 ## Testing library ABI
 
