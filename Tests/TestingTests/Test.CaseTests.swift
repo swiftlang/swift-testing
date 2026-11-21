@@ -53,9 +53,9 @@ struct Test_CaseTests {
     #expect(!testCase.id.isStable)
   }
 
-#if !SWT_NO_SNAPSHOT_TYPES
   @Suite("Test.Case.ID Tests")
   struct IDTests {
+#if !SWT_NO_SNAPSHOT_TYPES
     @Test(arguments: [
       Test.Case.ID(argumentIDs: nil, discriminator: nil, isStable: true),
       Test.Case.ID(argumentIDs: [.init(bytes: "x".utf8)], discriminator: 0, isStable: false),
@@ -93,8 +93,19 @@ struct Test_CaseTests {
       #expect(testCaseID.argumentIDs?.count == 1)
       #expect(testCaseID.discriminator == 0)
     }
-  }
 #endif
+
+    @Test func descriptionIsSHA256Hash() {
+      let testCaseID = Test.Case.ID(
+        argumentIDs: [Test.Case.Argument.ID(bytes: "abc123".utf8)],
+        discriminator: 456,
+        isStable: true
+      )
+      let description = String(describing: testCaseID)
+      let allHex = description.allSatisfy { Int(String($0), radix: 16) != nil }
+      #expect(allHex, "Description of test case ID was not all hexadecimal: \(description)")
+    }
+  }
 
   @Suite("Combined argument ID Tests")
   struct CombinedArgumentIDTests {

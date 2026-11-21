@@ -336,6 +336,10 @@ extension Test.Case.Argument.Value: CustomTestStringConvertible {
 
 extension Test.Case.Argument.ID: CustomTestStringConvertible {
   public var testDescription: String {
+#if !hasFeature(Embedded)
+    String(describingForTest: _bytes)
+#else
     String(describingForTest: bytes)
+#endif
   }
 }

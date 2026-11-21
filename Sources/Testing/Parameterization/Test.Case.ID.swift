@@ -76,16 +76,34 @@ extension Test.Case.ID: CustomStringConvertible {
   public var description: String {
     // The description of a test case ID is opaque. We currently implement it as
     // a SHA-256 hash of its properties, but this is subject to change.
-    let argumentIDs = argumentIDs ?? []
+    let argumentIDs = _argumentIDs ?? []
     var bytes: [UInt8] = Array(argumentIDs.lazy.map(\.bytes).joined())
     if let discriminator {
       withUnsafeBytes(of: discriminator.littleEndian) { bytes += $0 }
     }
     bytes.append(isStable ? 1 : 0)
-    let hash = SHA256.hash(bytes)
-    return hash.map { byte in
-      byte >= 0x10 ? String(byte, radix: 16) : "0\(String(byte, radix: 16))"
-    }.joined()
+    return withUnsafeTemporaryAllocation(of: UInt8.self, capacity: SHA256.digestByteCount) { hash in
+      SHA256.hash(bytes, into: hash)
+
+      let utf8ByteCount = SHA256.digestByteCount * 2
+      let result = withUnsafeTemporaryAllocation(of: UInt8.self, capacity: utf8ByteCount + 1) { utf8 in
+        let utf8 = utf8.baseAddress!
+        for i in 0 ..< hash.count {
+          func writeNybble(_ nybble: UInt8, to dest: UnsafeMutablePointer<UInt8>) {
+            if nybble < 0xA {
+              dest.initialize(to: UInt8(ascii: "0") + nybble - 0x0)
+            } else {
+              dest.initialize(to: UInt8(ascii: "a") + nybble - 0xA)
+            }
+          }
+          writeNybble((hash[i] & 0xF0) >> 4, to: utf8 + (i * 2))
+          writeNybble((hash[i] & 0x0F) >> 0, to: utf8 + (i * 2) + 1)
+        }
+        utf8[utf8ByteCount] = 0
+        return utf8.withMemoryRebound(to: CChar.self, capacity: utf8ByteCount + 1) { String(cString: $0) }
+      }
+      return result
+    }
   }
 }
 

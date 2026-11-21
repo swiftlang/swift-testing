@@ -92,7 +92,9 @@ extension Test.Case.Argument.ID {
       return nil
     }
 
-    self.init(bytes: try Self._encode(encodableValue, parameter: parameter))
+    self = try JSON.withEncoding(of: encodableValue, userInfo: [._testParameterUserInfoKey: parameter]) { buffer in
+      Self(bytes: buffer)
+    }
 #else
     nil
 #endif
@@ -120,27 +122,6 @@ extension Test.Case.Argument.ID {
 }
 
 #if !SWT_NO_CODABLE
-extension Test.Case.Argument.ID {
-  /// Encode the specified test argument value and store its encoded
-  /// representation as an array of bytes suitable for storing in an instance of
-  /// ``Test/Case/Argument/ID-swift.struct``.
-  ///
-  /// - Parameters:
-  ///   - value: The value to encode.
-  ///   - parameter: The parameter of the test function to which this argument
-  ///     value was passed.
-  ///
-  /// - Returns: An array of bytes containing the encoded representation.
-  ///
-  /// - Throws: Any error encountered during encoding.
-  private static func _encode(_ value: some Encodable, parameter: Test.Parameter) throws -> [UInt8] {
-    /// The encoded representation of an argument is the SHA256 hash of its Codable JSON representation.
-    try JSON.withEncoding(of: value, userInfo: [._testParameterUserInfoKey: parameter]) { buffer in
-      SHA256.hash(buffer)
-    }
-  }
-}
-
 /// A encodable type which wraps a ``CustomTestArgumentEncodable`` value.
 struct CustomArgumentWrapper<T>: RawRepresentable, Encodable where T: CustomTestArgumentEncodable {
   /// The value this instance wraps, which implements custom test argument
