@@ -19,6 +19,9 @@ extension Test.Case: Identifiable {
   /// parameterized test function. They are not necessarily unique across two
   /// different ``Test`` instances.
   public struct ID: Sendable {
+    /// Storage for ``argumentIDs``.
+    private var _argumentIDs: [Argument.ID]?
+
     /// The IDs of the arguments of this instance's associated ``Test/Case``.
     ///
     /// For a parameterized test case, this array contains a single element: an
@@ -26,7 +29,14 @@ extension Test.Case: Identifiable {
     /// argument. The value of this property is `nil` for the ID of the single
     /// test case associated with a non-parameterized test function.
     @_spi(ForToolsIntegrationOnly)
-    public var argumentIDs: [Argument.ID]?
+    public var argumentIDs: [Argument.ID]? {
+      get {
+        _argumentIDs.map { [Argument.ID(combining: $0)] }
+      }
+      set {
+        _argumentIDs = newValue
+      }
+    }
 
     /// A number used to distinguish this test case from others associated with
     /// the same parameterized test function whose arguments have the same ID.
@@ -48,7 +58,7 @@ extension Test.Case: Identifiable {
     init(argumentIDs: [Argument.ID]?, discriminator: Int?, isStable: Bool) {
       precondition((argumentIDs == nil) == (discriminator == nil))
 
-      self.argumentIDs = argumentIDs
+      self._argumentIDs = argumentIDs
       self.discriminator = discriminator
       self.isStable = isStable
     }
@@ -56,8 +66,7 @@ extension Test.Case: Identifiable {
 
   @_spi(ForToolsIntegrationOnly)
   public var id: ID {
-    let argumentIDs = arguments.map { [Argument.ID(combining: $0.map { $0.id })] }
-    return ID(argumentIDs: argumentIDs, discriminator: discriminator, isStable: isStable)
+    ID(argumentIDs: arguments?.map { $0.id }, discriminator: discriminator, isStable: isStable)
   }
 }
 
@@ -123,7 +132,7 @@ extension Test.Case.ID.Snapshot: Codable {
 
   func encode(to encoder: any Encoder) throws(any Error) {
     var container = encoder.container(keyedBy: _CodingKeys.self)
-    try container.encodeIfPresent(rawValue.argumentIDs, forKey: .argumentIDs)
+    try container.encodeIfPresent(rawValue._argumentIDs, forKey: .argumentIDs)
     try container.encodeIfPresent(rawValue.discriminator, forKey: .discriminator)
     try container.encode(rawValue.isStable, forKey: .isStable)
   }

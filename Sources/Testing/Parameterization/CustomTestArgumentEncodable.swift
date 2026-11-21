@@ -113,7 +113,8 @@ extension Test.Case.Argument.ID {
     if let argumentID = argumentIDs.first, argumentIDs.count == 1 {
       self = argumentID
     } else {
-      self.init(bytes: SHA256.hash(argumentIDs.flatMap { $0.bytes }))
+      let bytes = argumentIDs.lazy.map { $0.bytes }.joined()
+      self.init(bytes: SHA256.hash(bytes))
     }
   }
 }
