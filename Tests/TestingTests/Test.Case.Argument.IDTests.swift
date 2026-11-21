@@ -10,11 +10,9 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-@Suite("Test.Case.Argument.ID Tests")
-struct Test_Case_Argument_IDTests {
+struct `Test.Case.Argument.ID Tests` {
 #if !SWT_NO_CODABLE
-  @Test("One Codable parameter")
-  func oneCodableParameter() async throws {
+  @Test func `One Codable parameter`() async throws {
     let test = Test(
       arguments: [123],
       parameters: [Test.Parameter(index: 0, firstName: "value", type: Int.self)]
@@ -24,11 +22,10 @@ struct Test_Case_Argument_IDTests {
     let arguments = try #require(testCase.arguments)
     #expect(arguments.count == 1)
     let argument = try #require(arguments.first)
-    #expect(argument.id.bytes == SHA256.hash("123".utf8))
+    #expect(argument.id.bytes.starts(with: "123".utf8))
   }
 
-  @Test("One CustomTestArgumentEncodable parameter")
-  func oneCustomParameter() async throws {
+  @Test func `One CustomTestArgumentEncodable parameter`() async throws {
     let argumentValue = MyCustomTestArgument(x: 123, y: "abc")
     let test = Test(
       arguments: [argumentValue],
@@ -40,12 +37,13 @@ struct Test_Case_Argument_IDTests {
     #expect(arguments.count == 1)
     let argument = try #require(arguments.first)
     try JSON.withEncoding(of: CustomArgumentWrapper(rawValue: argumentValue)) { data in
-      #expect(argument.id.bytes == SHA256.hash(data))
+      let argumentIDBytes = argument.id.bytes
+      #expect(data.count < SHA256.digestByteCount)
+      #expect(argumentIDBytes.starts(with: data))
     }
   }
 
-  @Test("One Identifiable parameter")
-  func oneIdentifiableParameter() async throws {
+  @Test func `One Identifiable parameter`() async throws {
     let test = Test(
       arguments: [MyIdentifiableArgument(id: "abc")],
       parameters: [Test.Parameter(index: 0, firstName: "value", type: MyIdentifiableArgument.self)]
@@ -55,11 +53,10 @@ struct Test_Case_Argument_IDTests {
     let arguments = try #require(testCase.arguments)
     #expect(arguments.count == 1)
     let argument = try #require(arguments.first)
-    #expect(argument.id.bytes == SHA256.hash(#""abc""#.utf8))
+    #expect(argument.id.bytes.starts(with: #""abc""#.utf8))
   }
 
-  @Test("One RawRepresentable parameter")
-  func oneRawRepresentableParameter() async throws {
+  @Test func `One RawRepresentable parameter`() async throws {
     let test = Test(
       arguments: [MyRawRepresentableArgument(rawValue: "abc")],
       parameters: [Test.Parameter(index: 0, firstName: "value", type: MyRawRepresentableArgument.self)]
@@ -69,7 +66,21 @@ struct Test_Case_Argument_IDTests {
     let arguments = try #require(testCase.arguments)
     #expect(arguments.count == 1)
     let argument = try #require(arguments.first)
-    #expect(argument.id.bytes == SHA256.hash(#""abc""#.utf8))
+    #expect(argument.id.bytes.starts(with: #""abc""#.utf8))
+  }
+
+  @Test func `One very long parameter that needs to be hashed`() async throws {
+    let argValue = String(repeating: "A", count: 256)
+    let test = Test(
+      arguments: [argValue],
+      parameters: [Test.Parameter(index: 0, firstName: "value", type: Int.self)]
+    ) { _ in }
+    let testCases = try #require(test.testCases)
+    let testCase = try #require(testCases.first { _ in true })
+    let arguments = try #require(testCase.arguments)
+    #expect(arguments.count == 1)
+    let argument = try #require(arguments.first)
+    #expect(argument.id.bytes == SHA256.hash(#""\#(argValue)""#.utf8))
   }
 #endif
 }

@@ -19,6 +19,9 @@ extension Test.Case: Identifiable {
   /// parameterized test function. They are not necessarily unique across two
   /// different ``Test`` instances.
   public struct ID: Sendable {
+    /// Storage for ``argumentIDs``.
+    private var _argumentIDs: [Argument.ID]?
+
     /// The IDs of the arguments of this instance's associated ``Test/Case``.
     ///
     /// For a parameterized test case, this array contains a single element: an
@@ -26,7 +29,14 @@ extension Test.Case: Identifiable {
     /// argument. The value of this property is `nil` for the ID of the single
     /// test case associated with a non-parameterized test function.
     @_spi(ForToolsIntegrationOnly)
-    public var argumentIDs: [Argument.ID]?
+    public var argumentIDs: [Argument.ID]? {
+      get {
+        _argumentIDs.map { [Argument.ID(combining: $0)] }
+      }
+      set {
+        _argumentIDs = newValue
+      }
+    }
 
     /// A number used to distinguish this test case from others associated with
     /// the same parameterized test function whose arguments have the same ID.
@@ -48,7 +58,7 @@ extension Test.Case: Identifiable {
     init(argumentIDs: [Argument.ID]?, discriminator: Int?, isStable: Bool) {
       precondition((argumentIDs == nil) == (discriminator == nil))
 
-      self.argumentIDs = argumentIDs
+      self._argumentIDs = argumentIDs
       self.discriminator = discriminator
       self.isStable = isStable
     }
@@ -56,8 +66,7 @@ extension Test.Case: Identifiable {
 
   @_spi(ForToolsIntegrationOnly)
   public var id: ID {
-    let argumentIDs = arguments.map { [Argument.ID(combining: $0.map { $0.id })] }
-    return ID(argumentIDs: argumentIDs, discriminator: discriminator, isStable: isStable)
+    ID(argumentIDs: arguments?.map { $0.id }, discriminator: discriminator, isStable: isStable)
   }
 }
 
@@ -67,16 +76,26 @@ extension Test.Case.ID: CustomStringConvertible {
   public var description: String {
     // The description of a test case ID is opaque. We currently implement it as
     // a SHA-256 hash of its properties, but this is subject to change.
-    let argumentIDs = argumentIDs ?? []
+    let argumentIDs = _argumentIDs ?? []
     var bytes: [UInt8] = Array(argumentIDs.lazy.map(\.bytes).joined())
     if let discriminator {
       withUnsafeBytes(of: discriminator.littleEndian) { bytes += $0 }
     }
     bytes.append(isStable ? 1 : 0)
-    let hash = SHA256.hash(bytes)
-    return hash.map { byte in
-      byte >= 0x10 ? String(byte, radix: 16) : "0\(String(byte, radix: 16))"
-    }.joined()
+    return withUnsafeTemporaryAllocation(of: UInt8.self, capacity: SHA256.digestByteCount) { hash in
+      SHA256.hash(bytes, into: hash)
+
+      let utf8ByteCount = SHA256.digestByteCount * 2
+      let result = withUnsafeTemporaryAllocation(of: UInt8.self, capacity: utf8ByteCount + 1) { utf8 in
+        let utf8 = utf8.baseAddress!
+        for i in 0 ..< hash.count {
+          hash[i].storeASCIIHexadecimalValue(to: utf8 + (i * 2))
+        }
+        utf8[utf8ByteCount] = 0
+        return utf8.withMemoryRebound(to: CChar.self, capacity: utf8ByteCount + 1) { String(cString: $0) }
+      }
+      return result
+    }
   }
 }
 
@@ -123,7 +142,7 @@ extension Test.Case.ID.Snapshot: Codable {
 
   func encode(to encoder: any Encoder) throws(any Error) {
     var container = encoder.container(keyedBy: _CodingKeys.self)
-    try container.encodeIfPresent(rawValue.argumentIDs, forKey: .argumentIDs)
+    try container.encodeIfPresent(rawValue._argumentIDs, forKey: .argumentIDs)
     try container.encodeIfPresent(rawValue.discriminator, forKey: .discriminator)
     try container.encode(rawValue.isStable, forKey: .isStable)
   }

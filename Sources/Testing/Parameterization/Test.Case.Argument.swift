@@ -17,11 +17,37 @@ extension Test.Case {
     /// test argument.
     @_spi(ForToolsIntegrationOnly)
     public struct ID: Sendable {
-      /// The raw bytes of this instance's identifier.
-      public var bytes: [UInt8]
+      /// The type of the `_bytes` property.
+      ///
+      /// This type should be `[SHA256.digestByteCount of UInt8]`, but we cannot
+      /// use `InlineArray` in the testing library yet.
+      private typealias _Bytes = (UInt64, UInt64, UInt64, UInt64)
 
-      init(bytes: some Sequence<UInt8>) {
-        self.bytes = Array(bytes)
+      /// Storage for ``bytes``.
+      private var _bytes: _Bytes
+
+      /// The raw bytes of this instance's identifier.
+      public var bytes: [UInt8] {
+        get {
+          withUnsafeBytes(of: _bytes) { Array($0) }
+        }
+        set {
+          self = Self(bytes: newValue)
+        }
+      }
+
+      init(bytes: some Collection<UInt8>) {
+        _bytes = withUnsafeTemporaryAllocation(of: _Bytes.self, capacity: 1) { buffer in
+          buffer.withMemoryRebound(to: UInt8.self) { buffer in
+            if bytes.count > SHA256.digestByteCount {
+              SHA256.hash(bytes, into: buffer)
+            } else {
+              let uninitializedStartIndex = buffer.initialize(fromContentsOf: bytes)
+              buffer[uninitializedStartIndex...].initialize(repeating: 0)
+            }
+          }
+          return buffer.baseAddress!.move()
+        }
       }
     }
 
@@ -237,12 +263,45 @@ extension Test.Case.Argument {
 #if !SWT_NO_CODABLE
 // MARK: - Codable
 
-extension Test.Case.Argument.ID: Codable {}
+extension Test.Case.Argument.ID: Codable {
+  private enum _CodingKeys: String, CodingKey {
+    case bytes
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: _CodingKeys.self)
+    try container.encode(bytes, forKey: .bytes)
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: _CodingKeys.self)
+    let bytes = try container.decode([UInt8].self, forKey: .bytes)
+    self.init(bytes: bytes)
+  }
+}
 #endif
 
 // MARK: - Equatable, Hashable
 
-extension Test.Case.Argument.ID: Equatable, Hashable {}
+extension Test.Case.Argument.ID: Equatable, Hashable {
+  public static func ==(lhs: Self, rhs: Self) -> Bool {
+    withUnsafeBytes(of: lhs._bytes) { lhs in
+      lhs.withMemoryRebound(to: UInt64.self) { lhs in
+        withUnsafeBytes(of: rhs._bytes) { rhs in
+          rhs.withMemoryRebound(to: UInt64.self) { rhs in
+            lhs.elementsEqual(rhs)
+          }
+        }
+      }
+    }
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    withUnsafeBytes(of: _bytes) { _bytes in
+      hasher.combine(bytes: _bytes)
+    }
+  }
+}
 
 // MARK: - CustomTestStringConvertible
 
@@ -277,6 +336,10 @@ extension Test.Case.Argument.Value: CustomTestStringConvertible {
 
 extension Test.Case.Argument.ID: CustomTestStringConvertible {
   public var testDescription: String {
+#if !hasFeature(Embedded)
+    String(describingForTest: _bytes)
+#else
     String(describingForTest: bytes)
+#endif
   }
 }

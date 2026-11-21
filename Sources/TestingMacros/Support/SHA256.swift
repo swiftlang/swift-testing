@@ -37,7 +37,20 @@ enum SHA256 {
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
   ]
 
+  public static var digestByteCount: Int {
+    _digestLength / 8
+  }
+
   public static func hash(_ bytes: some Sequence<UInt8>) -> [UInt8] {
+    Array(unsafeUninitializedCapacity: digestByteCount) { buffer, initializedCount in
+      hash(bytes, into: buffer)
+      initializedCount = buffer.count
+    }
+  }
+
+  public static func hash(_ bytes: some Sequence<UInt8>, into buffer: UnsafeMutableBufferPointer<UInt8>) {
+    precondition(buffer.count == digestByteCount, "Incorrectly-sized buffer passed to \(#function) (expected \(digestByteCount) bytes, got \(buffer.count) bytes).")
+
     var input = Array(bytes)
 
     // Pad the input.
@@ -55,16 +68,13 @@ enum SHA256 {
     }
 
     // Finally, compute the result.
-    var result = [UInt8](repeating: 0, count: _digestLength / 8)
     for (idx, element) in hash.enumerated() {
       let pos = idx * 4
-      result[pos + 0] = UInt8((element >> 24) & 0xff)
-      result[pos + 1] = UInt8((element >> 16) & 0xff)
-      result[pos + 2] = UInt8((element >> 8) & 0xff)
-      result[pos + 3] = UInt8(element & 0xff)
+      buffer[pos + 0] = UInt8((element >> 24) & 0xff)
+      buffer[pos + 1] = UInt8((element >> 16) & 0xff)
+      buffer[pos + 2] = UInt8((element >> 8) & 0xff)
+      buffer[pos + 3] = UInt8(element & 0xff)
     }
-
-    return result
   }
 
   /// Process and compute hash from a block.
