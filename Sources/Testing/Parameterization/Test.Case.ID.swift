@@ -89,15 +89,7 @@ extension Test.Case.ID: CustomStringConvertible {
       let result = withUnsafeTemporaryAllocation(of: UInt8.self, capacity: utf8ByteCount + 1) { utf8 in
         let utf8 = utf8.baseAddress!
         for i in 0 ..< hash.count {
-          func writeNybble(_ nybble: UInt8, to dest: UnsafeMutablePointer<UInt8>) {
-            if nybble < 0xA {
-              dest.initialize(to: UInt8(ascii: "0") + nybble - 0x0)
-            } else {
-              dest.initialize(to: UInt8(ascii: "a") + nybble - 0xA)
-            }
-          }
-          writeNybble((hash[i] & 0xF0) >> 4, to: utf8 + (i * 2))
-          writeNybble((hash[i] & 0x0F) >> 0, to: utf8 + (i * 2) + 1)
+          hash[i].storeASCIIHexadecimalValue(to: utf8 + (i * 2))
         }
         utf8[utf8ByteCount] = 0
         return utf8.withMemoryRebound(to: CChar.self, capacity: utf8ByteCount + 1) { String(cString: $0) }
