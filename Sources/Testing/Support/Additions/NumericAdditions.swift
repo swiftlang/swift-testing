@@ -60,7 +60,7 @@ extension FixedWidthInteger where Self: ConvertibleToBytes {
   /// This function always produces lowercase letters.
   func storeASCIIHexadecimalValue(to destination: UnsafeMutablePointer<UInt8>) {
     withUnsafeBytes(of: self.bigEndian) { bytes in
-      func writeNybble(_ nybble: UInt8, to dest: UnsafeMutablePointer<UInt8>) {
+      func storeNybble(_ nybble: UInt8, to dest: UnsafeMutablePointer<UInt8>) {
         if nybble < 0xA {
           dest.initialize(to: UInt8(ascii: "0") + nybble - 0x0)
         } else {
@@ -68,8 +68,8 @@ extension FixedWidthInteger where Self: ConvertibleToBytes {
         }
       }
       for i in 0 ..< bytes.count {
-        writeNybble((bytes[i] & 0xF0) >> 4, to: destination + (i * 2) + 0)
-        writeNybble((bytes[i] & 0x0F) >> 0, to: destination + (i * 2) + 1)
+        storeNybble((bytes[i] & 0xF0) >> 4, to: destination + (i * 2) + 0)
+        storeNybble((bytes[i] & 0x0F) >> 0, to: destination + (i * 2) + 1)
       }
     }
   }
