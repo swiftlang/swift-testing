@@ -21,10 +21,9 @@ private import _TestingInternals
 /// On Apple platforms, this type is implemented over the CommonCrypto library
 /// to improve performance.
 struct SHA256: ~Copyable {
-#if !(canImport(_TestingInternals) && canImport(CommonCrypto))
-  /// The length of the output digest (in bits).
-  private static let _digestLength = 256
-
+#if canImport(_TestingInternals) && canImport(CommonCrypto)
+#elseif canImport(_TestingInternals) && os(Windows)
+#else
   /// The size of each blocks (in bits).
   private static let _blockBitSize = 512
 
@@ -47,42 +46,14 @@ struct SHA256: ~Copyable {
 #endif
 
   public static func hash(_ bytes: some Sequence<UInt8>) -> [UInt8] {
-#if canImport(_TestingInternals) && canImport(CommonCrypto)
     var hasher = Self()
     hasher.update(bytes)
     return hasher.finalize()
-#else
-    var input = Array(bytes)
-
-    // Pad the input.
-    _pad(&input)
-
-    // Break the input into N 512-bit blocks.
-    let messageBlocks = input.blocks(size: _blockBitSize / 8)
-
-    /// The hash that is being computed.
-    var hash = _initialHashValue
-
-    // Process each block.
-    for block in messageBlocks {
-      _process(block, hash: &hash)
-    }
-
-    // Finally, compute the result.
-    var result = [UInt8](repeating: 0, count: _digestLength / 8)
-    for (idx, element) in hash.enumerated() {
-      let pos = idx * 4
-      result[pos + 0] = UInt8((element >> 24) & 0xff)
-      result[pos + 1] = UInt8((element >> 16) & 0xff)
-      result[pos + 2] = UInt8((element >> 8) & 0xff)
-      result[pos + 3] = UInt8(element & 0xff)
-    }
-
-    return result
-#endif
   }
 
-#if !(canImport(_TestingInternals) && canImport(CommonCrypto))
+#if canImport(_TestingInternals) && canImport(CommonCrypto)
+#elseif canImport(_TestingInternals) && os(Windows)
+#else
   /// Process and compute hash from a block.
   private static func _process(_ block: ArraySlice<UInt8>, hash: inout [UInt32]) {
     // Compute message schedule.
@@ -174,32 +145,101 @@ struct SHA256: ~Copyable {
 #if canImport(_TestingInternals) && canImport(CommonCrypto)
   /// Storage for the SHA-256 context.
   private var _ctx = CC_SHA256_CTX()
+#elseif canImport(_TestingInternals) && os(Windows)
+  /// The Windows Cryptography API handle for this instance's output hash.
+  private var _handle: BCRYPT_HASH_HANDLE
 #else
   /// Storage for the bytes to be hashed.
   private var _buffer = [UInt8]()
 #endif
 
+  /// The length of the output digest (in bytes).
+  private static let _digestByteCount = {
+    let result = 32
+#if DEBUG
+#if canImport(_TestingInternals) && canImport(CommonCrypto)
+    let digestByteCount = CC_SHA256_DIGEST_LENGTH
+#elseif canImport(_TestingInternals) && os(Windows)
+    var digestByteCount = DWORD(0)
+    withUnsafeMutablePointer(to: &digestByteCount) { digestByteCount in
+      digestByteCount.withMemoryRebound(to: UCHAR.self, capacity: digestByteCount.count) { digestByteCount in
+        var bytesWritten = ULONG(0)
+        let rGetProperty = BCryptGetProperty(
+          _handle,
+          swt_BCRYPT_HASH_LENGTH(),
+          digestByteCount.baseAddress!,
+          ULONG(digestByteCount.count),
+          &bytesWritten,
+          0
+        )
+        guard rGetProperty == 0 else {
+          fatalError("'BCryptGetProperty(BCRYPT_HASH_LENGTH)' failed: \(rGetProperty)")
+        }
+        guard Int(bytesWritten) == digestByteCount.count else {
+          fatalError("'BCryptGetProperty(BCRYPT_HASH_LENGTH)' wrote \(bytesWritten) bytes, but we expected \(digestByteCount.count) bytes.")
+        }
+      }
+    }
+#else
+    let digestByteCount = 32
+#endif
+    assert(result == Int(digestByteCount), "CommonCrypto reported a SHA-256 hash size of \(digestByteCount) bytes, but we expected it to be \(result) bytes. \(fileABugMessage)")
+#endif
+    return result
+  }()
+
+  /// The length of the output digest (in bits).
+  private static let _digestLength = _digestByteCount * 8
+
   init() {
 #if canImport(_TestingInternals) && canImport(CommonCrypto)
     CC_SHA256_Init(&_ctx)
+#elseif canImport(_TestingInternals) && os(Windows)
+    var handle: BCRYPT_HASH_HANDLE?
+    let rCreateHash = BCryptCreateHash(swt_BCRYPT_SHA256_ALG_HANDLE(), &handle, nil, 0, nil, 0, 0)
+    guard rCreateHash == 0, let handle else {
+      fatalError("'BCryptCreateHash()' failed to create a SHA-256 handle: \(rCreateHash)")
+    }
+    _handle = handle
 #endif
   }
+
+#if canImport(_TestingInternals) && os(Windows)
+  deinit {
+    _ = BCryptDestroyHash(_handle)
+  }
+#endif
 
   /// Add the given sequence of bytes to the buffer to be hashed.
   ///
   /// - Parameters:
   ///   - bytes: The bytes to mix into the hash.
   mutating func update(_ bytes: some Sequence<UInt8>) {
-#if canImport(_TestingInternals) && canImport(CommonCrypto)
     let hadContiguous: Void? = bytes.withContiguousStorageIfAvailable { bytes in
       if !bytes.isEmpty {
+        var sliceWidth: Int?
+#if canImport(_TestingInternals) && canImport(CommonCrypto)
         if let count = CC_LONG(exactly: bytes.count) {
           _ = CC_SHA256_Update(&_ctx, bytes.baseAddress!, count)
         } else {
+          sliceWidth = Int(CC_LONG.max)
+        }
+#elseif canImport(_TestingInternals) && os(Windows)
+        if let count = ULONG(exactly: bytes.count) {
+          let rHashData = BCryptHashData(&_handle, bytes.baseAddress!, count)
+          guard rHashData == 0 else {
+            fatalError("'BCryptHashData()' failed: \(rHashData)")
+          }
+        } else {
+          sliceWidth = Int(ULONG.max)
+        }
+#else
+        _buffer += bytes
+#endif
+        if let sliceWidth {
           // There are more than 2^32 bytes to be hashed. (This is likely a dead
           // branch, but on the other hand somebody out there is going to hit it
           // if we mark it unreachable.)
-          let sliceWidth = Int(CC_LONG.max)
           let slices = stride(from: 0, to: bytes.count, by: sliceWidth).lazy
             .map { bytes[$0 ..< min($0 + sliceWidth, bytes.count - $0)] }
           for slice in slices {
@@ -209,33 +249,63 @@ struct SHA256: ~Copyable {
       }
     }
     if hadContiguous == nil {
-      for var byte in bytes {
-        _ = CC_SHA256_Update(&_ctx, &byte, 1)
+      for byte in bytes {
+        update(CollectionOfOne(byte))
       }
     }
-#else
-    _buffer += bytes
-#endif
   }
 
   /// Perform the hash operation over all bytes added to this instance.
   ///
   /// - Returns: The computed SHA-256 digest.
   consuming func finalize() -> [UInt8] {
+    return Array(unsafeUninitializedCapacity: Self._digestByteCount) { digest, initializedCount in
 #if canImport(_TestingInternals) && canImport(CommonCrypto)
-    return Array(unsafeUninitializedCapacity: Int(CC_SHA256_DIGEST_LENGTH)) { digest, initializedCount in
       CC_SHA256_Final(digest.baseAddress!, &_ctx)
+#elseif canImport(_TestingInternals) && os(Windows)
+      let rFinishHash = BCryptFinishHash(_handle, digest.baseAddress!, ULONG(digest.count), 0)
+      guard rFinishHash == 0 else {
+        fatalError("'BCryptFinishHash()' failed: \(rFinishHash)")
+      }
+#else
+      var input = _buffer
+
+      // Pad the input.
+      Self._pad(&input)
+
+      // Break the input into N 512-bit blocks.
+      let messageBlocks = input.blocks(size: Self._blockBitSize / 8)
+
+      /// The hash that is being computed.
+      var hash = Self._initialHashValue
+
+      // Process each block.
+      for block in messageBlocks {
+        Self._process(block, hash: &hash)
+      }
+
+      // Finally, compute the result.
+      var result = [UInt8](repeating: 0, count: Self._digestByteCount)
+      for (idx, element) in hash.enumerated() {
+        let pos = idx * 4
+        result[pos + 0] = UInt8((element >> 24) & 0xff)
+        result[pos + 1] = UInt8((element >> 16) & 0xff)
+        result[pos + 2] = UInt8((element >> 8) & 0xff)
+        result[pos + 3] = UInt8(element & 0xff)
+      }
+
+      _ = digest.initialize(fromContentsOf: result)
+#endif
       initializedCount = digest.count
     }
-#else
-    return Self.hash(_buffer)
-#endif
   }
 }
 
-#if !(canImport(_TestingInternals) && canImport(CommonCrypto))
 // MARK:- Helpers
 
+#if canImport(_TestingInternals) && canImport(CommonCrypto)
+#elseif canImport(_TestingInternals) && os(Windows)
+#else
 extension UInt64 {
   /// Converts the 64 bit integer into an array of single byte integers.
   fileprivate func toByteArray() -> [UInt8] {

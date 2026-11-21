@@ -200,6 +200,22 @@ static DWORD_PTR swt_PROC_THREAD_ATTRIBUTE_HANDLE_LIST(void) {
 static const IMAGE_SECTION_HEADER *_Null_unspecified swt_IMAGE_FIRST_SECTION(const IMAGE_NT_HEADERS *ntHeader) {
   return IMAGE_FIRST_SECTION(ntHeader);
 }
+
+/// Get the value of `BCRYPT_SHA256_ALG_HANDLE`.
+///
+/// This function is provided because `BCRYPT_SHA256_ALG_HANDLE` is a complex
+/// macro and cannot be imported directly into Swift.
+static const BCRYPT_ALG_HANDLE swt_BCRYPT_SHA256_ALG_HANDLE(void) {
+  return BCRYPT_SHA256_ALG_HANDLE;
+}
+
+/// Get the value of `BCRYPT_HASH_LENGTH`.
+///
+/// This function is provided because `BCRYPT_HASH_LENGTH` is a complex macro
+/// and cannot be imported directly into Swift.
+static const LPCWSTR swt_BCRYPT_HASH_LENGTH(void) {
+  return BCRYPT_HASH_LENGTH;
+}
 #endif
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__ANDROID__)
