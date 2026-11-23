@@ -23,6 +23,36 @@ struct ExpectedIssuesTests {
     #expect(reportedIssues.isEmpty)
   }
 
+  @Test(
+    arguments: ExpectedIssuesVariant.allCases,
+    [
+      ["a", "b", "c"],
+      ["a", "c", "b"],
+      ["b", "a", "c"],
+      ["b", "c", "a"],
+      ["c", "b", "a"],
+      ["c", "a", "b"],
+    ]
+  )
+  fileprivate func `matchers do not need to be in the same order that issues were reported in`(
+    variant: ExpectedIssuesVariant,
+    issueComments: [Comment]
+  ) async {
+    let reportedIssues = await variant.run(
+      body: {
+        issueComments
+          .forEach { Issue.record($0) }
+      },
+      matchers: [
+        { #expect($0.comments == ["a"]) },
+        { #expect($0.comments == ["b"]) },
+        { #expect($0.comments == ["c"]) },
+      ]
+    )
+
+    #expect(reportedIssues.isEmpty)
+  }
+
   @Test(arguments: ExpectedIssuesVariant.allCases)
   fileprivate func `unmatched issues are reported upstream`(variant: ExpectedIssuesVariant) async throws {
     let reportedIssues = await variant.run(

@@ -11,17 +11,8 @@
 import Testing
 import TestingUtilities
 
-func myFunction(_ first: () -> Void, closures: () -> Void...) { }
-
 struct ExpectedIssuesTests {
-  @Sendable func forceAsync() async {
-    myFunction {
-    } closures: {
-    } _: {
-
-    }
-
-  }
+  @Sendable func forceAsync() async {}
 
   @Test func `sync does not report issues for matched issue`() {
     let reportedIssues = Testing.withIssueCapturing {
