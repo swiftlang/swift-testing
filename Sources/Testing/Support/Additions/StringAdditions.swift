@@ -15,4 +15,32 @@ extension String {
     self.indices.contains { self[$0...].hasPrefix(other) }
   }
 #endif
+
+  /// Make a copy of this string with all ASCII letters lowercased.
+  ///
+  /// - Returns: A lowercased copy of this string. Non-ASCII letters are not
+  ///   modified.
+  package func lowercasedASCII() -> String {
+    let utf8 = self.utf8.lazy.map { c in
+      if c >= UInt8(ascii: "A") && c <= UInt8(ascii: "Z") {
+        return (c - UInt8(ascii: "A")) + UInt8(ascii: "a")
+      }
+      return c
+    }
+    return String(decoding: utf8, as: UTF8.self)
+  }
+
+  /// Make a copy of this string with all ASCII letters uppercased.
+  ///
+  /// - Returns: An uppercased copy of this string. Non-ASCII letters are not
+  ///   modified.
+  package func uppercasedASCII() -> String {
+    let utf8 = self.utf8.lazy.map { c in
+      if c >= UInt8(ascii: "a") && c <= UInt8(ascii: "z") {
+        return (c - UInt8(ascii: "a")) + UInt8(ascii: "A")
+      }
+      return c
+    }
+    return String(decoding: utf8, as: UTF8.self)
+  }
 }

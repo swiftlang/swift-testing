@@ -312,7 +312,7 @@ extension AttachableImageFormat.Kind: CustomStringConvertible, CustomDebugString
     let clsid = encoderCLSID
     let encoderPathExtensionsByCLSID = (try? AttachableImageFormat._encoderPathExtensionsByCLSID.get()) ?? [:]
     if let ext = encoderPathExtensionsByCLSID[clsid]?.first {
-      return "\(ext.uppercased()) format"
+      return "\(ext.uppercasedASCII()) format"
     }
     return Self._description(of: clsid)
   }
@@ -322,7 +322,7 @@ extension AttachableImageFormat.Kind: CustomStringConvertible, CustomDebugString
     let clsidDescription = Self._description(of: clsid)
     let encoderPathExtensionsByCLSID = (try? AttachableImageFormat._encoderPathExtensionsByCLSID.get()) ?? [:]
     if let ext = encoderPathExtensionsByCLSID[clsid]?.first {
-      return "\(ext.uppercased()) format (\(clsidDescription))"
+      return "\(ext.uppercasedASCII()) format (\(clsidDescription))"
     }
     return clsidDescription
   }
