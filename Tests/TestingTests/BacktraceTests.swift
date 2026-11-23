@@ -20,8 +20,9 @@ final class BacktracedRefCountedError: Error {}
 struct BacktraceTests {
   @Test("Thrown error captures backtrace")
   func thrownErrorCapturesBacktrace() async throws {
-    await confirmation("Backtrace found", expectedCount: 2) { hadBacktrace in
+    await confirmation("Backtrace found", expectedCount: 1) { hadBacktrace in
       let testValueType = Test {
+        // No backtrace will be collected due to typed throws in the call stack.
         throw BacktracedError()
       }
       let testReferenceType = Test {
