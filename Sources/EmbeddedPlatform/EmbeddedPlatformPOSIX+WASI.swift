@@ -51,16 +51,4 @@ internal import _TestingInternals
   }
 }
 #endif
-
-@c @implementation func _swift_testing_getDurationSinceSystemEpoch(_ outDuration: UnsafeMutablePointer<swift_testing_duration_t>) -> CBool {
-  var ts = timespec()
-  clock_gettime(swt_CLOCK_MONOTONIC(), &ts)
-  outDuration.initialize(
-    to: swift_testing_duration_t(
-      seconds: UInt32(clamping: ts.tv_sec),
-      nanoseconds: UInt32(clamping: ts.tv_nsec)
-    )
-  )
-  return true
-}
 #endif
