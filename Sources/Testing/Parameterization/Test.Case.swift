@@ -115,7 +115,7 @@ extension Test {
       }
     }
 
-    private init(kind: _Kind, body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void) {
+    private init<E>(kind: _Kind, body: nonisolated(nonsending) @escaping @Sendable () async throws(E) -> Void) {
       _kind = kind
       _body = body
     }
@@ -130,10 +130,10 @@ extension Test {
     ///
     /// If `values` and `parameters` are both empty arrays, the test function
     /// `body` is non-parameterized.
-    init(
+    init<E>(
       values: [Argument.Value],
       parameters: [Parameter],
-      body: nonisolated(nonsending) @escaping @Sendable () async throws -> Void
+      body: nonisolated(nonsending) @escaping @Sendable () async throws(E) -> Void
     ) {
       if values.isEmpty && parameters.isEmpty {
         self.init(kind: .nonParameterized, body: body)
@@ -154,7 +154,7 @@ extension Test {
     }
 
     /// The body closure of this test case.
-    private var _body: nonisolated(nonsending) @Sendable () async throws -> Void
+    private var _body: nonisolated(nonsending) @Sendable () async throws(any Error) -> Void
 
     /// Invoke the body closure of this test case.
     ///
@@ -163,10 +163,10 @@ extension Test {
     ///
     /// Do not call this function directly. Always use a ``Runner`` to invoke a
     /// test or test case.
-    nonisolated(nonsending) func run(configuration: borrowing Configuration) async throws {
+    nonisolated(nonsending) func run(configuration: borrowing Configuration) async throws(any Error) {
 #if !hasFeature(Embedded)
       if let actor = configuration.defaultSynchronousIsolationContext {
-        func runIsolated(to actor: isolated some Actor) async throws {
+        func runIsolated(to actor: isolated some Actor) async throws(any Error) {
           try await _body()
         }
         return try await runIsolated(to: actor)
