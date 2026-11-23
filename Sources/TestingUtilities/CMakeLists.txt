@@ -8,6 +8,7 @@
 
 include(ModuleABIName)
 add_library(TestingUtilities
+  ExpectedIssue.swift
   IssueCapturing.swift
   Issue+Recording.swift
   )

@@ -55,56 +55,6 @@ struct IssueCapturingTests {
     }
   }
 
-  @Test func `withIssueCapturing sync, when an issue does not match, reports the issue to the testing library and does not include it in returned array`() async {
-    let capturedIssues = Allocated(Mutex([Issue]()))
-
-    let reportedIssues = await runTestAndRecordIssues {
-      let issues = withIssueCapturing {
-        Issue.record("report me")
-        Issue.record("do not report")
-      } matching: { issue in issue.comments.contains("report me") }
-      capturedIssues.value.withLock { $0 = issues }
-    }
-
-    #expect(reportedIssues.count == 1)
-    #expect(reportedIssues.last?.isKnown == false)
-    #expect(reportedIssues.last?.isFailure == true)
-    #expect(reportedIssues.last?.comments == ["do not report"])
-
-    capturedIssues.value.withLock { issues in
-      #expect(issues.count == 1)
-      #expect(issues.last?.isKnown == false)
-      #expect(issues.last?.isFailure == true)
-      #expect(issues.last?.comments == ["report me"])
-    }
-  }
-
-  @Test func `withIssueCapturing async, when an issue does not match, reports the issue to the testing library and does not include it in returned array`() async {
-    @Sendable func forceAsync() async {}
-    let capturedIssues = Allocated(Mutex([Issue]()))
-
-    let reportedIssues = await runTestAndRecordIssues {
-      let issues = await withIssueCapturing {
-        Issue.record("report me")
-        Issue.record("do not report")
-        await forceAsync()
-      } matching: { issue in issue.comments.contains("report me") }
-      capturedIssues.value.withLock { $0 = issues }
-    }
-
-    #expect(reportedIssues.count == 1)
-    #expect(reportedIssues.last?.isKnown == false)
-    #expect(reportedIssues.last?.isFailure == true)
-    #expect(reportedIssues.last?.comments == ["do not report"])
-
-    capturedIssues.value.withLock { issues in
-      #expect(issues.count == 1)
-      #expect(issues.last?.isKnown == false)
-      #expect(issues.last?.isFailure == true)
-      #expect(issues.last?.comments == ["report me"])
-    }
-  }
-
   @Test func `nesting withKnownIssue inside withIssueCapturing, when an issue is recorded`() async {
     let capturedIssues = Mutex([Issue]())
 

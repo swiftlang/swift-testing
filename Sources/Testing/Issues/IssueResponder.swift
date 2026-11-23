@@ -65,7 +65,7 @@ internal struct IssueResponderLink: Sendable {
   /// chain up to and including this link.
   ///
   /// - Returns: The list of issue responders in the current chain.
-  package func chain() -> [any IssueResponder] {
+  internal func chain() -> [any IssueResponder] {
     if let parent = parent() {
       return [self.responder] + parent.chain()
     } else {

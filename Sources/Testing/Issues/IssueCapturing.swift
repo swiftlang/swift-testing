@@ -12,23 +12,18 @@
 internal import Synchronization
 #endif
 
-/// An ``IssueResponder`` for recording any matching issues that are sent to it
+/// An ``IssueResponder`` for recording any issues that are sent to it
 /// without making any modifications. Recorded issues are not sent to the next
 /// responder in the issue responder chain.
 struct CaptureIssuesResponder: IssueResponder {
   /// The list of issues recorded during execution.
   let issues = Allocated(Mutex([Issue]()))
-  let issueMatcher: @Sendable (Issue) -> Bool
 
   /// Respond to the issue by recording it and stopping the issue from being
   /// sent to the next responder in the chain.
   func respond(to issue: Issue) -> Issue? {
-    if issueMatcher(issue) {
-      issues.value.withLock { $0.append(issue) }
-      return nil
-    } else {
-      return issue
-    }
+    issues.value.withLock { $0.append(issue) }
+    return nil
   }
 }
 
@@ -65,9 +60,8 @@ private func _recordError(
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
 package func withIssueCapturing(
   _ body: () throws -> Void,
-  matching issueMatcher: @escaping @Sendable (Issue) -> Bool = { _ in true }
 ) -> [Issue] {
-  let responder = CaptureIssuesResponder(issueMatcher: issueMatcher)
+  let responder = CaptureIssuesResponder()
   withIssueResponder(responder) {
     do {
       try body()
@@ -94,9 +88,8 @@ package func withIssueCapturing(
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
 package func withIssueCapturing(
   _ body: sending @isolated(any) () async throws -> Void,
-  matching issueMatcher: @escaping @Sendable (Issue) -> Bool = { _ in true }
 ) async -> [Issue] {
-  let responder = CaptureIssuesResponder(issueMatcher: issueMatcher)
+  let responder = CaptureIssuesResponder()
   await withIssueResponder(responder) {
     do {
       try await body()
