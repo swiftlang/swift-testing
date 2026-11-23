@@ -62,7 +62,10 @@ add_library(Testing
   Expectations/ExpectationChecking+Macro.swift
   Issues/Confirmation.swift
   Issues/ErrorSnapshot.swift
+  Issues/ExpectedIssue.swift
   Issues/Issue.swift
+  Issues/IssueCapturing.swift
+  Issues/IssueResponder.swift
   Issues/Issue+Recording.swift
   Issues/KnownIssue.swift
   Parameterization/CustomTestArgumentEncodable.swift
