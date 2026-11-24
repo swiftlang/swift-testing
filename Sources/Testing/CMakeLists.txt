@@ -183,7 +183,7 @@ target_compile_options(Testing PRIVATE
 set(SWT_PUBLIC_HEADERS
 )
 if(SwiftTesting_BuildPALAnnexComponents)
-  list(APPEND SWT_PUBLIC_HEADERS "../_TestingInternals/include/EmbeddedPlatform+Testing.h")
+  list(APPEND SWT_PUBLIC_HEADERS "../Embedded/Platform/include/EmbeddedPlatform+Testing.h")
 endif()
 
 set_target_properties(Testing PROPERTIES
