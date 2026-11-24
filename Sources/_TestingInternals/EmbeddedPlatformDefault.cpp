@@ -24,7 +24,8 @@ SWIFT_TESTING_WEAK bool _swift_testing_getEmbeddedTargetInfo(const char **outEmb
 }
 
 SWIFT_TESTING_WEAK bool _swift_testing_getConsoleCapabilities(swift_testing_console_capabilities_t *outConsoleCapabilities) {
-  return false;
+  outConsoleCapabilities->useUnicodeCharacters = true;
+  return true;
 }
 
 SWIFT_TESTING_WEAK void _swift_testing_writeJSON(const char *path, const uint8_t *json, size_t count, const uint8_t terminator[1]) {}

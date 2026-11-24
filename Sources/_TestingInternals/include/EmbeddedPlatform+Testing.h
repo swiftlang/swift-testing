@@ -399,6 +399,14 @@ typedef struct swift_testing_console_capabilities_t {
   ///
   /// - ``Event/ConsoleOutputRecorder/Options/ansiColorBitDepth``
   unsigned int ansiColorBitDepth : 5;
+
+  /// Whether or not the testing library should use Unicode characters in its
+  /// console output.
+  ///
+  /// ## See Also
+  ///
+  /// - ``Event/ConsoleOutputRecorder/Options/useUnicodeCharacters``
+  unsigned int useUnicodeCharacters : 1;
 } swift_testing_console_capabilities_t SWIFT_TESTING_SENDABLE;
 
 /// Get the capabilities of the current system's console output.

@@ -37,20 +37,20 @@ struct EventRecorderTests {
     }
   }
 
-  private static var optionCombinations: [(useSFSymbols: Bool, ansiColorBitDepth: Int8?)] {
-    var result: [(useSFSymbols: Bool, ansiColorBitDepth: Int8?)] = [
-      (false, nil), (false, 1), (false, 4), (false, 8), (false, 24),
-    ]
+  private static var optionCombinations: [(useSFSymbols: Bool, ansiColorBitDepth: Int8?, useUnicode: Bool)] {
+    var result: Array = cartesianProduct(
+      [nil, 1, 4, 8, 24] as [Int8?],
+      [true, false]
+    ).map { (false, $0, $1) }
 #if os(macOS)
-    result += [
-      (true, nil), (true, 1), (true, 4), (true, 8), (true, 24),
-    ]
+    result = cartesianProduct([true, false], result)
+      .map { ($0, $1.1, $1.2) }
 #endif
     return result
   }
 
   @Test("Writing events", arguments: optionCombinations)
-  func writingToStream(useSFSymbols: Bool, ansiColorBitDepth: Int8?) async throws {
+  func writingToStream(useSFSymbols: Bool, ansiColorBitDepth: Int8?, useUnicode: Bool) async throws {
     let stream = Stream()
 
     var options = Event.ConsoleOutputRecorder.Options()
@@ -61,6 +61,7 @@ struct EventRecorderTests {
       options.useANSIEscapeCodes = true
       options.ansiColorBitDepth = ansiColorBitDepth
     }
+    options.useUnicodeCharacters = useUnicode
 
     var configuration = Configuration()
     configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
@@ -79,15 +80,38 @@ struct EventRecorderTests {
 #endif
     #expect(buffer.contains("\"abc\" == \"xyz\""))
     #expect(buffer.contains("Not A Lobster"))
-    #expect(buffer.contains("i → 5"))
+    if useUnicode {
+      #expect(buffer.contains("i → 5"))
+    } else {
+      #expect(buffer.contains("i -> 5"))
+    }
     #expect(buffer.contains("Ocelots don't like the number 3."))
 
     if let ansiColorBitDepth, ansiColorBitDepth > 1 {
       #expect(buffer.contains("\u{001B}["))
-      #expect(buffer.contains("●"))
+      if useUnicode {
+        #expect(buffer.contains("●"))
+      } else {
+        #expect(!buffer.contains("●"))
+      }
     } else {
       #expect(!buffer.contains("\u{001B}["))
       #expect(!buffer.contains("●"))
+    }
+
+    let failSymbol: Event.Symbol = .fail
+    if useUnicode {
+#if os(macOS)
+      if useSFSymbols {
+        #expect(buffer.contains(failSymbol.sfSymbolCharacter))
+      } else {
+        #expect(buffer.contains(failSymbol.unicodeCharacter))
+      }
+#else
+      #expect(buffer.contains(failSymbol.unicodeCharacter))
+#endif
+    } else {
+      #expect(buffer.contains(failSymbol.asciiStringValue))
     }
 
 #if SWT_COLLECTION_DIFFING_ENABLED

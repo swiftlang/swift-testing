@@ -824,10 +824,15 @@ extension Event.ConsoleOutputRecorder.Options {
     var result = Self()
 
     var consoleCapabilities = swift_testing_console_capabilities_t()
-    if _swift_testing_getConsoleCapabilities(&consoleCapabilities) {
-      result.useANSIEscapeCodes = consoleCapabilities.useANSIEscapeCodes != 0
-      result.ansiColorBitDepth = Int8(clamping: consoleCapabilities.ansiColorBitDepth)
+    if !_swift_testing_getConsoleCapabilities(&consoleCapabilities) {
+      // Per the PAL annex documentation, returning false indicates that the
+      // console has none of the described capabilities, so explicitly re-zero
+      // the structure before configuring the output recorder.
+      consoleCapabilities = swift_testing_console_capabilities_t()
     }
+    result.useANSIEscapeCodes = consoleCapabilities.useANSIEscapeCodes != 0
+    result.ansiColorBitDepth = Int8(clamping: consoleCapabilities.ansiColorBitDepth)
+    result.useUnicodeCharacters = consoleCapabilities.useUnicodeCharacters != 0
 
     return result
 #endif
@@ -857,6 +862,9 @@ extension Event.ConsoleOutputRecorder.Options {
       } else if _terminalSupports16ColorANSIEscapeCodes {
         result.ansiColorBitDepth = 4
       }
+    }
+    if let unicodeEnabled = Environment.flag(named: "SWT_UNICODE_ENABLED") {
+      result.useUnicodeCharacters = unicodeEnabled
     }
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
@@ -991,7 +999,8 @@ extension Event.ConsoleOutputRecorder.Options {
   outConsoleCapabilities.initialize(
     to: swift_testing_console_capabilities_t(
       useANSIEscapeCodes: options.useANSIEscapeCodes ? 1 : 0,
-      ansiColorBitDepth: CUnsignedInt(options.ansiColorBitDepth)
+      ansiColorBitDepth: CUnsignedInt(options.ansiColorBitDepth),
+      useUnicodeCharacters: options.useUnicodeCharacters ? 1 : 0
     )
   )
   return true

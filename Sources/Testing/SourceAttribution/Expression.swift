@@ -407,7 +407,7 @@ public struct __Expression: Sendable {
   /// - Returns: A string describing this instance.
   @_spi(ForToolsIntegrationOnly)
   public func expandedDescription() -> String {
-    expandedDescription(verbose: false)
+    expandedDescription(verbose: false, options: .init())
   }
 
   /// Get an expanded description of this instance that contains the source
@@ -415,18 +415,22 @@ public struct __Expression: Sendable {
   ///
   /// - Parameters:
   ///   - verbose: Whether or not to include more verbose output.
+  ///   - options: The options this event recorder should use when generating
+  ///     human-readable output.
   ///
   /// - Returns: A string describing this instance.
   ///
   /// This function provides the implementation of ``expandedDescription()``
   /// with additional options used by ``Event/HumanReadableOutputRecorder``.
-  func expandedDescription(verbose: Bool) -> String {
+  func expandedDescription(verbose: Bool, options: Event.HumanReadableOutputRecorder.Options) -> String {
     var result = sourceCode
 
     if verbose, let qualifiedName = runtimeValue?.typeInfo.fullyQualifiedName {
       result = "\(result): \(qualifiedName)"
     }
 
+    let arrowSymbol: Event.Symbol = .inlineDetailsArrow
+    let arrow = options.useUnicodeCharacters ? String(arrowSymbol.unicodeCharacter) : arrowSymbol.asciiStringValue
     if let runtimeValue {
       var addDescription = true
 #if hasFeature(Embedded)
@@ -445,7 +449,7 @@ public struct __Expression: Sendable {
         } else {
           let runtimeValueDescription = String(describingForTest: runtimeValue)
           if runtimeValueDescription != result {
-            result = "\(result) → \(runtimeValueDescription)"
+            result = "\(result) \(arrow) \(runtimeValueDescription)"
           }
         }
       }

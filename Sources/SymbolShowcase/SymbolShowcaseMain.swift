@@ -56,7 +56,9 @@ import Foundation
   fileprivate static var styles: [Style] {
     var styles: [Style] = [
       Style(label: "Unicode", usesColor: false),
+      Style(label: "ASCII", usesColor: false, usesUnicodeCharacters: false),
       Style(label: "w/color", usesColor: true),
+      Style(label: "ASCII w/color", usesColor: true, usesUnicodeCharacters: false),
     ]
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
@@ -78,6 +80,9 @@ fileprivate struct Style {
   /// Whether this style should render symbols using ANSI color.
   var usesColor: Bool
 
+  /// Whether this style should render symbols using Unicode or ASCII.
+  var usesUnicodeCharacters: Bool = true
+
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
   /// Whether this style should use SF Symbols.
   var usesSFSymbols: Bool = false
@@ -93,6 +98,7 @@ fileprivate struct Style {
     var options = Event.ConsoleOutputRecorder.Options()
     options.useANSIEscapeCodes = usesColor
     options.ansiColorBitDepth = usesColor ? 8 : 1
+    options.useUnicodeCharacters = usesUnicodeCharacters
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
     options.useSFSymbols = usesSFSymbols
 #endif

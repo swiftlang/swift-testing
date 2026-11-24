@@ -47,6 +47,26 @@ extension Event {
       var conciseStringValue: String?
     }
 
+    /// A type describing options to use when generating human-readable output.
+    public struct Options: Sendable {
+      /// Whether or not to use Unicode characters in the output.
+      ///
+      /// When the value of this property is `true`, the testing library uses
+      /// various Unicode characters and symbols in its output. This option is
+      /// useful when the system console can render Unicode characters.
+      /// Conversely, it is useful to set this property's value to `false` if
+      /// the system console can only display ASCII characters.
+      ///
+      /// The value of this property does not affect characters produced by test
+      /// output, only those produced by the testing library.
+      public var useUnicodeCharacters: Bool = true
+
+      public init() {}
+    }
+
+    /// The options for this event recorder.
+    var options = Options()
+
     /// A type that contains mutable context for
     /// ``Event/ConsoleOutputRecorder``.
     fileprivate struct Context {
@@ -101,11 +121,17 @@ extension Event {
 
     /// Initialize a new human-readable event recorder.
     ///
+    /// - Parameters:
+    ///   - options: The options this event recorder should use when generating
+    ///     human-readable output.
+    ///
     /// Output from the testing library is converted to "messages" using the
-    /// ``Event/HumanReadableOutputRecorder/record(_:in:verbosity:)`` function.
-    /// The format of those messages is, as the type's name suggests, not meant
-    /// to be machine-readable and is subject to change.
-    public init() {}
+    /// ``Event/HumanReadableOutputRecorder/record(_:in:configuration:)``
+    /// function. The format of those messages is, as the type's name suggests,
+    /// not meant to be machine-readable and is subject to change.
+    public init(options: Options = .init()) {
+      self.options = options
+    }
   }
 }
 
@@ -227,12 +253,16 @@ extension Test.Case {
   /// - Parameters:
   ///   - includeTypeNames: Whether the qualified type name of each argument's
   ///     runtime type should be included. Defaults to `false`.
+  ///   - options: The options this event recorder should use when generating
+  ///     human-readable output.
   ///
   /// - Returns: A string containing the arguments of this test case formatted
   ///   for presentation, or an empty string if this test cases is
   ///   non-parameterized. If the string is not empty, it includes a leading
   ///   space character.
-  fileprivate func labeledArguments(includingQualifiedTypeNames includeTypeNames: Bool = false) -> String {
+  fileprivate func labeledArguments(includingQualifiedTypeNames includeTypeNames: Bool = false, options: Event.HumanReadableOutputRecorder.Options) -> String {
+    let arrowSymbol: Event.Symbol = .inlineDetailsArrow
+    let arrow = options.useUnicodeCharacters ? String(arrowSymbol.unicodeCharacter) : arrowSymbol.asciiStringValue
     let result: String = arguments?.lazy
       .compactMap { argument -> (Test.Case.Argument, String)? in
 #if !hasFeature(Embedded)
@@ -249,7 +279,7 @@ extension Test.Case {
         let labeledArgument = if label == "_" {
           valueDescription
         } else {
-          "\(label) → \(valueDescription)"
+          "\(label) \(arrow) \(valueDescription)"
         }
 
         if includeTypeNames {
@@ -465,7 +495,7 @@ extension Event.HumanReadableOutputRecorder {
 
     case let .issueRecorded(issue):
       let parameterCount = test?.parameters?.count ?? 0
-      let labeledArguments = testCase?.labeledArguments() ?? ""
+      let labeledArguments = testCase?.labeledArguments(options: options) ?? ""
       let symbol: Event.Symbol
       let subject: String
       if issue.isKnown {
@@ -494,7 +524,7 @@ extension Event.HumanReadableOutputRecorder {
       if verbosity >= 0, case let .expectationFailed(expectation) = issue.kind {
         let expression = expectation.evaluatedExpression
         func addMessage(about expression: __Expression, depth: Int) {
-          let description = expression.expandedDescription(verbose: verbosity > 0)
+          let description = expression.expandedDescription(verbose: verbosity > 0, options: options)
           if description != expression.sourceCode {
             additionalMessages.append(Message(symbol: .details, indentation: depth, stringValue: description))
           }
@@ -545,7 +575,8 @@ extension Event.HumanReadableOutputRecorder {
       var message: String
       if testCase.isParameterized {
         let arguments = testCase.arguments ?? []
-        message = "Test case passing \(arguments.count.counting("argument"))\(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started"
+        let labeledArguments = testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0, options: options)
+        message = "Test case passing \(arguments.count.counting("argument"))\(labeledArguments) to \(testName) started"
       } else if iteration > 1 {
         message = testStartedMessage(for: test)
       } else {
@@ -587,10 +618,11 @@ extension Event.HumanReadableOutputRecorder {
       } else {
         (symbol, verbed) = (.pass(knownIssueCount: issues.knownIssueCount), "passed")
       }
+      let labeledArguments = testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0, options: options)
       return [
         Message(
           symbol: symbol,
-          stringValue: "Test case passing \(arguments.count.counting("argument"))\(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) \(verbed) after \(duration)\(issues.description)\(cancellationComment)"
+          stringValue: "Test case passing \(arguments.count.counting("argument"))\(labeledArguments) to \(testName) \(verbed) after \(duration)\(issues.description)\(cancellationComment)"
         )
       ]
 

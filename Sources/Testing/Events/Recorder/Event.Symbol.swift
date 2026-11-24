@@ -55,6 +55,9 @@ extension Event {
     ///   - windowsCharacter: The Unicode character to use to represent this
     ///     symbol in text-based output on Windows, where the default console
     ///     font has more limited Unicode support.
+    ///   - asciiCharacters: A sequence of ASCII characters to use to represent
+    ///     this symbol in text-based output where Unicode is not supported. The
+    ///     effect of including non-ASCII characters in this array is undefined.
     ///   - sfSymbolCharacter: The character corresponding to this symbol in the
     ///     SF&nbsp;Symbols system font.
     ///   - sfSymbolName: The name of the SF&nbsp;Symbol corresponding to this
@@ -63,6 +66,7 @@ extension Event {
     case custom(
       unicodeCharacter: Character,
       windowsCharacter: Character,
+      asciiCharacters: [UInt8],
       sfSymbolCharacter: Character,
       sfSymbolName: String,
       color: Color? = nil
@@ -97,7 +101,7 @@ extension Event.Symbol {
       ("\u{100135}", "arrow.turn.down.right")
     case .attachment:
       ("\u{100237}", "doc")
-    case let .custom(_, _, sfSymbolCharacter, sfSymbolName, _):
+    case let .custom(_, _, _, sfSymbolCharacter, sfSymbolName, _):
       (sfSymbolCharacter, sfSymbolName)
     }
   }
@@ -125,7 +129,7 @@ extension Event.Symbol {
 }
 #endif
 
-// MARK: - Unicode
+// MARK: - Unicode and ASCII
 
 extension Event.Symbol {
   /// The Unicode character corresponding to this instance.
@@ -166,7 +170,7 @@ extension Event.Symbol {
       // TODO: decide on symbol
       // Unicode: PRINT SCREEN SYMBOL
       return "\u{2399}"
-    case let .custom(unicodeCharacter, _, _, _, _):
+    case let .custom(unicodeCharacter, _, _, _, _, _):
       return unicodeCharacter
     }
 #elseif os(Windows)
@@ -203,13 +207,71 @@ extension Event.Symbol {
       // TODO: decide on symbol
       // Unicode: PRINT SCREEN SYMBOL
       return "\u{2399}"
-    case let .custom(_, windowsCharacter, _, _, _):
+    case let .custom(_, windowsCharacter, _, _, _, _):
       return windowsCharacter
     }
 #else
 #warning("Platform-specific implementation missing: Unicode characters unavailable")
     return " "
 #endif
+  }
+
+  /// A string containing the ASCII characters corresponding to this instance.
+  ///
+  /// Each instance of this type has zero or more corresponding ASCII characters
+  /// that can be used to represent it in text-based output where Unicode is not
+  /// supported.
+  public var asciiStringValue: String {
+    switch self {
+    case .default:
+      return "[]"
+    case .skip:
+      return "[SKIP]"
+    case let .pass(knownIssueCount):
+      if knownIssueCount > 0 {
+        return "[PASS W/ISSUES]"
+      } else {
+        return "[PASS]"
+      }
+    case .fail:
+      return "[FAIL]"
+    case .difference:
+      return "[+/-]"
+    case .warning:
+      return "[WARNING]"
+    case .details:
+      return "`->"
+    case .attachment:
+      return "[ATTACHMENT]"
+    case let .custom(_, _, asciiCharacters, _, _, _):
+      if #available(_stringInitValidatingAPI, *) {
+        if let result = String(validating: asciiCharacters, as: Unicode.ASCII.self) {
+          return result
+        }
+      } else {
+        var asciiCharacters = asciiCharacters
+        asciiCharacters.append(0)
+        let result = asciiCharacters.withUnsafeBufferPointer { asciiCharacters in
+          String.decodeCString(asciiCharacters.baseAddress!, as: Unicode.ASCII.self, repairingInvalidCodeUnits: false)?.result
+        }
+        if let result {
+          return result
+        }
+      }
+      return "[" + String(repeating: "?", count: max(1, asciiCharacters.count)) + "]"
+    }
+  }
+
+  /// The number of ASCII characters or bytes corresponding to this instance.
+  ///
+  /// Each instance of this type has zero or more corresponding ASCII characters
+  /// that can be used to represent it in text-based output where Unicode is not
+  /// supported.
+  public var asciiByteCount: Int {
+    guard case let .custom(_, _, asciiCharacters, _, _, _) = self else {
+      return asciiStringValue.utf8.count
+    }
+    return asciiCharacters.count
   }
 }
 
@@ -235,8 +297,36 @@ extension Event.Symbol {
       nil
     case .attachment:
       .blue
-    case let .custom(_, _, _, _, color):
+    case let .custom(_, _, _, _, _, color):
       color
     }
+  }
+}
+
+// MARK: - Details arrow
+
+extension Event.Symbol {
+  /// A symbol used to represent details presented on the same line.
+  ///
+  /// The testing library renders this symbol as a rightwards-facing arrow.
+  static var inlineDetailsArrow: Self {
+    .custom(
+      unicodeCharacter: "\u{2192}", // Unicode: RIGHTWARDS ARROW
+      windowsCharacter: "\u{2192}", // Unicode: RIGHTWARDS ARROW
+      asciiCharacters: [UInt8(ascii: "-"), UInt8(ascii: ">")],
+      sfSymbolCharacter: "\u{10012B}",
+      sfSymbolName: "arrow.right",
+    )
+  }
+
+  /// A symbol used to represent a colored tag in console output.
+  static var tagDot: Self {
+    .custom(
+      unicodeCharacter: "\u{25CF}", // Unicode: BLACK CIRCLE
+      windowsCharacter: "\u{25CF}", // Unicode: BLACK CIRCLE
+      asciiCharacters: [UInt8(ascii: "*")],
+      sfSymbolCharacter: "\u{100001}",
+      sfSymbolName: "circle.fill",
+    )
   }
 }
