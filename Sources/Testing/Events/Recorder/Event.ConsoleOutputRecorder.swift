@@ -53,6 +53,18 @@ extension Event {
         useANSIEscapeCodes && ansiColorBitDepth >= 4
       }
 
+      /// Whether or not to use Unicode characters in the output.
+      ///
+      /// When the value of this property is `true`, the testing library uses
+      /// various Unicode characters and symbols in its output. This option is
+      /// useful when the system console can render Unicode characters.
+      /// Conversely, it is useful to set this property's value to `false` if
+      /// the system console can only display ASCII characters.
+      ///
+      /// The value of this property does not affect characters produced by test
+      /// output, only those produced by the testing library.
+      public var useUnicodeCharacters: Bool = true
+
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
       /// Whether or not to use [SF&nbsp;Symbols](https://developer.apple.com/sf-symbols/)
       /// in the output.
@@ -64,6 +76,9 @@ extension Event {
       /// If the SF&nbsp;Symbols app is not installed on the system where the
       /// output is being rendered, the effect of setting the value of this
       /// property to `true` is unspecified.
+      ///
+      /// The value of this property is ignored unless the value of
+      /// ``useUnicodeCharacters`` is `true`.
       public var useSFSymbols: Bool = false
 #endif
 
@@ -101,19 +116,23 @@ extension Event {
     }
 
     /// The options for this event recorder.
-    var options = Options()
+    var options = Options() {
+      didSet {
+        _humanReadableOutputRecorder.options.useUnicodeCharacters = options.useUnicodeCharacters
+      }
+    }
 
     /// The write function for this event recorder.
     var write: @Sendable (String) -> Void
 
     /// The underlying human-readable recorder.
-    private var _humanReadableOutputRecorder = HumanReadableOutputRecorder()
+    private var _humanReadableOutputRecorder: HumanReadableOutputRecorder
 
     /// Initialize a new event recorder.
     ///
     /// - Parameters:
     ///   - options: The options this event recorder should use when calling
-    ///     `write`. Defaults to the empty array.
+    ///     `write`.
     ///   - write: A closure that writes output to its destination. The closure
     ///     may be invoked concurrently.
     ///
@@ -122,6 +141,10 @@ extension Event {
     public init(options: Options = .init(), writingUsing write: @escaping @Sendable (String) -> Void) {
       self.options = options
       self.write = write
+
+      var humanReadableOptions = HumanReadableOutputRecorder.Options()
+      humanReadableOptions.useUnicodeCharacters = options.useUnicodeCharacters
+      self._humanReadableOutputRecorder = HumanReadableOutputRecorder(options: humanReadableOptions)
     }
   }
 }
@@ -137,6 +160,9 @@ extension Event.Symbol {
   /// - Returns: A string representation of "no symbol" appropriate for writing
   ///   to a stream.
   fileprivate static func placeholderStringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
+    if !options.useUnicodeCharacters {
+      return String(repeating: " ", count: Event.Symbol.details.asciiByteCount)
+    }
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
     if options.useSFSymbols {
       return "  "
@@ -153,19 +179,24 @@ extension Event.Symbol {
   /// - Returns: A string representation of `self` appropriate for writing to
   ///   a stream.
   package func stringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
-    var symbolCharacter = String(unicodeCharacter)
+    var symbolCharacter: String
+    if options.useUnicodeCharacters {
+      symbolCharacter = String(unicodeCharacter)
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
-    if options.useSFSymbols {
-      symbolCharacter = String(sfSymbolCharacter)
-      if options.useANSIEscapeCodes {
-        // When using ANSI escape codes, assume we are interfaced with the macOS
-        // Terminal application which assumes a fixed-width font. Add an extra
-        // trailing space after the SF Symbols character to ensure it has enough
-        // room for rendering.
-        symbolCharacter = "\(symbolCharacter) "
+      if options.useSFSymbols {
+        symbolCharacter = String(sfSymbolCharacter)
+        if options.useANSIEscapeCodes {
+          // When using ANSI escape codes, assume we are interfaced with the
+          // macOS Terminal application which assumes a fixed-width font. Add an
+          // extra trailing space after the SF Symbols character to ensure it
+          // has enough room for rendering.
+          symbolCharacter = "\(symbolCharacter) "
+        }
       }
-    }
 #endif
+    } else {
+      symbolCharacter = asciiStringValue
+    }
 
     if options.useColorANSIEscapeCodes, let color {
       // Apply color. Note that for built-in symbols, we always use 4-bit color
@@ -201,12 +232,14 @@ extension Event.ConsoleOutputRecorder {
 
     let tagColors = options.tagColors
     let unsortedColors = tags.lazy.compactMap { tagColors[$0] }
+    let tagDotSymbol: Event.Symbol = .tagDot
+    let tagDot = options.useUnicodeCharacters ? String(tagDotSymbol.unicodeCharacter) : tagDotSymbol.asciiStringValue
 
     let options = options
     var result: String = Set(unsortedColors)
       .sorted(by: <).lazy
       .compactMap { $0.ansiEscapeCode(withBitDepth: options.ansiColorBitDepth) }
-      .map { "\($0)\u{25CF}" } // Unicode: BLACK CIRCLE
+      .map { "\($0)\(tagDot)" }
       .joined()
     if !result.isEmpty {
       result += "\(resetANSIEscapeCode) "

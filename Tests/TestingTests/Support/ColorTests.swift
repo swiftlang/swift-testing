@@ -108,8 +108,9 @@ struct `Color tests` {
     let symbol = Event.Symbol.custom(
       unicodeCharacter: "A",
       windowsCharacter: "B",
-      sfSymbolCharacter: "C",
-      sfSymbolName: "D",
+      asciiCharacters: [UInt8(ascii: "C")],
+      sfSymbolCharacter: "D",
+      sfSymbolName: "E",
       color: .rgb(1, 2, 3)
     )
     let color = try #require(symbol.color)
