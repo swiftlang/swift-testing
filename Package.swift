@@ -254,6 +254,9 @@ let package = Package(
     // test authors.
     .target(
       name: "_TestingInternals",
+      dependencies: [
+        "EmbeddedPlatform+Testing",
+      ],
       exclude: ["CMakeLists.txt"]
     ),
     .target(
@@ -272,21 +275,31 @@ let package = Package(
 
     // Embedded Swift platform abstraction layer implementations.
     .target(
+      name: "EmbeddedPlatform+Testing",
+      path: "Sources/Embedded/Platform",
+      exclude: [
+        "CMakeLists.txt",
+        "POSIX",
+        "WASI",
+        "PicoSDK",
+        "EmbeddedPlatformPOSIX+WASI.swift",
+      ]
+    ),
+    .target(
       name: "EmbeddedPlatformPOSIX+Testing",
-      dependencies: ["_TestingInternals",],
-      path: "Sources/EmbeddedPlatform/POSIX",
+      dependencies: ["EmbeddedPlatform+Testing", "_TestingInternals",],
+      path: "Sources/Embedded/Platform/POSIX",
       exclude: ["CMakeLists.txt"]
     ),
     .target(
       name: "EmbeddedPlatformWASI+Testing",
-      dependencies: ["_TestingInternals",],
-      path: "Sources/EmbeddedPlatform/WASI",
+      dependencies: ["EmbeddedPlatform+Testing", "_TestingInternals",],
+      path: "Sources/Embedded/Platform/WASI",
       exclude: ["CMakeLists.txt"]
     ),
     .target(
       name: "EmbeddedPlatformPicoSDK+Testing",
-      dependencies: ["_TestingInternals",],
-      path: "Sources/EmbeddedPlatform/PicoSDK",
+      path: "Sources/Embedded/Platform/PicoSDK",
       exclude: ["CMakeLists.txt"]
     ),
 
@@ -380,14 +393,14 @@ let package = Package(
         .target(name: "EmbeddedPlatformPOSIX+Testing", condition: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .android])),
         .target(name: "EmbeddedPlatformWASI+Testing", condition: .when(platforms: [.wasi])),
       ],
-      path: "Sources/EmbeddedShowcase/Main"
+      path: "Sources/Embedded/Showcase/Main"
     ),
     .target(
       name: "EmbeddedShowcaseTests",
       dependencies: [
         "Testing",
       ],
-      path: "Sources/EmbeddedShowcase/Tests"
+      path: "Sources/Embedded/Showcase/Tests"
     )
   ],
 
