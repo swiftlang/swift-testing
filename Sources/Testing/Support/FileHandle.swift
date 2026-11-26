@@ -565,7 +565,7 @@ extension FileHandle {
   ///
   /// - Throws: Any error that occurred while writing `bytes`. If an error
   ///   occurs while flushing the file, it is not thrown.
-  func write(_ bytes: UnsafeBufferPointer<UInt8>, flushAfterward: Bool = true) throws(CError) {
+  func write(_ bytes: Span<UInt8>, flushAfterward: Bool = true) throws(CError) {
     try withUnsafeCFILEHandle { file throws(CError) in
       defer {
         if flushAfterward {
@@ -574,16 +574,18 @@ extension FileHandle {
       }
 
       try withLock { () throws(CError) in
-        if var baseAddress = bytes.baseAddress {
-          var countRemaining = bytes.count
-          repeat {
-            let countWritten = fwrite(baseAddress, MemoryLayout<UInt8>.stride, countRemaining, file)
-            if countWritten < countRemaining {
-              try _throwIfNeeded()
-            }
-            baseAddress += countWritten
-            countRemaining -= countWritten
-          } while countRemaining > 0
+        try bytes.withUnsafeBufferPointer { bytes throws(CError) in
+          if var baseAddress = bytes.baseAddress {
+            var countRemaining = bytes.count
+            repeat {
+              let countWritten = fwrite(baseAddress, MemoryLayout<UInt8>.stride, countRemaining, file)
+              if countWritten < countRemaining {
+                try _throwIfNeeded()
+              }
+              baseAddress += countWritten
+              countRemaining -= countWritten
+            } while countRemaining > 0
+          }
         }
       }
     }
@@ -600,10 +602,8 @@ extension FileHandle {
   ///
   /// - Throws: Any error that occurred while writing `bytes`. If an error
   ///   occurs while flushing the file, it is not thrown.
-  func write(_ bytes: UnsafeRawBufferPointer, flushAfterward: Bool = true) throws(CError) {
-    try bytes.withMemoryRebound(to: UInt8.self) { bytes throws(CError) in
-      try write(bytes, flushAfterward: flushAfterward)
-    }
+  func write(_ bytes: RawSpan, flushAfterward: Bool = true) throws(CError) {
+    try write(Span(viewing: bytes), flushAfterward: flushAfterward)
   }
 
   /// Write a single byte to this file handle.
@@ -657,7 +657,7 @@ extension FileHandle {
 
       var string = string
       try string.withUTF8 { string throws(CError) in
-        try write(string, flushAfterward: flushAfterward)
+        try write(string.span, flushAfterward: flushAfterward)
       }
     }
   }
